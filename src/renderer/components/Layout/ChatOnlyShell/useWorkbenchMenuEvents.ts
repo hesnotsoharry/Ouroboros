@@ -15,7 +15,6 @@ import { useProject } from '../../../contexts/ProjectContext';
 import {
   WORKBENCH_OPEN_PROJECT_EVENT,
   WORKBENCH_SWITCH_PROJECT_EVENT,
-  WORKBENCH_TOGGLE_ARTIFACT_PANE_EVENT,
   WORKBENCH_TOGGLE_INNER_SIDEBAR_EVENT,
   WORKBENCH_TOGGLE_OUTER_RAIL_EVENT,
   WORKBENCH_TOGGLE_TERMINAL_DOCK_EVENT,
@@ -50,18 +49,15 @@ function useViewToggleEvents(layout: Layout, dock: Dock): void {
     const onInner = (): void => layout.toggleRail();
     const onUtility = (): void => layout.toggleUtility();
     const onTerminal = (): void => dock.toggleVisible();
-    const onArtifact = (): void => layout.toggleArtifact();
     window.addEventListener(WORKBENCH_TOGGLE_OUTER_RAIL_EVENT, onOuter);
     window.addEventListener(WORKBENCH_TOGGLE_INNER_SIDEBAR_EVENT, onInner);
     window.addEventListener(WORKBENCH_TOGGLE_UTILITY_DRAWER_EVENT, onUtility);
     window.addEventListener(WORKBENCH_TOGGLE_TERMINAL_DOCK_EVENT, onTerminal);
-    window.addEventListener(WORKBENCH_TOGGLE_ARTIFACT_PANE_EVENT, onArtifact);
     return () => {
       window.removeEventListener(WORKBENCH_TOGGLE_OUTER_RAIL_EVENT, onOuter);
       window.removeEventListener(WORKBENCH_TOGGLE_INNER_SIDEBAR_EVENT, onInner);
       window.removeEventListener(WORKBENCH_TOGGLE_UTILITY_DRAWER_EVENT, onUtility);
       window.removeEventListener(WORKBENCH_TOGGLE_TERMINAL_DOCK_EVENT, onTerminal);
-      window.removeEventListener(WORKBENCH_TOGGLE_ARTIFACT_PANE_EVENT, onArtifact);
     };
   }, [layout, dock]);
 }

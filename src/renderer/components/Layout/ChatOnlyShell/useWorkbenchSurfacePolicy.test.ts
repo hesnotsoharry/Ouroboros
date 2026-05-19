@@ -13,45 +13,7 @@ describe('useWorkbenchSurfacePolicy', () => {
     vi.restoreAllMocks();
   });
 
-  it('opens artifact surfaces for new keys and suppresses same-key reopen after close', () => {
-    const setArtifactOpen = vi.fn();
-    const setUtilityOpen = vi.fn();
-    const setActiveUtilityTab = vi.fn();
-
-    const { result, rerender } = renderHook(
-      (props: { artifactKey: string | null; artifactKind: 'empty' | 'file' | 'diff' }) =>
-        useWorkbenchSurfacePolicy({
-          approvalCount: 0,
-          artifactKey: props.artifactKey,
-          artifactKind: props.artifactKind,
-          setArtifactOpen,
-          setUtilityOpen,
-          setActiveUtilityTab,
-        }),
-      {
-        initialProps: { artifactKey: null, artifactKind: 'empty' as const },
-      },
-    );
-
-    rerender({ artifactKey: 'file:/tmp/a.ts', artifactKind: 'file' });
-    expect(setArtifactOpen).toHaveBeenCalledWith(true);
-
-    act(() => {
-      result.current.closeArtifact();
-    });
-    expect(setArtifactOpen).toHaveBeenLastCalledWith(false);
-    setArtifactOpen.mockClear();
-
-    rerender({ artifactKey: null, artifactKind: 'empty' });
-    rerender({ artifactKey: 'file:/tmp/a.ts', artifactKind: 'file' });
-    expect(setArtifactOpen).not.toHaveBeenCalled();
-
-    rerender({ artifactKey: 'file:/tmp/b.ts', artifactKind: 'file' });
-    expect(setArtifactOpen).toHaveBeenCalledWith(true);
-  });
-
   it('opens approvals and only reopens when a new approval key arrives after dismissal', () => {
-    const setArtifactOpen = vi.fn();
     const setUtilityOpen = vi.fn();
     const setActiveUtilityTab = vi.fn();
 
@@ -59,9 +21,6 @@ describe('useWorkbenchSurfacePolicy', () => {
       (approvalCount: number) =>
         useWorkbenchSurfacePolicy({
           approvalCount,
-          artifactKey: null,
-          artifactKind: 'empty',
-          setArtifactOpen,
           setUtilityOpen,
           setActiveUtilityTab,
         }),
@@ -91,16 +50,12 @@ describe('useWorkbenchSurfacePolicy', () => {
   });
 
   it('opens subagents on event and suppresses the same tool call after close', () => {
-    const setArtifactOpen = vi.fn();
     const setUtilityOpen = vi.fn();
     const setActiveUtilityTab = vi.fn();
 
     const { result } = renderHook(() =>
       useWorkbenchSurfacePolicy({
         approvalCount: 0,
-        artifactKey: null,
-        artifactKind: 'empty',
-        setArtifactOpen,
         setUtilityOpen,
         setActiveUtilityTab,
       }),

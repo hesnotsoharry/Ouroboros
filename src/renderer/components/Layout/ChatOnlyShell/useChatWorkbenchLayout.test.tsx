@@ -19,34 +19,36 @@ describe('useChatWorkbenchLayout', () => {
     window.localStorage.clear();
   });
 
-  it('returns the default layout state with rail open', () => {
+  it('returns the default layout state with rail open and utility closed', () => {
     const { result } = renderHook(() => useChatWorkbenchLayout());
 
     expect(result.current.railOpen).toBe(true);
-    expect(result.current.artifactOpen).toBe(false);
     expect(result.current.utilityOpen).toBe(false);
     expect(result.current.activeUtilityTab).toBe('activity');
-    expect('terminalOpen' in result.current).toBe(false);
+    // Wave 95 Phase H continuation: artifact pane removed — no artifactOpen state
+    expect('artifactOpen' in result.current).toBe(false);
+    expect('isArtifactOpen' in result.current).toBe(false);
+    expect('toggleArtifact' in result.current).toBe(false);
   });
 
-  it('restores a persisted layout snapshot from localStorage', () => {
+  it('restores utility and rail state from localStorage (ignores removed artifact fields)', () => {
+    // Old persisted data may contain artifactOpen/lastRightPaneView — gracefully ignored.
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
-        railOpen: true,
+        railOpen: false,
         artifactOpen: true,
         utilityOpen: true,
-        activeUtilityTab: 'review',
+        activeUtilityTab: 'monitor',
+        lastRightPaneView: 'artifact',
       }),
     );
 
     const { result } = renderHook(() => useChatWorkbenchLayout());
 
-    expect(result.current.railOpen).toBe(true);
-    expect(result.current.artifactOpen).toBe(true);
+    expect(result.current.railOpen).toBe(false);
     expect(result.current.utilityOpen).toBe(true);
-    // 'review' is no longer a valid tab — isUtilityTab() returns false, falls back to default.
-    expect(result.current.activeUtilityTab).toBe('activity');
+    expect(result.current.activeUtilityTab).toBe('monitor');
   });
 
   it('falls back to defaults when persisted state is corrupted', () => {
@@ -55,7 +57,6 @@ describe('useChatWorkbenchLayout', () => {
     const { result } = renderHook(() => useChatWorkbenchLayout());
 
     expect(result.current.railOpen).toBe(true);
-    expect(result.current.artifactOpen).toBe(false);
     expect(result.current.utilityOpen).toBe(false);
     expect(result.current.activeUtilityTab).toBe('activity');
   });
@@ -65,10 +66,6 @@ describe('useChatWorkbenchLayout', () => {
 
     act(() => {
       result.current.toggleRail();
-      // Wave 89 Phase 3: overlays are no longer mutually exclusive — both can be
-      // open simultaneously (tile layout). Opening utility after artifact leaves
-      // artifact open too.
-      result.current.setArtifactOpen(true);
       result.current.setUtilityOpen(true);
       result.current.setActiveUtilityTab('monitor');
     });
@@ -79,79 +76,42 @@ describe('useChatWorkbenchLayout', () => {
 
     expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({
       railOpen: false,
-      artifactOpen: true,
       utilityOpen: true,
       activeUtilityTab: 'monitor',
-      lastRightPaneView: 'utility',
     });
   });
 
-  it('toggleUtility opens utility without touching artifact state', () => {
+  it('toggleUtility opens and closes utility pane', () => {
     const { result } = renderHook(() => useChatWorkbenchLayout());
-    act(() => result.current.setArtifactOpen(true));
-    expect(result.current.isArtifactOpen).toBe(true);
 
     act(() => result.current.toggleUtility());
     expect(result.current.isUtilityOpen).toBe(true);
-    // artifact unchanged — tiling model, not mutually exclusive
-    expect(result.current.isArtifactOpen).toBe(true);
-
-    act(() => result.current.toggleUtility());
-    expect(result.current.isUtilityOpen).toBe(false);
-    expect(result.current.isArtifactOpen).toBe(true);
-  });
-
-  it('toggleArtifact opens artifact without touching utility state', () => {
-    const { result } = renderHook(() => useChatWorkbenchLayout());
-    act(() => result.current.setUtilityOpen(true));
-    expect(result.current.isUtilityOpen).toBe(true);
-
-    act(() => result.current.toggleArtifact());
-    expect(result.current.isArtifactOpen).toBe(true);
-    // utility unchanged — tiling model
-    expect(result.current.isUtilityOpen).toBe(true);
-
-    act(() => result.current.toggleArtifact());
-    expect(result.current.isArtifactOpen).toBe(false);
-    expect(result.current.isUtilityOpen).toBe(true);
-  });
-
-  it('isUtilityOpen and isArtifactOpen are aliases for utilityOpen and artifactOpen', () => {
-    const { result } = renderHook(() => useChatWorkbenchLayout());
-    act(() => {
-      result.current.setUtilityOpen(true);
-      result.current.setArtifactOpen(true);
-    });
-    expect(result.current.isUtilityOpen).toBe(result.current.utilityOpen);
-    expect(result.current.isArtifactOpen).toBe(result.current.artifactOpen);
-  });
-
-  it('opens the last-used right pane view via toggleRightPane', () => {
-    const { result } = renderHook(() => useChatWorkbenchLayout());
-    // Default lastRightPaneView is 'utility'
-    act(() => result.current.toggleRightPane());
-    expect(result.current.utilityOpen).toBe(true);
-    expect(result.current.artifactOpen).toBe(false);
     expect(result.current.rightPaneOpen).toBe(true);
     expect(result.current.rightPaneView).toBe('utility');
 
-    // Wave 89 Phase 3: setRightPaneView no longer closes the other pane.
-    // It opens the requested pane and updates lastRightPaneView.
-    act(() => result.current.setRightPaneView('artifact'));
-    expect(result.current.artifactOpen).toBe(true);
-    expect(result.current.rightPaneOpen).toBe(true);
-    expect(result.current.rightPaneView).toBe('utility'); // utility still open, so still 'utility'
-
-    // Close both explicitly, then toggle should re-open last view ('artifact').
-    act(() => {
-      result.current.setArtifactOpen(false);
-      result.current.setUtilityOpen(false);
-    });
+    act(() => result.current.toggleUtility());
+    expect(result.current.isUtilityOpen).toBe(false);
     expect(result.current.rightPaneOpen).toBe(false);
+    expect(result.current.rightPaneView).toBeNull();
+  });
+
+  it('isUtilityOpen is an alias for utilityOpen', () => {
+    const { result } = renderHook(() => useChatWorkbenchLayout());
+    act(() => result.current.setUtilityOpen(true));
+    expect(result.current.isUtilityOpen).toBe(result.current.utilityOpen);
+    expect(result.current.isUtilityOpen).toBe(true);
+  });
+
+  it('toggleRightPane opens and closes the utility pane', () => {
+    const { result } = renderHook(() => useChatWorkbenchLayout());
 
     act(() => result.current.toggleRightPane());
-    // lastRightPaneView is 'artifact', so toggle re-opens artifact
-    expect(result.current.artifactOpen).toBe(true);
-    expect(result.current.rightPaneView).toBe('artifact');
+    expect(result.current.utilityOpen).toBe(true);
+    expect(result.current.rightPaneOpen).toBe(true);
+    expect(result.current.rightPaneView).toBe('utility');
+
+    act(() => result.current.toggleRightPane());
+    expect(result.current.utilityOpen).toBe(false);
+    expect(result.current.rightPaneOpen).toBe(false);
   });
 });

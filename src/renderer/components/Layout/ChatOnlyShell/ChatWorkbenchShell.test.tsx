@@ -20,10 +20,7 @@ import type { AgentChatThreadRecord } from '../../../types/electron';
 import { ChatWorkbenchShell } from './ChatWorkbenchShell';
 
 let mockDockVisible = false;
-let mockArtifactOpen = false;
 let mockUtilityOpen = false;
-let mockArtifactKey: string | null = null;
-let mockArtifactKind: 'empty' | 'file' | 'diff' = 'empty';
 let mockPendingCount = 0;
 let mockApprovalRequests: Array<{
   requestId: string;
@@ -34,7 +31,6 @@ let mockApprovalRequests: Array<{
 }> = [];
 let mockDiffState: null | { sessionId: string; snapshotHash: string } = null;
 let mockActiveUtilityTab: 'activity' | 'approvals' | 'rules' | 'monitor' = 'activity';
-const mockSetArtifactOpen = vi.fn();
 const mockSetUtilityOpen = vi.fn();
 const mockSetActiveUtilityTab = vi.fn();
 const mockSelectThread = vi.fn();
@@ -198,24 +194,21 @@ vi.mock('./useChatSidebarMode', () => ({
 vi.mock('./useChatWorkbenchLayout', () => ({
   useChatWorkbenchLayout: () => ({
     railOpen: true,
-    artifactOpen: mockArtifactOpen,
     utilityOpen: mockUtilityOpen,
     activeUtilityTab: mockActiveUtilityTab,
-    lastRightPaneView: mockUtilityOpen ? 'utility' : 'artifact',
     activeProject: null,
     projectStates: {},
     toggleRail: vi.fn(),
     setRailOpen: vi.fn(),
-    toggleArtifact: vi.fn(),
-    setArtifactOpen: mockSetArtifactOpen,
     toggleUtility: vi.fn(),
     setUtilityOpen: mockSetUtilityOpen,
     setActiveUtilityTab: mockSetActiveUtilityTab,
     setActiveProject: vi.fn(),
     setActiveInnerTab: vi.fn(),
     getProjectState: vi.fn(() => ({ activeInnerTab: 'chats' as const })),
-    rightPaneOpen: mockArtifactOpen || mockUtilityOpen,
-    rightPaneView: mockUtilityOpen ? 'utility' : mockArtifactOpen ? 'artifact' : null,
+    isUtilityOpen: mockUtilityOpen,
+    rightPaneOpen: mockUtilityOpen,
+    rightPaneView: mockUtilityOpen ? 'utility' : null,
     toggleRightPane: vi.fn(),
     setRightPaneView: vi.fn(),
   }),
@@ -236,16 +229,6 @@ vi.mock('./ChatWorkbenchTerminalDock', () => ({
   ChatWorkbenchTerminalDock: () => <div data-testid="chat-workbench-terminal-dock" />,
 }));
 
-vi.mock('./ChatWorkbenchArtifactPane', () => ({
-  ChatWorkbenchArtifactPane: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="chat-workbench-artifact-pane">
-      <button type="button" data-testid="chat-workbench-artifact-pane-close" onClick={onClose}>
-        Close Artifact
-      </button>
-    </div>
-  ),
-}));
-
 vi.mock('./ChatWorkbenchUtilityDrawer', () => ({
   ChatWorkbenchUtilityDrawer: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="chat-workbench-utility-drawer">
@@ -254,16 +237,6 @@ vi.mock('./ChatWorkbenchUtilityDrawer', () => ({
       </button>
     </div>
   ),
-}));
-
-vi.mock('./useWorkbenchArtifacts', () => ({
-  useWorkbenchArtifacts: () => ({
-    kind: mockArtifactKind,
-    activeKey: mockArtifactKey,
-    title: 'Artifacts',
-    subtitle: null,
-    hasArtifact: mockArtifactKind !== 'empty',
-  }),
 }));
 
 vi.mock('./useWorkbenchSessionActivation', () => ({
@@ -341,41 +314,16 @@ function renderShell(terminal?: UseTerminalSessionsReturn) {
   );
 }
 
-function rerenderShell(
-  rerender: ReturnType<typeof renderShell>['rerender'],
-  terminal?: UseTerminalSessionsReturn,
-): void {
-  rerender(
-    <ChatWorkbenchShell
-      projectRoot="/test/project"
-      terminal={terminal}
-      diffOverlayOpen={false}
-      openDiffOverlay={vi.fn()}
-      closeDiffOverlay={vi.fn()}
-      toggleDrawer={vi.fn()}
-      paletteOpen={false}
-      closePalette={vi.fn()}
-      commands={[]}
-      recentIds={[]}
-      execute={vi.fn().mockResolvedValue(undefined)}
-    />,
-  );
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 afterEach(() => {
   cleanup();
   mockDockVisible = false;
-  mockArtifactOpen = false;
   mockUtilityOpen = false;
-  mockArtifactKey = null;
-  mockArtifactKind = 'empty';
   mockPendingCount = 0;
   mockApprovalRequests = [];
   mockDiffState = null;
   mockActiveUtilityTab = 'activity';
-  mockSetArtifactOpen.mockReset();
   mockSetUtilityOpen.mockReset();
   mockSetActiveUtilityTab.mockReset();
   mockSelectThread.mockReset();
@@ -414,26 +362,6 @@ describe('ChatWorkbenchShell', () => {
     renderShell(undefined);
     expect(screen.queryByTestId('chat-workbench-terminal-dock-unavailable')).toBeNull();
     expect(await screen.findByTestId('chat-workbench-terminal-dock')).toBeDefined();
-  });
-
-  it('mounts the artifact pane when artifactOpen is enabled', async () => {
-    mockArtifactOpen = true;
-    renderShell();
-    expect(await screen.findByTestId('chat-workbench-artifact-pane')).toBeDefined();
-  });
-
-  it('auto-opens the artifact pane when a new artifact key becomes active', () => {
-    mockArtifactKind = 'diff';
-    mockArtifactKey = 'diff:session-1:snapshot-1';
-    renderShell();
-    expect(mockSetArtifactOpen).toHaveBeenCalledWith(true);
-  });
-
-  it('auto-opens the artifact pane for file artifacts as well', () => {
-    mockArtifactKind = 'file';
-    mockArtifactKey = 'file:/tmp/example.ts';
-    renderShell();
-    expect(mockSetArtifactOpen).toHaveBeenCalledWith(true);
   });
 
   // Wave 59 Phase B replaced WorkbenchRail with TwoTierRailSurface
@@ -496,33 +424,6 @@ describe('ChatWorkbenchShell', () => {
     ];
     renderShell();
     expect(screen.getByTestId('workbench-background-approval-prompt')).toBeDefined();
-  });
-
-  it('suppresses reopening the same artifact key after dismissal, but reopens on a new key', async () => {
-    mockArtifactOpen = true;
-    mockArtifactKind = 'file';
-    mockArtifactKey = 'file:/tmp/example-a.ts';
-    const view = renderShell();
-    const initialOpenCalls = mockSetArtifactOpen.mock.calls.length;
-
-    fireEvent.click(await screen.findByTestId('chat-workbench-artifact-pane-close'));
-    expect(mockSetArtifactOpen).toHaveBeenLastCalledWith(false);
-
-    mockArtifactOpen = false;
-    mockSetArtifactOpen.mockClear();
-    rerenderShell(view.rerender);
-    expect(mockSetArtifactOpen.mock.calls.length).toBeLessThanOrEqual(initialOpenCalls);
-
-    mockArtifactKey = null;
-    rerenderShell(view.rerender);
-
-    mockArtifactKey = 'file:/tmp/example-a.ts';
-    rerenderShell(view.rerender);
-    expect(mockSetArtifactOpen).not.toHaveBeenCalledWith(true);
-
-    mockArtifactKey = 'file:/tmp/example-b.ts';
-    rerenderShell(view.rerender);
-    expect(mockSetArtifactOpen).toHaveBeenCalledWith(true);
   });
 
   it('suppresses reopening the same subagent event after dismissal, but reopens for a new tool call', async () => {

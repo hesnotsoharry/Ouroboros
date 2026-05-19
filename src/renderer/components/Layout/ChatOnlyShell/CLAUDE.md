@@ -6,10 +6,10 @@ A dedicated renderer shell that replaces `InnerAppLayout` when immersive chat mo
 
 **Wave 46 chat-workbench variant (as evolved through Wave 89):**
 - `layout.chatWorkbench` gates a workstation-style chat shell without mounting the full IDE shell.
-- `ChatWorkbenchShell` keeps the conversation central with one persistent docked surface (`WorkbenchRail`) and a bottom terminal dock. Secondary surfaces (`ChatWorkbenchArtifactPane`, `ChatWorkbenchUtilityDrawer`) render as non-modal **overlays** anchored to the chat area (Wave 89 — see `OverlayDrawer.tsx`), not as fixed-flex body siblings.
+- `ChatWorkbenchShell` keeps the conversation central with one persistent docked surface (`WorkbenchRail`) and a bottom terminal dock. `ChatWorkbenchUtilityDrawer` renders as a non-modal **overlay** anchored to the chat area (Wave 89 — see `OverlayDrawer.tsx`). The artifact pane was removed entirely in Wave 95 Phase H continuation.
 - `ChatWorkbenchTerminalDock` (Wave 89) hosts **two stacked terminal slots** — `primary` (Wave 90 home for interactive Claude; generic terminal in 89) and `secondary` (dev shell) — separated by a sibling-resizable divider via `useResizable.startSiblingResize`. Each slot owns an independent `useTerminalSessions` instance.
 - The utility drawer auto-opens on new approvals and `agent-ide:open-subagent-panel` events. Diff review no longer auto-opens any drawer or pane — use the status-bar `DiffButton` (pull model, Wave 95 Phase H).
-- Artifact pane no longer renders diff content — `artifact.kind === 'diff'` falls through to `EmptyArtifactState`. Diff review is only accessible via `ChatOnlyDiffOverlay` (status-bar trigger).
+- Artifact pane has been fully removed (Wave 95 Phase H continuation). Diff review is only accessible via `ChatOnlyDiffOverlay` (status-bar trigger).
 - Both overlays support concurrent open. Tile layout: artifact pane anchored to the chat-area right edge; utility drawer anchored to the left of the artifact pane when both open.
 
 **Wave 44 parity pass (Claude desktop / Piebald targets):**
@@ -107,9 +107,8 @@ ChatWorkbenchShell
   │         ├─ ChatWorkbenchTerminalDock — two stacked slots, fills full height (flex-1)
   │         │    ├─ DockSlot (slot='primary')    — Wave 90 interactive-claude home
   │         │    └─ DockSlot (slot='secondary')  — dev shell
-  │         └─ ChatWorkbenchOverlays   — two OverlayDrawer instances anchored to dock-main-area
-  │              ├─ ChatWorkbenchArtifactPane (overlay, default width 480)
-  │              └─ ChatWorkbenchUtilityDrawer (overlay, default width 380, tiles LEFT of artifact when both open)
+  │         └─ ChatWorkbenchOverlays   — one OverlayDrawer instance anchored to dock-main-area
+  │              └─ ChatWorkbenchUtilityDrawer (overlay, default width 380)
   │                   ├─ WorkbenchApprovalPanel
   │                   ├─ DiffReviewPanel
   │                   └─ WorkbenchTimelinePanel
@@ -157,3 +156,4 @@ The workbench shell still does **not** mount `IdeToolBridge`, `RightSidebarTabs`
 - **Wave 89 Phase 3**: Utility drawer + artifact pane migrated from fixed-flex slots to `OverlayDrawer` instances. `ChatWorkbenchOverlays.tsx` is the mount point. `useOverlayDrawerWidths` hook persists widths per surface. `ChatWorkbenchBody`'s desktop flex tree simplified to `rail | chat-area | terminal-dock`. `useChatWorkbenchLayout` mutual-exclusion removed (both overlays can be concurrently open). `useWorkbenchSurfacePolicy` unchanged (state-only, no overlay-specific rewiring needed).
 - **Wave 95 Phase E**: Secondary slot visibility affordance — when secondary slot is collapsed AND empty (no sessions), a "▾ show secondary" button appears in the primary slot header, allowing the user to reveal it. Gating predicate: `useSecondarySlotVisible(secondaryCollapsed)` returns true iff collapsed AND hasSessions OR !collapsed. When hidden, `onShowSecondarySlot` callback toggles `secondaryCollapsed`. Prop threading: `DockSlotProps.onShowSecondarySlot?` → `SlotHeaderRowProps` → both `SlotHeader` and `SlotTabsHeader` render conditional `ShowSecondarySlotButton` in right-edge button row before collapse button. Tests added to verify gating logic.
 - **Wave 95 Phase H**: Diff-review surface consolidation — pull model only. Removed `review` tab from `ChatWorkbenchUtilityDrawer` and `DiffArtifactContent` from `ChatWorkbenchArtifactPane`. Removed `diffKey` prop and its auto-open `useEffect` from `useWorkbenchSurfacePolicy`. `ChatWorkbenchUtilityTab` type no longer includes `'review'`. Diff review is now exclusively accessed via `ChatOnlyDiffOverlay` (status-bar `DiffButton` click). When `artifact.kind === 'diff'`, the artifact pane shows `EmptyArtifactState`. `DiffReviewManager`/`DiffReviewPanel` are unchanged and still used by `ChatOnlyDiffOverlay`.
+- **Wave 95 Phase H continuation**: Full artifact pane removal. `ChatWorkbenchArtifactPane.tsx`, `useWorkbenchArtifacts.ts`, and their test files deleted. `ChatWorkbenchOverlays` now renders only the utility overlay (artifact overlay + tile-offset logic removed). `useWorkbenchSurfacePolicy` no longer takes `artifactKey`/`artifactKind`/`setArtifactOpen` — artifact auto-open effect removed entirely. `useChatWorkbenchLayout` state simplified: `artifactOpen`, `toggleArtifact`, `setArtifactOpen`, `isArtifactOpen`, `lastRightPaneView` all removed. `ChatOnlyTitleBar` `onToggleArtifact`/`artifactOpen` props removed. `useWorkbenchMenuEvents` artifact event listener removed. `WorkbenchRightPane` simplified to utility-only (view-switcher and artifact branch removed). The empty pane shell that was auto-opening on every artifact event is gone.

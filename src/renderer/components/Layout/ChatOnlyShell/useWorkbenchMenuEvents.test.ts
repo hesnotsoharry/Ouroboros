@@ -16,7 +16,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProjectProvider } from '../../../contexts/ProjectContext';
 import {
   WORKBENCH_SWITCH_PROJECT_EVENT,
-  WORKBENCH_TOGGLE_ARTIFACT_PANE_EVENT,
   WORKBENCH_TOGGLE_OUTER_RAIL_EVENT,
   WORKBENCH_TOGGLE_TERMINAL_DOCK_EVENT,
   WORKBENCH_TOGGLE_UTILITY_DRAWER_EVENT,
@@ -26,13 +25,11 @@ import { useWorkbenchMenuEvents } from './useWorkbenchMenuEvents';
 const makeLayout = () => ({
   toggleRail: vi.fn(),
   toggleUtility: vi.fn(),
-  toggleArtifact: vi.fn(),
   toggleRightPane: vi.fn(),
   setActiveProject: vi.fn(),
   activeProject: null,
   railOpen: true,
   rightPaneOpen: false,
-  artifactOpen: false,
   utilityOpen: false,
   utilityActiveTab: 'activity' as const,
   setUtilityActiveTab: vi.fn(),
@@ -83,16 +80,6 @@ describe('useWorkbenchMenuEvents', () => {
       window.dispatchEvent(new CustomEvent(WORKBENCH_TOGGLE_UTILITY_DRAWER_EVENT));
     });
     expect(layout.toggleUtility).toHaveBeenCalledTimes(1);
-  });
-
-  it('toggles artifact on WORKBENCH_TOGGLE_ARTIFACT_PANE_EVENT', () => {
-    renderHook(() => useWorkbenchMenuEvents({ layout: layout as never, dock: dock as never }), {
-      wrapper: wrap,
-    });
-    act(() => {
-      window.dispatchEvent(new CustomEvent(WORKBENCH_TOGGLE_ARTIFACT_PANE_EVENT));
-    });
-    expect(layout.toggleArtifact).toHaveBeenCalledTimes(1);
   });
 
   it('toggles dock visibility on WORKBENCH_TOGGLE_TERMINAL_DOCK_EVENT', () => {

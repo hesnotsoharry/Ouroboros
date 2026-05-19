@@ -32,14 +32,14 @@ function parseProjectStates(raw: unknown): Record<string, ProjectRailState> {
 
 // ── Top-level layout state ─────────────────────────────────────────────────────
 
+// Wave 95 Phase H continuation: artifact pane removed. RightPaneView only has
+// 'utility' now, but kept as a union for localStorage backward-compat reads.
 export type RightPaneView = 'utility' | 'artifact';
 
 export interface ChatWorkbenchLayoutState {
   railOpen: boolean;
-  artifactOpen: boolean;
   utilityOpen: boolean;
   activeUtilityTab: ChatWorkbenchUtilityTab;
-  lastRightPaneView: RightPaneView;
   activeProject: string | null;
   projectStates: Record<string, ProjectRailState>;
 }
@@ -47,37 +47,28 @@ export interface ChatWorkbenchLayoutState {
 export interface ChatWorkbenchLayoutApi extends ChatWorkbenchLayoutState {
   toggleRail: () => void;
   setRailOpen: (open: boolean) => void;
-  toggleArtifact: () => void;
-  setArtifactOpen: (open: boolean) => void;
   toggleUtility: () => void;
   setUtilityOpen: (open: boolean) => void;
   setActiveUtilityTab: (tab: ChatWorkbenchUtilityTab) => void;
   setActiveProject: (projectPath: string | null) => void;
   setActiveInnerTab: (projectPath: string, tab: InnerSidebarTab) => void;
   getProjectState: (projectPath: string) => ProjectRailState;
-  // Phase A (Wave 94): named aliases for direct button binding
+  // Named alias for direct button binding
   isUtilityOpen: boolean;
-  isArtifactOpen: boolean;
-  // Right pane (utility ⇄ artifact, tiling — both can be open simultaneously)
+  // Right pane (utility only — artifact pane removed in Wave 95 Phase H)
   rightPaneOpen: boolean;
   rightPaneView: RightPaneView | null;
   toggleRightPane: () => void;
-  setRightPaneView: (view: RightPaneView) => void;
+  setRightPaneView: () => void;
 }
 
 const DEFAULT_STATE: ChatWorkbenchLayoutState = {
   railOpen: true,
-  artifactOpen: false,
   utilityOpen: false,
   activeUtilityTab: 'activity',
-  lastRightPaneView: 'utility',
   activeProject: null,
   projectStates: {},
 };
-
-function isRightPaneView(value: unknown): value is RightPaneView {
-  return value === 'utility' || value === 'artifact';
-}
 
 // ── Persistence ────────────────────────────────────────────────────────────────
 
@@ -98,17 +89,13 @@ function readPersisted(): ChatWorkbenchLayoutState {
       // Cold boot on mobile — start with rail closed so chat fills the screen.
       return isMobileViewport() ? { ...DEFAULT_STATE, railOpen: false } : DEFAULT_STATE;
     }
-    const parsed = JSON.parse(raw) as Partial<ChatWorkbenchLayoutState>;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     return {
       railOpen: Boolean(parsed.railOpen),
-      artifactOpen: Boolean(parsed.artifactOpen),
       utilityOpen: Boolean(parsed.utilityOpen),
       activeUtilityTab: isUtilityTab(parsed.activeUtilityTab)
         ? parsed.activeUtilityTab
         : DEFAULT_STATE.activeUtilityTab,
-      lastRightPaneView: isRightPaneView(parsed.lastRightPaneView)
-        ? parsed.lastRightPaneView
-        : DEFAULT_STATE.lastRightPaneView,
       activeProject: typeof parsed.activeProject === 'string' ? parsed.activeProject : null,
       projectStates: parseProjectStates(parsed.projectStates),
     };
@@ -130,33 +117,14 @@ function persist(state: ChatWorkbenchLayoutState): void {
 
 type Setter = React.Dispatch<React.SetStateAction<ChatWorkbenchLayoutState>>;
 
-function applyArtifactOpen(p: ChatWorkbenchLayoutState, open: boolean): ChatWorkbenchLayoutState {
-  // Wave 89 Phase 3: overlays tile — no longer mutually exclusive.
-  // artifact and utility CAN both be open simultaneously (tile layout).
-  if (!open) return { ...p, artifactOpen: false };
-  return { ...p, artifactOpen: true, lastRightPaneView: 'artifact' };
-}
-
 function applyUtilityOpen(p: ChatWorkbenchLayoutState, open: boolean): ChatWorkbenchLayoutState {
-  // Wave 89 Phase 3: overlays tile — no longer mutually exclusive.
-  if (!open) return { ...p, utilityOpen: false };
-  return { ...p, utilityOpen: true, lastRightPaneView: 'utility' };
-}
-
-function applyToggleRightPane(p: ChatWorkbenchLayoutState): ChatWorkbenchLayoutState {
-  const open = p.utilityOpen || p.artifactOpen;
-  if (open) return { ...p, utilityOpen: false, artifactOpen: false };
-  return p.lastRightPaneView === 'artifact'
-    ? applyArtifactOpen(p, true)
-    : applyUtilityOpen(p, true);
+  return { ...p, utilityOpen: open };
 }
 
 function buildCallbacks(setState: Setter) {
   return {
     toggleRail: () => setState((p) => ({ ...p, railOpen: !p.railOpen })),
     setRailOpen: (open: boolean) => setState((p) => ({ ...p, railOpen: open })),
-    toggleArtifact: () => setState((p) => applyArtifactOpen(p, !p.artifactOpen)),
-    setArtifactOpen: (open: boolean) => setState((p) => applyArtifactOpen(p, open)),
     toggleUtility: () => setState((p) => applyUtilityOpen(p, !p.utilityOpen)),
     setUtilityOpen: (open: boolean) => setState((p) => applyUtilityOpen(p, open)),
     setActiveUtilityTab: (tab: ChatWorkbenchUtilityTab) =>
@@ -176,11 +144,9 @@ function buildCallbacks(setState: Setter) {
           },
         },
       })),
-    toggleRightPane: () => setState(applyToggleRightPane),
-    setRightPaneView: (view: RightPaneView) =>
-      setState((p) =>
-        view === 'artifact' ? applyArtifactOpen(p, true) : applyUtilityOpen(p, true),
-      ),
+    // toggleRightPane / setRightPaneView kept for mobile path — only utility exists now.
+    toggleRightPane: () => setState((p) => applyUtilityOpen(p, !p.utilityOpen)),
+    setRightPaneView: () => setState((p) => applyUtilityOpen(p, true)),
   };
 }
 
@@ -192,8 +158,6 @@ function useStableCallbacks(setState: Setter): ReturnType<typeof buildCallbacks>
   return {
     toggleRail: useCallback(cbs.toggleRail, [setState]),
     setRailOpen: useCallback(cbs.setRailOpen, [setState]),
-    toggleArtifact: useCallback(cbs.toggleArtifact, [setState]),
-    setArtifactOpen: useCallback(cbs.setArtifactOpen, [setState]),
     toggleUtility: useCallback(cbs.toggleUtility, [setState]),
     setUtilityOpen: useCallback(cbs.setUtilityOpen, [setState]),
     setActiveUtilityTab: useCallback(cbs.setActiveUtilityTab, [setState]),
@@ -207,21 +171,13 @@ function useStableCallbacks(setState: Setter): ReturnType<typeof buildCallbacks>
 
 function deriveRightPane(state: ChatWorkbenchLayoutState): {
   isUtilityOpen: boolean;
-  isArtifactOpen: boolean;
   rightPaneOpen: boolean;
   rightPaneView: RightPaneView | null;
 } {
-  const rightPaneOpen = state.utilityOpen || state.artifactOpen;
-  const rightPaneView: RightPaneView | null = state.utilityOpen
-    ? 'utility'
-    : state.artifactOpen
-      ? 'artifact'
-      : null;
   return {
     isUtilityOpen: state.utilityOpen,
-    isArtifactOpen: state.artifactOpen,
-    rightPaneOpen,
-    rightPaneView,
+    rightPaneOpen: state.utilityOpen,
+    rightPaneView: state.utilityOpen ? 'utility' : null,
   };
 }
 

@@ -82,17 +82,13 @@ export function WorkbenchMainColumn({
       data-testid="workbench-dock-main-area"
     >
       <Suspense fallback={null}>
-        <ChatWorkbenchTerminalDock
-          onActiveSessionChange={onActiveSessionChange}
-        />
+        <ChatWorkbenchTerminalDock onActiveSessionChange={onActiveSessionChange} />
       </Suspense>
       <ChatWorkbenchOverlays
         utilityOpen={layout.utilityOpen}
-        artifactOpen={layout.artifactOpen}
         activeUtilityTab={layout.activeUtilityTab}
         onSelectUtilityTab={layout.setActiveUtilityTab}
         onCloseUtility={surfacePolicy.closeUtility}
-        onCloseArtifact={surfacePolicy.closeArtifact}
         activeProject={layout.activeProject}
         overlayWidths={overlayWidths}
       />

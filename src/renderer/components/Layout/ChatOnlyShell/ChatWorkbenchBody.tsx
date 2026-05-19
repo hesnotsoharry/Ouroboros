@@ -214,8 +214,7 @@ function MobileOverlays({
 }): React.ReactElement {
   const closeRail = (): void => state.layout.setRailOpen(false);
   const closeRightPane = (): void => {
-    if (state.layout.rightPaneView === 'artifact') state.surfacePolicy.closeArtifact();
-    else state.surfacePolicy.closeUtility();
+    state.surfacePolicy.closeUtility();
   };
   return (
     <>
@@ -244,8 +243,7 @@ function MobileOverlays({
 function MobileRightPaneContent({ state }: { state: WorkbenchState }): React.ReactElement | null {
   if (!state.layout.rightPaneView) return null;
   const handleClose = (): void => {
-    if (state.layout.rightPaneView === 'artifact') state.surfacePolicy.closeArtifact();
-    else state.surfacePolicy.closeUtility();
+    state.surfacePolicy.closeUtility();
   };
   return (
     <WorkbenchRightPane

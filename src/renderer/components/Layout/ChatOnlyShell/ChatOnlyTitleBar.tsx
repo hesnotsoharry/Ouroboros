@@ -22,7 +22,6 @@ import { WindowControls } from './TitleBarWindowControls';
 import type { ChatSidebarMode } from './useChatSidebarMode';
 import { WorkbenchMenuBar } from './WorkbenchMenuBar';
 import {
-  ArtifactPaneToggleButton,
   RightPaneToggleButton,
   TerminalToggleButton,
   UtilityPaneToggleButton,
@@ -134,7 +133,6 @@ function TitleBarLeft({
  * target-slot wiring decision. Restore the `{<WorkbenchModelChips />}` in
  * TitleBarRight when wiring lands.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function WorkbenchModelChips(): React.ReactElement {
   return (
     <div
@@ -183,12 +181,9 @@ export interface ChatOnlyTitleBarProps {
   /** Workbench panel toggles — shown only in workbench mode (when onToggleRail is set). */
   onToggleTerminal?: () => void;
   terminalOpen?: boolean;
-  /** Phase A (Wave 94): individual surface toggles replace the single right-pane toggle. */
   onToggleUtility?: () => void;
   utilityOpen?: boolean;
-  onToggleArtifact?: () => void;
-  artifactOpen?: boolean;
-  /** @deprecated Use onToggleUtility + onToggleArtifact. Kept for keyboard-shortcut consumers. */
+  /** @deprecated Use onToggleUtility. Kept for keyboard-shortcut consumers. */
   onToggleRightPane?: () => void;
   rightPaneOpen?: boolean;
 }
@@ -203,30 +198,14 @@ type WorkbenchControlsProps = Omit<
 function RightPaneButtons({
   onToggleUtility,
   utilityOpen,
-  onToggleArtifact,
-  artifactOpen,
   onToggleRightPane,
   rightPaneOpen,
 }: Pick<
   WorkbenchControlsProps,
-  | 'onToggleUtility'
-  | 'utilityOpen'
-  | 'onToggleArtifact'
-  | 'artifactOpen'
-  | 'onToggleRightPane'
-  | 'rightPaneOpen'
+  'onToggleUtility' | 'utilityOpen' | 'onToggleRightPane' | 'rightPaneOpen'
 >): React.ReactElement {
-  if (onToggleUtility ?? onToggleArtifact) {
-    return (
-      <>
-        {onToggleUtility && (
-          <UtilityPaneToggleButton open={utilityOpen ?? false} onToggle={onToggleUtility} />
-        )}
-        {onToggleArtifact && (
-          <ArtifactPaneToggleButton open={artifactOpen ?? false} onToggle={onToggleArtifact} />
-        )}
-      </>
-    );
+  if (onToggleUtility) {
+    return <UtilityPaneToggleButton open={utilityOpen ?? false} onToggle={onToggleUtility} />;
   }
   if (onToggleRightPane) {
     return <RightPaneToggleButton open={rightPaneOpen ?? false} onToggle={onToggleRightPane} />;
@@ -241,8 +220,6 @@ function WorkbenchControls({
   terminalOpen,
   onToggleUtility,
   utilityOpen,
-  onToggleArtifact,
-  artifactOpen,
   onToggleRightPane,
   rightPaneOpen,
 }: WorkbenchControlsProps): React.ReactElement | null {
@@ -259,8 +236,6 @@ function WorkbenchControls({
       <RightPaneButtons
         onToggleUtility={onToggleUtility}
         utilityOpen={utilityOpen}
-        onToggleArtifact={onToggleArtifact}
-        artifactOpen={artifactOpen}
         onToggleRightPane={onToggleRightPane}
         rightPaneOpen={rightPaneOpen}
       />

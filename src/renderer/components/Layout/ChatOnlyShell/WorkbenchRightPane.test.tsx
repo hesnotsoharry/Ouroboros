@@ -1,5 +1,8 @@
 /**
  * @vitest-environment jsdom
+ *
+ * WorkbenchRightPane — Wave 95 Phase H continuation.
+ * Artifact pane removed; component now renders utility drawer only.
  */
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -10,10 +13,6 @@ vi.mock('./ChatWorkbenchUtilityDrawer', () => ({
   ChatWorkbenchUtilityDrawer: ({ activeTab }: { activeTab: string }) => (
     <div data-testid="utility-drawer-mock">utility:{activeTab}</div>
   ),
-}));
-
-vi.mock('./ChatWorkbenchArtifactPane', () => ({
-  ChatWorkbenchArtifactPane: () => <div data-testid="artifact-pane-mock">artifact</div>,
 }));
 
 import { WorkbenchRightPane } from './WorkbenchRightPane';
@@ -27,43 +26,27 @@ function makeProps(overrides: Partial<React.ComponentProps<typeof WorkbenchRight
     onSelectUtilityTab: vi.fn(),
     onSelectView: vi.fn(),
     onClose: vi.fn(),
+    activeProject: null,
     ...overrides,
   };
 }
 
 describe('WorkbenchRightPane', () => {
-  it('renders the utility drawer when view is utility', () => {
+  it('always renders the utility drawer regardless of view prop', () => {
     render(<WorkbenchRightPane {...makeProps({ view: 'utility' })} />);
     expect(screen.getByTestId('utility-drawer-mock')).toBeDefined();
-    expect(screen.queryByTestId('artifact-pane-mock')).toBeNull();
   });
 
-  it('renders the artifact pane when view is artifact', () => {
+  it('renders the utility drawer even when view is artifact (artifact pane removed)', () => {
+    // Wave 95 Phase H continuation: artifact pane removed. view='artifact' still
+    // renders utility drawer (the only remaining pane).
     render(<WorkbenchRightPane {...makeProps({ view: 'artifact' })} />);
-    // artifact pane is lazy-loaded; the suspense fallback may render first
-    // synchronously check that the utility drawer is NOT mounted
-    expect(screen.queryByTestId('utility-drawer-mock')).toBeNull();
+    expect(screen.getByTestId('utility-drawer-mock')).toBeDefined();
   });
 
-  it('shows the view switcher trigger labelled with the current view', () => {
-    render(<WorkbenchRightPane {...makeProps({ view: 'utility' })} />);
-    expect(screen.getByTestId('right-pane-view-switcher-trigger').textContent).toContain('Utility');
-  });
-
-  it('opens the view switcher menu on trigger click', () => {
-    render(<WorkbenchRightPane {...makeProps()} />);
-    fireEvent.click(screen.getByTestId('right-pane-view-switcher-trigger'));
-    expect(screen.getByTestId('right-pane-view-switcher-menu')).toBeDefined();
-    expect(screen.getByTestId('right-pane-view-switcher-item-utility')).toBeDefined();
-    expect(screen.getByTestId('right-pane-view-switcher-item-artifact')).toBeDefined();
-  });
-
-  it('selecting a menu item calls onSelectView with that view', () => {
-    const onSelectView = vi.fn();
-    render(<WorkbenchRightPane {...makeProps({ onSelectView })} />);
-    fireEvent.click(screen.getByTestId('right-pane-view-switcher-trigger'));
-    fireEvent.click(screen.getByTestId('right-pane-view-switcher-item-artifact'));
-    expect(onSelectView).toHaveBeenCalledWith('artifact');
+  it('passes activeTab to the utility drawer', () => {
+    render(<WorkbenchRightPane {...makeProps({ activeUtilityTab: 'approvals' })} />);
+    expect(screen.getByTestId('utility-drawer-mock').textContent).toContain('approvals');
   });
 
   it('close button calls onClose', () => {

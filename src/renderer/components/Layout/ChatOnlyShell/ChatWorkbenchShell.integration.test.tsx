@@ -235,16 +235,6 @@ vi.mock('./useChatSidebarMode', () => ({
   useChatSidebarMode: () => ({ mode: 'pinned', cycleMode: vi.fn() }),
 }));
 
-vi.mock('./useWorkbenchArtifacts', () => ({
-  useWorkbenchArtifacts: () => ({
-    kind: 'empty',
-    activeKey: null,
-    title: 'Artifacts',
-    subtitle: null,
-    hasArtifact: false,
-  }),
-}));
-
 // ProjectTerminalsContext — prevents useProjectTerminals → useTerminalSessions
 // from running in the integration test tree (no PTY in jsdom).
 vi.mock('../../../hooks/useDiffReviewTrigger', () => ({ useDiffReviewTrigger: vi.fn() }));

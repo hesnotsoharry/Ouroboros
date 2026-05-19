@@ -2,8 +2,8 @@
  * OverlayDrawer — non-modal full-height drawer that slides in from the right,
  * anchored to its nearest positioned ancestor (NOT the viewport).
  *
- * Wave 89 Phase 2. Used by ChatWorkbenchUtilityDrawer and ChatWorkbenchArtifactPane
- * in Phase 3. Ships only the primitive here — no consumer migration.
+ * Wave 89 Phase 2. Used by ChatWorkbenchUtilityDrawer (Wave 95 Phase H: artifact
+ * pane removed). Ships only the primitive here — no consumer migration.
  *
  * z-index: 200 — between in-layout content (z-10/z-20) and full-screen modals
  * (ChatSearchOverlay z-900, ChatOnlySettingsOverlay z-900, KeyboardShortcutCheatSheet

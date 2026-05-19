@@ -11,7 +11,6 @@ import {
 import { useSessions } from '../../SessionSidebar/useSessions';
 import type { ChatWorkbenchLayoutApi } from './useChatWorkbenchLayout';
 import type { TerminalDockApi } from './useTerminalDockState';
-import { useWorkbenchArtifacts } from './useWorkbenchArtifacts';
 import { useWorkbenchCompare } from './useWorkbenchCompare';
 import { useWorkbenchSessionActivation } from './useWorkbenchSessionActivation';
 import { useWorkbenchSessions } from './useWorkbenchSessions';
@@ -53,16 +52,9 @@ function useWorkbenchListState(
   });
 }
 
-function useWorkbenchSurfaceState(
-  layout: LayoutState,
-  artifacts: ReturnType<typeof useWorkbenchArtifacts>,
-  approvalCount: number,
-): SurfacePolicyState {
+function useWorkbenchSurfaceState(layout: LayoutState, approvalCount: number): SurfacePolicyState {
   return useWorkbenchSurfacePolicy({
     approvalCount,
-    artifactKey: artifacts.activeKey,
-    artifactKind: artifacts.kind,
-    setArtifactOpen: layout.setArtifactOpen,
     setUtilityOpen: layout.setUtilityOpen,
     setActiveUtilityTab: layout.setActiveUtilityTab,
   });
@@ -72,7 +64,6 @@ export function useWorkbenchContextState(
   layout: LayoutState,
   dock: DockState,
 ): WorkbenchContextState {
-  const artifacts = useWorkbenchArtifacts();
   const { requests: approvalRequests } = useApprovalContext();
   const threads = useAgentChatStoreContext((state) => state.threads);
   const selectThread = useAgentChatStoreContext((state) => state.onSelectThread);
@@ -85,7 +76,7 @@ export function useWorkbenchContextState(
     refreshSessions: sessionsState.refresh,
     actions: { selectThread },
   });
-  const surfacePolicy = useWorkbenchSurfaceState(layout, artifacts, approvalRequests.length);
+  const surfacePolicy = useWorkbenchSurfaceState(layout, approvalRequests.length);
 
   return {
     activation,

@@ -2,7 +2,6 @@ import React from 'react';
 
 import { OPEN_SUBAGENT_PANEL_EVENT } from '../../../hooks/appEventNames';
 import type { ChatWorkbenchUtilityTab } from './useChatWorkbenchLayout';
-import type { WorkbenchArtifactKind } from './useWorkbenchArtifacts';
 
 interface UtilityTrigger {
   key: string;
@@ -11,21 +10,12 @@ interface UtilityTrigger {
 
 export interface UseWorkbenchSurfacePolicyOptions {
   approvalCount: number;
-  artifactKey: string | null;
-  artifactKind: WorkbenchArtifactKind;
-  setArtifactOpen: (open: boolean) => void;
   setUtilityOpen: (open: boolean) => void;
   setActiveUtilityTab: (tab: ChatWorkbenchUtilityTab) => void;
 }
 
 export interface UseWorkbenchSurfacePolicyResult {
-  closeArtifact: () => void;
   closeUtility: () => void;
-}
-
-function artifactTriggerKey(kind: WorkbenchArtifactKind, key: string | null): string | null {
-  if (kind === 'empty' || !key) return null;
-  return `artifact:${key}`;
 }
 
 interface UtilityCallbacksResult {
@@ -82,30 +72,12 @@ function useUtilityEffects(
 
 export function useWorkbenchSurfacePolicy({
   approvalCount,
-  artifactKey,
-  artifactKind,
-  setArtifactOpen,
   setUtilityOpen,
   setActiveUtilityTab,
 }: UseWorkbenchSurfacePolicyOptions): UseWorkbenchSurfacePolicyResult {
-  const dismissedArtifactKeysRef = React.useRef(new Set<string>());
-  const currentArtifactKeyRef = React.useRef<string | null>(null);
   const { openUtility, closeUtility } = useUtilityCallbacks(setUtilityOpen, setActiveUtilityTab);
 
   useUtilityEffects(approvalCount, openUtility);
 
-  React.useEffect(() => {
-    const triggerKey = artifactTriggerKey(artifactKind, artifactKey);
-    currentArtifactKeyRef.current = triggerKey;
-    if (!triggerKey || dismissedArtifactKeysRef.current.has(triggerKey)) return;
-    setArtifactOpen(true);
-  }, [artifactKey, artifactKind, setArtifactOpen]);
-
-  const closeArtifact = React.useCallback(() => {
-    const key = currentArtifactKeyRef.current;
-    if (key) dismissedArtifactKeysRef.current.add(key);
-    setArtifactOpen(false);
-  }, [setArtifactOpen]);
-
-  return { closeArtifact, closeUtility };
+  return { closeUtility };
 }
