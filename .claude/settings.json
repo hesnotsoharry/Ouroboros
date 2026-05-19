@@ -23,34 +23,6 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"C:\\Web App\\Agent IDE\\assets\\hooks\\post_edit_eslint.mjs\""
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"C:\\Web App\\Agent IDE\\assets\\hooks\\post_edit_test.mjs\""
-          }
-        ]
-      },
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"C:\\Web App\\Agent IDE\\assets\\hooks\\post_write_test_required.mjs\""
-          }
-        ]
-      }
-    ]
+    "PostToolUse": []
   }
 }
