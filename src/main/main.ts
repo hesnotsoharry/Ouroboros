@@ -25,6 +25,7 @@ import { performWillQuitShutdown } from './mainShutdown';
 // prettier-ignore
 import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initCodebaseGraph, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
 import { registerAllTelemetryDrainHandlers } from './mainTelemetryHandlers';
+import { startMemProbe, stopMemProbe } from './memProbe';
 import { buildApplicationMenu } from './menu';
 import { initDecisionWriter } from './orchestration/contextDecisionWriter';
 import { initOutcomeWriter } from './orchestration/contextOutcomeWriter';
@@ -253,6 +254,7 @@ async function initWindowsAndServices(defaultRoot: string | undefined): Promise<
   configureAutoUpdater();
   startManagedPerfMetrics();
   startJankDetector();
+  startMemProbe();
   startTokenRefreshManager();
   registerWindowLifecycleHandlers();
   void seedGithubTokenWithRetry();
@@ -284,6 +286,7 @@ app.whenReady().then(initializeApplication);
 
 app.on('window-all-closed', async () => {
   stopJankDetector();
+  stopMemProbe();
   stopTokenRefreshManager();
   stopContextRefreshTimer();
   await terminateContextWorker();

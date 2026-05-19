@@ -120,6 +120,15 @@ function toMcpRecord(record: QueueRecord, payload: HookSpawnCostPayload): McpSpa
 // Handler factory — exported for direct testing without mocking the drain API
 // ---------------------------------------------------------------------------
 
+// DIAGNOSTIC — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
+let _spawnDedupSet: Set<string> | null = null;
+
+/** Return the live dedup Set size for mem-probe diagnostics (H2). Read-only. */
+// DIAGNOSTIC — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
+export function getSpawnDedupSize(): number {
+  return _spawnDedupSet?.size ?? 0;
+}
+
 /**
  * Create a standalone handler function with its own dedup set. Tests call
  * this directly with a pre-seeded `existingIds` to verify dedup / emit logic
@@ -158,6 +167,8 @@ export function createSpawnCostHandler(existingIds: Set<string>) {
  */
 export function registerSpawnCostHandler(): void {
   const existingIds = readExistingSpawnIds();
+  // DIAGNOSTIC — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
+  _spawnDedupSet = existingIds;
   log.info('[spawn-cost-drain] loaded', existingIds.size, 'existing spawnIds for dedup');
   registerSurfaceHandler(SPAWN_COST_SURFACE, createSpawnCostHandler(existingIds), [
     SPAWN_COST_SCHEMA_VERSION,

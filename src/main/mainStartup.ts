@@ -239,14 +239,15 @@ async function runInitialIndex(args: InitialIndexArgs): Promise<void> {
 }
 
 function resolveIndexReason(
-  db: import('./codebaseGraph/graphDatabase').GraphDatabase,
+  db: GraphDatabase,
   projectName: string,
   gcPrunedNames: string[],
 ): IndexReason | null {
   if (gcPrunedNames.includes(projectName)) return 'post-gc';
   const hashOk = db.verifyCatalogHash(projectName);
   if (!hashOk) {
-    log.info('[system2] catalog hash mismatch, triggering full rebuild');
+    // DIAGNOSTIC (H1) — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
+    log.info('[mem-probe:catalog] hash mismatch — triggering full rebuild', { projectName });
     return 'hash-mismatch';
   }
   if (db.getNodeCount(projectName) === 0) return 'first-launch';
