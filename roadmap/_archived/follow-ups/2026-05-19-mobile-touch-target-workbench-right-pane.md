@@ -1,8 +1,9 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-19
-updated: 2026-05-19
+updated: 2026-05-20
 source: wave-97 Phase D full-test surfaced pre-existing failure
+resolved_by: wave-98-orchestration-types-relocation
 ---
 
 # `mobile-touch-targets.test.ts` failure — WorkbenchRightPane.tsx:50
@@ -35,3 +36,7 @@ Option 1 is the W95-pattern fix (the audit explicitly supports desktop-only opt-
 ## Scope
 
 Single-file, single-line. Mechanical Tier-1 inline fix in any wave touching ChatOnlyShell. Not worth a dedicated wave.
+
+## Resolution (wave-98)
+
+Closed by Wave 98 commit `3f8f9d9c` as a Tier-1 inline fix. Wave 98 Phase B's `test:renderer` gate surfaced this pre-existing failure; per the development-pipeline doctrine (default fix-inline), the orchestrator applied option 1 from "Fix shape" above — added `/* touch-target-ok — workbench utility drawer is desktop-only */` to the className tail at `WorkbenchRightPane.tsx:50`. Test now passes 1/1. Committed as its own commit between Phase B and Phase C so the bisect surface stays clean.

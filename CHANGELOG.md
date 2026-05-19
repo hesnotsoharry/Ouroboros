@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.3] - 2026-05-20
+
+### Changed
+- **Wave 98 — Orchestration Types Relocation.** Sever the renderer's last direct reach into `src/main/` for orchestration types. Pure type-only refactor, zero behavior change. Full story in `roadmap/wave-98-orchestration-types-relocation/wave-98-result.md`.
+  - **14 IPC-surface interfaces moved to `@shared/types/`.** 9 IPC-surface types (`ProviderProgressEvent`, `OrchestrationEventBase`, the 5 `Orchestration*Event` variants, the `OrchestrationEvent` union, `OrchestrationAPI`) land in a new `src/shared/types/orchestrationApi.ts`. 5 primitive types (`ProviderCapabilities`, `TokenUsage`, `ProviderContentBlockDelta`, `VerificationStep`, `VerificationProfile`) appended to `src/shared/types/orchestrationProvider.ts`. The barrel `src/shared/types/orchestration.ts` extends to re-export the new file.
+  - **`src/main/orchestration/typesProvider.ts` becomes a pure re-export shim** from `@shared/types/orchestration`, matching the shape of its sibling shims (`typesContext.ts`, `typesDomain.ts`). Main-side import paths preserved via the barrel; `haiku-explorer` confirmed zero deep-imports under `providers/`.
+  - **Renderer re-points to shared.** `src/renderer/types/electron-orchestration.d.ts` imports/re-exports from `@shared/types/orchestration` instead of `../../main/orchestration/types`. Two source-path edits, zero name-list changes.
+  - **`tsconfig.web.json` cleanup** — the 4 explicit `include` lines for `src/main/orchestration/*.ts` are gone. The renderer's TypeScript program no longer reaches into `src/main/`. **The architectural payoff of the wave.**
+  - **Tier-1 inline fix** — `WorkbenchRightPane.tsx:50` close button marked `touch-target-ok` (workbench utility drawer is desktop-only). Resolves a pre-existing audit failure that surfaced during Phase B's `test:renderer` gate.
+
+### Architecture decisions (per `roadmap/wave-98-orchestration-types-relocation/wave-98-decisions.md`)
+- D1: Destination — extend the existing `src/shared/types/orchestration.ts` barrel; split the 14 interfaces across `orchestrationProvider.ts` (5 primitives) + new `orchestrationApi.ts` (9 IPC-surface types) to stay under the 300-line ESLint cap.
+- D2: Main-side import-path stability — re-export shim in `typesProvider.ts`; no consumer rename. Mirrors W97 Decision 2.
+- D3: Renderer re-pointing — direct to `@shared/types/orchestration`, not through the `electron.d.ts` barrel. `electron-orchestration.d.ts` is a producer-side declaration file, not consumer-side renderer code.
+- D4: `tsconfig.web.json` cleanup happens in-wave (Phase C). The wave's whole point.
+- D5: Semver tier — patch (`v2.19.3`); pure type correctness, no runtime change.
+
 ## [2.19.2] - 2026-05-19
 
 ### Changed

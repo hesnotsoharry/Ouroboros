@@ -1,8 +1,9 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-19
-updated: 2026-05-19
+updated: 2026-05-20
 source: wave-97-shared-types-extraction Phase 0 inventory
+resolved_by: wave-98-orchestration-types-relocation
 ---
 
 # Orchestration domain types still owned by main/
@@ -51,3 +52,11 @@ After the move, the explicit `tsconfig.web.json` `include` lines for `src/main/o
 ## Recommended approach
 
 A small dedicated wave (likely 2-3 phases, ~1 day) focused exclusively on this relocation. Pattern matches Wave 97's mechanical-refactor shape: read-only Phase 0 inventory, single sonnet-implementer dispatch for the move, wrap.
+
+## Resolution (wave-98)
+
+Shipped as Wave 98 (`v2.19.3`, 2026-05-20). The scope estimate in this file was off by ~6x — Phase 0 inventory of the three files at HEAD showed `typesContext.ts` and `typesDomain.ts` were **already** pure re-export shims (likely done in a prior wave). Only `typesProvider.ts` retained main-side definitions: 14 interfaces forming a closed reference graph (`OrchestrationAPI`, `OrchestrationEvent` union + 5 event variants + `OrchestrationEventBase`, `ProviderCapabilities`, `ProviderProgressEvent`, `ProviderContentBlockDelta`, `TokenUsage`, `VerificationStep`, `VerificationProfile`).
+
+Wave 98 split the 14 across `src/shared/types/orchestrationProvider.ts` (5 primitives) + new `src/shared/types/orchestrationApi.ts` (9 IPC-surface types) to respect the 300-line ESLint cap. `typesProvider.ts` became a 48-line re-export shim matching its siblings. Renderer's `electron-orchestration.d.ts` re-points to `@shared/types/orchestration`. The 4 `tsconfig.web.json:30-33` include lines are gone — the architectural payoff this follow-up named.
+
+Full story: `roadmap/wave-98-orchestration-types-relocation/wave-98-result.md`.

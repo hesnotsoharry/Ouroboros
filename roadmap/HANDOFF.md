@@ -1,4 +1,4 @@
-# Session Handoff — 2026-05-20 (Wave 97 shipped + pushed; W94/W95/W97 all on origin)
+# Session Handoff — 2026-05-20 (Wave 98 shipped local; v2.19.3 tag pending push)
 
 **Audience:** the next Claude Code session.
 
@@ -6,66 +6,58 @@
 
 ## TL;DR
 
-**Wave 97 (Shared-Types Extraction) shipped to master and PUSHED to origin** along with the previously-held Wave 94 (`v2.19.0`) and Wave 95 (`v2.19.1`) tags. 3 commits over 1 night (2026-05-19 overnight autonomous run), tagged `v2.19.2`.
+**Wave 98 (Orchestration Types Relocation) shipped to master local** as `v2.19.3` (not pushed — per the 2026-05-19 bulletin, agents do not initiate pushes). Five commits over one session (afternoon 2026-05-20).
 
-Cole explicitly authorized the push during this autonomous run, overriding the standing 2026-05-19 bulletin's "agents should NOT initiate pushes" posture for this single execution. After this push, the bulletin posture stands again — future pushes wait for Cole.
+Also this session: the uncommitted W95 DiffReview helper extractions Cole flagged in the prior HANDOFF were reviewed, verified as helper extractions, and committed as `f3ff0f96`.
 
-CI runs on origin: pending workflow execution on/after 2026-06-01 when GH Actions minutes restore.
+Cumulative push backlog ahead of `origin/master`:
+
+```
+f3ff0f96  refactor(wave-95): Phase G residue - extract DiffReview helpers for ESLint caps
+e02e749f  refactor(wave-98): Phase A - move orchestration API + event types to @shared
+d9c03eb1  refactor(wave-98): Phase B - re-point renderer orchestration types to @shared
+3f8f9d9c  fix(wave-98): tier-1 inline - mark WorkbenchRightPane close button as touch-target-ok
+f5fef74b  refactor(wave-98): Phase C - drop tsconfig.web.json src/main/orchestration includes
+<this wrap>  chore(wave-98): wrap — v2.19.3, result brief, CHANGELOG, audit, HANDOFF
+```
+
+Plus local tag `v2.19.3`.
+
+CI verification waits for 2026-06-01 minutes-restore.
 
 ---
 
-## Wave 97 — final shipped state
+## Wave 98 — what shipped
 
-| Phase / commit | What |
-|---|---|
-| Phase 0 (in-line) | Inventory: 2 CLI-settings families to move (Claude + Codex); ~60 orchestration symbols renderer-reaching but NOT duplicated → Phase B no-op. ADR Decision 3 RESOLVED. |
-| Phase A `a87a1f8d` | Created `src/shared/types/configSlices.ts` (canonical home for `ClaudeCliSettings` + `CodexCliSettings` w/ full JSDoc). `src/main/configTypes.ts` becomes re-export shim. Net −48 lines. |
-| Phase B | NO-OP. Documented in ADR Decision 3 consequences. Follow-up filed for dedicated future wave. |
-| Phase C `6f4cf6f9` | Deleted duplicate interface definitions from `src/renderer/types/electron-foundation.d.ts`; replaced with `import type` + `export type` from shared. Removed W96 gotcha entry from `src/renderer/types/CLAUDE.md`. |
-| Phase D wrap | Result brief, CHANGELOG `[2.19.2]`, package.json bump, follow-ups filed, tag `v2.19.2`, push. |
+Pure type-only refactor severing the renderer's last direct reach into `src/main/` for orchestration types.
 
-**Push completed (2026-05-20 overnight):**
+| Phase | Commit | What |
+|---|---|---|
+| 0 | (in-line) | Inventory: 14 IPC-surface interfaces in `typesProvider.ts` (closed reference graph). Zero deep-imports under `providers/` per haiku-explorer sweep. ADR Decisions 1-5 RESOLVED. |
+| A | `e02e749f` | Move 14 interfaces to `@shared/types/orchestration{Provider,Api}.ts`. `typesProvider.ts` becomes 48-line shim (was 220). Split into provider (5 primitives) + api (9 IPC-surface types) per ADR Decision 1's 300-line-cap contingency. Sonnet-phase-reviewer PROCEED on all 4 axes. |
+| B | `d9c03eb1` | Renderer re-points to `@shared/types/orchestration`. Two source-path edits in `electron-orchestration.d.ts`, zero name-list changes. |
+| (inline) | `3f8f9d9c` | Tier-1 fix: mark `WorkbenchRightPane.tsx:50` close button `touch-target-ok`. Pre-existing audit residue surfaced by Phase B's `test:renderer` gate; matches W95 desktop-only opt-out pattern. |
+| C | `f5fef74b` | Drop the 4 `tsconfig.web.json` `include` lines pointing at `src/main/orchestration/*.ts`. **The architectural payoff.** Renderer's TypeScript program no longer reaches into `src/main/`. |
+| D wrap | (this) | CHANGELOG `[2.19.3]`, package.json bump, result brief, follow-up archives, tag `v2.19.3`, this HANDOFF. |
 
-```
-origin/master  — caught up
-origin/v2.19.0 — Wave 94 + 96 tag
-origin/v2.19.1 — Wave 95 tag
-origin/v2.19.2 — Wave 97 tag
-```
+Full story: `roadmap/wave-98-orchestration-types-relocation/wave-98-result.md`.
 
-## Wave 94/95/96 status (carried forward, NOW PUSHED)
+## Scope reshape worth remembering
 
-W94 + W96 shipped 2026-05-18 (tag `v2.19.0`).
-W95 shipped 2026-05-19 (tag `v2.19.1`).
-W97 shipped 2026-05-20 overnight (tag `v2.19.2`).
+The source follow-up estimated ~60 types still owned by `src/main/`. Phase 0 inventory showed the actual scope was 14 names in a single file — `typesContext.ts` and `typesDomain.ts` were **already** pure re-export shims from a prior wave. Reading the actual files in ~5 minutes saved a full wave of mis-scoped work. **General lesson**: file-header classifications and follow-up estimates can drift; verify against HEAD before drafting a wave plan.
 
-All three pushed in the W97 autonomous run. CI minutes-restore date: 2026-06-01 per the original bulletin.
+## Boundary contract — preserved across W98
 
-## Boundary contract — preserved across W94/W95/W97
+`useDiffReviewTrigger.acceptance.test.tsx` (W94 Phase E orchestrator-owned acceptance test) continued to PASS 5/5 at every phase boundary. `openReview` signature unchanged.
 
-The Wave 94 Phase E orchestrator-owned acceptance test
-(`src/renderer/hooks/useDiffReviewTrigger.acceptance.test.tsx`)
-continued to PASS 5/5 throughout Wave 97, verified after Phase A and Phase C.
-`openReview` signature unchanged across all three waves.
+## Follow-ups resolved this wave (archived)
 
-## Process lessons (for the temperature log)
+Moved to `roadmap/_archived/follow-ups/`:
 
-Drafted entry for `roadmap/wave-temperature-log.md` (already appended by this wrap):
+- `2026-05-19-orchestration-types-relocation.md` — the source follow-up. Closed by W98 itself.
+- `2026-05-19-mobile-touch-target-workbench-right-pane.md` — closed by W98 Tier-1 inline commit `3f8f9d9c`.
 
-> | W-97 (Shared-Types Extraction) | 2026-05-20 | COOL | 3 work phases. Pure mechanical type-only refactor — least exciting wave in months and that's the point. Phase 0 inventory immediately re-shaped Phase B from "move ~40 orchestration types" to "NO-OP, file follow-up" once it was clear those types aren't duplicated and tsc.web is clean today. Sonnet-implementer landed Phase A and Phase C both first-try, all gates green. Phase C surfaced one pre-existing W95 test failure (mobile-touch-targets on WorkbenchRightPane) that was unrelated and got filed. Net diff: ~50 lines moved between files; zero runtime change. Two distinct ESLint-level constraints needed the same trick (re-exports don't bring symbols into local scope, so `import type` + `export type` is the pattern when local code references the moved interface). Cost: ~1 hour overnight orchestration with one mechanical pre-existing-failure verification detour. |
-
-## Open follow-ups (filed this wave)
-
-In `roadmap/follow-ups/`:
-- `2026-05-19-orchestration-types-relocation.md` — Move `main/orchestration/{typesContext,typesDomain,typesProvider}.ts` (~60 exports) to `src/shared/types/orchestration/`. Pure mechanical, 1 day estimated.
-- `2026-05-19-mobile-touch-target-workbench-right-pane.md` — `WorkbenchRightPane.tsx:50` h-6 button missing `/* touch-target-ok */`. Pre-existing W95 Phase H residue. Single-line inline fix.
-
-## Older open items (unchanged from prior HANDOFF)
-
-In `roadmap/bugs/`:
-- `2026-05-17-chatstatenewpath-dynamic-require-threadstore.md` — OPEN, medium
-- `2026-05-17-silent-buildrepoindex-hang-post-graph-ready.md` — TRIAGED, medium
-- `2026-05-15-e2e-teardown-hang.md` — Wave 93 carry-over
+## Open follow-ups carried forward (unchanged from W97 HANDOFF)
 
 In `roadmap/follow-ups/`:
 - `2026-05-19-wave-95-manual-smoke.md` — Wave 95 hands-on smoke walk for G/H (still outstanding)
@@ -76,28 +68,25 @@ In `roadmap/follow-ups/`:
 - `2026-05-16-wave-89-dead-useWorkbenchCompare-hook.md`
 - `2026-05-05-electron-renderer-browser-mcp-wiring.md`
 
-## Pre-existing uncommitted work in the tree (untouched by W97)
+In `roadmap/bugs/`:
+- `2026-05-17-chatstatenewpath-dynamic-require-threadstore.md` — OPEN, medium
+- `2026-05-17-silent-buildrepoindex-hang-post-graph-ready.md` — TRIAGED, medium
+- `2026-05-15-e2e-teardown-hang.md` — Wave 93 carry-over
 
-The working tree at W97 wave-end has pre-existing modifications from Wave 95 NOT addressed by the W95 wrap commit:
+## Pre-existing uncommitted tree state (still untouched)
+
+The W97 HANDOFF flagged two pre-existing items; W98 did not touch them. State unchanged:
 
 ```
-M src/renderer/components/DiffReview/DiffReviewPanel.tsx
-M src/renderer/components/DiffReview/FileListSidebar.tsx
-M src/renderer/components/DiffReview/diffReviewState.ts
-M tools/__fixtures__/train-context/test-output-weights.json
-?? src/renderer/components/DiffReview/DiffReviewHeaderStats.tsx
-?? src/renderer/components/DiffReview/FileListSidebarGroups.tsx
-?? src/renderer/components/DiffReview/diffReviewState.helpers.ts
-?? tools/__scratch__/
+M tools/__fixtures__/train-context/test-output-weights.json   (regenerated timestamps, no content change)
+?? tools/__scratch__/sample.test.ts                            (scratch dir; needs .gitignore entry)
 ```
 
-These were present at the start of the W97 session (visible in the orientation gitStatus snapshot) and W97 left them all untouched. The W95 HANDOFF said the tree was "clean except for `tools/__fixtures__/.../test-output-weights.json`" — actual state showed more. Likely W95 Phase G/H work-in-progress fragments that didn't end up in the W95 commit but are still on disk.
+**Recommended next-session action:** decide commit-or-discard on the fixture timestamp diff; either `git checkout HEAD --` or commit as a fixture refresh. Add `tools/__scratch__/` to `.gitignore` if Cole agrees that's its intended status.
 
-**Recommended next-session action:** review the diff, decide whether they're valid follow-ups (e.g., a Phase H residue worth committing as Wave 95 polish) or noise (`git checkout HEAD --`). Don't push them without reviewing first.
+## Pre-push hook follow-up (informal, carried from Wave 96)
 
-## Pre-push hook follow-up (informal, from Wave 96)
-
-`assets/hooks/pre_push_full_check.mjs` still runs `tsc -p tsconfig.web.json` full-project on every push. Wave 96 fixed the renderer→main type cascade; Wave 97 cleaned up the W96 stopgap. The pre-push hook stayed green throughout W97 and on the actual push. Incremental-diff tsc redesign still on the informal-not-blocking list.
+`assets/hooks/pre_push_full_check.mjs` still runs `tsc -p tsconfig.web.json` full-project on every push. W98's Phase C dropped 4 `include` lines and the hook stayed green throughout (verified by per-phase `tsc.web` runs). Incremental-diff tsc redesign still on the informal-not-blocking list.
 
 ## Vendor patches in tree (unchanged)
 
@@ -106,8 +95,9 @@ These were present at the start of the W97 session (visible in the orientation g
 ## Next session pickup
 
 If Cole wants to:
-- **Smoke-walk Wave 95 (still outstanding)** → `roadmap/follow-ups/2026-05-19-wave-95-manual-smoke.md`
-- **Decide on W95 DiffReview pre-existing tree state** — read the modifications, decide commit-or-discard
-- **Start the orchestration-relocation wave** → `roadmap/follow-ups/2026-05-19-orchestration-types-relocation.md` — small, mechanical, ~1 day. Ideal for shaking the rust off after the W97 type-correctness streak.
-- **Inline fix mobile-touch-target follow-up** — Tier 1 single-line edit in any wave touching ChatOnlyShell.
-- **Verify CI** when 2026-06-01 minutes restore — three tags + master to verify.
+
+- **Push the backlog** when 2026-06-01 GH Actions minutes restore — 5 master commits + tag `v2.19.3`.
+- **Decide on the lingering uncommitted tree state** — fixture timestamp + `tools/__scratch__/`. Carried forward from W97; nothing new in W98 makes this more urgent.
+- **Smoke-walk Wave 95** — `roadmap/follow-ups/2026-05-19-wave-95-manual-smoke.md` still outstanding.
+- **Start a feature wave** — open bugs (`chatstate dynamic-require`, `silent buildRepoIndex hang`) are real but neither is a forcing function. Cole's call.
+- **Verify CI** when 2026-06-01 minutes restore — 1 tag (`v2.19.3`) + 5 commits to verify.
