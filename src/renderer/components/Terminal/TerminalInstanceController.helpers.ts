@@ -55,6 +55,7 @@ interface SetupBridgeArgs {
   setSelectionTooltip: Dispatch<SetStateAction<SelectionTooltipState>>;
   initialFontSize?: number;
   initialCursorStyle?: 'block' | 'underline' | 'bar';
+  initialScrollback?: number;
 }
 
 function normalizeTerminalProps(props: TerminalInstanceProps): NormalizedTerminalProps {
@@ -236,6 +237,7 @@ function createSetupOptions(args: SetupBridgeArgs): Parameters<typeof useTermina
     commandBlocksRef: args.foundation.commandBlocksRef,
     initialFontSize: args.initialFontSize,
     initialCursorStyle: args.initialCursorStyle,
+    initialScrollback: args.initialScrollback,
   };
 }
 

@@ -321,6 +321,8 @@ export interface AppConfig {
   usageExport?: { defaultWindow?: '24h' | '7d' | '30d' | 'all'; lastDir?: string };
   /** Wave 94 Phase B — per-project terminal session ownership map. */
   terminalSessionsPerProject?: import('@shared/config/projectTerminalsSchema').TerminalSessionsPerProject;
+  /** Wave 95 Phase B — terminal subsystem settings (xterm scrollback). */
+  terminal?: { scrollback?: number };
 }
 
 export type {

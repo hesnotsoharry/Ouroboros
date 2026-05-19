@@ -69,4 +69,18 @@ export const tailSchemaExt2 = {
     },
     default: { subagentDisplay: { diagnostics: false, enabled: true } },
   },
+  /** Wave 95 Phase B — terminal scrollback buffer size (xterm.js scrollback option). */
+  terminal: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      scrollback: {
+        type: 'number',
+        minimum: 1000,
+        maximum: 100000,
+        default: 50000,
+      },
+    },
+    default: { scrollback: 50000 },
+  },
 };

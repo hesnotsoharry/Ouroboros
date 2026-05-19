@@ -15,6 +15,7 @@ export function useTerminalSetup(
   params: UseTerminalSetupParams & {
     initialFontSize?: number;
     initialCursorStyle?: 'block' | 'underline' | 'bar';
+    initialScrollback?: number;
   },
 ): {
   fit: () => void;
@@ -28,6 +29,7 @@ export function useTerminalSetup(
     fit,
     initialFontSize: params.initialFontSize,
     initialCursorStyle: params.initialCursorStyle,
+    initialScrollback: params.initialScrollback,
   });
 
   useEffect(() => {

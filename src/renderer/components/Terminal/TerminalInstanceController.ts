@@ -29,13 +29,20 @@ export type {
 
 const DEFAULT_FONT_SIZE = 14;
 
+function extractScrollback(term: unknown): number | undefined {
+  const sb = (term as { scrollback?: number } | undefined)?.scrollback;
+  return typeof sb === 'number' && sb > 0 ? sb : undefined;
+}
+
 function useTerminalConfig(): {
   fontSize: number;
   cursorStyle: 'block' | 'underline' | 'bar';
+  scrollback: number;
   loaded: boolean;
 } {
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE);
   const [cursorStyle, setCursorStyle] = useState<'block' | 'underline' | 'bar'>('block');
+  const [scrollback, setScrollback] = useState(50000);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -43,11 +50,14 @@ function useTerminalConfig(): {
     void Promise.all([
       window.electronAPI.config.get('terminalFontSize'),
       window.electronAPI.config.get('terminalCursorStyle'),
+      window.electronAPI.config.get('terminal'),
     ])
-      .then(([fs, cs]) => {
+      .then(([fs, cs, term]) => {
         if (cancelled) return;
         if (typeof fs === 'number' && fs >= 8 && fs <= 32) setFontSize(fs);
         if (cs === 'block' || cs === 'underline' || cs === 'bar') setCursorStyle(cs);
+        const sb = extractScrollback(term);
+        if (sb !== undefined) setScrollback(sb);
         setLoaded(true);
       })
       .catch((error) => {
@@ -58,7 +68,7 @@ function useTerminalConfig(): {
       cancelled = true;
     };
   }, []);
-  return { fontSize, cursorStyle, loaded };
+  return { fontSize, cursorStyle, scrollback, loaded };
 }
 
 function useSessionRestore(
@@ -110,6 +120,7 @@ export function useTerminalInstanceController(
     setSelectionTooltip: tooltipState.setSelectionTooltip,
     initialFontSize: config.fontSize,
     initialCursorStyle: config.cursorStyle,
+    initialScrollback: config.scrollback,
   });
   return buildTerminalController({
     foundation,

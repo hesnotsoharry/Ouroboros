@@ -83,6 +83,7 @@ export interface TerminalSetupLifecycleContext extends UseTerminalSetupParams {
   fit: () => void;
   initialFontSize?: number;
   initialCursorStyle?: 'block' | 'underline' | 'bar';
+  initialScrollback?: number;
 }
 
 export interface AttachedTerminalDisposables {

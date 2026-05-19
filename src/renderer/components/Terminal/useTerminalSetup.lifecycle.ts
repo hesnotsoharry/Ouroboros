@@ -33,7 +33,11 @@ export function createBootstrapTerminal(
   context: TerminalSetupLifecycleContext,
 ): (container: HTMLDivElement) => () => void {
   return function bootstrapTerminal(container: HTMLDivElement): () => void {
-    const term = createTerminal(context.initialFontSize, context.initialCursorStyle);
+    const term = createTerminal(
+      context.initialFontSize,
+      context.initialCursorStyle,
+      context.initialScrollback,
+    );
     loadTerminalAddons(context, term, container);
     registerTerminal(context.sessionId, term);
     context.refs.terminalRef.current = term;
@@ -43,7 +47,11 @@ export function createBootstrapTerminal(
   };
 }
 
-function createTerminal(fontSize?: number, cursorStyle?: 'block' | 'underline' | 'bar'): Terminal {
+function createTerminal(
+  fontSize?: number,
+  cursorStyle?: 'block' | 'underline' | 'bar',
+  scrollback?: number,
+): Terminal {
   return new Terminal({
     fontFamily: getCssVar('--font-mono') || 'monospace',
     fontSize: fontSize ?? 13,
@@ -51,7 +59,7 @@ function createTerminal(fontSize?: number, cursorStyle?: 'block' | 'underline' |
     cursorBlink: true,
     cursorStyle: cursorStyle ?? 'block',
     cursorInactiveStyle: 'none',
-    scrollback: 10000,
+    scrollback: scrollback ?? 50000,
     allowProposedApi: true,
     allowTransparency: true,
     theme: buildXtermTheme(),
