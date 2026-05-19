@@ -79,6 +79,8 @@ Restoration data (what was moved aside) lives on disk in `~/.claude/codemode-man
 
 ## Gotchas
 
+- **CodeMode is currently bypassed on startup (Wave 98).** `main.ts` calls `runCodeModeStartupGate` instead of `enableCodeModeUserLevel`. The enable path never runs. On first start after this change, any user with a prior enable has their backed-up MCP servers restored to `~/.claude.json` and the managed files cleaned up — then CodeMode is left off. MCP servers register normally via direct `~/.claude.json mcpServers` discovery. To re-enable: replace the `runCodeModeStartupGate` call in `startBackgroundServices` (`main.ts`) with `enableCodeModeUserLevel({ projectRoot: root })` once the subsystem is stable in packaged builds (Wave 99+).
+
 - **`proxyServer.ts` is not imported by main** — it is a build artifact compiled to a standalone JS file and path-referenced in the proxy config. Do not add `import` edges to it from main-process code.
 - **`proxyServer.js` lives at `out/main/proxyServer.js`, not `out/main/chunks/`** — it's a top-level rollup input per `electron.vite.config.ts`. `codemodeManagerFiles.resolveProxyServerPath()` checks both layouts (sibling, then parent) so the registered path is always one that exists. Don't simplify to a bare `path.join(__dirname, ...)`; bundle output puts callers in `chunks/` and the parent walk is required.
 - **stdout is the MCP wire (SDK-owned, post-Phase-D)** — `proxyServer.ts` uses `StdioServerTransport` from `@modelcontextprotocol/sdk`. Any `console.log` / `process.stdout.write` outside the SDK's transport corrupts the JSON-RPC stream. All logging goes to stderr (and `~/.claude/codemode-proxy.log` for diagnostic post-mortem).

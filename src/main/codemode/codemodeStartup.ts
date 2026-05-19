@@ -32,7 +32,16 @@
  * HTTP-only upstreams are filtered the same way as in Phase B‴'s
  * `claudeCodeMode.resolveProxiedServerNames`: `mcpClient` is stdio-only,
  * so URL-only entries can't be multiplexed and stay directly registered.
+ *
+ * NOTE (Wave 98 bypass): `runCodeModeStartupGate` replaces
+ * `enableCodeModeUserLevel` in the main-process startup sequence.
+ * CodeMode is currently bypassed on startup — the enable path never runs.
+ * Users with a prior enable (codemode-managed.json on disk) have their
+ * backed-up MCP servers restored on first run, then CodeMode is left off.
+ * See Wave 99+ for re-enable wiring when the subsystem is stable.
  */
+
+import fs from 'fs/promises';
 
 import { getConfigValue } from '../config';
 import log from '../logger';
@@ -44,6 +53,11 @@ import {
   maybeRestoreFromCrash,
   type McpServerConfig,
 } from './codemodeManager';
+import {
+  deleteRestorationFile,
+  PROXY_CONFIG_PATH,
+  restorationFilePath,
+} from './codemodeManagerFiles';
 
 interface CodeModeConfig {
   enabled?: boolean;
@@ -62,6 +76,58 @@ function isStdioCapable(config: McpServerConfig): boolean {
 // extraction helpers. The pre-Wave-60 bridge baked a port into args that
 // could go stale across IDE restarts; Wave 60's standalone is portless and
 // stable across sessions, so the guard has nothing to defend against.
+
+async function restorationFileExists(): Promise<boolean> {
+  try {
+    await fs.access(restorationFilePath());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function cleanupProxyConfig(): Promise<void> {
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- known module constant
+    await fs.unlink(PROXY_CONFIG_PATH);
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/**
+ * Wave 98 bypass: CodeMode is disabled on startup until the subsystem is
+ * stable in packaged builds. If a prior enable left codemode-managed.json
+ * on disk, this function restores the backed-up MCP servers to
+ * ~/.claude.json (and project .mcp.json) so Claude Code CLI sees them
+ * normally again. The enable path is never reached.
+ *
+ * Re-enable wiring: replace the call to `runCodeModeStartupGate` in
+ * `main.ts` with `enableCodeModeUserLevel` and remove this function once
+ * the codemode subsystem is ready for packaged-build use (Wave 99+).
+ */
+export async function runCodeModeStartupGate(): Promise<void> {
+  const hasRestorationFile = await restorationFileExists();
+  if (!hasRestorationFile) {
+    log.info('[codemode-startup] disabled — no prior state to restore, skipping');
+    return;
+  }
+  log.info(
+    '[codemode-startup] disabled — restoring MCP servers to ~/.claude.json from prior enable',
+  );
+  try {
+    await maybeRestoreFromCrash();
+  } catch (err) {
+    log.warn('[codemode-startup] restoration threw — state may be partial:', err);
+  }
+  // maybeRestoreFromCrash deletes the restoration file when it parses
+  // successfully. If the file was malformed (version mismatch, bad JSON),
+  // it returns early without deleting. Delete unconditionally here so a
+  // corrupt managed file doesn't re-trigger this branch on every startup.
+  await deleteRestorationFile();
+  await cleanupProxyConfig();
+  log.info('[codemode-startup] MCP server restoration complete');
+}
 
 interface StartupOptions {
   /**

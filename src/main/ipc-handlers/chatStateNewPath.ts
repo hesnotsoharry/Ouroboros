@@ -246,13 +246,32 @@ function handleRestartSession(
 
 // ─── Registrar ────────────────────────────────────────────────────────────────
 
+/**
+ * Chat surface retirement guard (Wave 86 → retirement).
+ *
+ * The in-IDE chat surface is being retired in favour of terminal-driven design.
+ * The three startup hooks (rebuildRegistryFromSqlite / runCrashRecovery /
+ * wireShadowTap) all rely on a dynamic require('./threadStore') that does NOT
+ * survive electron-vite rollup bundling — the relative path resolves to nothing
+ * inside app.asar at runtime, producing three startup errors in the packaged
+ * build.  Rather than repair infrastructure we're retiring, skip the startup
+ * wiring entirely.  IPC handler registration still runs so renderer callers
+ * receive empty/no-op responses instead of "no handler" errors.
+ *
+ * Remove this constant (and the guard below) when the chat surface is fully
+ * deleted from the renderer.
+ */
+const CHAT_STARTUP_WIRING_ENABLED = false;
+
 export function registerChatStateNewPathHandlers(): string[] {
-  // Rebuild the registry from SQLite so crash-recovery state is restored.
-  rebuildRegistryFromSqlite();
-  // Phase 5: mark and repair threads interrupted by a prior crash.
-  runCrashRecovery();
-  // Phase 4: activate the shadow path so bridge taps actually fire.
-  wireShadowTap();
+  if (CHAT_STARTUP_WIRING_ENABLED) {
+    // Rebuild the registry from SQLite so crash-recovery state is restored.
+    rebuildRegistryFromSqlite();
+    // Phase 5: mark and repair threads interrupted by a prior crash.
+    runCrashRecovery();
+    // Phase 4: activate the shadow path so bridge taps actually fire.
+    wireShadowTap();
+  }
 
   ipcMain.removeHandler(CHAT_STATE_CHANNELS.sendMessage);
   ipcMain.handle(CHAT_STATE_CHANNELS.sendMessage, handleSendMessage);

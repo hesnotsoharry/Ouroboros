@@ -1,10 +1,12 @@
 /**
- * codemodeStartup.test.ts — Wave 53l Phase A.
+ * codemodeStartup.test.ts — Wave 53l Phase A + Wave 98 bypass.
  *
  * Smoke tests for the user-level CodeMode lifecycle hooks. Mocks
  * `codemodeManager` (the underlying enable/disable mechanics, already
  * tested by `codemodeManager.test.ts`) and `../config` so the gate logic
  * and eligibility filter can be exercised without real file I/O.
+ *
+ * Wave 98 bypass adds tests for `runCodeModeStartupGate`.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,6 +22,19 @@ vi.mock('./codemodeManager', () => ({
   isCodeModeEnabled: vi.fn(),
   maybeRestoreFromCrash: vi.fn(),
 }));
+vi.mock('./codemodeManagerFiles', () => ({
+  deleteRestorationFile: vi.fn(),
+  restorationFilePath: vi.fn(() => '/home/user/.claude/codemode-managed.json'),
+  PROXY_CONFIG_PATH: '/tmp/codemode-proxy-config.json',
+}));
+vi.mock('fs/promises', () => ({
+  default: {
+    access: vi.fn(),
+    unlink: vi.fn(),
+  },
+}));
+
+import fs from 'fs/promises';
 
 import { getConfigValue } from '../config';
 import {
@@ -29,7 +44,12 @@ import {
   isCodeModeEnabled,
   maybeRestoreFromCrash,
 } from './codemodeManager';
-import { disableCodeModeUserLevel, enableCodeModeUserLevel } from './codemodeStartup';
+import { deleteRestorationFile } from './codemodeManagerFiles';
+import {
+  disableCodeModeUserLevel,
+  enableCodeModeUserLevel,
+  runCodeModeStartupGate,
+} from './codemodeStartup';
 
 const cfg = getConfigValue as ReturnType<typeof vi.fn>;
 const enabledFn = isCodeModeEnabled as ReturnType<typeof vi.fn>;
@@ -37,6 +57,8 @@ const enableFn = enableCodeMode as ReturnType<typeof vi.fn>;
 const disableFn = disableCodeMode as ReturnType<typeof vi.fn>;
 const serversFn = getMcpServers as ReturnType<typeof vi.fn>;
 const restoreFn = maybeRestoreFromCrash as ReturnType<typeof vi.fn>;
+const deleteFn = deleteRestorationFile as ReturnType<typeof vi.fn>;
+const fsMock = fs as { access: ReturnType<typeof vi.fn>; unlink: ReturnType<typeof vi.fn> };
 
 function setConfig(map: Record<string, unknown>): void {
   cfg.mockImplementation((key: string) => map[key as keyof typeof map]);
@@ -49,6 +71,10 @@ beforeEach(() => {
   disableFn.mockResolvedValue({ success: true });
   serversFn.mockResolvedValue([]);
   restoreFn.mockResolvedValue(undefined);
+  deleteFn.mockResolvedValue(undefined);
+  // Default: no restoration file on disk
+  fsMock.access.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+  fsMock.unlink.mockResolvedValue(undefined);
 });
 
 describe('enableCodeModeUserLevel — gate', () => {
@@ -202,5 +228,45 @@ describe('disableCodeModeUserLevel', () => {
     enabledFn.mockReturnValue(true);
     disableFn.mockResolvedValue({ success: false, error: 'not enabled' });
     await expect(disableCodeModeUserLevel()).resolves.toBeUndefined();
+  });
+});
+
+describe('runCodeModeStartupGate — Wave 98 bypass', () => {
+  it('skips restoration and enable when no codemode-managed.json exists', async () => {
+    fsMock.access.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+    await runCodeModeStartupGate();
+    expect(restoreFn).not.toHaveBeenCalled();
+    expect(enableFn).not.toHaveBeenCalled();
+    expect(deleteFn).not.toHaveBeenCalled();
+  });
+
+  it('runs restoration and skips enable when codemode-managed.json exists', async () => {
+    fsMock.access.mockResolvedValue(undefined);
+    await runCodeModeStartupGate();
+    expect(restoreFn).toHaveBeenCalledTimes(1);
+    expect(deleteFn).toHaveBeenCalledTimes(1);
+    expect(enableFn).not.toHaveBeenCalled();
+  });
+
+  it('deletes restoration file even when maybeRestoreFromCrash throws (malformed file)', async () => {
+    fsMock.access.mockResolvedValue(undefined);
+    restoreFn.mockRejectedValue(new Error('malformed JSON'));
+    await runCodeModeStartupGate();
+    expect(deleteFn).toHaveBeenCalledTimes(1);
+    expect(enableFn).not.toHaveBeenCalled();
+  });
+
+  it('cleans up proxy config file after restoration', async () => {
+    fsMock.access.mockResolvedValue(undefined);
+    await runCodeModeStartupGate();
+    expect(fsMock.unlink).toHaveBeenCalledTimes(1);
+    expect(fsMock.unlink).toHaveBeenCalledWith('/tmp/codemode-proxy-config.json');
+  });
+
+  it('never calls enableCodeModeUserLevel internals regardless of codemode.enabled config', async () => {
+    setConfig({ codemode: { enabled: true } });
+    fsMock.access.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }));
+    await runCodeModeStartupGate();
+    expect(enableFn).not.toHaveBeenCalled();
   });
 });
