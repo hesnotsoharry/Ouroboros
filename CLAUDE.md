@@ -141,6 +141,8 @@ Context-specific rules are in `.claude/rules/` (injected automatically by glob m
 
 **UI smoke gate** (added Wave M-7, 2026-05-18): UI-bearing waves run `/ui-smoke {wave}` at wave-end. The slash command dispatches `sonnet-smoke-runner` (catalog agent), which reads `.claude/smoke-config.json` and uses `mcp__Claude_Preview__*` to navigate routes in the running dev server, capture screenshots + console + network state, and write a structured report to `roadmap/wave-{N}-{slug}/wave-{N}-smoke-report.md`. Manual fallback fires automatically if MCP can't launch — see `~/.claude/rules-deferred/manual-smoke-gate.md`.
 
+**Follow-up closure audit** (added Wave M-8, 2026-05-19): At wave-end (Phase 6 step), run `/audit-followups wave-{N}-{slug}` to dispatch `haiku-followup-auditor` (catalog agent, cross-project). The agent reads the wave's diff + result brief, classifies each OPEN follow-up (RESOLVED | LIKELY-RESOLVED | NEEDS-REVIEW | ACTIVE), auto-closes RESOLVED items (frontmatter + move to `_archived/follow-ups/`), and writes an audit report at `roadmap/wave-{N}-{slug}/wave-{N}-followup-audit.md`. Also wired as the first step of `/triage-sweep` (run `/audit-followups all` to gather evidence before manual triage). See `~/.claude/rules/agent-catalog.md` for the agent's full description.
+
 ## Vendor Gotchas
 
 Per-vendor lessons captured from wave work — load before touching a vendor's API surface for the second time. Written during waves; promoted via `/promote-vendor-lessons`.
