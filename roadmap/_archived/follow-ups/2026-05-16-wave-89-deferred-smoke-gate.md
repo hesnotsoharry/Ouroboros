@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-16
 updated: 2026-05-16
 ---
@@ -81,3 +81,10 @@ Walk after the hang fix lands (the Lane B fix wave for `2026-05-16-main-thread-h
 ## Risk acceptance
 
 Wave 89 ships v2.18.0 on local gates only (CI minutes also exhausted per Wave 93 HANDOFF). Visual-defect class regressions (fabricated tokens, debug labels, no-op buttons) — the kind the smoke gate exists to catch — were not eliminated by automated tests. The risk is real but bounded: Wave 89's surfaces (`OverlayDrawer`, `DockSlot`, `useDockSlotHeights`, `ChatWorkbenchOverlays`) are tightly scoped; visual issues should surface quickly in regular use and can be hotfixed.
+
+
+---
+
+## Resolution: RESOLVED (2026-05-20)
+
+Closed during 2026-05-20 triage sweep. Wave 95 filed a successor follow-up (`2026-05-19-wave-95-manual-smoke.md`) that re-scopes and extends the original W89 smoke checklist. The W95 smoke walk supersedes this item — when W95 smoke completes, the original W89 scope is implicitly covered.

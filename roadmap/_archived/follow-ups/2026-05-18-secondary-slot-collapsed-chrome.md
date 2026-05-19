@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-95
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-20
 source: Wave 94 wave-wrap smoke
 severity: low
 ---
@@ -79,3 +80,16 @@ possibilities:
   for the slot mounting / conditional render.
 
 Estimate: investigation 15min, fix 1–2 hours depending on chosen option.
+
+---
+
+## Resolution (wave-95)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+
+Evidence: Full resolution implemented across two commits.
+- Commit 9ba0b938 (Wave 95 Phase E follow-ups, 2026-05-18): `ShowSecondarySlotButton` added to `DockSlot.tsx` with "▼ Show slot" bordered button + clear aria-label. Fixes visual indistinguishability issue (was using same ▾ glyph as collapse button).
+- Commit 1f61b316 (Wave 95 Phase E, 2026-05-16): Hiding logic implemented — `useSecondarySlotVisible` predicate gates render when `secondaryCollapsed && !hasSessions`. When hidden, primary slot receives the `onShowSecondarySlot` button to re-expand.
+- `ChatWorkbenchTerminalDock.tsx` `useSectionHeight` ResizeObserver added in commit 9ba0b938 to measure actual dock-main-area height, fixing the ~196px empty-bar gap Cole observed (was using stale IDE-shell `sizes.terminal` fallback).
+- Cole's question about "what was it before" answered: Wave 94 polish commit 1ae44fda changed the label content but not the chrome shape — the 28px bar was design-as-intended, now with affordance to hide it.
+- Shipped with Wave 95 and confirmed during Wave 98 audit.

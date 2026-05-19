@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-10
 updated: 2026-05-10
 ---
@@ -62,3 +62,10 @@ NOT in Wave 84. Likely candidate for the next wave after Wave 84 ships, or possi
 - `2026-05-07-context-preview-rules-disappear-after-chat-start.md` (Wave 84 bug 1) — different surface (popover display) but same broader theme (per-project context state).
 - `2026-05-07-subagent-dispatch-fails-inside-ide-chat.md` (Wave 84 bug 4) — also IDE-orchestration-specific, also CLI-clean. The two may share a common root cause in per-project / per-session orchestration state.
 - `roadmap/docs/chat-shell.md` / `roadmap/docs/codemode-internalmcp-routing.md` — design docs for the surface this bug lives in.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+Closed during 2026-05-20 triage sweep. Tied to in-IDE chat surface, which is being retired in favor of terminal-driven design (`claude -p` moved from OAuth/Max subscription coverage to API pricing). The auto-injection / swipe / heat-map-event paths all depend on the chat surface being active. Terminal-driven UI (Wave 89+) is the replacement.

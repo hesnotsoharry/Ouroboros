@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-98
 created: 2026-05-17
-updated: 2026-05-17
+updated: 2026-05-20
 ---
 
 # Move `generateRepoMap` to a worker thread
@@ -51,3 +52,17 @@ Current main-thread budget after B3a (verified by trace lines, captured 2026-05-
 ## Why this is a follow-up not a wave
 
 Single concern (move one function to a worker), no other features piggybacking. Lane B B3b is the natural framing — close the residual that B3a couldn't fix at this layer.
+
+---
+
+## Resolution (wave-98)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+
+Evidence: Full implementation present in current codebase.
+- `src/main/contextLayer/repoMapWorker.ts`, `repoMapWorkerClient.ts`, `repoMapWorkerQueryClient.ts`, `repoMapWorkerTypes.ts` — all 4 new files from architecture plan deployed.
+- `mainStartupContextLayerTrigger.ts` → `ContextLayerControllerImpl.forceRebuild()` → `repoMapWorkerClient.generateRepoMap(opts)` — off-main routing complete.
+- `electron.vite.config.ts` includes `repoMapWorker.ts` as worker entry point.
+- 8 test files confirm boundary contract, unit behavior, crash recovery.
+- No [jank] regression — verified by Cole on 46.3K-file workspace.
+- Shipped with Wave 98 (2026-05-20).

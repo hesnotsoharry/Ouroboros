@@ -53,3 +53,10 @@ A natural future bundle would be a "mobile readiness" wave: this swipe nav + any
 - `data-no-swipe` opt-out — already on the tab bar (line 112)
 - Audit: `roadmap/audit-verification-pass.md` Section D item #8a
 - Wave 32 Phase I plan
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+Closed during 2026-05-20 triage sweep. Tied to in-IDE chat surface, which is being retired in favor of terminal-driven design (`claude -p` moved from OAuth/Max subscription coverage to API pricing). The auto-injection / swipe / heat-map-event paths all depend on the chat surface being active. Terminal-driven UI (Wave 89+) is the replacement.

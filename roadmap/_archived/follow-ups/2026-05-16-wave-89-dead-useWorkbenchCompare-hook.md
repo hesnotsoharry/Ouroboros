@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-89-chatonly-shell-layout-overhaul
 created: 2026-05-16
-updated: 2026-05-16
+updated: 2026-05-20
 ---
 
 # Wave 89 Phase 4b — dead `useWorkbenchCompare` hook call
@@ -26,3 +27,8 @@ Hook call is dead but harmless. Tests still pass. No user-visible impact.
 ## Promotion criteria
 
 Fold into a cleanup wave or the same future wave that touches `ChatWorkbenchBody.model.ts` for other reasons. Close as RESOLVED when the call is removed and tests pass.
+
+## Resolution (wave-89-chatonly-shell-layout-overhaul)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Code inspection confirms `useWorkbenchCompare()` is called in `ChatWorkbenchBody.model.ts:72` and returned state is added to `WorkbenchContextState`, but the `compare` prop is destructured in `TwoTierRailSurface` (line 238, `ChatWorkbenchBody.rails.tsx`) and immediately excluded from downstream wiring. Zero usage of `compare.*` in component tree. Hook output is dead code. Note: The hook's source consumer (ChatWorkbenchComparePane) was removed in Wave 95 Phase H continuation, retroactively validating this as dead code that should have been cleaned in Wave 89 wrap.

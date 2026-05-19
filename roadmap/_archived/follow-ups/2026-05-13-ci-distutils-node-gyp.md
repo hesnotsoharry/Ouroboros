@@ -3,7 +3,7 @@
 **Discovered:** 2026-05-13 during Pipeline Hardening Wave M-4 CI run on PR #4
 **Severity:** High (blocks every push from passing Windows + macOS validate matrix jobs)
 **Wave home candidate:** CI/tooling cleanup pass (small wave, ~1-2 hours)
-**Status:** Open
+**Status:** RESOLVED (Wave M-5, 2026-05-13)
 
 ## What's broken
 
@@ -76,3 +76,13 @@ The M-4 e2e step runs on Ubuntu only, so this failure doesn't block M-4's delive
 - [PEP 632](https://peps.python.org/pep-0632/) — distutils removal
 - [node-gyp 11 release notes](https://github.com/nodejs/node-gyp/releases/tag/v11.0.0) — distutils dependency removed
 - Pipeline Hardening meta-spec: `C:\Web App\docs\superpowers\specs\2026-05-12-pipeline-hardening-meta.md`
+
+## Resolution (2026-05-13)
+
+Closed by commit `0d6ee197` ("fix(ci): override node-gyp to ^11 (unblocks Windows + macOS matrix)").
+
+Path A implemented: `package.json` `overrides` block forces `node-gyp` to ^11.0.0, removing the distutils dependency that crashed on Python 3.12+. Follow-up also prompted two additional fixes in the same PR:
+- Path C pivot: split `npm ci --ignore-scripts` + dedicated `electron-rebuild` step (discovered Path A alone allowed rebuild to hang; v4 electron-rebuild fixed).
+- Upgrade to `@electron/rebuild` ^4.0.4 (maintained version that supports node-gyp 11+ and fixes the dependency-tree hang).
+
+All three matrix jobs (Windows, macOS, Ubuntu) now pass the `npm ci` step. Fixed 2026-05-13 during Pipeline Hardening follow-up work.

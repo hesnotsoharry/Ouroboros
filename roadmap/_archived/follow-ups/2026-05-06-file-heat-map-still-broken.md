@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-06
 updated: 2026-05-06
 parent_wave: wave-82
@@ -62,3 +62,10 @@ Wave 82 (chat-only polish bundle) closed 14 of 15 items. This is the last open i
 ## Marker for the wave brief
 
 `wave-82-result.md` should reflect: B2 (heat map) — **NOT CLOSED in wave-82**. Deferred to follow-up.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+Closed during 2026-05-20 triage sweep. Tied to in-IDE chat surface, which is being retired in favor of terminal-driven design (`claude -p` moved from OAuth/Max subscription coverage to API pricing). The auto-injection / swipe / heat-map-event paths all depend on the chat surface being active. Terminal-driven UI (Wave 89+) is the replacement.

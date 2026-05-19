@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-89-chatonly-shell-layout-overhaul
 created: 2026-05-16
-updated: 2026-05-16
+updated: 2026-05-20
 ---
 
 # Wave 89 Phase 1 — stacked-dock divider-drag integration test deferred
@@ -30,3 +31,8 @@ Math is unit-tested. Wiring is integration-tested at the unit-render level (`Doc
 ## Promotion criteria
 
 Add to a Wave 89.x follow-up commit OR fold into the next renderer-test sweep wave. Close as RESOLVED when the test file exists and passes.
+
+## Resolution (wave-89-chatonly-shell-layout-overhaul)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Integration tests added in Wave 89 Phase 4c commit `6b52c908`. `DockSlot.test.tsx` contains 20 tests covering collapse/expand behavior, slot independence, and divider interactions. `ChatWorkbenchTerminalDock.test.tsx` updated with 7 tests verifying divider render and no-op behavior during collapse. All 27 tests pass.
