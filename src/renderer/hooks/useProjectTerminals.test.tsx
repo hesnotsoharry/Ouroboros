@@ -270,4 +270,80 @@ describe('useProjectTerminals', () => {
     await waitFor(() => expect(result.current.primary.sessions).toHaveLength(1));
     expect(result.current.primary.activeSessionId).toBeNull();
   });
+
+  // ---------------------------------------------------------------------------
+  // Wave 95 Phase A — rename and suppression tests
+  // ---------------------------------------------------------------------------
+
+  it('(i) renameSession updates title and invokes handleTerminalTitleChange', async () => {
+    mockTerminal.sessions = [{ id: 'r1', title: 'bash', isClaude: false, status: 'running' }];
+    mockGet.mockResolvedValue({
+      '/proj/rename': {
+        primary: [{ id: 'r1', title: 'bash', isClaude: false, userRenamed: false }],
+        secondary: [],
+        activeSessionPerSlot: { primary: 'r1', secondary: null },
+      },
+    });
+
+    const { result } = renderHook(() => useProjectTerminals('/proj/rename'));
+    await waitFor(() => expect(result.current.primary.sessions).toHaveLength(1));
+
+    act(() => {
+      result.current.primary.renameSession('r1', 'My Custom Title');
+    });
+
+    expect(mockTerminal.handleTerminalTitleChange).toHaveBeenCalledWith('r1', 'My Custom Title');
+  });
+
+  it('(j) handleTerminalTitleChange suppressed when userRenamed=true', async () => {
+    mockTerminal.sessions = [
+      { id: 'r2', title: 'My Custom Title', isClaude: false, status: 'running' },
+    ];
+    mockGet.mockResolvedValue({
+      '/proj/suppress': {
+        primary: [{ id: 'r2', title: 'My Custom Title', isClaude: false, userRenamed: true }],
+        secondary: [],
+        activeSessionPerSlot: { primary: 'r2', secondary: null },
+      },
+    });
+
+    const { result } = renderHook(() => useProjectTerminals('/proj/suppress'));
+    await waitFor(() => expect(result.current.primary.sessions).toHaveLength(1));
+
+    // Clear previous calls
+    mockTerminal.handleTerminalTitleChange.mockClear();
+
+    act(() => {
+      // When userRenamed=true, the buildTitleChangeHandler skips the call
+      result.current.primary.handleTerminalTitleChange('r2', 'PTY Title');
+    });
+
+    // Handler should NOT be called because userRenamed=true
+    expect(mockTerminal.handleTerminalTitleChange).not.toHaveBeenCalled();
+  });
+
+  it('(k) handleTerminalTitleChange allowed when userRenamed=false', async () => {
+    mockTerminal.sessions = [{ id: 'r3', title: 'bash', isClaude: false, status: 'running' }];
+    mockGet.mockResolvedValue({
+      '/proj/allow': {
+        primary: [{ id: 'r3', title: 'bash', isClaude: false, userRenamed: false }],
+        secondary: [],
+        activeSessionPerSlot: { primary: 'r3', secondary: null },
+      },
+    });
+
+    const { result } = renderHook(() => useProjectTerminals('/proj/allow'));
+    await waitFor(() => expect(result.current.primary.sessions).toHaveLength(1));
+
+    // Clear previous calls
+    mockTerminal.handleTerminalTitleChange.mockClear();
+
+    act(() => {
+      // When userRenamed=false, the buildTitleChangeHandler calls the inner handler
+      result.current.primary.handleTerminalTitleChange('r3', 'PTY Title');
+    });
+
+    // Handler SHOULD be called because userRenamed=false
+    expect(mockTerminal.handleTerminalTitleChange).toHaveBeenCalledWith('r3', 'PTY Title');
+  });
 });

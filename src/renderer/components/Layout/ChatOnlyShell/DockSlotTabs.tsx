@@ -1,21 +1,26 @@
 /**
- * DockSlotTabs.tsx — Wave 94 Phase C
+ * DockSlotTabs.tsx — Wave 94 Phase C / Wave 95 Phase A
  *
  * Per-slot tab strip rendered inside DockSlot when sessions exist (ADR Decision 5).
  * Replaces the slot label row; affordances (collapse, recording, close) sit at the
  * right edge of the 28px strip. The + New button moves here from SlotHeader so
  * all tab operations live in one row.
  *
+ * Wave 95 Phase A: double-click tab title to rename inline. onRename wired from
+ * SlotHandle.renameSession — persists title and sets userRenamed=true so PTY
+ * titleChange events are suppressed for that session.
+ *
  * Also exports SlotTabsHeader — the wired version that connects a SlotHandle to
  * DockSlotTabs and owns close-with-activation semantics.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import type { SlotHandle } from '../../../hooks/useProjectTerminals';
 import type { TerminalSession } from '../../Terminal/TerminalTabs';
 import type { SlotId } from './DockSlot';
 import { SlotCollapseButton, SlotExpandedButtons } from './DockSlot';
+import { InlineTitleEdit } from './InlineTitleEdit';
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -35,8 +40,43 @@ export interface DockSlotTabsProps {
   onActivate: (sessionId: string) => void;
   onClose: (sessionId: string) => void;
   onSpawn: () => void;
+  onRename: (sessionId: string, title: string) => void;
   /** Right-edge affordance buttons (collapse, recording, etc.) */
   rightControls?: React.ReactNode;
+}
+
+// ---------------------------------------------------------------------------
+// TabCloseButton — extracted to keep TabItem under 40 lines
+// ---------------------------------------------------------------------------
+
+function TabCloseButton({
+  sessionId,
+  title,
+  onClose,
+}: {
+  sessionId: string;
+  title: string;
+  onClose: (id: string) => void;
+}): React.ReactElement {
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onClose(sessionId);
+    },
+    [onClose, sessionId],
+  );
+  return (
+    <span
+      role="button"
+      tabIndex={-1}
+      className="ml-0.5 rounded px-0.5 hover:text-status-error"
+      onClick={handleClick}
+      aria-label={`Close tab ${title}`}
+      data-testid={`dock-slot-tab-close-${sessionId}`}
+    >
+      ×
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -48,22 +88,69 @@ interface TabItemProps {
   isActive: boolean;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
+  onRename: (id: string, title: string) => void;
 }
 
-function TabItem({ session, isActive, onActivate, onClose }: TabItemProps): React.ReactElement {
-  const handleActivate = useCallback(() => onActivate(session.id), [onActivate, session.id]);
-  const handleClose = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onClose(session.id);
-    },
-    [onClose, session.id],
+/** Renders the editable/static title area of a tab. */
+function TabTitleContent({
+  sessionId,
+  title,
+  editing,
+  onStartEdit,
+  onCommit,
+  onCancel,
+}: {
+  sessionId: string;
+  title: string;
+  editing: boolean;
+  onStartEdit: () => void;
+  onCommit: (t: string) => void;
+  onCancel: () => void;
+}): React.ReactElement {
+  if (editing) {
+    return (
+      <InlineTitleEdit
+        initial={title}
+        onCommit={onCommit}
+        onCancel={onCancel}
+        testId={`dock-slot-tab-title-${sessionId}`}
+        className="max-w-[80px] bg-transparent text-xs outline-none"
+      />
+    );
+  }
+  return (
+    <span
+      className="max-w-[80px] truncate"
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onStartEdit();
+      }}
+      data-testid={`dock-slot-tab-title-${sessionId}`}
+    >
+      {title}
+    </span>
   );
+}
 
+function TabItem({
+  session,
+  isActive,
+  onActivate,
+  onClose,
+  onRename,
+}: TabItemProps): React.ReactElement {
+  const [editing, setEditing] = useState(false);
+  const handleActivate = useCallback(() => onActivate(session.id), [onActivate, session.id]);
+  const handleCommit = useCallback(
+    (title: string) => {
+      setEditing(false);
+      onRename(session.id, title);
+    },
+    [onRename, session.id],
+  );
   const activeCls = isActive
     ? 'bg-interactive-accent text-text-semantic-on-accent'
     : 'text-text-semantic-secondary hover:bg-surface-hover hover:text-text-semantic-primary';
-
   return (
     <button
       type="button"
@@ -73,17 +160,15 @@ function TabItem({ session, isActive, onActivate, onClose }: TabItemProps): Reac
       aria-label={`Tab: ${session.title}`}
       data-testid={`dock-slot-tab-${session.id}`}
     >
-      <span className="max-w-[80px] truncate">{session.title}</span>
-      <span
-        role="button"
-        tabIndex={-1}
-        className="ml-0.5 rounded px-0.5 hover:text-status-error"
-        onClick={handleClose}
-        aria-label={`Close tab ${session.title}`}
-        data-testid={`dock-slot-tab-close-${session.id}`}
-      >
-        ×
-      </span>
+      <TabTitleContent
+        sessionId={session.id}
+        title={session.title}
+        editing={editing}
+        onStartEdit={() => setEditing(true)}
+        onCommit={handleCommit}
+        onCancel={() => setEditing(false)}
+      />
+      <TabCloseButton sessionId={session.id} title={session.title} onClose={onClose} />
     </button>
   );
 }
@@ -98,6 +183,7 @@ interface TabListProps {
   activeSessionId: string | null;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
+  onRename: (id: string, title: string) => void;
   onSpawn: () => void;
 }
 
@@ -107,6 +193,7 @@ function TabList({
   activeSessionId,
   onActivate,
   onClose,
+  onRename,
   onSpawn,
 }: TabListProps): React.ReactElement {
   return (
@@ -118,6 +205,7 @@ function TabList({
           isActive={s.id === activeSessionId}
           onActivate={onActivate}
           onClose={onClose}
+          onRename={onRename}
         />
       ))}
       <button
@@ -143,6 +231,7 @@ export function DockSlotTabs({
   onActivate,
   onClose,
   onSpawn,
+  onRename,
   rightControls,
 }: DockSlotTabsProps): React.ReactElement {
   return (
@@ -157,6 +246,7 @@ export function DockSlotTabs({
         activeSessionId={activeSessionId}
         onActivate={onActivate}
         onClose={onClose}
+        onRename={onRename}
         onSpawn={onSpawn}
       />
       {rightControls !== undefined && (
@@ -250,6 +340,7 @@ export function SlotTabsHeader({
       activeSessionId={terminal.activeSessionId}
       onActivate={handleActivate}
       onClose={handleClose}
+      onRename={terminal.renameSession}
       onSpawn={onSpawn}
       rightControls={rightControls}
     />

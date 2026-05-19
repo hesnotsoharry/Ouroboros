@@ -13,6 +13,7 @@ import React, { useCallback, useState } from 'react';
 
 import { useProjectTerminalsContext } from '../../../contexts/ProjectTerminalsContext';
 import type { SlotHandle } from '../../../hooks/useProjectTerminals';
+import { TerminalRow } from './InnerSidebarTerminals.row';
 
 export interface InnerSidebarTerminalsProps {
   onActivateInDock?: () => void;
@@ -152,44 +153,9 @@ function NewTerminalRow({
 
 // ── TerminalRow ──────────────────────────────────────────────────────────────
 
-function TerminalRow({
-  active,
-  label,
-  onClick,
-  onClose,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  onClose: () => void;
-}): React.ReactElement {
-  const cls = active
-    ? 'bg-interactive-selection text-text-semantic-primary'
-    : 'text-text-semantic-secondary hover:bg-surface-hover hover:text-text-semantic-primary';
-  return (
-    <div
-      data-testid="inner-terminals-row"
-      className={`group flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors ${cls}`}
-    >
-      <button type="button" onClick={onClick} className="flex-1 truncate text-left">
-        {label}
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        title="Close terminal"
-        aria-label="Close terminal"
-        data-testid="inner-terminals-row-close"
-        className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-text-semantic-muted hover:text-status-error transition-opacity"
-      >
-        ×
-      </button>
-    </div>
-  );
-}
+// TerminalRow is imported from ./InnerSidebarTerminals.row (extracted Wave 95 Phase A
+// to keep this file under the 300-line ESLint limit and to colocate the inline-edit +
+// right-click Rename context menu).
 
 // ── SlotGroup ────────────────────────────────────────────────────────────────
 
@@ -215,6 +181,7 @@ function SlotGroup({
       {slotHandle.sessions.map((s) => (
         <TerminalRow
           key={s.id}
+          sessionId={s.id}
           active={s.id === slotHandle.activeSessionId}
           label={s.title || s.id}
           onClick={() => {
@@ -222,6 +189,7 @@ function SlotGroup({
             onActivateInDock?.();
           }}
           onClose={() => onClose(s.id)}
+          onRename={slotHandle.renameSession}
         />
       ))}
     </>

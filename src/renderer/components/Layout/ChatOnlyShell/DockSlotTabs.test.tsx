@@ -166,3 +166,169 @@ describe('DockSlotTabs — rightControls renders supplied nodes', () => {
     expect(screen.queryByTestId('custom-ctrl')).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Wave 95 Phase A — double-click rename
+// ---------------------------------------------------------------------------
+
+describe('DockSlotTabs — double-click rename (Wave 95)', () => {
+  it('double-click tab title → input autofocus → Enter commits rename', () => {
+    const onRename = vi.fn();
+
+    render(
+      <DockSlotTabs
+        slot="primary"
+        sessions={[SESSION_A]}
+        activeSessionId="a1"
+        onActivate={vi.fn()}
+        onClose={vi.fn()}
+        onSpawn={vi.fn()}
+        onRename={onRename}
+      />,
+    );
+
+    // Find the tab title element (not in edit mode)
+    const tabTitle = screen.getByTestId('dock-slot-tab-title-a1');
+    expect(tabTitle.tagName).toBe('SPAN'); // Initially a span, not an input
+
+    // Double-click to enter edit mode
+    fireEvent.doubleClick(tabTitle);
+
+    // Now the element should be an input
+    const input = screen.getByTestId('dock-slot-tab-title-a1') as HTMLInputElement;
+    expect(input.tagName).toBe('INPUT');
+    expect(document.activeElement).toBe(input);
+
+    // Simulate typing new title
+    fireEvent.change(input, { target: { value: 'My Terminal' } });
+
+    // Simulate Enter key press
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    // Verify onRename was called with the new title
+    expect(onRename).toHaveBeenCalledWith('a1', 'My Terminal');
+  });
+
+  it('double-click tab title → input autofocus → Escape cancels rename', () => {
+    const onRename = vi.fn();
+
+    render(
+      <DockSlotTabs
+        slot="primary"
+        sessions={[SESSION_A]}
+        activeSessionId="a1"
+        onActivate={vi.fn()}
+        onClose={vi.fn()}
+        onSpawn={vi.fn()}
+        onRename={onRename}
+      />,
+    );
+
+    // Find and double-click the tab title
+    const tabTitle = screen.getByTestId('dock-slot-tab-title-a1');
+    fireEvent.doubleClick(tabTitle);
+
+    // Get the input and simulate typing a new title
+    const input = screen.getByTestId('dock-slot-tab-title-a1') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'New Title' } });
+
+    // Simulate Escape key press
+    fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+    // Verify onRename was NOT called
+    expect(onRename).not.toHaveBeenCalled();
+  });
+
+  it('double-click → type and blur commits the new title', () => {
+    const onRename = vi.fn();
+
+    render(
+      <DockSlotTabs
+        slot="primary"
+        sessions={[SESSION_A]}
+        activeSessionId="a1"
+        onActivate={vi.fn()}
+        onClose={vi.fn()}
+        onSpawn={vi.fn()}
+        onRename={onRename}
+      />,
+    );
+
+    // Double-click to edit
+    const tabTitle = screen.getByTestId('dock-slot-tab-title-a1');
+    fireEvent.doubleClick(tabTitle);
+
+    // Simulate typing new title
+    const input = screen.getByTestId('dock-slot-tab-title-a1') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Updated' } });
+
+    // Simulate blur (click outside)
+    fireEvent.blur(input);
+
+    // onRename should be called with the new title
+    expect(onRename).toHaveBeenCalledWith('a1', 'Updated');
+  });
+
+  it('empty input after trim reverts to original title (no rename call)', () => {
+    const onRename = vi.fn();
+
+    render(
+      <DockSlotTabs
+        slot="primary"
+        sessions={[SESSION_A]}
+        activeSessionId="a1"
+        onActivate={vi.fn()}
+        onClose={vi.fn()}
+        onSpawn={vi.fn()}
+        onRename={onRename}
+      />,
+    );
+
+    // Double-click to edit
+    const tabTitle = screen.getByTestId('dock-slot-tab-title-a1');
+    fireEvent.doubleClick(tabTitle);
+
+    // Clear the input completely (empty string)
+    const input = screen.getByTestId('dock-slot-tab-title-a1') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '' } });
+
+    // Simulate Enter key press
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    // onRename should NOT be called because the trimmed input is empty
+    expect(onRename).not.toHaveBeenCalled();
+  });
+
+  it('multiple tabs: double-click one tab does not affect others', () => {
+    const onRename = vi.fn();
+
+    render(
+      <DockSlotTabs
+        slot="primary"
+        sessions={[SESSION_A, SESSION_B]}
+        activeSessionId="a1"
+        onActivate={vi.fn()}
+        onClose={vi.fn()}
+        onSpawn={vi.fn()}
+        onRename={onRename}
+      />,
+    );
+
+    // Double-click the first tab's title
+    const tabTitle1 = screen.getByTestId('dock-slot-tab-title-a1');
+    fireEvent.doubleClick(tabTitle1);
+
+    // Verify second tab is still a span (not in edit mode)
+    const tabTitle2 = screen.getByTestId('dock-slot-tab-title-b2');
+    expect(tabTitle2.tagName).toBe('SPAN');
+
+    // Complete the first tab's edit
+    const input = screen.getByTestId('dock-slot-tab-title-a1') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'First Tab' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    // Only the first tab should have triggered onRename
+    expect(onRename).toHaveBeenCalledOnce();
+    expect(onRename).toHaveBeenCalledWith('a1', 'First Tab');
+  });
+});

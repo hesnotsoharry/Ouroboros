@@ -23,10 +23,16 @@ import { z } from 'zod';
 export const SessionTabRefSchema = z.object({
   /** PTY session ID (stable across renders). */
   id: z.string(),
-  /** Display title — last title received from the pty `titleChange` event. */
+  /** Display title — last title received from the pty `titleChange` event, or a user-set name. */
   title: z.string(),
   /** Whether this session runs claude CLI (affects icon / badge). */
   isClaude: z.boolean().default(false),
+  /**
+   * True when the user has explicitly renamed this tab (Wave 95 Phase A).
+   * When set, PTY titleChange events are suppressed so the user title sticks.
+   * Defaults to false — existing persisted state hydrates with userRenamed: false.
+   */
+  userRenamed: z.boolean().default(false),
 });
 
 export type SessionTabRef = z.infer<typeof SessionTabRefSchema>;

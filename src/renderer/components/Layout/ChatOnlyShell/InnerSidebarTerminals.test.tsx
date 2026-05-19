@@ -213,4 +213,137 @@ describe('InnerSidebarTerminals', () => {
     const rows = screen.getAllByTestId('inner-terminals-row');
     expect(rows[1].className).toContain('bg-interactive-selection');
   });
+
+  // ---------------------------------------------------------------------------
+  // Wave 95 Phase A — right-click Rename tests
+  // ---------------------------------------------------------------------------
+
+  it('right-click on primary session row opens context menu with Rename', () => {
+    const primary = makeSlotHandle({
+      sessions: [{ id: 't1', title: 'bash', status: 'running' as const }],
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary,
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+    const row = screen.getByTestId('inner-terminals-row');
+    fireEvent.contextMenu(row);
+
+    expect(screen.getByTestId('inner-terminals-row-context-menu')).toBeDefined();
+    expect(screen.getByTestId('inner-terminals-row-rename')).toBeDefined();
+  });
+
+  it('click Rename → inline input appears with autofocus', () => {
+    const primary = makeSlotHandle({
+      sessions: [{ id: 't1', title: 'bash', status: 'running' as const }],
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary,
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+
+    // Right-click to open context menu
+    const row = screen.getByTestId('inner-terminals-row');
+    fireEvent.contextMenu(row);
+
+    // Click Rename
+    const renameBtn = screen.getByTestId('inner-terminals-row-rename');
+    fireEvent.click(renameBtn);
+
+    // Verify inline input appears and has autofocus
+    const input = screen.getByTestId('inner-sidebar-terminal-title-input-t1') as HTMLInputElement;
+    expect(input).toBeDefined();
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('type new name in inline input → Enter commits rename', () => {
+    const primary = makeSlotHandle({
+      sessions: [{ id: 't1', title: 'bash', status: 'running' as const }],
+      renameSession: vi.fn(),
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary,
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+
+    // Right-click and click Rename
+    const row = screen.getByTestId('inner-terminals-row');
+    fireEvent.contextMenu(row);
+    const renameBtn = screen.getByTestId('inner-terminals-row-rename');
+    fireEvent.click(renameBtn);
+
+    // Simulate typing new name
+    const input = screen.getByTestId('inner-sidebar-terminal-title-input-t1') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'My Custom Terminal' } });
+
+    // Simulate Enter key press
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    // Verify renameSession was called (part of SlotHandle)
+    expect(primary.renameSession).toHaveBeenCalledWith('t1', 'My Custom Terminal');
+  });
+
+  it('type new name → Escape cancels rename', () => {
+    const primary = makeSlotHandle({
+      sessions: [{ id: 't1', title: 'bash', status: 'running' as const }],
+      renameSession: vi.fn(),
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary,
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+
+    // Right-click and click Rename
+    const row = screen.getByTestId('inner-terminals-row');
+    fireEvent.contextMenu(row);
+    const renameBtn = screen.getByTestId('inner-terminals-row-rename');
+    fireEvent.click(renameBtn);
+
+    // Simulate typing new name
+    const input = screen.getByTestId('inner-sidebar-terminal-title-input-t1') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'New Name' } });
+
+    // Simulate Escape key press
+    fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+    // renameSession should NOT be called
+    expect(primary.renameSession).not.toHaveBeenCalled();
+  });
+
+  it('right-click on secondary session row and rename', () => {
+    const secondary = makeSlotHandle({
+      sessions: [{ id: 't2', title: 'node', status: 'running' as const }],
+      renameSession: vi.fn(),
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary: makeSlotHandle(),
+      secondary,
+    });
+
+    render(<InnerSidebarTerminals />);
+
+    // Right-click and click Rename
+    const row = screen.getByTestId('inner-terminals-row');
+    fireEvent.contextMenu(row);
+    const renameBtn = screen.getByTestId('inner-terminals-row-rename');
+    fireEvent.click(renameBtn);
+
+    // Simulate typing new name
+    const input = screen.getByTestId('inner-sidebar-terminal-title-input-t2') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Shell Window' } });
+
+    // Simulate Enter key press
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    // Verify secondary's renameSession was called
+    expect(secondary.renameSession).toHaveBeenCalledWith('t2', 'Shell Window');
+  });
 });

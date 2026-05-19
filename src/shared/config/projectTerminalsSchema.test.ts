@@ -50,6 +50,27 @@ describe('SessionTabRefSchema', () => {
     const result = SessionTabRefSchema.safeParse({ id: 'abc' });
     expect(result.success).toBe(false);
   });
+
+  // ---------------------------------------------------------------------------
+  // Wave 95 Phase A — userRenamed field migration
+  // ---------------------------------------------------------------------------
+
+  it('applies userRenamed: false default when not provided (backward-compat hydration)', () => {
+    const old = { id: 'ses-1', title: 'bash', isClaude: false };
+    const result = SessionTabRefSchema.parse(old);
+    expect(result).toEqual({
+      id: 'ses-1',
+      title: 'bash',
+      isClaude: false,
+      userRenamed: false,
+    });
+  });
+
+  it('preserves userRenamed: true when explicitly set', () => {
+    const input = { id: 'ses-1', title: 'My Custom Title', isClaude: false, userRenamed: true };
+    const result = SessionTabRefSchema.parse(input);
+    expect(result.userRenamed).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -48,6 +48,8 @@ export interface SlotHandle {
   handleSplit: (primarySessionId: string) => Promise<void>;
   handleCloseSplit: (primarySessionId: string) => void;
   handleTerminalReorder: (reordered: TerminalSession[]) => void;
+  /** Rename a terminal tab; persists title + sets userRenamed=true so PTY titleChange is suppressed. */
+  renameSession: (sessionId: string, title: string) => void;
 }
 
 export interface UseProjectTerminalsReturn {
@@ -76,6 +78,7 @@ export const EMPTY_SLOT_HANDLE: SlotHandle = {
   handleSplit: makeNoopAsync(),
   handleCloseSplit: () => undefined,
   handleTerminalReorder: () => undefined,
+  renameSession: () => undefined,
 };
 
 // ---------------------------------------------------------------------------
@@ -101,11 +104,19 @@ function buildReorderHandler(
   terminalReorder: (r: TerminalSession[]) => void,
 ): (reordered: TerminalSession[]) => void {
   return (reordered: TerminalSession[]): void => {
-    const ids = new Set(projectState[slotKey].map((s) => s.id));
+    const refMap = new Map(projectState[slotKey].map((r) => [r.id, r]));
     setProjectState({
       [slotKey]: reordered
-        .filter((s) => ids.has(s.id))
-        .map((s) => ({ id: s.id, title: s.title, isClaude: s.isClaude ?? false })),
+        .filter((s) => refMap.has(s.id))
+        .map((s) => {
+          const existing = refMap.get(s.id);
+          return {
+            id: s.id,
+            title: s.title,
+            isClaude: s.isClaude ?? false,
+            userRenamed: existing?.userRenamed ?? false,
+          };
+        }),
     });
     terminalReorder(reordered);
   };
@@ -196,19 +207,59 @@ interface SlotHandleOptions {
 // buildSlotHandle — assemble the public SlotHandle for one slot
 // ---------------------------------------------------------------------------
 
-function buildSlotHandle(opts: SlotHandleOptions): SlotHandle {
-  const { slotKey, terminal, projectState, setProjectState, pendingSpawnRef, defaultCwd } = opts;
-  const sessions = buildSlotSessionList(terminal.sessions, projectState[slotKey]);
+function buildTitleChangeHandler(
+  slotKey: 'primary' | 'secondary',
+  projectState: ProjectTerminalState,
+  terminalTitleChange: (sessionId: string, title: string) => void,
+): (sessionId: string, title: string) => void {
+  return (sessionId: string, title: string): void => {
+    const ref = projectState[slotKey].find((r) => r.id === sessionId);
+    // When the user has renamed this tab, suppress PTY-driven title updates.
+    if (ref?.userRenamed) return;
+    terminalTitleChange(sessionId, title);
+  };
+}
+
+function buildRenameHandler(
+  slotKey: 'primary' | 'secondary',
+  projectState: ProjectTerminalState,
+  setProjectState: (patch: Partial<ProjectTerminalState>) => void,
+  terminalTitleChange: (sessionId: string, title: string) => void,
+): (sessionId: string, title: string) => void {
+  return (sessionId: string, title: string): void => {
+    // Update runtime session title immediately.
+    terminalTitleChange(sessionId, title);
+    // Persist the rename: update the ref's title and set userRenamed=true.
+    const updated = projectState[slotKey].map((r) =>
+      r.id === sessionId ? { ...r, title, userRenamed: true } : r,
+    );
+    setProjectState({ [slotKey]: updated });
+  };
+}
+
+interface SlotActiveState {
+  activeSessionId: string | null;
+  setActiveSessionId: (id: string | null) => void;
+}
+
+function buildActiveState(opts: SlotHandleOptions): SlotActiveState {
+  const { slotKey, terminal, projectState, setProjectState } = opts;
   const slotIds = new Set(projectState[slotKey].map((s) => s.id));
   const rawActive = projectState.activeSessionPerSlot[slotKey];
   const activeSessionId = rawActive && slotIds.has(rawActive) ? rawActive : null;
-
   const setActiveSessionId = (id: string | null): void => {
     setProjectState({
       activeSessionPerSlot: { ...projectState.activeSessionPerSlot, [slotKey]: id },
     });
     if (id) terminal.setActiveSessionId(id);
   };
+  return { activeSessionId, setActiveSessionId };
+}
+
+function buildSlotHandle(opts: SlotHandleOptions): SlotHandle {
+  const { slotKey, terminal, projectState, setProjectState, pendingSpawnRef, defaultCwd } = opts;
+  const sessions = buildSlotSessionList(terminal.sessions, projectState[slotKey]);
+  const { activeSessionId, setActiveSessionId } = buildActiveState(opts);
 
   return {
     sessions,
@@ -223,7 +274,11 @@ function buildSlotHandle(opts: SlotHandleOptions): SlotHandle {
       terminal.handleTerminalClose,
     ),
     handleTerminalRestart: terminal.handleTerminalRestart,
-    handleTerminalTitleChange: terminal.handleTerminalTitleChange,
+    handleTerminalTitleChange: buildTitleChangeHandler(
+      slotKey,
+      projectState,
+      terminal.handleTerminalTitleChange,
+    ),
     handleToggleRecording: terminal.handleToggleRecording,
     handleSplit: buildSplitWrapper(slotKey, terminal, pendingSpawnRef),
     handleCloseSplit: terminal.handleCloseSplit,
@@ -232,6 +287,12 @@ function buildSlotHandle(opts: SlotHandleOptions): SlotHandle {
       projectState,
       setProjectState,
       terminal.handleTerminalReorder,
+    ),
+    renameSession: buildRenameHandler(
+      slotKey,
+      projectState,
+      setProjectState,
+      terminal.handleTerminalTitleChange,
     ),
   };
 }
