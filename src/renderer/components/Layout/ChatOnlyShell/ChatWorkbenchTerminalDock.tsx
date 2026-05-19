@@ -19,6 +19,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useProjectTerminalsContext } from '../../../contexts/ProjectTerminalsContext';
 import { useResizable } from '../useResizable';
 import { DockSlot } from './DockSlot';
 import { computeSlotDisplayHeights, useDockSlotHeights } from './useDockSlotHeights';
@@ -113,6 +114,22 @@ export interface ChatWorkbenchTerminalDockProps {
 }
 
 // ---------------------------------------------------------------------------
+// useSecondarySlotVisible — derives whether the secondary slot should render.
+// Reads secondary session count from context (avoids prop-drilling).
+// ---------------------------------------------------------------------------
+
+/**
+ * Secondary slot is visible when it has at least one session (even if collapsed)
+ * OR when it is not collapsed (user explicitly expanded an empty slot).
+ * When collapsed AND empty the slot renders at 0px — fully hidden.
+ */
+export function useSecondarySlotVisible(secondaryCollapsed: boolean): boolean {
+  const terminals = useProjectTerminalsContext();
+  const hasSessions = terminals.secondary.sessions.length > 0;
+  return !secondaryCollapsed || hasSessions;
+}
+
+// ---------------------------------------------------------------------------
 // useDockState — all hook wiring extracted so ChatWorkbenchTerminalDock ≤40 lines
 //
 // Wave 89 Phase 4b: DockResizeHandle removed (no chat sibling to resize against;
@@ -200,6 +217,35 @@ function useDockState(onActiveSessionChange?: (id: string | null) => void): Dock
 // ChatWorkbenchTerminalDock
 // ---------------------------------------------------------------------------
 
+interface SecondarySlotProps {
+  height: number;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  onActiveSessionChange: (id: string | null) => void;
+  handleDividerPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+}
+
+function SecondarySlot({
+  height,
+  collapsed,
+  onToggleCollapse,
+  onActiveSessionChange,
+  handleDividerPointerDown,
+}: SecondarySlotProps): React.ReactElement {
+  return (
+    <>
+      <SlotDivider onPointerDown={handleDividerPointerDown} />
+      <DockSlot
+        slot="secondary"
+        height={height}
+        collapsed={collapsed}
+        onToggleCollapse={onToggleCollapse}
+        onActiveSessionChange={onActiveSessionChange}
+      />
+    </>
+  );
+}
+
 export function ChatWorkbenchTerminalDock({
   onActiveSessionChange,
 }: ChatWorkbenchTerminalDockProps): React.ReactElement {
@@ -215,9 +261,9 @@ export function ChatWorkbenchTerminalDock({
     toggleSecondaryCollapsed,
   } = useDockState(onActiveSessionChange);
 
+  const showSecondarySlot = useSecondarySlotVisible(secondaryCollapsed);
+
   return (
-    // flex-1: dock fills the full dock-main-area height (Phase 4b terminal-first pivot).
-    // The dock-as-whole resize handle is removed — no chat sibling exists to resize against.
     <section
       className="flex flex-1 flex-col border-t border-border-semantic bg-surface-panel/95"
       data-testid="chat-workbench-terminal-dock"
@@ -228,15 +274,17 @@ export function ChatWorkbenchTerminalDock({
         collapsed={primaryCollapsed}
         onToggleCollapse={togglePrimaryCollapsed}
         onActiveSessionChange={onPrimarySessionChange}
+        onShowSecondarySlot={showSecondarySlot ? undefined : toggleSecondaryCollapsed}
       />
-      <SlotDivider onPointerDown={handleDividerPointerDown} />
-      <DockSlot
-        slot="secondary"
-        height={secondaryHeight}
-        collapsed={secondaryCollapsed}
-        onToggleCollapse={toggleSecondaryCollapsed}
-        onActiveSessionChange={onSecondarySessionChange}
-      />
+      {showSecondarySlot && (
+        <SecondarySlot
+          height={secondaryHeight}
+          collapsed={secondaryCollapsed}
+          onToggleCollapse={toggleSecondaryCollapsed}
+          onActiveSessionChange={onSecondarySessionChange}
+          handleDividerPointerDown={handleDividerPointerDown}
+        />
+      )}
     </section>
   );
 }

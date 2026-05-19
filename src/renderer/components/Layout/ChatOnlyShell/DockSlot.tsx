@@ -127,6 +127,25 @@ export function SlotExpandedButtons({
 }
 
 // ---------------------------------------------------------------------------
+// ShowSecondarySlotButton
+// ---------------------------------------------------------------------------
+
+export function ShowSecondarySlotButton({ onClick }: { onClick: () => void }): React.ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Show secondary terminal slot"
+      aria-label="Show secondary terminal slot"
+      data-testid="show-secondary-slot-affordance"
+      className="rounded p-0.5 text-text-semantic-secondary transition-colors hover:bg-surface-hover hover:text-text-semantic-primary"
+    >
+      <span aria-hidden className="text-xs">▾</span>
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // SlotHeader — empty-state label row (sessions.length === 0)
 // ---------------------------------------------------------------------------
 
@@ -138,6 +157,7 @@ interface SlotHeaderProps {
   onSpawn: () => void;
   onToggleRecording: () => void;
   onToggleCollapse: () => void;
+  onShowSecondarySlot?: () => void;
 }
 
 function SlotHeader({
@@ -148,6 +168,7 @@ function SlotHeader({
   onSpawn,
   onToggleRecording,
   onToggleCollapse,
+  onShowSecondarySlot,
 }: SlotHeaderProps): React.ReactElement {
   return (
     <div
@@ -163,6 +184,7 @@ function SlotHeader({
             onToggleRecording={onToggleRecording}
           />
         )}
+        {onShowSecondarySlot && <ShowSecondarySlotButton onClick={onShowSecondarySlot} />}
         <SlotCollapseButton collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
       </div>
     </div>
@@ -238,13 +260,14 @@ interface SlotHeaderRowProps {
   onSpawn: () => void;
   onToggleRecording: () => void;
   onToggleCollapse: () => void;
+  onShowSecondarySlot?: () => void;
 }
 
-function SlotHeaderRow({ terminal, ...rest }: SlotHeaderRowProps): React.ReactElement {
+function SlotHeaderRow({ terminal, onShowSecondarySlot, ...rest }: SlotHeaderRowProps): React.ReactElement {
   if (terminal.sessions.length > 0) {
-    return <SlotTabsHeader terminal={terminal} {...rest} />;
+    return <SlotTabsHeader terminal={terminal} onShowSecondarySlot={onShowSecondarySlot} {...rest} />;
   }
-  return <SlotHeader activeSessionId={terminal.activeSessionId} {...rest} />;
+  return <SlotHeader activeSessionId={terminal.activeSessionId} onShowSecondarySlot={onShowSecondarySlot} {...rest} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,6 +280,7 @@ export interface DockSlotProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onActiveSessionChange?: (sessionId: string | null) => void;
+  onShowSecondarySlot?: () => void;
 }
 
 export function DockSlot({
@@ -265,6 +289,7 @@ export function DockSlot({
   collapsed,
   onToggleCollapse,
   onActiveSessionChange,
+  onShowSecondarySlot,
 }: DockSlotProps): React.ReactElement {
   const terminals = useProjectTerminalsContext();
   const terminal = slot === 'primary' ? terminals.primary : terminals.secondary;
@@ -289,6 +314,7 @@ export function DockSlot({
         onSpawn={handleSpawn}
         onToggleRecording={handleToggleRecording}
         onToggleCollapse={onToggleCollapse}
+        onShowSecondarySlot={onShowSecondarySlot}
       />
       {!collapsed && (
         <SlotTerminalSurface slot={slot} terminal={terminal} handleSpawn={handleSpawn} />

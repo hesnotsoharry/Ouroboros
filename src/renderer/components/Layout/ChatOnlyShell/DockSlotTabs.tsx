@@ -19,7 +19,7 @@ import React, { useCallback, useState } from 'react';
 import type { SlotHandle } from '../../../hooks/useProjectTerminals';
 import type { TerminalSession } from '../../Terminal/TerminalTabs';
 import type { SlotId } from './DockSlot';
-import { SlotCollapseButton, SlotExpandedButtons } from './DockSlot';
+import { ShowSecondarySlotButton, SlotCollapseButton, SlotExpandedButtons } from './DockSlot';
 import { InlineTitleEdit } from './InlineTitleEdit';
 
 // ---------------------------------------------------------------------------
@@ -269,6 +269,7 @@ export interface SlotTabsHeaderProps {
   onSpawn: () => void;
   onToggleRecording: () => void;
   onToggleCollapse: () => void;
+  onShowSecondarySlot?: () => void;
 }
 
 /** Activate the neighbouring tab when the active one is closed. */
@@ -298,10 +299,11 @@ interface RightControlsOpts {
   isRecording: boolean;
   onToggleRecording: () => void;
   onToggleCollapse: () => void;
+  onShowSecondarySlot?: () => void;
 }
 
 function buildRightControls(opts: RightControlsOpts): React.ReactNode {
-  const { collapsed, terminal, isRecording, onToggleRecording, onToggleCollapse } = opts;
+  const { collapsed, terminal, isRecording, onToggleRecording, onToggleCollapse, onShowSecondarySlot } = opts;
   return (
     <>
       {!collapsed && (
@@ -311,6 +313,7 @@ function buildRightControls(opts: RightControlsOpts): React.ReactNode {
           onToggleRecording={onToggleRecording}
         />
       )}
+      {onShowSecondarySlot && <ShowSecondarySlotButton onClick={onShowSecondarySlot} />}
       <SlotCollapseButton collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
     </>
   );
@@ -324,6 +327,7 @@ export function SlotTabsHeader({
   onSpawn,
   onToggleRecording,
   onToggleCollapse,
+  onShowSecondarySlot,
 }: SlotTabsHeaderProps): React.ReactElement {
   const { handleActivate, handleClose } = useTabHandlers(terminal);
   const rightControls = buildRightControls({
@@ -332,6 +336,7 @@ export function SlotTabsHeader({
     isRecording,
     onToggleRecording,
     onToggleCollapse,
+    onShowSecondarySlot,
   });
   return (
     <DockSlotTabs
