@@ -139,6 +139,8 @@ Context-specific rules are in `.claude/rules/` (injected automatically by glob m
 
 **Dispatch reflex** (added 2026-05-12): before 3+ exploration calls (Read/Grep/Glob) on the same question or continuing debug past one failed fix, DISPATCH from the catalog (`haiku-explorer`, `sonnet-explorer`, `sonnet-diagnostician`, `haiku-implementer`, etc. — see `~/.claude/rules/agent-catalog.md`). Hooks `~/.claude/hooks/dispatch_reflex_nudge.mjs` and `~/.claude/hooks/fresh_session_reminder.mjs` provide nudges. Fresh-session suggestions below 60% context utilization are usually wrong — hard work below threshold = dispatch a subagent, not session reset.
 
+**UI smoke gate** (added Wave M-7, 2026-05-18): UI-bearing waves run `/ui-smoke {wave}` at wave-end. The slash command dispatches `sonnet-smoke-runner` (catalog agent), which reads `.claude/smoke-config.json` and uses `mcp__Claude_Preview__*` to navigate routes in the running dev server, capture screenshots + console + network state, and write a structured report to `roadmap/wave-{N}-{slug}/wave-{N}-smoke-report.md`. Manual fallback fires automatically if MCP can't launch — see `~/.claude/rules-deferred/manual-smoke-gate.md`.
+
 ## Vendor Gotchas
 
 Per-vendor lessons captured from wave work — load before touching a vendor's API surface for the second time. Written during waves; promoted via `/promote-vendor-lessons`.

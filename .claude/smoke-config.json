@@ -1,0 +1,7 @@
+{
+  "browserMcp": "preview",
+  "devServerUrl": "http://localhost:5173",
+  "routesToSmoke": ["/"],
+  "startCommand": "npm run dev",
+  "startReadyTimeoutMs": 60000
+}
