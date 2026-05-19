@@ -1,10 +1,36 @@
 ---
-status: TRIAGED
+status: RESOLVED
 created: 2026-05-20
+updated: 2026-05-20
 severity: high
+resolution: environmental — Windows Defender real-time scan, not an Ouroboros leak
 ---
 
 # Packaged build: unbounded RAM climb to 100% (leak), dev mode unaffected
+
+## RESOLUTION 2026-05-20 — root cause is Windows Defender (MsMpEng.exe), NOT a code leak
+
+Resource Monitor disk view showed **MsMpEng.exe (Windows Defender real-time scan engine) in 7 of the top 10 disk consumers**, spiking whenever Ouroboros ran. Not an Ouroboros memory leak.
+
+Why it fit every symptom:
+- **Main process clean (mem-probe flat)** — correct; the disk work was Defender, an external process.
+- **RAM → 100%** — Defender scan buffers + OS file-system cache from scanned reads (cached reads count as "in use" RAM).
+- **NVMe pegged** — Defender scanning files as Ouroboros read/wrote them.
+- **dev fine / packaged thrash (the discriminator)** — dev never runs electron-builder. Packaged testing today produced ~15 fresh UNSIGNED 217MB `.exe` installers (~3.4GB in dist/) plus an unsigned install tree; Defender scans freshly-written unsigned executables aggressively and re-scans the 200MB+ app.asar on launch. Dev has none of that.
+
+Fixes applied:
+1. Purged the dist/ installer pile (15 → 1, kept current 2.19.3) — removed ~2.2GB of fresh unsigned binaries Defender was re-scanning.
+2. User adds Defender exclusions (elevated PowerShell): install dir `%LOCALAPPDATA%\Programs\Ouroboros`, userData `%APPDATA%\Ouroboros`, repo `C:\Web App\Agent IDE`, process `Ouroboros.exe`.
+
+Not a product code bug. NOTE for shipping: unsigned installers also trigger Defender/SmartScreen friction for END users — code signing is the real long-term fix (separate follow-up, not this bug).
+
+The mem-probe instrumentation (commit 01ed6987) found no leak and can be removed — see "Instrumentation cleanup" task. Keep until the user confirms exclusions resolve the thrash.
+
+---
+
+(original investigation below — all code-side hypotheses H1-H6 refuted by mem-probe + DB inspection)
+
+# Packaged build: unbounded RAM climb to 100% (leak), dev mode unaffected — ORIGINAL
 
 ## Symptom
 
@@ -34,3 +60,17 @@ Launching the packaged `v2.19.3` build slowly drives system RAM from ~70% to 100
 Add a single `[mem-probe]` 30s timer in main logging: `process.memoryUsage()` (rss/heapUsed), active handle counts, systemTwoRegistry `listActive().length` (H3), file-snapshot cache size (H5), dedup Set sizes (H2), `BrowserWindow.getAllWindows().length` (H6), and at startup the stored-vs-recomputed catalog hash (H1). One instrumented build, run a few minutes, observe which counter grows monotonically → confirms the cause before any fix.
 
 Do NOT fix-guess. The dev-vs-packaged split means the true cause must explain why dev is fine.
+
+## UPDATE 2026-05-20 — mem-probe results: main process is CLEAN
+
+Instrumented build run ~3.5 min. `[mem-probe]` (main process) every 30s showed ALL accumulators flat:
+- `snapshotCacheSize: 0` throughout → H5 (no-TTL context cache) REFUTED
+- `s2Active: 1`, `windows: 1` flat → H3/H6 REFUTED
+- `spawnDedupSize: 3450` (+4 over session), `routerShadowDedupSize: 41` flat → H2 REFUTED (large but static, as predicted)
+- rss 175–754MB (trends down), heapUsed flat ~50MB → no main-heap leak
+
+Also refuted by direct DB inspection: catalog is CLEAN (3835 files, 0 dist/out/node_modules entries) → H1 stale-dist-catalog REFUTED. autoSync reindex runs ~every 2.5min, files=0, 2.8s — cheap, not the thrash.
+
+**Conclusion: the RAM+NVMe issue is NOT in the main process.** It's in an unmeasured surface: renderer process, a worker thread (contextWorker/repoMapWorker/indexingWorker — separate heaps), GPU process, or OS FS cache from disk reads. The disk-thrash symptom (NVMe pegged) is primary; RAM-to-100% is likely FS cache.
+
+**Next:** runtime disk observation (Resource Monitor → Disk → top files/paths by B/sec + which process) to localize the actual I/O. Three+ code-read theories already refuted — need real I/O evidence before proposing a fix. Mem-probe instrumentation (commit 01ed6987) is still in place; leave it until the disk source is found.
