@@ -10,7 +10,7 @@
  * excluded to avoid noisy correlations.
  */
 
-import { gitTrimmed } from '../../ipc-handlers/gitOperations';
+import { gitStdout } from '../../util/gitExec';
 import type { GraphDatabase } from '../graphDatabase';
 import type { GraphEdge } from '../graphDatabaseTypes';
 
@@ -37,11 +37,11 @@ const GIT_LOG_MAX_BUFFER = 10 * 1024 * 1024;
  */
 export async function prefetchGitCoChangeData(projectRoot: string): Promise<string[][] | null> {
   try {
-    const log = await gitTrimmed(
+    const log = (await gitStdout(
       projectRoot,
       ['log', `--pretty=format:---COMMIT---`, '--name-only', `-${COMMIT_COUNT}`],
       GIT_LOG_MAX_BUFFER,
-    );
+    )).trim();
     return log
       .split('---COMMIT---')
       .filter(Boolean)

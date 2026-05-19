@@ -7,14 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GraphDatabase } from '../graphDatabase';
 import { gitCoChangePass, prefetchGitCoChangeData } from './gitCoChangePass';
 
-// ─── Mock gitTrimmed ──────────────────────────────────────────────────────────
+// ─── Mock gitStdout ───────────────────────────────────────────────────────────
 
-vi.mock('../../ipc-handlers/gitOperations', () => ({
-  gitTrimmed: vi.fn(),
+vi.mock('../../util/gitExec', () => ({
+  gitStdout: vi.fn(),
 }));
 
-import { gitTrimmed } from '../../ipc-handlers/gitOperations';
-const mockGitTrimmed = vi.mocked(gitTrimmed);
+import { gitStdout } from '../../util/gitExec';
+const mockGitStdout = vi.mocked(gitStdout);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ function makeLog(...commits: string[][]): string {
 
 describe('prefetchGitCoChangeData', () => {
   it('returns parsed commit-to-files arrays on success', async () => {
-    mockGitTrimmed.mockResolvedValueOnce(makeLog(['src/a.ts', 'src/b.ts'], ['src/c.ts']));
+    mockGitStdout.mockResolvedValueOnce(makeLog(['src/a.ts', 'src/b.ts'], ['src/c.ts']));
     const result = await prefetchGitCoChangeData('/repo');
     expect(result).toHaveLength(2);
     expect(result![0]).toEqual(['src/a.ts', 'src/b.ts']);
@@ -39,13 +39,13 @@ describe('prefetchGitCoChangeData', () => {
   });
 
   it('returns null when git throws', async () => {
-    mockGitTrimmed.mockRejectedValueOnce(new Error('not a git repo'));
+    mockGitStdout.mockRejectedValueOnce(new Error('not a git repo'));
     const result = await prefetchGitCoChangeData('/repo');
     expect(result).toBeNull();
   });
 
   it('filters empty blocks from git output', async () => {
-    mockGitTrimmed.mockResolvedValueOnce('---COMMIT---\n\n---COMMIT---\nsrc/a.ts\n');
+    mockGitStdout.mockResolvedValueOnce('---COMMIT---\n\n---COMMIT---\nsrc/a.ts\n');
     const result = await prefetchGitCoChangeData('/repo');
     // Empty block produces empty array that still passes filter(Boolean) on split result
     // but inner filter(Boolean) removes empty lines — empty arrays are included

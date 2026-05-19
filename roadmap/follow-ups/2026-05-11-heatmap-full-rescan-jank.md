@@ -1,5 +1,5 @@
 ---
-status: WONTFIX
+status: OPEN
 created: 2026-05-11
 updated: 2026-05-11
 ---
@@ -46,7 +46,3 @@ Low-medium. Heat-map is informational; the jank is annoying but doesn't break fu
 
 
 ---
-
-## Resolution: WONTFIX (2026-05-20)
-
-Closed during 2026-05-20 triage sweep. Tied to in-IDE chat surface, which is being retired in favor of terminal-driven design (`claude -p` moved from OAuth/Max subscription coverage to API pricing). The auto-injection / swipe / heat-map-event paths all depend on the chat surface being active. Terminal-driven UI (Wave 89+) is the replacement.
