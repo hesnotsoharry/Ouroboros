@@ -47,7 +47,7 @@ function RightPaneHeader({ onClose }: { onClose: () => void }): React.ReactEleme
       <button
         type="button"
         onClick={onClose}
-        className="flex h-6 w-6 items-center justify-center rounded text-text-semantic-muted transition-colors hover:bg-surface-hover hover:text-text-semantic-primary"
+        className="flex h-6 w-6 items-center justify-center rounded text-text-semantic-muted transition-colors hover:bg-surface-hover hover:text-text-semantic-primary" /* touch-target-ok — workbench utility drawer is desktop-only */
         title="Close pane"
         aria-label="Close pane"
         data-testid="workbench-right-pane-close"
