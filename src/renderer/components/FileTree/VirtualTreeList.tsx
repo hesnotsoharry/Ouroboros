@@ -214,7 +214,7 @@ function logHeatLookup(
   heatMapEnabled: boolean,
 ): void {
   if (!heatMapEnabled) return;
-  log.info('[heat-map] row lookup', { lookupKey, found: heatData !== undefined, rowCount });
+  log.debug('[heat-map] row lookup', { lookupKey, found: heatData !== undefined, rowCount });
 }
 
 function VirtualRow({ item, index, ...p }: VirtualRowProps): React.ReactElement {

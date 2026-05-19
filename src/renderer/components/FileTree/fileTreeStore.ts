@@ -169,7 +169,9 @@ const INITIAL_STATE = {
   dirtyFiles: new Set(),
   nestingEnabled: false,
   nestExpandedPaths: new Set(),
-  heatMapEnabled: true,
+  // HEAT-MAP DISABLED — path extraction broken, flooding logs at info level.
+  // See roadmap/bugs/2026-05-20-heat-map-info-spam-and-path-extraction-broken.md
+  heatMapEnabled: false,
 };
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -199,7 +201,8 @@ export const useFileTreeStore = create<FileTreeState>()(
       filter: state.filter,
       bookmarks: state.bookmarks,
       nestingEnabled: state.nestingEnabled,
-      heatMapEnabled: state.heatMapEnabled,
+      // heatMapEnabled intentionally NOT persisted while the feature is gated off.
+      // Re-add when the bug is fixed: roadmap/bugs/2026-05-20-heat-map-info-spam-and-path-extraction-broken.md
     }),
     storage: {
       getItem: (name) => {
