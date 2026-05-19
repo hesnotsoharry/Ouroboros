@@ -31,11 +31,11 @@ const ROOT = resolve(__dirname, '..');
 const HASHES = {
   'addon-webgl.mjs': {
     original: '5ac2cbbb8a861ba99176eda0ee91f10c08de32d091e3488edf699ad111131ebb',
-    patched: '24c898702a41ad3482ac53c8dce1b9221d168ff8c0b1bc9599acd6965bb0aea3',
+    patched: '7b8f37ed14e621b036705abf9c61d444977e6c6181af92c538ce4646ce395fff',
   },
   'addon-webgl.js': {
     original: 'b85f8d4b3e9756bebb757e3fe47134d70f03ea3d6b187624426d2e2b65dec06c',
-    patched: '4ce91f2a99b9446ccf53edf29e3c167feeec9374d90e551741b3fab86dcd9193',
+    patched: 'd04ed8e0f21c3fd54885387947bf9ab5b91a85c2187d4cf90dd400f5dc7d87e9',
   },
 };
 
@@ -91,12 +91,15 @@ function applyMjsVersionAndRetry(src) {
   out = sub(out, 'function Di(i,e,t,n){',
     'ot.nextVersion=0;function Di(i,e,t,n){', '2f static [mjs]');
   // 3. renderRows retry loop
+  // NOTE: The ternary is inside a comma expression — cannot inject statements
+  // directly. Wrap the retry loop in an IIFE so it fits as the next comma item.
   const RR_OLD =
     'this._glyphRenderer.value.beginFrame()?(this._clearModel(!0),this._updateModel(0,this._terminal.rows-1)):this._updateModel(t,n)';
-  const RR_SUFFIX =
-    ';let $r=0;while(this._charAtlas&&this._glyphRenderer.value.beginFrame()&&$r++<3)' +
-    '{this._clearModel(!0);this._updateModel(0,this._terminal.rows-1)}';
-  return sub(out, RR_OLD, RR_OLD + RR_SUFFIX, '3 renderRows [mjs]');
+  const RR_NEW =
+    'this._glyphRenderer.value.beginFrame()?(this._clearModel(!0),this._updateModel(0,this._terminal.rows-1)):this._updateModel(t,n),' +
+    '(()=>{let $r=0;while(this._charAtlas&&this._glyphRenderer.value.beginFrame()&&$r++<3)' +
+    '{this._clearModel(!0);this._updateModel(0,this._terminal.rows-1)}})()';
+  return sub(out, RR_OLD, RR_NEW, '3 renderRows [mjs]');
 }
 
 /**
@@ -127,12 +130,14 @@ function applyJsVersionAndRetry(src) {
   out = sub(out, 'function m(e,t,i,s){const n=t.rgba',
     'g.nextVersion=0;function m(e,t,i,s){const n=t.rgba', '2f static [js]');
   // 3. renderRows retry loop (CJS uses params e,t instead of t,n)
+  // NOTE: Same IIFE injection as MJS — ternary is inside a comma expression.
   const RR_OLD =
     'this._glyphRenderer.value.beginFrame()?(this._clearModel(!0),this._updateModel(0,this._terminal.rows-1)):this._updateModel(e,t)';
-  const RR_SUFFIX =
-    ';let $r=0;while(this._charAtlas&&this._glyphRenderer.value.beginFrame()&&$r++<3)' +
-    '{this._clearModel(!0);this._updateModel(0,this._terminal.rows-1)}';
-  return sub(out, RR_OLD, RR_OLD + RR_SUFFIX, '3 renderRows [js]');
+  const RR_NEW =
+    'this._glyphRenderer.value.beginFrame()?(this._clearModel(!0),this._updateModel(0,this._terminal.rows-1)):this._updateModel(e,t),' +
+    '(()=>{let $r=0;while(this._charAtlas&&this._glyphRenderer.value.beginFrame()&&$r++<3)' +
+    '{this._clearModel(!0);this._updateModel(0,this._terminal.rows-1)}})()';
+  return sub(out, RR_OLD, RR_NEW, '3 renderRows [js]');
 }
 
 function patchMjs(src) {
