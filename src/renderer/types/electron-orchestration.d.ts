@@ -2,7 +2,7 @@ import type {
   OrchestrationAPI as MainOrchestrationAPI,
   OrchestrationEvent,
   TaskResult,
-} from '../../main/orchestration/types';
+} from '@shared/types/orchestration';
 
 export type {
   ContextBudgetConstraints,
@@ -63,7 +63,7 @@ export type {
   VerificationStepKind,
   VerificationSummary,
   WorkspaceRootFact,
-} from '../../main/orchestration/types';
+} from '@shared/types/orchestration';
 
 export interface OrchestrationAPI extends MainOrchestrationAPI {
   onTaskResult: (callback: (result: TaskResult) => void) => () => void;
