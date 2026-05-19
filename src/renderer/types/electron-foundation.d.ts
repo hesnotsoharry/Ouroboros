@@ -1,7 +1,10 @@
 import type { AgentChatSettings } from '@shared/types/agentChat';
+import type { ClaudeCliSettings, CodexCliSettings } from '@shared/types/configSlices';
 
 import type { ClaudeMdSettings } from './electron-claude-md';
 import type { ContextLayerConfig, PlatformConfig } from './electron-config-slices';
+
+export type { ClaudeCliSettings, CodexCliSettings } from '@shared/types/configSlices';
 
 export type AppTheme =
   | 'retro'
@@ -14,35 +17,6 @@ export type AppTheme =
   | 'high-contrast'
   | 'custom'
   | (string & {});
-
-export interface ClaudeCliSettings {
-  permissionMode: string;
-  model: string;
-  effort: string;
-  appendSystemPrompt: string;
-  verbose: boolean;
-  maxBudgetUsd: number;
-  allowedTools: string;
-  disallowedTools: string;
-  addDirs: string[];
-  chrome: boolean;
-  worktree: boolean;
-  dangerouslySkipPermissions: boolean;
-  useWarmProcess: boolean;
-  enableTerminalDiffReview: boolean;
-}
-
-export interface CodexCliSettings {
-  model: string;
-  reasoningEffort: string;
-  sandbox: 'read-only' | 'workspace-write' | 'danger-full-access';
-  approvalPolicy: 'untrusted' | 'on-request' | 'never';
-  profile: string;
-  addDirs: string[];
-  search: boolean;
-  skipGitRepoCheck: boolean;
-  dangerouslyBypassApprovalsAndSandbox: boolean;
-}
 
 export interface CodexModelOption {
   id: string;
