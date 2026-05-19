@@ -246,8 +246,7 @@ function resolveIndexReason(
   if (gcPrunedNames.includes(projectName)) return 'post-gc';
   const hashOk = db.verifyCatalogHash(projectName);
   if (!hashOk) {
-    // DIAGNOSTIC (H1) — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
-    log.info('[mem-probe:catalog] hash mismatch — triggering full rebuild', { projectName });
+    log.info('[system2] catalog hash mismatch, triggering full rebuild', { projectName });
     return 'hash-mismatch';
   }
   if (db.getNodeCount(projectName) === 0) return 'first-launch';

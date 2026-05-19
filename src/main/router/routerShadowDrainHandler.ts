@@ -110,14 +110,6 @@ export function computeWeightsVersion(weightsPath: string | null): string {
 // Live-record set (sessionIds with a session-time router-decisions entry)
 // ---------------------------------------------------------------------------
 
-// DIAGNOSTIC — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
-let _routerShadowLiveSet: Set<string> | null = null;
-
-/** Return the live dedup Set size for mem-probe diagnostics (H2). Read-only. */
-// DIAGNOSTIC — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
-export function getRouterShadowDedupSize(): number {
-  return _routerShadowLiveSet?.size ?? 0;
-}
 
 interface LiveEntry {
   sessionId?: unknown;
@@ -227,8 +219,6 @@ export function createRouterShadowHandler(deps: RouterShadowHandlerDeps) {
 export function registerRouterShadowHandler(): void {
   const decisionsPath = resolveDecisionsPath();
   const liveSessionIds = decisionsPath ? readLiveSessionIds(decisionsPath) : new Set<string>();
-  // DIAGNOSTIC — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
-  _routerShadowLiveSet = liveSessionIds;
   const weightsVersion = computeWeightsVersion(resolveWeightsPath());
   log.info('[router-shadow-drain] handler registered', {
     liveSessions: liveSessionIds.size,

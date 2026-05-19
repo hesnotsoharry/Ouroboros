@@ -126,27 +126,6 @@ export function verifyCatalogHash(db: Database.Database, projectName: string): b
   return computeCatalogHash(rows) === row.value;
 }
 
-/**
- * Return both the stored and recomputed catalog hashes for diagnostic logging.
- * DIAGNOSTIC — see roadmap/bugs/2026-05-20-packaged-ram-leak.md. Remove when leak is resolved.
- */
-export function getCatalogHashPair(
-  db: Database.Database,
-  projectName: string,
-): { stored: string | null; recomputed: string } {
-  const row = db
-    .prepare('SELECT value FROM graph_metadata WHERE key = ?')
-    .get(`catalog_hash:${projectName}`) as { value: string } | undefined;
-  const fileRows = db.prepare(CATALOG_HASH_SQL).all(projectName) as Array<{
-    rel_path: string;
-    content_hash: string;
-  }>;
-  return {
-    stored: row?.value ?? null,
-    recomputed: computeCatalogHash(fileRows),
-  };
-}
-
 /** Delete file_hashes and project rows; return counts of orphaned nodes and edges. */
 export function pruneProject(
   db: Database.Database,
