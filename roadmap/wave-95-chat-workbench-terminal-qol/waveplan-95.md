@@ -1,7 +1,7 @@
 ---
-status: PLANNED
+status: SHIPPED
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-19
 wave: 95
 slug: chat-workbench-terminal-qol
 tag: v2.19.1

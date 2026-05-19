@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.1] - 2026-05-19
+
+### Added
+- **Wave 95 — Chat-Workbench Terminal Quality-of-Life.** Fix-sweep wave bundling 7 work phases (B/A/C/D/E/H/G + Path 1 extension). Polishes the terminal-first chat workbench surfaced by Wave 94 and consolidates the diff-review surface. Full story in `roadmap/wave-95-chat-workbench-terminal-qol/wave-95-result.md`.
+  - **Terminal scrollback config** (Phase B). `terminal.scrollback` config key (default 50000, min 1000, max 100000); plumbed from electron-store through `useTerminalConfig` to xterm's `scrollback` option. Long Claude TUI streams no longer lose history mid-session.
+  - **Terminal tab rename** (Phase A). Double-click a dock-slot tab title OR right-click an inner-rail row to rename. `userRenamed: boolean` flag on `SessionTabRef` persists the rename; subsequent PTY `titleChange` events are suppressed via a wrapping `buildTitleChangeHandler` in `useProjectTerminals.SlotHandle`. New shared `InlineTitleEdit` primitive (Enter/blur commits if non-empty AND differs; Escape always cancels). Wave-wide consistency.
+  - **Ghost-cursor fix** (Phase C). Local postinstall patcher (`tools/apply-patches.mjs`) applies the fix from upstream `xtermjs/xterm.js#5883` (atlas page-merge corruption) to the minified `@xterm/addon-webgl@0.19.0` bundle. SHA-256 idempotency guard; original + patched snapshots in `patches/`. Removal flow documented at `patches/README.md` — bump to `^0.19.1` once upstream ships.
+  - **Claude TUI rendering** (Phase D). `buildXtermTheme()` now reads `--palette-term-bg` (opaque `#0c0c0e`) instead of `--term-bg` (forced transparent by the glass theme bridge). Claude TUI fill cells (status panel boxes, bordered regions) render with correct dark-panel backgrounds. Glass aesthetic preserved on chrome surfaces. `[trace:osc]` baseline instrumentation added to OSC 10/11/12 handlers.
+  - **Tinted-glass canvas opt-in** (Phase D extension). New `--terminal-canvas-opacity` CSS var (default `1`). Themes may override to `0.85-0.95` for a faint glass effect over the opaque canvas. xterm.js fundamentally can't do per-cell selective transparency (`xtermjs/xterm.js#1004`, unresolved since 2018), so this CSS-opacity approach matches Warp / Hyper conventions.
+  - **Secondary dock slot hides when empty** (Phase E). When `collapsed && !hasSessions`, the secondary `DockSlot` no longer renders (was: 28px chrome bar bug from Wave 89 polish). Distinct "▼ Show slot" bordered button appears on the primary slot's header to summon it back. `useSecondarySlotVisible` predicate reads `useProjectTerminalsContext` session count.
+  - **Dock-slot ResizeObserver fill** (Phase E hardening, pre-existing Wave 89 bug). `useSectionHeight` measures the actual dock section height via `ResizeObserver`; `computeSlotDisplayHeights` ratios scale to that height instead of the stale `sizes.terminal` IDE-shell value. Dock slots now sum to the section height — no leftover empty space below the secondary.
+  - **Diff-review surface consolidation** (Phase H, RESHAPED). Removed `ChatWorkbenchArtifactPane` entirely + the utility-drawer `review` tab. Single surviving surface: `ChatOnlyDiffOverlay` (full-screen, user-summoned via the status-bar `DiffButton`). Auto-open wiring on `useWorkbenchSurfacePolicy` removed. Net: -1094 lines, 4 files deleted. The "constantly experiencing pop ups while using the app" pain is resolved.
+  - **Multi-project diff state** (Phase G, RESHAPED). `DiffReviewState` now holds an array of `ProjectReview` entries keyed by `projectRoot`. Reducer OPEN merges (same project replaces, new project prepends) instead of clobbering. `FileListSidebar` renders collapsible per-project groups (`▼ <project-name> (N files)`) with per-group expanded state. New `CLOSE_PROJECT(projectRoot)` action; `SET_ACTIVE_PROJECT` for cross-group navigation. All hunk/file actions accept `projectRoot` as first parameter. `usePendingDiffCount` sums across all projects. Concurrent Claude edits from different terminals (in-IDE or external) now accumulate visibly grouped instead of clobbering each other.
+
+### Changed
+- **`@xterm/addon-webgl` bundle patched at install time** via `tools/apply-patches.mjs` (postinstall script chain). Self-contained, no new deps, no lockfile-sync required.
+- **`buildXtermTheme()` background source** swapped from `--term-bg` (transparent) to `--palette-term-bg` (opaque). Glass theme bridge unchanged — only the xterm canvas reads the opaque variant.
+- **Diff-review state shape** is now multi-project (`{ projects: ProjectReview[]; activeProjectRoot } | null`). Single-project consumers (status-bar count, workbench timeline, editor hunk decorations) updated to iterate across projects. All Phase G's reducer/action changes preserve the Wave 94 Phase E `openReview` signature contract — boundary acceptance test still passes 5/5 unchanged.
+- **Default scrollback for new terminal sessions** bumped from 1000 (xterm.js default) → 50000. ~50 MB per terminal at default, documented in `Terminal/CLAUDE.md`.
+- **`useWorkbenchSurfacePolicy`** no longer accepts `diffKey`; the auto-open useEffect for the utility drawer's review tab is removed. Approval and subagent-panel auto-open effects unchanged.
+- **`ChatWorkbenchUtilityTab` type** narrowed from `'activity' | 'approvals' | 'rules' | 'monitor' | 'review'` → `'activity' | 'approvals' | 'rules' | 'monitor'`. Persistence migration: stored `'review'` values fall back to `'activity'`.
+
+### Architecture decisions (per `roadmap/wave-95-chat-workbench-terminal-qol/wave-95-decisions.md`)
+- D1: PTY titleChange precedence — permanent stick (industry standard).
+- D2: Default scrollback — 50000 lines.
+- D3: Ghost-cursor fix — keep WebGL, vendor PR #5883 via postinstall patcher.
+- D4: TUI render correctness — opaque canvas via `--palette-term-bg`; OSC 11 read-allow deferred.
+- D5: Secondary slot collapsed-empty — Option B (hide entirely + show-slot affordance), preceded by Lane B mini-investigation that confirmed the regression.
+
 ## [2.19.0] - 2026-05-18
 
 ### Added
