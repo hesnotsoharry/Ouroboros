@@ -4,6 +4,9 @@
  *
  * Exported helpers (`buildHunkDecorations`, `findHunkAtLine`) are pure so they
  * can be tested without a real editor instance.
+ *
+ * Wave 95 Phase G: updated to find files across multi-project state and
+ * pass projectRoot to acceptHunk/rejectHunk.
  */
 import * as monaco from 'monaco-editor';
 import { type MutableRefObject, useEffect, useMemo, useRef } from 'react';
@@ -22,6 +25,8 @@ export interface HunkDecoration {
   anchorLine: number;
   fileIdx: number;
   hunkIdx: number;
+  /** Project that owns this file — needed for projectRoot-scoped action calls. */
+  projectRoot: string;
 }
 
 export interface UseEditorHunkDecorationsResult {
@@ -37,7 +42,7 @@ export function buildHunkDecorations(hunks: ReviewHunk[]): HunkDecoration[] {
   for (let i = 0; i < hunks.length; i += 1) {
     const hunk = hunks[i];
     if (!hunk || hunk.decision !== 'pending') continue;
-    result.push({ hunk, anchorLine: hunk.newStart, fileIdx: 0, hunkIdx: i });
+    result.push({ hunk, anchorLine: hunk.newStart, fileIdx: 0, hunkIdx: i, projectRoot: '' });
   }
   return result;
 }
@@ -56,12 +61,12 @@ export function findHunkAtLine(decs: HunkDecoration[], line: number): HunkDecora
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-function buildForFile(hunks: ReviewHunk[], fileIdx: number): HunkDecoration[] {
+function buildForFile(hunks: ReviewHunk[], fileIdx: number, projectRoot: string): HunkDecoration[] {
   const result: HunkDecoration[] = [];
   for (let i = 0; i < hunks.length; i += 1) {
     const hunk = hunks[i];
     if (!hunk || hunk.decision !== 'pending') continue;
-    result.push({ hunk, anchorLine: hunk.newStart, fileIdx, hunkIdx: i });
+    result.push({ hunk, anchorLine: hunk.newStart, fileIdx, hunkIdx: i, projectRoot });
   }
   return result;
 }
@@ -94,12 +99,30 @@ function bindKeyboard(
       },
     });
   return [
-    run(monaco.KeyCode.KeyY, (d) => review.acceptHunk(d.fileIdx, d.hunkIdx)),
-    run(monaco.KeyCode.KeyN, (d) => review.rejectHunk(d.fileIdx, d.hunkIdx)),
+    run(monaco.KeyCode.KeyY, (d) => review.acceptHunk(d.projectRoot, d.fileIdx, d.hunkIdx)),
+    run(monaco.KeyCode.KeyN, (d) => review.rejectHunk(d.projectRoot, d.fileIdx, d.hunkIdx)),
   ];
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
+
+interface FileLocation {
+  fileIdx: number;
+  projectRoot: string;
+  project: { files: { hunks: ReviewHunk[] }[] };
+}
+
+function findFileLocation(
+  state: ReturnType<typeof useDiffReview>['state'],
+  filePath: string,
+): FileLocation | null {
+  if (!state) return null;
+  for (const project of state.projects) {
+    const idx = project.files.findIndex((f) => f.filePath === filePath);
+    if (idx >= 0) return { fileIdx: idx, projectRoot: project.projectRoot, project };
+  }
+  return null;
+}
 
 export function useEditorHunkDecorations(
   editorRef: MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>,
@@ -108,24 +131,27 @@ export function useEditorHunkDecorations(
   const diffReview = useDiffReview();
   const idsRef = useRef<string[]>([]);
   const decsRef = useRef<HunkDecoration[]>([]);
-
   const state = diffReview.state;
-  const fileIdx = state?.files.findIndex((f) => f.filePath === filePath) ?? -1;
+
+  const fileLocation = useMemo(() => findFileLocation(state, filePath), [filePath, state]);
   const hunks = useMemo(
-    () => (fileIdx >= 0 ? (state?.files[fileIdx]?.hunks ?? []) : []),
-    [fileIdx, state?.files],
+    () => (fileLocation ? (fileLocation.project.files[fileLocation.fileIdx]?.hunks ?? []) : []),
+    [fileLocation],
   );
   const editor = editorRef.current;
 
   useEffect(() => {
     if (!editor) return;
-    const decs = hunks.length > 0 && fileIdx >= 0 ? buildForFile(hunks, fileIdx) : [];
+    const decs =
+      hunks.length > 0 && fileLocation
+        ? buildForFile(hunks, fileLocation.fileIdx, fileLocation.projectRoot)
+        : [];
     decsRef.current = decs;
     idsRef.current = editor.deltaDecorations(idsRef.current, toMonacoDecs(decs));
     return () => {
       idsRef.current = editor.deltaDecorations(idsRef.current, []);
     };
-  }, [editor, fileIdx, hunks]);
+  }, [editor, fileLocation, hunks]);
 
   useEffect(() => {
     if (!editor) return;

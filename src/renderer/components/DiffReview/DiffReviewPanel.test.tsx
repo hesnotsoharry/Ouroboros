@@ -36,15 +36,21 @@ vi.mock('./useDiffReviewKeyboard', () => ({
 
 function makeState(overrides: Partial<DiffReviewState> = {}): DiffReviewState {
   return {
-    sessionId: 's1',
-    snapshotHash: 'abc',
-    projectRoot: '/proj',
-    files: [],
-    loading: false,
-    error: null,
-    lastAcceptedBatch: null,
-    staleFiles: [],
-    stalePendingOp: null,
+    activeProjectRoot: '/proj',
+    projects: [
+      {
+        projectRoot: '/proj',
+        projectLabel: 'proj',
+        sessionId: 's1',
+        snapshotHash: 'abc',
+        files: [],
+        loading: false,
+        error: null,
+        lastAcceptedBatch: null,
+        staleFiles: [],
+        stalePendingOp: null,
+      },
+    ],
     ...overrides,
   };
 }
@@ -64,6 +70,8 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof DiffReviewP
     onRejectAll: noop,
     onRollback: noop,
     onClose: noop,
+    onCloseProject: noop,
+    onSetActiveProject: noop,
     ...overrides,
   };
 }

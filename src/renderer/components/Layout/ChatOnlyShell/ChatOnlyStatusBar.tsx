@@ -72,7 +72,10 @@ export interface ChatOnlyStatusBarProps {
 function usePendingDiffCount(): number {
   const { state } = useDiffReview();
   if (!state) return 0;
-  return state.files.filter((f) => f.hunks.some((h) => h.decision === 'pending')).length;
+  return state.projects.reduce(
+    (sum, p) => sum + p.files.filter((f) => f.hunks.some((h) => h.decision === 'pending')).length,
+    0,
+  );
 }
 
 export function ChatOnlyStatusBar({

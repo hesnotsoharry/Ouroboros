@@ -1,20 +1,21 @@
 <!-- claude-md-auto:start -->
+
 # DiffReview — Per-Hunk Accept/Reject UI for Agent Diffs
 
 Presents a code review interface for agent-generated changes: users can accept (stage) or reject (revert) individual hunks or entire files before committing.
 
 ## Key Files
 
-| File | Role |
-|---|---|
-| `types.ts` | Domain types: `HunkDecision` (`pending`/`accepted`/`rejected`), `ReviewHunk`, `ReviewFile`, `DiffReviewState` |
-| `DiffReviewManager.tsx` | Context provider (`DiffReviewProvider`) + `useDiffReview()` hook — mounts above the panel in the tree |
-| `diffReviewState.ts` | All state logic: reducer, action types, three action-hook groups, IPC calls |
-| `DiffReviewPanel.tsx` | Stateful shell — owns `selectedFileIdx`, `fileRefs` map, scroll-on-select effect, delegates to layout |
-| `DiffReviewPanelState.tsx` | Pure helpers: `getDiffReviewStats()` and `getDiffReviewStateView()` (loading/error/empty renders) |
-| `DiffReviewPanelSections.tsx` | Layout tree: `DiffReviewLayout` → header + body → sidebar + hunk list |
-| `FileListSidebar.tsx` | Left sidebar — file list with status badges, hunk progress, quick accept/reject per file |
-| `HunkView.tsx` | Single hunk renderer — dual gutter (left/right line numbers), diff lines, accept/reject actions |
+| File                          | Role                                                                                                          |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `types.ts`                    | Domain types: `HunkDecision` (`pending`/`accepted`/`rejected`), `ReviewHunk`, `ReviewFile`, `DiffReviewState` |
+| `DiffReviewManager.tsx`       | Context provider (`DiffReviewProvider`) + `useDiffReview()` hook — mounts above the panel in the tree         |
+| `diffReviewState.ts`          | All state logic: reducer, action types, three action-hook groups, IPC calls                                   |
+| `DiffReviewPanel.tsx`         | Stateful shell — owns `selectedFileIdx`, `fileRefs` map, scroll-on-select effect, delegates to layout         |
+| `DiffReviewPanelState.tsx`    | Pure helpers: `getDiffReviewStats()` and `getDiffReviewStateView()` (loading/error/empty renders)             |
+| `DiffReviewPanelSections.tsx` | Layout tree: `DiffReviewLayout` → header + body → sidebar + hunk list                                         |
+| `FileListSidebar.tsx`         | Left sidebar — file list with status badges, hunk progress, quick accept/reject per file                      |
+| `HunkView.tsx`                | Single hunk renderer — dual gutter (left/right line numbers), diff lines, accept/reject actions               |
 
 ## Component Tree
 
@@ -33,11 +34,11 @@ DiffReviewProvider (context)
 
 `diffReviewReducer` takes `DiffReviewState | null` — **null is the closed state**, not an error. Initial `useReducer` state is `null`. The reducer splits across three exported hook groups to avoid one massive hook:
 
-| Hook | Actions |
-|---|---|
-| `useReviewLifecycleActions` | `openReview`, `closeReview` |
-| `useSingleHunkActions` | `acceptHunk`, `rejectHunk` |
-| `useBulkReviewActions` | `acceptAllFile`, `rejectAllFile`, `acceptAll`, `rejectAll` |
+| Hook                        | Actions                                                    |
+| --------------------------- | ---------------------------------------------------------- |
+| `useReviewLifecycleActions` | `openReview`, `closeReview`                                |
+| `useSingleHunkActions`      | `acceptHunk`, `rejectHunk`                                 |
+| `useBulkReviewActions`      | `acceptAllFile`, `rejectAllFile`, `acceptAll`, `rejectAll` |
 
 `DiffReviewManager` assembles all three into a single context value. All action callbacks close over `state` — they **must** be rebuilt when state changes (all are `useCallback` with `[dispatch, state]` deps).
 
@@ -80,6 +81,7 @@ All three return `{ success: boolean; error?: string }`. Type source: `src/rende
 <!-- claude-md-auto:end -->
 
 <!-- claude-md-manual:preserved -->
+
 # DiffReview — Per-Hunk Accept/Reject UI for Agent Diffs
 
 Presents a code review interface for agent-generated changes: users can accept (stage) or reject (revert) individual hunks or entire files before committing.

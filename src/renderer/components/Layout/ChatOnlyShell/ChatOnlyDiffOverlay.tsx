@@ -99,8 +99,14 @@ function OverlayDialog({
   handleClose,
 }: Omit<OverlayContentProps, 'handleBackdrop'>): React.ReactElement {
   return (
-    <div ref={containerRef} role="dialog" aria-modal="true" aria-label="Diff review" tabIndex={-1}
-      className="flex flex-col w-full h-full bg-surface-base" data-testid="diff-overlay"
+    <div
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Diff review"
+      tabIndex={-1}
+      className="flex flex-col w-full h-full bg-surface-base"
+      data-testid="diff-overlay"
     >
       <DiffReviewPanel
         state={diffReview.state!}
@@ -114,6 +120,8 @@ function OverlayDialog({
         onRejectAll={diffReview.rejectAll}
         onRollback={diffReview.rollback}
         onClose={handleClose}
+        onCloseProject={diffReview.closeProjectReview}
+        onSetActiveProject={diffReview.setActiveProject}
         onConfirmStaleOp={diffReview.confirmStaleOp}
         onDismissStaleOp={diffReview.dismissStaleOp}
       />
@@ -121,11 +129,24 @@ function OverlayDialog({
   );
 }
 
-function OverlayContent({ containerRef, diffReview, handleClose, handleBackdrop }: OverlayContentProps): React.ReactElement {
+function OverlayContent({
+  containerRef,
+  diffReview,
+  handleClose,
+  handleBackdrop,
+}: OverlayContentProps): React.ReactElement {
   if (!diffReview.state) return <></>;
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" data-testid="diff-overlay-backdrop" onClick={handleBackdrop}>
-      <OverlayDialog containerRef={containerRef} diffReview={diffReview} handleClose={handleClose} />
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      data-testid="diff-overlay-backdrop"
+      onClick={handleBackdrop}
+    >
+      <OverlayDialog
+        containerRef={containerRef}
+        diffReview={diffReview}
+        handleClose={handleClose}
+      />
     </div>
   );
 }

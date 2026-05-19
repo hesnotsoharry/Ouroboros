@@ -1,7 +1,8 @@
 import log from 'electron-log/renderer';
+import type { Dispatch } from 'react';
 import React, { createContext, useCallback, useContext, useMemo, useReducer, useRef } from 'react';
 
-import type { DiffReviewActions } from './diffReviewState';
+import type { DiffReviewAction, DiffReviewActions } from './diffReviewState';
 import {
   diffReviewReducer,
   useBulkReviewActions,
@@ -44,13 +45,16 @@ function useCheckpointGuard(state: DiffReviewState | null): () => Promise<void> 
     firedRef.current = true;
     const cfgResult = await window.electronAPI.config.get('autoCheckpoint').catch(() => null);
     if (cfgResult === false) return;
-    const fileNames = state.files
+    // Checkpoint against the active project
+    const active = state.projects.find((p) => p.projectRoot === state.activeProjectRoot);
+    if (!active) return;
+    const fileNames = active.files
       .map((f) => f.relativePath)
       .slice(0, 3)
       .join(', ');
-    const suffix = state.files.length > 3 ? ` (+${state.files.length - 3} more)` : '';
+    const suffix = active.files.length > 3 ? ` (+${active.files.length - 3} more)` : '';
     const msg = `before applying changes to ${fileNames}${suffix}`;
-    await window.electronAPI.git.checkpoint(state.projectRoot, msg).catch((err) => {
+    await window.electronAPI.git.checkpoint(active.projectRoot, msg).catch((err) => {
       log.warn('[checkpoint] failed (non-blocking):', err);
     });
   }, [state]);
@@ -61,29 +65,46 @@ function useWrappedAcceptActions(
   checkpoint: () => Promise<void>,
 ): Pick<DiffReviewActions, 'acceptHunk' | 'acceptAllFile' | 'acceptAll'> {
   const acceptHunk = useCallback(
-    (fileIdx: number, hunkIdx: number) => {
-      void checkpoint().then(() => base.acceptHunk(fileIdx, hunkIdx));
+    (projectRoot: string, fileIdx: number, hunkIdx: number) => {
+      void checkpoint().then(() => base.acceptHunk(projectRoot, fileIdx, hunkIdx));
     },
     [checkpoint, base],
   );
   const acceptAllFile = useCallback(
-    (fileIdx: number) => {
-      void checkpoint().then(() => base.acceptAllFile(fileIdx));
+    (projectRoot: string, fileIdx: number) => {
+      void checkpoint().then(() => base.acceptAllFile(projectRoot, fileIdx));
     },
     [checkpoint, base],
   );
-  const acceptAll = useCallback(() => {
-    void checkpoint().then(() => base.acceptAll());
-  }, [checkpoint, base]);
+  const acceptAll = useCallback(
+    (projectRoot: string) => {
+      void checkpoint().then(() => base.acceptAll(projectRoot));
+    },
+    [checkpoint, base],
+  );
   return { acceptHunk, acceptAllFile, acceptAll };
 }
 
-function useDiffReviewContextValue(): DiffReviewContextValue {
-  const [state, dispatch] = useReducer(diffReviewReducer, null);
-  const { openReview, closeReview } = useReviewLifecycleActions(dispatch);
+type ReviewDispatch = Dispatch<DiffReviewAction>;
+
+interface AllActions extends DiffReviewActions {
+  canRollback: boolean;
+  confirmStaleOp: () => void;
+  dismissStaleOp: () => void;
+}
+
+function useAllActions(
+  state: ReturnType<typeof diffReviewReducer>,
+  dispatch: ReviewDispatch,
+): AllActions {
+  const lifecycle = useReviewLifecycleActions(dispatch);
   const { acceptHunk: baseAcceptHunk, rejectHunk } = useSingleHunkActions(state, dispatch);
-  const { acceptAllFile: baseAcceptAllFile, rejectAllFile, acceptAll: baseAcceptAll, rejectAll } =
-    useBulkReviewActions(state, dispatch);
+  const {
+    acceptAllFile: baseAcceptAllFile,
+    rejectAllFile,
+    acceptAll: baseAcceptAll,
+    rejectAll,
+  } = useBulkReviewActions(state, dispatch);
   const { acceptHunk, acceptAllFile, acceptAll } = useWrappedAcceptActions(
     { acceptHunk: baseAcceptHunk, acceptAllFile: baseAcceptAllFile, acceptAll: baseAcceptAll },
     useCheckpointGuard(state),
@@ -91,12 +112,25 @@ function useDiffReviewContextValue(): DiffReviewContextValue {
   const { canRollback, rollback } = useRollbackAction(state, dispatch);
   const { confirmStaleOp, dismissStaleOp } = useConfirmStaleOp(state, dispatch);
   useStaleFileWatcher(state, dispatch);
-  return useMemo<DiffReviewContextValue>(
-    () => ({ state, openReview, closeReview, acceptHunk, rejectHunk, acceptAllFile,
-      rejectAllFile, acceptAll, rejectAll, canRollback, rollback, confirmStaleOp, dismissStaleOp }),
-    [state, openReview, closeReview, acceptHunk, rejectHunk, acceptAllFile,
-      rejectAllFile, acceptAll, rejectAll, canRollback, rollback, confirmStaleOp, dismissStaleOp],
-  );
+  return {
+    ...lifecycle,
+    acceptHunk,
+    rejectHunk,
+    acceptAllFile,
+    rejectAllFile,
+    acceptAll,
+    rejectAll,
+    canRollback,
+    rollback,
+    confirmStaleOp,
+    dismissStaleOp,
+  };
+}
+
+function useDiffReviewContextValue(): DiffReviewContextValue {
+  const [state, dispatch] = useReducer(diffReviewReducer, null);
+  const actions = useAllActions(state, dispatch);
+  return useMemo<DiffReviewContextValue>(() => ({ state, ...actions }), [state, actions]);
 }
 
 export function DiffReviewProvider({

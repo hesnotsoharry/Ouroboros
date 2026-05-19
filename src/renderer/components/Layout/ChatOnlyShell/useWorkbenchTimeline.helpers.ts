@@ -102,19 +102,23 @@ export function appendReviewEntry(
   timestamp: number,
 ): void {
   if (!diffReviewState) return;
-  const pendingHunks = diffReviewState.files.reduce(
+  const allFiles = diffReviewState.projects.flatMap((p) => p.files);
+  const pendingHunks = allFiles.reduce(
     (count, file) => count + file.hunks.filter((hunk) => hunk.decision === 'pending').length,
     0,
   );
+  // Use the most-recent project's session/snapshot for the timeline entry id.
+  const first = diffReviewState.projects[0];
+  if (!first) return;
   entries.push({
-    id: `review:${diffReviewState.sessionId}:${diffReviewState.snapshotHash}`,
+    id: `review:${first.sessionId}:${first.snapshotHash}`,
     kind: 'review',
     kindLabel: 'Review',
-    sessionId: diffReviewState.sessionId,
-    sessionLabel: diffReviewState.sessionId,
+    sessionId: first.sessionId,
+    sessionLabel: first.sessionId,
     timestamp,
     title: 'Diff review waiting',
-    detail: `${diffReviewState.files.length} files · ${pendingHunks} pending hunks`,
+    detail: `${allFiles.length} files · ${pendingHunks} pending hunks`,
     tone: pendingHunks > 0 ? 'warning' : 'neutral',
   });
 }

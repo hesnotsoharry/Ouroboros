@@ -2,21 +2,23 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { DiffReviewLayout } from './DiffReviewPanelSections';
 import { getDiffReviewStateView, getDiffReviewStats } from './DiffReviewPanelState';
-import type { DiffReviewState, ReviewHunk } from './types';
+import type { DiffReviewState, ProjectReview, ReviewHunk } from './types';
 import { useDiffReviewKeyboard } from './useDiffReviewKeyboard';
 
 interface DiffReviewPanelProps {
   state: DiffReviewState;
   canRollback: boolean;
   enhancedEnabled: boolean;
-  onAcceptHunk: (fileIdx: number, hunkIdx: number) => void;
-  onRejectHunk: (fileIdx: number, hunkIdx: number) => void;
-  onAcceptAllFile: (fileIdx: number) => void;
-  onRejectAllFile: (fileIdx: number) => void;
-  onAcceptAll: () => void;
-  onRejectAll: () => void;
-  onRollback: () => void;
+  onAcceptHunk: (projectRoot: string, fileIdx: number, hunkIdx: number) => void;
+  onRejectHunk: (projectRoot: string, fileIdx: number, hunkIdx: number) => void;
+  onAcceptAllFile: (projectRoot: string, fileIdx: number) => void;
+  onRejectAllFile: (projectRoot: string, fileIdx: number) => void;
+  onAcceptAll: (projectRoot: string) => void;
+  onRejectAll: (projectRoot: string) => void;
+  onRollback: (projectRoot: string) => void;
   onClose: () => void;
+  onCloseProject: (projectRoot: string) => void;
+  onSetActiveProject: (projectRoot: string) => void;
   onConfirmStaleOp?: () => void;
   onDismissStaleOp?: () => void;
 }
@@ -82,30 +84,36 @@ function StalePromptBar({
 }
 
 interface FlatHunk {
+  projectRoot: string;
   fileIdx: number;
   hunkIdx: number;
   id: string;
 }
 
-function flattenHunks(files: DiffReviewState['files']): FlatHunk[] {
-  return files.flatMap((file, fileIdx) =>
-    file.hunks.map((hunk, hunkIdx) => ({ fileIdx, hunkIdx, id: hunk.id })),
+function flattenHunks(project: ProjectReview): FlatHunk[] {
+  return project.files.flatMap((file, fileIdx) =>
+    file.hunks.map((hunk, hunkIdx) => ({
+      projectRoot: project.projectRoot,
+      fileIdx,
+      hunkIdx,
+      id: hunk.id,
+    })),
   );
 }
 
 function useKeyboardNav(
-  files: DiffReviewState['files'],
+  project: ProjectReview,
   enabled: boolean,
-  onAcceptHunk: (fileIdx: number, hunkIdx: number) => void,
-  onRejectHunk: (fileIdx: number, hunkIdx: number) => void,
+  onAcceptHunk: (projectRoot: string, fileIdx: number, hunkIdx: number) => void,
+  onRejectHunk: (projectRoot: string, fileIdx: number, hunkIdx: number) => void,
 ): string | null {
-  const flatHunks = useMemo(() => flattenHunks(files), [files]);
-  const allHunks = useMemo<ReviewHunk[]>(() => files.flatMap((f) => f.hunks), [files]);
+  const flatHunks = useMemo(() => flattenHunks(project), [project]);
+  const allHunks = useMemo<ReviewHunk[]>(() => project.files.flatMap((f) => f.hunks), [project]);
 
   const handleAccept = useCallback(
     (id: string) => {
       const entry = flatHunks.find((h) => h.id === id);
-      if (entry) onAcceptHunk(entry.fileIdx, entry.hunkIdx);
+      if (entry) onAcceptHunk(entry.projectRoot, entry.fileIdx, entry.hunkIdx);
     },
     [flatHunks, onAcceptHunk],
   );
@@ -113,7 +121,7 @@ function useKeyboardNav(
   const handleReject = useCallback(
     (id: string) => {
       const entry = flatHunks.find((h) => h.id === id);
-      if (entry) onRejectHunk(entry.fileIdx, entry.hunkIdx);
+      if (entry) onRejectHunk(entry.projectRoot, entry.fileIdx, entry.hunkIdx);
     },
     [flatHunks, onRejectHunk],
   );
@@ -127,7 +135,7 @@ function useKeyboardNav(
   return focusedHunkId;
 }
 
-function useFileNavState(files: DiffReviewState['files']): {
+function useFileNavState(project: ProjectReview): {
   selectedFileIdx: number;
   setSelectedFileIdx: (idx: number) => void;
   setFileRef: (idx: number, el: HTMLDivElement | null) => void;
@@ -141,40 +149,71 @@ function useFileNavState(files: DiffReviewState['files']): {
   useEffect(() => {
     fileRefs.current.get(selectedFileIdx)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [selectedFileIdx]);
-  // files only used to satisfy hook dep linting in callers; unused here intentionally.
-  void files;
+  void project;
   return { selectedFileIdx, setSelectedFileIdx, setFileRef };
 }
 
-function getStaleFilePath(state: DiffReviewState): string | null {
-  const op = state.stalePendingOp;
+const EMPTY_PROJECT: ProjectReview = {
+  projectRoot: '',
+  projectLabel: '',
+  sessionId: '',
+  snapshotHash: '',
+  files: [],
+  loading: false,
+  error: null,
+  lastAcceptedBatch: null,
+  staleFiles: [],
+  stalePendingOp: null,
+};
+
+function resolveProject(state: DiffReviewState): ProjectReview {
+  return (
+    state.projects.find((p) => p.projectRoot === state.activeProjectRoot) ??
+    state.projects[0] ??
+    EMPTY_PROJECT
+  );
+}
+
+function getStaleFilePath(project: ProjectReview): string | null {
+  const op = project.stalePendingOp;
   if (op === null) return null;
-  return state.files[op.fileIdx]?.relativePath ?? '';
+  return project.files[op.fileIdx]?.relativePath ?? '';
 }
 
 export function DiffReviewPanel(props: DiffReviewPanelProps): React.ReactElement {
   const { state, canRollback, enhancedEnabled, onAcceptHunk, onRejectHunk } = props;
   const { onAcceptAllFile, onRejectAllFile, onAcceptAll, onRejectAll, onRollback, onClose } = props;
+  const { onCloseProject, onSetActiveProject } = props;
   const { onConfirmStaleOp = () => undefined, onDismissStaleOp = () => undefined } = props;
-  const stats = useMemo(() => getDiffReviewStats(state.files), [state.files]);
-  const stateView = getDiffReviewStateView(state, onClose);
-  const focusedHunkId = useKeyboardNav(state.files, enhancedEnabled, onAcceptHunk, onRejectHunk);
-  const { selectedFileIdx, setSelectedFileIdx, setFileRef } = useFileNavState(state.files);
+
+  const activeProject = resolveProject(state);
+  const stats = useMemo(() => getDiffReviewStats(activeProject.files), [activeProject.files]);
+  const stateView = getDiffReviewStateView(activeProject, onClose);
+  const focusedHunkId = useKeyboardNav(activeProject, enhancedEnabled, onAcceptHunk, onRejectHunk);
+  const { selectedFileIdx, setSelectedFileIdx, setFileRef } = useFileNavState(activeProject);
+
   if (stateView) return stateView;
-  const staleFilePath = getStaleFilePath(state);
+  const staleFilePath = getStaleFilePath(activeProject);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {staleFilePath !== null && (
-        <StalePromptBar staleFile={staleFilePath} onConfirm={onConfirmStaleOp} onDismiss={onDismissStaleOp} />
+        <StalePromptBar
+          staleFile={staleFilePath}
+          onConfirm={onConfirmStaleOp}
+          onDismiss={onDismissStaleOp}
+        />
       )}
       <DiffReviewLayout
-        files={state.files}
+        state={state}
+        activeProject={activeProject}
         selectedFileIdx={selectedFileIdx}
         stats={stats}
         canRollback={canRollback}
         enhancedEnabled={enhancedEnabled}
         focusedHunkId={focusedHunkId}
         onClose={onClose}
+        onCloseProject={onCloseProject}
+        onSetActiveProject={onSetActiveProject}
         onAcceptAll={onAcceptAll}
         onRejectAll={onRejectAll}
         onRollback={onRollback}

@@ -1,32 +1,45 @@
 /**
- * FileListSidebar.tsx - Sidebar showing changed files in the diff review.
+ * FileListSidebar.tsx - Sidebar showing changed files grouped by project.
  *
- * Each file shows its status badge (M/A/D/R), relative path, and hunk
- * decision progress. Click to select and scroll to that file in the main panel.
+ * Wave 95 Phase G: multi-project grouping with collapsible project headers.
+ * Each project group shows a ▼/▶ header with the project label and file count.
+ * Per-group expanded state lives in local useState<Set<string>>.
+ * Default: all groups expanded.
  */
 
 import React, { type CSSProperties, memo, useState } from 'react';
 
-import type { ReviewFile } from './types';
+import type { ProjectReview, ReviewFile } from './types';
 
 interface FileListSidebarProps {
-  files: ReviewFile[];
+  projects: ProjectReview[];
+  activeProjectRoot: string | null;
   selectedIndex: number;
   onSelect: (index: number) => void;
-  onAcceptAll: (index: number) => void;
-  onRejectAll: (index: number) => void;
+  onAcceptAll: (projectRoot: string, index: number) => void;
+  onRejectAll: (projectRoot: string, index: number) => void;
+  onCloseProject: (projectRoot: string) => void;
+  onSetActiveProject: (projectRoot: string) => void;
 }
 
-interface FileListSidebarHeaderProps {
-  count: number;
+interface ProjectGroupHeaderProps {
+  label: string;
+  projectRoot: string;
+  fileCount: number;
+  isExpanded: boolean;
+  isActive: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onActivate: () => void;
 }
 
 interface FileListItemProps {
   file: ReviewFile;
-  index: number;
+  /** Flat index across all projects — used for selection. */
+  flatIndex: number;
   isSelected: boolean;
-  onAcceptAll: (index: number) => void;
-  onRejectAll: (index: number) => void;
+  onAcceptAll: () => void;
+  onRejectAll: () => void;
   onSelect: (index: number) => void;
 }
 
@@ -34,12 +47,6 @@ interface FileListItemSummaryProps {
   allDecided: boolean;
   file: ReviewFile;
   progress: { decided: number; total: number };
-}
-
-interface QuickActionButtonProps {
-  color: string;
-  label: string;
-  onClick: () => void;
 }
 
 const sidebarStyle: CSSProperties = {
@@ -53,7 +60,7 @@ const sidebarStyle: CSSProperties = {
   maxWidth: '280px',
 };
 
-const headerStyle: CSSProperties = {
+const sidebarHeaderStyle: CSSProperties = {
   padding: '6px 8px',
   fontSize: '0.6875rem',
   fontWeight: 600,
@@ -64,11 +71,22 @@ const headerStyle: CSSProperties = {
   userSelect: 'none',
 };
 
-const fileItemSummaryStyle: CSSProperties = {
+const projectGroupHeaderStyle = (isActive: boolean): CSSProperties => ({
   display: 'flex',
   alignItems: 'center',
-  gap: '6px',
-};
+  gap: '4px',
+  padding: '5px 8px',
+  fontSize: '0.6875rem',
+  fontWeight: 600,
+  color: isActive ? 'var(--interactive-accent)' : 'var(--text-muted)',
+  borderBottom: '1px solid var(--border-subtle)',
+  borderLeft: isActive ? '2px solid var(--interactive-accent)' : '2px solid transparent',
+  cursor: 'pointer',
+  userSelect: 'none',
+  backgroundColor: isActive ? 'var(--interactive-accent-subtle)' : 'transparent',
+});
+
+const fileItemSummaryStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: '6px' };
 
 const filePathStyle: CSSProperties = {
   flex: 1,
@@ -82,11 +100,7 @@ const filePathStyle: CSSProperties = {
   textAlign: 'left',
 };
 
-const actionRowStyle: CSSProperties = {
-  display: 'flex',
-  gap: '4px',
-  marginTop: '2px',
-};
+const actionRowStyle: CSSProperties = { display: 'flex', gap: '4px', marginTop: '2px' };
 
 function statusBadge(status: ReviewFile['status']): { label: string; color: string } {
   switch (status) {
@@ -112,16 +126,16 @@ function fileItemStyle(isSelected: boolean, hovered: boolean): CSSProperties {
     display: 'flex',
     flexDirection: 'column',
     gap: '2px',
-    padding: '6px 8px',
+    padding: '6px 8px 6px 16px',
     cursor: 'pointer',
+    borderBottom: '1px solid var(--border-subtle)',
+    transition: 'background-color 0.1s',
     backgroundColor: isSelected
       ? 'var(--interactive-accent-subtle)'
       : hovered
         ? 'rgba(255,255,255,0.03)'
         : 'transparent',
     borderLeft: isSelected ? '2px solid var(--interactive-accent)' : '2px solid transparent',
-    borderBottom: '1px solid var(--border-subtle)',
-    transition: 'background-color 0.1s',
   };
 }
 
@@ -145,8 +159,8 @@ function progressStyle(allDecided: boolean): CSSProperties {
   return {
     flexShrink: 0,
     fontSize: '0.625rem',
-    color: allDecided ? 'var(--status-success)' : 'var(--text-faint)',
     fontWeight: 500,
+    color: allDecided ? 'var(--status-success)' : 'var(--text-faint)',
   };
 }
 
@@ -163,8 +177,60 @@ function actionButtonStyle(color: string): CSSProperties {
   };
 }
 
-function FileListSidebarHeader({ count }: FileListSidebarHeaderProps): React.ReactElement {
-  return <div style={headerStyle}>Changed Files ({count})</div>;
+const closeBtnStyle: CSSProperties = {
+  marginLeft: 'auto',
+  padding: '0 4px',
+  fontSize: '0.625rem',
+  border: 'none',
+  background: 'transparent',
+  color: 'var(--text-faint)',
+  cursor: 'pointer',
+  lineHeight: 1,
+};
+
+function ProjectGroupHeader({
+  label,
+  fileCount,
+  isExpanded,
+  isActive,
+  onToggle,
+  onClose,
+  onActivate,
+}: ProjectGroupHeaderProps): React.ReactElement {
+  return (
+    <div
+      style={projectGroupHeaderStyle(isActive)}
+      onClick={() => {
+        onActivate();
+        onToggle();
+      }}
+      title={label}
+    >
+      <span style={{ flexShrink: 0 }}>{isExpanded ? '▼' : '▶'}</span>
+      <span
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ flexShrink: 0, color: 'var(--text-faint)' }}>({fileCount})</span>
+      <button
+        type="button"
+        style={closeBtnStyle}
+        title="Close this project review"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  );
 }
 
 function FileListItemSummary({
@@ -173,7 +239,6 @@ function FileListItemSummary({
   progress,
 }: FileListItemSummaryProps): React.ReactElement {
   const badge = statusBadge(file.status);
-
   return (
     <div style={fileItemSummaryStyle}>
       <span style={badgeStyle(badge.color)}>{badge.label}</span>
@@ -187,7 +252,15 @@ function FileListItemSummary({
   );
 }
 
-function QuickActionButton({ color, label, onClick }: QuickActionButtonProps): React.ReactElement {
+function QuickActionButton({
+  color,
+  label,
+  onClick,
+}: {
+  color: string;
+  label: string;
+  onClick: () => void;
+}): React.ReactElement {
   return (
     <button
       onClick={(event) => {
@@ -202,29 +275,20 @@ function QuickActionButton({ color, label, onClick }: QuickActionButtonProps): R
 }
 
 function FileListItemActions({
-  index,
   onAcceptAll,
   onRejectAll,
-}: Pick<FileListItemProps, 'index' | 'onAcceptAll' | 'onRejectAll'>): React.ReactElement {
+}: Pick<FileListItemProps, 'onAcceptAll' | 'onRejectAll'>): React.ReactElement {
   return (
     <div style={actionRowStyle}>
-      <QuickActionButton
-        color="var(--status-success)"
-        label="Accept All"
-        onClick={() => onAcceptAll(index)}
-      />
-      <QuickActionButton
-        color="var(--status-error)"
-        label="Reject All"
-        onClick={() => onRejectAll(index)}
-      />
+      <QuickActionButton color="var(--status-success)" label="Accept All" onClick={onAcceptAll} />
+      <QuickActionButton color="var(--status-error)" label="Reject All" onClick={onRejectAll} />
     </div>
   );
 }
 
 function FileListItem({
   file,
-  index,
+  flatIndex,
   isSelected,
   onAcceptAll,
   onRejectAll,
@@ -236,40 +300,117 @@ function FileListItem({
 
   return (
     <div
-      onClick={() => onSelect(index)}
+      onClick={() => onSelect(flatIndex)}
       style={fileItemStyle(isSelected, hovered)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <FileListItemSummary allDecided={allDecided} file={file} progress={progress} />
       {isSelected && !allDecided ? (
-        <FileListItemActions index={index} onAcceptAll={onAcceptAll} onRejectAll={onRejectAll} />
+        <FileListItemActions onAcceptAll={onAcceptAll} onRejectAll={onRejectAll} />
       ) : null}
     </div>
   );
 }
 
+interface ProjectGroupListProps extends FileListSidebarProps {
+  expanded: Set<string>;
+  onToggle: (projectRoot: string) => void;
+}
+
+function ProjectGroupList({
+  projects,
+  activeProjectRoot,
+  selectedIndex,
+  expanded,
+  onSelect,
+  onAcceptAll,
+  onRejectAll,
+  onCloseProject,
+  onSetActiveProject,
+  onToggle,
+}: ProjectGroupListProps): React.ReactElement {
+  let flatIdx = 0;
+  return (
+    <>
+      {projects.map((project) => {
+        const startIdx = flatIdx;
+        const isExpanded = expanded.has(project.projectRoot);
+        const isActive = project.projectRoot === activeProjectRoot;
+        const items = isExpanded
+          ? project.files.map((file, fileIdx) => {
+              const fi = startIdx + fileIdx;
+              return (
+                <FileListItem
+                  key={file.filePath}
+                  file={file}
+                  flatIndex={fi}
+                  isSelected={fi === selectedIndex}
+                  onSelect={onSelect}
+                  onAcceptAll={() => onAcceptAll(project.projectRoot, fileIdx)}
+                  onRejectAll={() => onRejectAll(project.projectRoot, fileIdx)}
+                />
+              );
+            })
+          : null;
+        flatIdx += project.files.length;
+        return (
+          <div key={project.projectRoot}>
+            <ProjectGroupHeader
+              label={project.projectLabel}
+              projectRoot={project.projectRoot}
+              fileCount={project.files.length}
+              isExpanded={isExpanded}
+              isActive={isActive}
+              onToggle={() => onToggle(project.projectRoot)}
+              onClose={() => onCloseProject(project.projectRoot)}
+              onActivate={() => onSetActiveProject(project.projectRoot)}
+            />
+            {items}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 export const FileListSidebar = memo(function FileListSidebar({
-  files,
+  projects,
+  activeProjectRoot,
   selectedIndex,
   onSelect,
   onAcceptAll,
   onRejectAll,
+  onCloseProject,
+  onSetActiveProject,
 }: FileListSidebarProps): React.ReactElement {
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(projects.map((p) => p.projectRoot)),
+  );
+  const onToggle = (projectRoot: string): void => {
+    setExpanded((prev) => {
+      const s = new Set(prev);
+      if (s.has(projectRoot)) s.delete(projectRoot);
+      else s.add(projectRoot);
+      return s;
+    });
+  };
+  const totalFiles = projects.reduce((sum, p) => sum + p.files.length, 0);
   return (
     <div style={sidebarStyle}>
-      <FileListSidebarHeader count={files.length} />
-      {files.map((file, index) => (
-        <FileListItem
-          key={file.filePath}
-          file={file}
-          index={index}
-          isSelected={index === selectedIndex}
-          onSelect={onSelect}
-          onAcceptAll={onAcceptAll}
-          onRejectAll={onRejectAll}
-        />
-      ))}
+      <div style={sidebarHeaderStyle}>Changed Files ({totalFiles})</div>
+      <ProjectGroupList
+        projects={projects}
+        activeProjectRoot={activeProjectRoot}
+        selectedIndex={selectedIndex}
+        expanded={expanded}
+        onToggle={onToggle}
+        onSelect={onSelect}
+        onAcceptAll={onAcceptAll}
+        onRejectAll={onRejectAll}
+        onCloseProject={onCloseProject}
+        onSetActiveProject={onSetActiveProject}
+      />
     </div>
   );
 });

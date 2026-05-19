@@ -1,6 +1,9 @@
 /**
  * diffReviewState.ops.ts - Async git operations for the diff review.
  * Handles per-hunk staging/reverting and bulk file operations.
+ *
+ * Wave 95 Phase G: all dispatches now carry projectRoot so the reducer can
+ * target the correct entry in the multi-project state.
  */
 
 import log from 'electron-log/renderer';
@@ -61,22 +64,28 @@ export function getPendingEntries(files: ReviewFile[]): PendingHunkRef[] {
   return entries;
 }
 
-export async function revertPendingEntries(
-  projectRoot: string,
-  entries: PendingHunkRef[],
-  dispatch: ReviewDispatch,
-): Promise<void> {
+interface RevertOpts {
+  projectRoot: string;
+  entries: PendingHunkRef[];
+  dispatch: ReviewDispatch;
+  dispatchProjectRoot: string;
+}
+
+export async function revertPendingEntries(opts: RevertOpts): Promise<void> {
+  const { projectRoot, entries, dispatch, dispatchProjectRoot } = opts;
   for (const entry of entries) {
     const result = await window.electronAPI.git.revertHunk(projectRoot, entry.rawPatch);
     if (!result.success) {
       log.warn(
-        'Failed to revert hunk (file %d, hunk %d):',
+        '[trace:diff-review] revertHunk failed (project %s, file %d, hunk %d):',
+        projectRoot,
         entry.fileIdx,
         entry.hunkIdx,
         result.error,
       );
       dispatch({
         type: 'SET_DECISION',
+        projectRoot: dispatchProjectRoot,
         fileIdx: entry.fileIdx,
         hunkIdx: entry.hunkIdx,
         decision: 'pending',
@@ -85,18 +94,22 @@ export async function revertPendingEntries(
   }
 }
 
-async function stageFileEntries(
-  projectRoot: string,
-  fileEntries: PendingHunkRef[],
-  file: ReviewFile,
-  dispatch: ReviewDispatch,
-): Promise<void> {
+interface StageFileOpts {
+  projectRoot: string;
+  fileEntries: PendingHunkRef[];
+  file: ReviewFile;
+  dispatch: ReviewDispatch;
+  dispatchProjectRoot: string;
+}
+
+async function stageFileEntries(opts: StageFileOpts): Promise<void> {
+  const { projectRoot, fileEntries, file, dispatch, dispatchProjectRoot } = opts;
   const hasRejectedHunks = file.hunks.some((h) => h.decision === 'rejected');
   if (!hasRejectedHunks) {
     const result = await window.electronAPI.git.stage(projectRoot, file.filePath);
     if (result.success) return;
     log.warn(
-      'git add failed for %s, falling back to per-hunk staging:',
+      '[trace:diff-review] git add failed for %s, falling back to per-hunk staging:',
       file.filePath,
       result.error,
     );
@@ -105,13 +118,15 @@ async function stageFileEntries(
     const result = await window.electronAPI.git.stageHunk(projectRoot, entry.rawPatch);
     if (!result.success) {
       log.warn(
-        'Failed to stage hunk (file %d, hunk %d):',
+        '[trace:diff-review] stageHunk failed (project %s, file %d, hunk %d):',
+        projectRoot,
         entry.fileIdx,
         entry.hunkIdx,
         result.error,
       );
       dispatch({
         type: 'SET_DECISION',
+        projectRoot: dispatchProjectRoot,
         fileIdx: entry.fileIdx,
         hunkIdx: entry.hunkIdx,
         decision: 'pending',
@@ -120,12 +135,16 @@ async function stageFileEntries(
   }
 }
 
-export async function stagePendingEntries(
-  projectRoot: string,
-  entries: PendingHunkRef[],
-  files: ReviewFile[],
-  dispatch: ReviewDispatch,
-): Promise<void> {
+interface StageOpts {
+  projectRoot: string;
+  entries: PendingHunkRef[];
+  files: ReviewFile[];
+  dispatch: ReviewDispatch;
+  dispatchProjectRoot: string;
+}
+
+export async function stagePendingEntries(opts: StageOpts): Promise<void> {
+  const { projectRoot, entries, files, dispatch, dispatchProjectRoot } = opts;
   const byFile = new Map<number, PendingHunkRef[]>();
   for (const entry of entries) {
     let group = byFile.get(entry.fileIdx);
@@ -136,7 +155,13 @@ export async function stagePendingEntries(
     group.push(entry);
   }
   for (const [fileIdx, fileEntries] of byFile) {
-    await stageFileEntries(projectRoot, fileEntries, files[fileIdx], dispatch);
+    await stageFileEntries({
+      projectRoot,
+      fileEntries,
+      file: files[fileIdx],
+      dispatch,
+      dispatchProjectRoot,
+    });
   }
 }
 
@@ -156,16 +181,24 @@ export function loadReviewFiles(
   ])
     .then(([workingResult, cachedResult]) => {
       if (!workingResult.success || !workingResult.files) {
-        dispatch({ type: 'ERROR', error: workingResult.error ?? 'Failed to load diff' });
+        dispatch({
+          type: 'ERROR',
+          projectRoot,
+          error: workingResult.error ?? 'Failed to load diff',
+        });
         return;
       }
       const stagedPatches =
         cachedResult?.success && cachedResult.files
           ? buildStagedPatchSet(cachedResult.files)
           : undefined;
-      dispatch({ type: 'LOADED', files: toReviewFiles(workingResult.files, stagedPatches) });
+      dispatch({
+        type: 'LOADED',
+        projectRoot,
+        files: toReviewFiles(workingResult.files, stagedPatches),
+      });
     })
     .catch((error) => {
-      dispatch({ type: 'ERROR', error: getErrorMessage(error) });
+      dispatch({ type: 'ERROR', projectRoot, error: getErrorMessage(error) });
     });
 }

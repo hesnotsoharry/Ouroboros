@@ -27,8 +27,12 @@ vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: () => mockSessions,
 }));
 
+type MockState = null | {
+  activeProjectRoot: string | null;
+  projects: Array<{ files: Array<{ hunks: Array<{ decision: string }> }> }>;
+};
 const mockDiffReviewState = {
-  state: null as null | { files: Array<{ hunks: Array<{ decision: string }> }> },
+  state: null as MockState,
   canRollback: false,
   closeReview: vi.fn(),
   confirmStaleOp: vi.fn(),
@@ -55,6 +59,10 @@ function makeFiles(pendingPerFile: number[]): Array<{ hunks: Array<{ decision: s
   }));
 }
 
+function makeState(pendingPerFile: number[]): MockState {
+  return { activeProjectRoot: '/proj', projects: [{ files: makeFiles(pendingPerFile) }] };
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 afterEach(() => {
@@ -66,7 +74,7 @@ afterEach(() => {
 
 describe('ChatOnlyStatusBar', () => {
   it('renders without throwing when there is content (pending diffs)', () => {
-    mockDiffReviewState.state = { files: makeFiles([1]) };
+    mockDiffReviewState.state = makeState([1]);
     const { container } = render(
       <ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />,
     );
@@ -74,7 +82,7 @@ describe('ChatOnlyStatusBar', () => {
   });
 
   it('does NOT show git branch (Wave 82 — removed; file tree owns branch)', () => {
-    mockDiffReviewState.state = { files: makeFiles([1]) };
+    mockDiffReviewState.state = makeState([1]);
     render(<ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />);
     expect(screen.queryByText('main')).toBeNull();
     expect(screen.queryByText('master')).toBeNull();
@@ -96,7 +104,7 @@ describe('ChatOnlyStatusBar', () => {
   });
 
   it('renders when there are pending diffs even with no branch', () => {
-    mockDiffReviewState.state = { files: makeFiles([1]) };
+    mockDiffReviewState.state = makeState([1]);
     render(<ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />);
     expect(screen.getByTestId('chat-only-status-bar')).toBeDefined();
   });
@@ -108,14 +116,14 @@ describe('ChatOnlyStatusBar', () => {
   });
 
   it('hides diff button when pending count is 0', () => {
-    mockDiffReviewState.state = { files: makeFiles([0]) };
+    mockDiffReviewState.state = makeState([0]);
     render(<ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />);
     expect(screen.queryByTestId('diff-review-button')).toBeNull();
   });
 
   it('shows diff button with correct count when N files have pending hunks', () => {
     // 3 files, each with 1 pending hunk → count = 3
-    mockDiffReviewState.state = { files: makeFiles([1, 1, 1]) };
+    mockDiffReviewState.state = makeState([1, 1, 1]);
     render(<ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />);
     const btn = screen.getByTestId('diff-review-button');
     expect(btn).toBeDefined();
@@ -125,9 +133,14 @@ describe('ChatOnlyStatusBar', () => {
   it('counts only files with at least one pending hunk', () => {
     // file 0: 1 accepted hunk (not pending); file 1: 2 pending hunks → count = 1
     mockDiffReviewState.state = {
-      files: [
-        { hunks: [{ decision: 'accepted' }] },
-        { hunks: [{ decision: 'pending' }, { decision: 'pending' }] },
+      activeProjectRoot: '/proj',
+      projects: [
+        {
+          files: [
+            { hunks: [{ decision: 'accepted' }] },
+            { hunks: [{ decision: 'pending' }, { decision: 'pending' }] },
+          ],
+        },
       ],
     };
     render(<ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />);
@@ -136,20 +149,20 @@ describe('ChatOnlyStatusBar', () => {
   });
 
   it('shows singular "diff" label when count is 1', () => {
-    mockDiffReviewState.state = { files: makeFiles([1]) };
+    mockDiffReviewState.state = makeState([1]);
     render(<ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />);
     expect(screen.getByTestId('diff-review-button').textContent).toBe('1 pending diff');
   });
 
   it('shows plural "diffs" label when count > 1', () => {
-    mockDiffReviewState.state = { files: makeFiles([1, 1]) };
+    mockDiffReviewState.state = makeState([1, 1]);
     render(<ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />);
     expect(screen.getByTestId('diff-review-button').textContent).toBe('2 pending diffs');
   });
 
   it('has no border-t on the footer element (removed in Wave 43 Phase C)', () => {
     // Wave 82 — needs streaming or diffs to render the footer (branch removed).
-    mockDiffReviewState.state = { files: makeFiles([1]) };
+    mockDiffReviewState.state = makeState([1]);
     render(<ChatOnlyStatusBar projectRoot="/test/project" onOpenDiffOverlay={vi.fn()} />);
     const footer = screen.getByTestId('chat-only-status-bar');
     expect(footer.className).not.toContain('border-t');

@@ -134,7 +134,7 @@ export function useWorkbenchTimeline(
     totalCount: entries.length,
     counts: {
       approvals: approvalRequests.length,
-      review: reviewState?.files.length ?? 0,
+      review: reviewState?.projects.reduce((sum, p) => sum + p.files.length, 0) ?? 0,
       monitor: sessions.filter((session) => Boolean(session.parentSessionId)).length,
       activity: entries.length,
     },

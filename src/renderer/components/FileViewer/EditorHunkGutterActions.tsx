@@ -59,12 +59,12 @@ function HunkWidget({ editor, dec, diffReview }: HunkWidgetProps): React.ReactEl
   const widgetRef = useRef<monaco.editor.IContentWidget | null>(null);
 
   const onAccept = useCallback((): void => {
-    diffReview.acceptHunk(dec.fileIdx, dec.hunkIdx);
-  }, [diffReview, dec.fileIdx, dec.hunkIdx]);
+    diffReview.acceptHunk(dec.projectRoot, dec.fileIdx, dec.hunkIdx);
+  }, [diffReview, dec.projectRoot, dec.fileIdx, dec.hunkIdx]);
 
   const onReject = useCallback((): void => {
-    diffReview.rejectHunk(dec.fileIdx, dec.hunkIdx);
-  }, [diffReview, dec.fileIdx, dec.hunkIdx]);
+    diffReview.rejectHunk(dec.projectRoot, dec.fileIdx, dec.hunkIdx);
+  }, [diffReview, dec.projectRoot, dec.fileIdx, dec.hunkIdx]);
 
   useEffect(() => {
     const node = nodeRef.current;

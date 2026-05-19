@@ -3,82 +3,87 @@
  *
  * Extracted from diffReviewState.ts to stay under the 300-line ESLint limit.
  *
- * When files tracked by the current diff review are externally modified while
- * the review is open, these hooks detect the change via the files:onFileChange
- * IPC event and surface a re-prompt before any stage/revert IPC call proceeds.
+ * Wave 95 Phase G: updated to operate on ProjectReview (per-project state)
+ * rather than the old flat DiffReviewState. Hooks receive the active project's
+ * data instead of the whole state, and all dispatches carry projectRoot.
  */
 
 import log from 'electron-log/renderer';
 import type { Dispatch } from 'react';
 import { useCallback, useEffect } from 'react';
 
-import type { DiffReviewAction } from './diffReviewState';
-import type { DiffReviewState } from './types';
+import type { DiffReviewAction, DiffReviewActions } from './diffReviewState';
+import type { DiffReviewState, ProjectReview } from './types';
 
 type ReviewDispatch = Dispatch<DiffReviewAction>;
 
 /** Returns true if the file at fileIdx has been externally modified. */
-export function isFileStale(state: DiffReviewState, fileIdx: number): boolean {
-  const relativePath = state.files[fileIdx]?.relativePath;
-  return relativePath !== undefined && state.staleFiles.includes(relativePath);
+export function isFileStale(project: ProjectReview, fileIdx: number): boolean {
+  const relativePath = project.files[fileIdx]?.relativePath;
+  return relativePath !== undefined && project.staleFiles.includes(relativePath);
 }
 
-export function executeAcceptHunk(
-  state: DiffReviewState,
-  dispatch: ReviewDispatch,
-  fileIdx: number,
-  hunkIdx: number,
-): void {
-  const hunk = state.files[fileIdx]?.hunks[hunkIdx];
+interface HunkActionOpts {
+  project: ProjectReview;
+  dispatch: ReviewDispatch;
+  projectRoot: string;
+  fileIdx: number;
+  hunkIdx: number;
+}
+
+export function executeAcceptHunk(opts: HunkActionOpts): void {
+  const { project, dispatch, projectRoot, fileIdx, hunkIdx } = opts;
+  const hunk = project.files[fileIdx]?.hunks[hunkIdx];
   if (!hunk || hunk.decision !== 'pending') return;
   const hunkId = hunk.id ?? '';
-  dispatch({ type: 'SET_DECISION', fileIdx, hunkIdx, decision: 'accepted' });
-  dispatch({ type: 'CAPTURE_BATCH', hunkIds: hunkId ? [hunkId] : [] });
-  void window.electronAPI.git.stageHunk(state.projectRoot, hunk.rawPatch).catch((error) => {
-    log.error('Failed to stage hunk:', error);
-    dispatch({ type: 'SET_DECISION', fileIdx, hunkIdx, decision: 'pending' });
-    dispatch({ type: 'CAPTURE_BATCH', hunkIds: [] });
+  dispatch({ type: 'SET_DECISION', projectRoot, fileIdx, hunkIdx, decision: 'accepted' });
+  dispatch({ type: 'CAPTURE_BATCH', projectRoot, hunkIds: hunkId ? [hunkId] : [] });
+  void window.electronAPI.git.stageHunk(project.projectRoot, hunk.rawPatch).catch((error) => {
+    log.error('[trace:diff-review] Failed to stage hunk:', error);
+    dispatch({ type: 'SET_DECISION', projectRoot, fileIdx, hunkIdx, decision: 'pending' });
+    dispatch({ type: 'CAPTURE_BATCH', projectRoot, hunkIds: [] });
   });
 }
 
-export function executeRejectHunk(
-  state: DiffReviewState,
-  dispatch: ReviewDispatch,
-  fileIdx: number,
-  hunkIdx: number,
-): void {
-  const hunk = state.files[fileIdx]?.hunks[hunkIdx];
+export function executeRejectHunk(opts: HunkActionOpts): void {
+  const { project, dispatch, projectRoot, fileIdx, hunkIdx } = opts;
+  const hunk = project.files[fileIdx]?.hunks[hunkIdx];
   if (!hunk || hunk.decision !== 'pending') return;
-  dispatch({ type: 'SET_DECISION', fileIdx, hunkIdx, decision: 'rejected' });
-  dispatch({ type: 'CAPTURE_BATCH', hunkIds: [] });
-  void window.electronAPI.git.revertHunk(state.projectRoot, hunk.rawPatch).catch((error) => {
-    log.error('Failed to revert hunk:', error);
-    dispatch({ type: 'SET_DECISION', fileIdx, hunkIdx, decision: 'pending' });
+  dispatch({ type: 'SET_DECISION', projectRoot, fileIdx, hunkIdx, decision: 'rejected' });
+  dispatch({ type: 'CAPTURE_BATCH', projectRoot, hunkIds: [] });
+  void window.electronAPI.git.revertHunk(project.projectRoot, hunk.rawPatch).catch((error) => {
+    log.error('[trace:diff-review] Failed to revert hunk:', error);
+    dispatch({ type: 'SET_DECISION', projectRoot, fileIdx, hunkIdx, decision: 'pending' });
   });
 }
 
 /**
  * Executes the pending stale op after the user has confirmed they want to proceed.
- * Dispatches DISMISS_STALE_OP internally, then re-invokes the original operation.
+ * Operates on the active project's stale op.
  */
 export function useConfirmStaleOp(
   state: DiffReviewState | null,
   dispatch: ReviewDispatch,
 ): { confirmStaleOp: () => void; dismissStaleOp: () => void } {
   const confirmStaleOp = useCallback(() => {
-    if (!state?.stalePendingOp) return;
-    const { kind, fileIdx, hunkIdx } = state.stalePendingOp;
-    dispatch({ type: 'DISMISS_STALE_OP' });
+    if (!state) return;
+    const project = state.projects.find((p) => p.projectRoot === state.activeProjectRoot);
+    if (!project?.stalePendingOp) return;
+    const { kind, fileIdx, hunkIdx } = project.stalePendingOp;
+    const { projectRoot } = project;
+    dispatch({ type: 'DISMISS_STALE_OP', projectRoot });
+    const opts: HunkActionOpts = { project, dispatch, projectRoot, fileIdx, hunkIdx };
     if (kind === 'stage') {
-      executeAcceptHunk(state, dispatch, fileIdx, hunkIdx);
+      executeAcceptHunk(opts);
     } else {
-      executeRejectHunk(state, dispatch, fileIdx, hunkIdx);
+      executeRejectHunk(opts);
     }
   }, [state, dispatch]);
 
   const dismissStaleOp = useCallback(() => {
-    dispatch({ type: 'DISMISS_STALE_OP' });
-  }, [dispatch]);
+    if (!state?.activeProjectRoot) return;
+    dispatch({ type: 'DISMISS_STALE_OP', projectRoot: state.activeProjectRoot });
+  }, [dispatch, state]);
 
   return { confirmStaleOp, dismissStaleOp };
 }
@@ -87,20 +92,68 @@ export function useConfirmStaleOp(
  * Subscribes to file-change events from the main process and marks files stale
  * when they are modified while the diff review is open.
  *
- * Re-subscribes only when the tracked file set changes (i.e. after LOADED),
- * so this does not cause excessive re-renders during user interaction.
+ * Watches across ALL open projects simultaneously.
  */
 export function useStaleFileWatcher(state: DiffReviewState | null, dispatch: ReviewDispatch): void {
   useEffect(() => {
     if (!state || !window.electronAPI?.files?.onFileChange) return;
-    const trackedPaths = new Set(state.files.map((f) => f.filePath));
+    // Build a map from absolute filePath → { relativePath, projectRoot }
+    const pathMap = new Map<string, { relativePath: string; projectRoot: string }>();
+    for (const project of state.projects) {
+      for (const file of project.files) {
+        pathMap.set(file.filePath, {
+          relativePath: file.relativePath,
+          projectRoot: project.projectRoot,
+        });
+      }
+    }
     const cleanup = window.electronAPI.files.onFileChange((change) => {
-      if (change.type !== 'change' || !trackedPaths.has(change.path)) return;
-      const file = state.files.find((f) => f.filePath === change.path);
-      if (file) dispatch({ type: 'MARK_STALE', relativePath: file.relativePath });
+      if (change.type !== 'change') return;
+      const entry = pathMap.get(change.path);
+      if (!entry) return;
+      dispatch({
+        type: 'MARK_STALE',
+        projectRoot: entry.projectRoot,
+        relativePath: entry.relativePath,
+      });
     });
     return cleanup;
-    // Intentional: re-subscribe only when the file list changes, not on every state update.
+    // Re-subscribe when the set of tracked files changes across any project.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.files, dispatch]);
+  }, [state?.projects, dispatch]);
+}
+
+export function useSingleHunkActions(
+  state: DiffReviewState | null,
+  dispatch: ReviewDispatch,
+): Pick<DiffReviewActions, 'acceptHunk' | 'rejectHunk'> {
+  const acceptHunk = useCallback(
+    (projectRoot: string, fileIdx: number, hunkIdx: number) => {
+      if (!state) return;
+      const project = state.projects.find((p) => p.projectRoot === projectRoot);
+      if (!project) return;
+      if (isFileStale(project, fileIdx)) {
+        dispatch({ type: 'PEND_STALE_OP', projectRoot, op: { kind: 'stage', fileIdx, hunkIdx } });
+        return;
+      }
+      executeAcceptHunk({ project, dispatch, projectRoot, fileIdx, hunkIdx });
+    },
+    [dispatch, state],
+  );
+
+  const rejectHunk = useCallback(
+    (projectRoot: string, fileIdx: number, hunkIdx: number) => {
+      if (!state) return;
+      const project = state.projects.find((p) => p.projectRoot === projectRoot);
+      if (!project) return;
+      if (isFileStale(project, fileIdx)) {
+        dispatch({ type: 'PEND_STALE_OP', projectRoot, op: { kind: 'revert', fileIdx, hunkIdx } });
+        return;
+      }
+      executeRejectHunk({ project, dispatch, projectRoot, fileIdx, hunkIdx });
+    },
+    [dispatch, state],
+  );
+
+  return { acceptHunk, rejectHunk };
 }

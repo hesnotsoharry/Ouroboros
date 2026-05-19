@@ -1,7 +1,8 @@
 /**
  * types.ts — DiffReview domain types.
  *
- * Describes the review state for per-hunk accept/reject of agent changes.
+ * Describes the multi-project review state for per-hunk accept/reject of agent changes.
+ * Wave 95 Phase G: extended from single-project to multi-project keyed by projectRoot.
  */
 
 export type HunkDecision = 'pending' | 'accepted' | 'rejected';
@@ -33,20 +34,24 @@ export interface StalePendingOp {
   hunkIdx: number;
 }
 
-export interface DiffReviewState {
+/** Per-project review state — one entry per active project root. */
+export interface ProjectReview {
+  /** Unique key — absolute path to the project root. */
+  projectRoot: string;
+  /** Display name derived from the last path segment. Computed once at OPEN time. */
+  projectLabel: string;
+  /** Session that most recently emitted the diff_review_ready event for this project. */
   sessionId: string;
   snapshotHash: string;
-  projectRoot: string;
   filePaths?: string[];
   files: ReviewFile[];
   loading: boolean;
   error: string | null;
-  /** Hunk IDs from the most recently user-initiated accept action. Null means no rollback available. */
+  /** Hunk IDs from the most recently user-initiated accept action. Null = no rollback available. */
   lastAcceptedBatch: string[] | null;
   /**
-   * Paths (relative) of files that have been modified externally since the diff
-   * was loaded.  Any stage/revert against these files will surface a re-prompt
-   * before proceeding.
+   * Paths (relative) of files that have been modified externally since the diff was loaded.
+   * Any stage/revert against these files will surface a re-prompt before proceeding.
    */
   staleFiles: string[];
   /**
@@ -54,4 +59,18 @@ export interface DiffReviewState {
    * so the confirmation dialog can re-invoke it on approval.
    */
   stalePendingOp: StalePendingOp | null;
+}
+
+/**
+ * Multi-project diff review state. null = panel closed (no active reviews).
+ *
+ * Wave 95 Phase G: replaces the old flat single-project DiffReviewState.
+ * The null closed-state is preserved for backward-compat with the Wave 94
+ * Phase E acceptance test's null-state semantics.
+ */
+export interface DiffReviewState {
+  /** Ordered list of active project reviews; first = most recently opened. */
+  projects: ProjectReview[];
+  /** Which project's files the user is currently navigating. null when no reviews open. */
+  activeProjectRoot: string | null;
 }

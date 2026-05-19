@@ -1,6 +1,36 @@
 import React from 'react';
 
-import type { DiffReviewState, ReviewFile } from './types';
+import type { ProjectReview, ReviewFile } from './types';
+
+export function getStatusMeta(status: ReviewFile['status']): { color: string; label: string } {
+  if (status === 'added') return { color: 'var(--status-success)', label: 'A' };
+  if (status === 'deleted') return { color: 'var(--status-error)', label: 'D' };
+  if (status === 'renamed') return { color: 'var(--interactive-accent)', label: 'R' };
+  return { color: 'var(--status-warning)', label: 'M' };
+}
+
+export function StatusIcon({ status }: { status: ReviewFile['status'] }): React.ReactElement {
+  const { color, label } = getStatusMeta(status);
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '18px',
+        height: '18px',
+        borderRadius: '3px',
+        fontSize: '0.6875rem',
+        fontWeight: 700,
+        color,
+        border: `1px solid ${color}`,
+        fontFamily: 'var(--font-ui)',
+      }}
+    >
+      {label}
+    </span>
+  );
+}
 
 export interface DiffReviewStats {
   added: number;
@@ -41,14 +71,20 @@ export function getDiffReviewStats(files: ReviewFile[]): DiffReviewStats {
   return stats;
 }
 
+/**
+ * Returns a React element for loading/error/empty states of the active project,
+ * or null when the review is ready to render.
+ *
+ * Wave 95 Phase G: accepts ProjectReview instead of the old flat DiffReviewState.
+ */
 export function getDiffReviewStateView(
-  state: DiffReviewState,
+  project: ProjectReview,
   onClose: () => void,
 ): React.ReactElement | null {
-  if (state.loading)
+  if (project.loading)
     return <CenteredMessage color="var(--text-muted)">Loading diff…</CenteredMessage>;
-  if (state.error) return <DiffReviewError error={state.error} />;
-  if (state.files.length === 0) return <DiffReviewEmptyState onClose={onClose} />;
+  if (project.error) return <DiffReviewError error={project.error} />;
+  if (project.files.length === 0) return <DiffReviewEmptyState onClose={onClose} />;
   return null;
 }
 

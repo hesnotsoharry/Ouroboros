@@ -1,18 +1,29 @@
+import log from 'electron-log/renderer';
 import type { Dispatch } from 'react';
 import { useCallback } from 'react';
 
-import {
-  getPendingEntries,
-  getPendingEntriesForFile,
-  loadReviewFiles,
-  revertPendingEntries,
-  stagePendingEntries,
-} from './diffReviewState.ops';
-import { executeAcceptHunk, executeRejectHunk, isFileStale } from './diffReviewState.stale';
-import type { DiffReviewState, HunkDecision, ReviewFile, StalePendingOp } from './types';
+import { loadReviewFiles } from './diffReviewState.ops';
+import type {
+  DiffReviewState,
+  HunkDecision,
+  ProjectReview,
+  ReviewFile,
+  StalePendingOp,
+} from './types';
 
+export type { FlatFileEntry } from './diffReviewState.bulk';
+export {
+  buildFlatFileList,
+  countPendingFiles,
+  useBulkReviewActions,
+  useRollbackAction,
+} from './diffReviewState.bulk';
 export { toReviewFiles } from './diffReviewState.ops';
-export { useConfirmStaleOp, useStaleFileWatcher } from './diffReviewState.stale';
+export {
+  useConfirmStaleOp,
+  useSingleHunkActions,
+  useStaleFileWatcher,
+} from './diffReviewState.stale';
 
 export type DiffReviewAction =
   | {
@@ -22,20 +33,25 @@ export type DiffReviewAction =
       projectRoot: string;
       filePaths?: string[];
     }
-  | { type: 'LOADED'; files: ReviewFile[] }
-  | { type: 'ERROR'; error: string }
+  | { type: 'LOADED'; projectRoot: string; files: ReviewFile[] }
+  | { type: 'ERROR'; projectRoot: string; error: string }
   | { type: 'CLOSE' }
-  | { type: 'SET_DECISION'; fileIdx: number; hunkIdx: number; decision: HunkDecision }
-  | { type: 'SET_FILE_DECISION'; fileIdx: number; decision: HunkDecision }
-  | { type: 'SET_ALL_DECISION'; decision: HunkDecision }
-  | { type: 'CAPTURE_BATCH'; hunkIds: string[] }
-  | { type: 'ROLLBACK_LAST_BATCH' }
-  /** Mark a file as externally modified since the diff was loaded. */
-  | { type: 'MARK_STALE'; relativePath: string }
-  /** Hold a pending op that requires user confirmation due to file staleness. */
-  | { type: 'PEND_STALE_OP'; op: StalePendingOp }
-  /** Clear the pending stale op (user dismissed the prompt). */
-  | { type: 'DISMISS_STALE_OP' };
+  | { type: 'CLOSE_PROJECT'; projectRoot: string }
+  | { type: 'SET_ACTIVE_PROJECT'; projectRoot: string }
+  | {
+      type: 'SET_DECISION';
+      projectRoot: string;
+      fileIdx: number;
+      hunkIdx: number;
+      decision: HunkDecision;
+    }
+  | { type: 'SET_FILE_DECISION'; projectRoot: string; fileIdx: number; decision: HunkDecision }
+  | { type: 'SET_ALL_DECISION'; projectRoot: string; decision: HunkDecision }
+  | { type: 'CAPTURE_BATCH'; projectRoot: string; hunkIds: string[] }
+  | { type: 'ROLLBACK_LAST_BATCH'; projectRoot: string }
+  | { type: 'MARK_STALE'; projectRoot: string; relativePath: string }
+  | { type: 'PEND_STALE_OP'; projectRoot: string; op: StalePendingOp }
+  | { type: 'DISMISS_STALE_OP'; projectRoot: string };
 
 export interface DiffReviewActions {
   openReview: (
@@ -45,22 +61,38 @@ export interface DiffReviewActions {
     filePaths?: string[],
   ) => void;
   closeReview: () => void;
-  acceptHunk: (fileIdx: number, hunkIdx: number) => void;
-  rejectHunk: (fileIdx: number, hunkIdx: number) => void;
-  acceptAllFile: (fileIdx: number) => void;
-  rejectAllFile: (fileIdx: number) => void;
-  acceptAll: () => void;
-  rejectAll: () => void;
-  rollback: () => void;
+  closeProjectReview: (projectRoot: string) => void;
+  setActiveProject: (projectRoot: string) => void;
+  acceptHunk: (projectRoot: string, fileIdx: number, hunkIdx: number) => void;
+  rejectHunk: (projectRoot: string, fileIdx: number, hunkIdx: number) => void;
+  acceptAllFile: (projectRoot: string, fileIdx: number) => void;
+  rejectAllFile: (projectRoot: string, fileIdx: number) => void;
+  acceptAll: (projectRoot: string) => void;
+  rejectAll: (projectRoot: string) => void;
+  rollback: (projectRoot: string) => void;
 }
 
 type ReviewDispatch = Dispatch<DiffReviewAction>;
 
-function buildOpenState(action: Extract<DiffReviewAction, { type: 'OPEN' }>): DiffReviewState {
+// ── Project label derivation ──────────────────────────────────────────────────
+
+function deriveProjectLabel(p: string): string {
+  return (
+    p
+      .replace(/[\\/]$/, '')
+      .split(/[\\/]/)
+      .pop() ?? p
+  );
+}
+
+// ── Per-project helpers ───────────────────────────────────────────────────────
+
+function buildProjectReview(action: Extract<DiffReviewAction, { type: 'OPEN' }>): ProjectReview {
   return {
+    projectRoot: action.projectRoot,
+    projectLabel: deriveProjectLabel(action.projectRoot),
     sessionId: action.sessionId,
     snapshotHash: action.snapshotHash,
-    projectRoot: action.projectRoot,
     filePaths: action.filePaths,
     files: [],
     loading: true,
@@ -71,11 +103,15 @@ function buildOpenState(action: Extract<DiffReviewAction, { type: 'OPEN' }>): Di
   };
 }
 
-function withFiles(state: DiffReviewState, files: ReviewFile[]): DiffReviewState {
-  return { ...state, files };
+function updateProject(
+  projects: ProjectReview[],
+  projectRoot: string,
+  updater: (p: ProjectReview) => ProjectReview,
+): ProjectReview[] {
+  return projects.map((p) => (p.projectRoot === projectRoot ? updater(p) : p));
 }
 
-function updateFile(
+function updateProjectFile(
   files: ReviewFile[],
   fileIdx: number,
   updater: (file: ReviewFile) => ReviewFile,
@@ -90,41 +126,36 @@ function updatePendingHunks(file: ReviewFile, decision: HunkDecision): ReviewFil
   };
 }
 
+// ── Per-project state mutators ────────────────────────────────────────────────
+
 function setHunkDecision(
-  state: DiffReviewState,
+  project: ProjectReview,
   fileIdx: number,
   hunkIdx: number,
   decision: HunkDecision,
-): DiffReviewState {
-  const files = updateFile(state.files, fileIdx, (file) => ({
+): ProjectReview {
+  const files = updateProjectFile(project.files, fileIdx, (file) => ({
     ...file,
     hunks: file.hunks.map((hunk, index) => (index === hunkIdx ? { ...hunk, decision } : hunk)),
   }));
-  return withFiles(state, files);
+  return { ...project, files };
 }
 
-function setFileDecision(
-  state: DiffReviewState,
-  fileIdx: number,
-  decision: HunkDecision,
-): DiffReviewState {
-  return withFiles(
-    state,
-    updateFile(state.files, fileIdx, (file) => updatePendingHunks(file, decision)),
-  );
+function setFileDecision(p: ProjectReview, fileIdx: number, decision: HunkDecision): ProjectReview {
+  return {
+    ...p,
+    files: updateProjectFile(p.files, fileIdx, (file) => updatePendingHunks(file, decision)),
+  };
 }
 
-function setAllDecision(state: DiffReviewState, decision: HunkDecision): DiffReviewState {
-  return withFiles(
-    state,
-    state.files.map((file) => updatePendingHunks(file, decision)),
-  );
+function setAllDecision(project: ProjectReview, decision: HunkDecision): ProjectReview {
+  return { ...project, files: project.files.map((file) => updatePendingHunks(file, decision)) };
 }
 
-function rollbackBatch(state: DiffReviewState): DiffReviewState {
-  if (!state.lastAcceptedBatch?.length) return state;
-  const ids = new Set(state.lastAcceptedBatch);
-  const files = state.files.map((file) => ({
+function rollbackBatch(project: ProjectReview): ProjectReview {
+  if (!project.lastAcceptedBatch?.length) return project;
+  const ids = new Set(project.lastAcceptedBatch);
+  const files = project.files.map((file) => ({
     ...file,
     hunks: file.hunks.map((hunk) =>
       ids.has(hunk.id) && hunk.decision === 'accepted'
@@ -132,68 +163,182 @@ function rollbackBatch(state: DiffReviewState): DiffReviewState {
         : hunk,
     ),
   }));
-  return { ...state, files, lastAcceptedBatch: null };
+  return { ...project, files, lastAcceptedBatch: null };
 }
+
+// ── Stale action handler ──────────────────────────────────────────────────────
 
 const UNHANDLED = Symbol('unhandled');
 
-function applyStaleAction(
-  state: DiffReviewState,
+function applyStaleProjectAction(
+  project: ProjectReview,
   action: DiffReviewAction,
-): DiffReviewState | typeof UNHANDLED {
+): ProjectReview | typeof UNHANDLED {
   switch (action.type) {
     case 'MARK_STALE': {
-      if (state.staleFiles.includes(action.relativePath)) return state;
-      return { ...state, staleFiles: [...state.staleFiles, action.relativePath] };
+      if (project.staleFiles.includes(action.relativePath)) return project;
+      return { ...project, staleFiles: [...project.staleFiles, action.relativePath] };
     }
     case 'PEND_STALE_OP':
-      return { ...state, stalePendingOp: action.op };
+      return { ...project, stalePendingOp: action.op };
     case 'DISMISS_STALE_OP':
-      return { ...state, stalePendingOp: null };
+      return { ...project, stalePendingOp: null };
     default:
       return UNHANDLED;
   }
 }
 
-function applyAction(state: DiffReviewState, action: DiffReviewAction): DiffReviewState | null {
-  const staleResult = applyStaleAction(state, action);
-  if (staleResult !== UNHANDLED) return staleResult;
+// ── Main reducer ──────────────────────────────────────────────────────────────
+
+function applyLifecycleAction(
+  state: DiffReviewState,
+  action: DiffReviewAction,
+): DiffReviewState | null | typeof UNHANDLED {
   switch (action.type) {
     case 'LOADED':
-      return { ...state, files: action.files, loading: false };
+      return {
+        ...state,
+        projects: updateProject(state.projects, action.projectRoot, (p) => ({
+          ...p,
+          files: action.files,
+          loading: false,
+        })),
+      };
     case 'ERROR':
-      return { ...state, error: action.error, loading: false };
+      return {
+        ...state,
+        projects: updateProject(state.projects, action.projectRoot, (p) => ({
+          ...p,
+          error: action.error,
+          loading: false,
+        })),
+      };
     case 'CLOSE':
       return null;
-    case 'SET_DECISION':
-      return setHunkDecision(state, action.fileIdx, action.hunkIdx, action.decision);
-    case 'SET_FILE_DECISION':
-      return setFileDecision(state, action.fileIdx, action.decision);
-    case 'SET_ALL_DECISION':
-      return setAllDecision(state, action.decision);
-    case 'CAPTURE_BATCH':
-      return { ...state, lastAcceptedBatch: action.hunkIds };
-    case 'ROLLBACK_LAST_BATCH':
-      return rollbackBatch(state);
+    case 'CLOSE_PROJECT': {
+      const remaining = state.projects.filter((p) => p.projectRoot !== action.projectRoot);
+      if (remaining.length === 0) return null;
+      const nextActive =
+        state.activeProjectRoot === action.projectRoot
+          ? (remaining[0]?.projectRoot ?? null)
+          : state.activeProjectRoot;
+      return { projects: remaining, activeProjectRoot: nextActive };
+    }
+    case 'SET_ACTIVE_PROJECT':
+      return { ...state, activeProjectRoot: action.projectRoot };
     default:
-      return state;
+      return UNHANDLED;
   }
+}
+
+function applyStaleAction(state: DiffReviewState, action: DiffReviewAction): DiffReviewState {
+  const staleAction = action as Extract<
+    DiffReviewAction,
+    { type: 'MARK_STALE' | 'PEND_STALE_OP' | 'DISMISS_STALE_OP' }
+  >;
+  const { projectRoot } = staleAction;
+  if (!projectRoot) return state;
+  const projects = updateProject(state.projects, projectRoot, (p) => {
+    const result = applyStaleProjectAction(p, action);
+    return result === UNHANDLED ? p : result;
+  });
+  return { ...state, projects };
+}
+
+function applyHunkAction(state: DiffReviewState, action: DiffReviewAction): DiffReviewState {
+  switch (action.type) {
+    case 'SET_DECISION':
+      return {
+        ...state,
+        projects: updateProject(state.projects, action.projectRoot, (p) =>
+          setHunkDecision(p, action.fileIdx, action.hunkIdx, action.decision),
+        ),
+      };
+    case 'SET_FILE_DECISION':
+      return {
+        ...state,
+        projects: updateProject(state.projects, action.projectRoot, (p) =>
+          setFileDecision(p, action.fileIdx, action.decision),
+        ),
+      };
+    case 'SET_ALL_DECISION':
+      return {
+        ...state,
+        projects: updateProject(state.projects, action.projectRoot, (p) =>
+          setAllDecision(p, action.decision),
+        ),
+      };
+    case 'CAPTURE_BATCH':
+      return {
+        ...state,
+        projects: updateProject(state.projects, action.projectRoot, (p) => ({
+          ...p,
+          lastAcceptedBatch: action.hunkIds,
+        })),
+      };
+    case 'ROLLBACK_LAST_BATCH':
+      return {
+        ...state,
+        projects: updateProject(state.projects, action.projectRoot, (p) => rollbackBatch(p)),
+      };
+    default:
+      return applyStaleAction(state, action);
+  }
+}
+
+function applyProjectAction(
+  state: DiffReviewState,
+  action: DiffReviewAction,
+): DiffReviewState | null {
+  const lifecycle = applyLifecycleAction(state, action);
+  if (lifecycle !== UNHANDLED) return lifecycle;
+  return applyHunkAction(state, action);
 }
 
 export function diffReviewReducer(
   state: DiffReviewState | null,
   action: DiffReviewAction,
 ): DiffReviewState | null {
-  if (action.type === 'OPEN') return buildOpenState(action);
+  if (action.type === 'OPEN') {
+    log.info('[trace:diff-review] OPEN', {
+      projectRoot: action.projectRoot,
+      sessionId: action.sessionId,
+    });
+    if (!state) {
+      return {
+        projects: [buildProjectReview(action)],
+        activeProjectRoot: action.projectRoot,
+      };
+    }
+    const existingIdx = state.projects.findIndex((p) => p.projectRoot === action.projectRoot);
+    if (existingIdx !== -1) {
+      // Replace entry for same project — latest snapshot supersedes
+      const projects = state.projects.map((p, i) =>
+        i === existingIdx ? buildProjectReview(action) : p,
+      );
+      return { ...state, projects };
+    }
+    // Append new project — don't change activeProjectRoot (don't interrupt current review)
+    return {
+      ...state,
+      projects: [buildProjectReview(action), ...state.projects],
+    };
+  }
   if (!state) return action.type === 'CLOSE' ? null : state;
-  return applyAction(state, action);
+  return applyProjectAction(state, action);
 }
+
+// ── Action hooks ──────────────────────────────────────────────────────────────
 
 export function useReviewLifecycleActions(
   dispatch: ReviewDispatch,
-): Pick<DiffReviewActions, 'openReview' | 'closeReview'> {
+): Pick<
+  DiffReviewActions,
+  'openReview' | 'closeReview' | 'closeProjectReview' | 'setActiveProject'
+> {
   const openReview = useCallback(
     (sessionId: string, snapshotHash: string, projectRoot: string, filePaths?: string[]) => {
+      log.info('[trace:diff-review] openReview called', { projectRoot, sessionId });
       dispatch({ type: 'OPEN', sessionId, snapshotHash, projectRoot, filePaths });
       loadReviewFiles(dispatch, projectRoot, snapshotHash, filePaths);
     },
@@ -204,120 +349,20 @@ export function useReviewLifecycleActions(
     dispatch({ type: 'CLOSE' });
   }, [dispatch]);
 
-  return { openReview, closeReview };
-}
-
-export function useSingleHunkActions(
-  state: DiffReviewState | null,
-  dispatch: ReviewDispatch,
-): Pick<DiffReviewActions, 'acceptHunk' | 'rejectHunk'> {
-  const acceptHunk = useCallback(
-    (fileIdx: number, hunkIdx: number) => {
-      if (!state) return;
-      if (isFileStale(state, fileIdx)) {
-        dispatch({ type: 'PEND_STALE_OP', op: { kind: 'stage', fileIdx, hunkIdx } });
-        return;
-      }
-      executeAcceptHunk(state, dispatch, fileIdx, hunkIdx);
+  const closeProjectReview = useCallback(
+    (projectRoot: string) => {
+      log.info('[trace:diff-review] closeProjectReview', { projectRoot });
+      dispatch({ type: 'CLOSE_PROJECT', projectRoot });
     },
-    [dispatch, state],
+    [dispatch],
   );
 
-  const rejectHunk = useCallback(
-    (fileIdx: number, hunkIdx: number) => {
-      if (!state) return;
-      if (isFileStale(state, fileIdx)) {
-        dispatch({ type: 'PEND_STALE_OP', op: { kind: 'revert', fileIdx, hunkIdx } });
-        return;
-      }
-      executeRejectHunk(state, dispatch, fileIdx, hunkIdx);
+  const setActiveProject = useCallback(
+    (projectRoot: string) => {
+      dispatch({ type: 'SET_ACTIVE_PROJECT', projectRoot });
     },
-    [dispatch, state],
+    [dispatch],
   );
 
-  return { acceptHunk, rejectHunk };
-}
-
-function useAcceptAllFile(
-  state: DiffReviewState | null,
-  dispatch: ReviewDispatch,
-): (fileIdx: number) => void {
-  return useCallback(
-    (fileIdx: number) => {
-      const file = state?.files[fileIdx];
-      if (!state || !file) return;
-      const hunkIds = file.hunks.filter((h) => h.decision === 'pending').map((h) => h.id);
-      dispatch({ type: 'SET_FILE_DECISION', fileIdx, decision: 'accepted' });
-      dispatch({ type: 'CAPTURE_BATCH', hunkIds });
-      void stagePendingEntries(
-        state.projectRoot,
-        getPendingEntriesForFile(file, fileIdx),
-        state.files,
-        dispatch,
-      );
-    },
-    [dispatch, state],
-  );
-}
-
-function useRejectAllFile(
-  state: DiffReviewState | null,
-  dispatch: ReviewDispatch,
-): (fileIdx: number) => void {
-  return useCallback(
-    (fileIdx: number) => {
-      const file = state?.files[fileIdx];
-      if (!state || !file) return;
-      dispatch({ type: 'SET_FILE_DECISION', fileIdx, decision: 'rejected' });
-      void revertPendingEntries(
-        state.projectRoot,
-        getPendingEntriesForFile(file, fileIdx),
-        dispatch,
-      );
-    },
-    [dispatch, state],
-  );
-}
-
-export function useBulkReviewActions(
-  state: DiffReviewState | null,
-  dispatch: ReviewDispatch,
-): Pick<DiffReviewActions, 'acceptAllFile' | 'rejectAllFile' | 'acceptAll' | 'rejectAll'> {
-  const acceptAllFile = useAcceptAllFile(state, dispatch);
-  const rejectAllFile = useRejectAllFile(state, dispatch);
-
-  const acceptAll = useCallback(() => {
-    if (!state) return;
-    const hunkIds = state.files.flatMap((f) =>
-      f.hunks.filter((h) => h.decision === 'pending').map((h) => h.id),
-    );
-    dispatch({ type: 'SET_ALL_DECISION', decision: 'accepted' });
-    dispatch({ type: 'CAPTURE_BATCH', hunkIds });
-    void stagePendingEntries(
-      state.projectRoot,
-      getPendingEntries(state.files),
-      state.files,
-      dispatch,
-    );
-  }, [dispatch, state]);
-
-  const rejectAll = useCallback(() => {
-    if (!state) return;
-    dispatch({ type: 'SET_ALL_DECISION', decision: 'rejected' });
-    dispatch({ type: 'CAPTURE_BATCH', hunkIds: [] });
-    void revertPendingEntries(state.projectRoot, getPendingEntries(state.files), dispatch);
-  }, [dispatch, state]);
-
-  return { acceptAllFile, rejectAllFile, acceptAll, rejectAll };
-}
-
-export function useRollbackAction(
-  state: DiffReviewState | null,
-  dispatch: ReviewDispatch,
-): { canRollback: boolean; rollback: () => void } {
-  const canRollback = (state?.lastAcceptedBatch?.length ?? 0) > 0;
-  const rollback = useCallback(() => {
-    dispatch({ type: 'ROLLBACK_LAST_BATCH' });
-  }, [dispatch]);
-  return { canRollback, rollback };
+  return { openReview, closeReview, closeProjectReview, setActiveProject };
 }

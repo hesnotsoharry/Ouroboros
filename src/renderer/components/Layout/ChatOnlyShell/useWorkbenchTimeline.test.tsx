@@ -31,34 +31,40 @@ function makeApproval(overrides: Partial<ApprovalRequest> = {}): ApprovalRequest
 
 function makeDiffState(overrides: Partial<DiffReviewState> = {}): DiffReviewState {
   return {
-    sessionId: 'session-1',
-    snapshotHash: 'snap-1',
-    projectRoot: '/workspace',
-    files: [
+    activeProjectRoot: '/workspace',
+    projects: [
       {
-        filePath: '/workspace/src/a.ts',
-        relativePath: 'src/a.ts',
-        status: 'modified',
-        hunks: [
+        projectRoot: '/workspace',
+        projectLabel: 'workspace',
+        sessionId: 'session-1',
+        snapshotHash: 'snap-1',
+        files: [
           {
-            id: 'h1',
-            header: '@@',
-            oldStart: 1,
-            oldCount: 1,
-            newStart: 1,
-            newCount: 1,
-            lines: ['+const a = 1;'],
-            rawPatch: '@@',
-            decision: 'pending',
+            filePath: '/workspace/src/a.ts',
+            relativePath: 'src/a.ts',
+            status: 'modified',
+            hunks: [
+              {
+                id: 'h1',
+                header: '@@',
+                oldStart: 1,
+                oldCount: 1,
+                newStart: 1,
+                newCount: 1,
+                lines: ['+const a = 1;'],
+                rawPatch: '@@',
+                decision: 'pending',
+              },
+            ],
           },
         ],
+        loading: false,
+        error: null,
+        lastAcceptedBatch: null,
+        staleFiles: [],
+        stalePendingOp: null,
       },
     ],
-    loading: false,
-    error: null,
-    lastAcceptedBatch: null,
-    staleFiles: [],
-    stalePendingOp: null,
     ...overrides,
   };
 }

@@ -33,10 +33,12 @@ interface DiffSummary {
 function useDiffSummary(): DiffSummary {
   const { state } = useDiffReview();
   if (!state) return { pendingCount: 0, isLoading: false, hasLoadedState: false };
-  const pendingCount = state.files.filter((f) =>
-    f.hunks.some((h) => h.decision === 'pending'),
-  ).length;
-  return { pendingCount, isLoading: state.loading, hasLoadedState: true };
+  const pendingCount = state.projects.reduce(
+    (sum, p) => sum + p.files.filter((f) => f.hunks.some((h) => h.decision === 'pending')).length,
+    0,
+  );
+  const isLoading = state.projects.some((p) => p.loading);
+  return { pendingCount, isLoading, hasLoadedState: true };
 }
 
 // ── ShellState ────────────────────────────────────────────────────────────────

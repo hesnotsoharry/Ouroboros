@@ -3,12 +3,16 @@
  *
  * diffReviewState.stale.test.ts — stale-file detection for diff review.
  *
+ * Wave 95 Phase G: updated to use ProjectReview (per-project state) and
+ * the new projectRoot-scoped dispatch signatures.
+ *
  * Covers:
- * - MARK_STALE action sets isStale on the matching file
- * - acceptHunk / rejectHunk gate on staleness (PEND_STALE_OP, no IPC)
+ * - MARK_STALE action sets staleFiles on the matching project
+ * - isFileStale detects staleness on ProjectReview
+ * - executeAcceptHunk / executeRejectHunk use ProjectReview + projectRoot
  * - confirmStaleOp re-invokes the IPC after user confirms
  * - dismissStaleOp clears the pending op without invoking IPC
- * - useStaleFileWatcher dispatches MARK_STALE on file-change events
+ * - useStaleFileWatcher dispatches MARK_STALE with projectRoot
  */
 
 import { act, cleanup, renderHook } from '@testing-library/react';
@@ -22,17 +26,20 @@ import {
   useConfirmStaleOp,
   useStaleFileWatcher,
 } from './diffReviewState.stale';
-import type { DiffReviewState } from './types';
+import type { DiffReviewState, ProjectReview } from './types';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeState(overrides: Partial<DiffReviewState> = {}): DiffReviewState {
+const PROJECT_ROOT = '/proj';
+
+function makeProject(overrides: Partial<ProjectReview> = {}): ProjectReview {
   return {
+    projectRoot: PROJECT_ROOT,
+    projectLabel: 'proj',
     sessionId: 'sess-1',
     snapshotHash: 'abc123',
-    projectRoot: '/proj',
     files: [
       {
         filePath: '/proj/src/foo.ts',
@@ -60,6 +67,17 @@ function makeState(overrides: Partial<DiffReviewState> = {}): DiffReviewState {
     stalePendingOp: null,
     ...overrides,
   };
+}
+
+function makeState(projectOverrides: Partial<ProjectReview> = {}): DiffReviewState {
+  return {
+    activeProjectRoot: PROJECT_ROOT,
+    projects: [makeProject(projectOverrides)],
+  };
+}
+
+function activeProject(state: DiffReviewState | null): ProjectReview | undefined {
+  return state?.projects.find((p) => p.projectRoot === state.activeProjectRoot);
 }
 
 // ---------------------------------------------------------------------------
@@ -101,16 +119,25 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('diffReviewReducer MARK_STALE', () => {
-  it('adds the relativePath to staleFiles', () => {
+  it('adds the relativePath to staleFiles on the correct project', () => {
     const state = makeState();
-    const next = diffReviewReducer(state, { type: 'MARK_STALE', relativePath: 'src/foo.ts' });
-    expect(next?.staleFiles).toContain('src/foo.ts');
+    const next = diffReviewReducer(state, {
+      type: 'MARK_STALE',
+      projectRoot: PROJECT_ROOT,
+      relativePath: 'src/foo.ts',
+    });
+    expect(activeProject(next)?.staleFiles).toContain('src/foo.ts');
   });
 
   it('is idempotent — does not add duplicates', () => {
     const state = makeState({ staleFiles: ['src/foo.ts'] });
-    const next = diffReviewReducer(state, { type: 'MARK_STALE', relativePath: 'src/foo.ts' });
-    expect(next?.staleFiles.filter((p) => p === 'src/foo.ts')).toHaveLength(1);
+    const next = diffReviewReducer(state, {
+      type: 'MARK_STALE',
+      projectRoot: PROJECT_ROOT,
+      relativePath: 'src/foo.ts',
+    });
+    const count = activeProject(next)?.staleFiles.filter((p) => p === 'src/foo.ts').length;
+    expect(count).toBe(1);
   });
 });
 
@@ -119,81 +146,92 @@ describe('diffReviewReducer MARK_STALE', () => {
 // ---------------------------------------------------------------------------
 
 describe('diffReviewReducer PEND_STALE_OP / DISMISS_STALE_OP', () => {
-  it('sets stalePendingOp on PEND_STALE_OP', () => {
+  it('sets stalePendingOp on the correct project', () => {
     const state = makeState();
     const op = { kind: 'stage' as const, fileIdx: 0, hunkIdx: 0 };
-    const next = diffReviewReducer(state, { type: 'PEND_STALE_OP', op });
-    expect(next?.stalePendingOp).toEqual(op);
+    const next = diffReviewReducer(state, {
+      type: 'PEND_STALE_OP',
+      projectRoot: PROJECT_ROOT,
+      op,
+    });
+    expect(activeProject(next)?.stalePendingOp).toEqual(op);
   });
 
   it('clears stalePendingOp on DISMISS_STALE_OP', () => {
-    const state = makeState({
-      stalePendingOp: { kind: 'stage', fileIdx: 0, hunkIdx: 0 },
+    const state = makeState({ stalePendingOp: { kind: 'stage', fileIdx: 0, hunkIdx: 0 } });
+    const next = diffReviewReducer(state, {
+      type: 'DISMISS_STALE_OP',
+      projectRoot: PROJECT_ROOT,
     });
-    const next = diffReviewReducer(state, { type: 'DISMISS_STALE_OP' });
-    expect(next?.stalePendingOp).toBeNull();
+    expect(activeProject(next)?.stalePendingOp).toBeNull();
   });
 });
 
 // ---------------------------------------------------------------------------
-// isFileStale
+// isFileStale — operates on ProjectReview
 // ---------------------------------------------------------------------------
 
 describe('isFileStale', () => {
   it('returns false when file is not in staleFiles', () => {
-    expect(isFileStale(makeState(), 0)).toBe(false);
+    expect(isFileStale(makeProject(), 0)).toBe(false);
   });
 
   it('returns true when file relativePath is in staleFiles', () => {
-    const state = makeState({ staleFiles: ['src/foo.ts'] });
-    expect(isFileStale(state, 0)).toBe(true);
+    expect(isFileStale(makeProject({ staleFiles: ['src/foo.ts'] }), 0)).toBe(true);
   });
 
   it('returns false for an out-of-range fileIdx', () => {
-    const state = makeState({ staleFiles: ['src/foo.ts'] });
-    expect(isFileStale(state, 99)).toBe(false);
+    expect(isFileStale(makeProject({ staleFiles: ['src/foo.ts'] }), 99)).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// executeAcceptHunk / executeRejectHunk — direct execution helpers
+// executeAcceptHunk / executeRejectHunk — now accept ProjectReview + projectRoot
 // ---------------------------------------------------------------------------
 
 describe('executeAcceptHunk', () => {
-  it('dispatches SET_DECISION + CAPTURE_BATCH and calls stageHunk', () => {
-    const state = makeState();
+  it('dispatches SET_DECISION + CAPTURE_BATCH with projectRoot and calls stageHunk', () => {
+    const project = makeProject();
     const dispatch = vi.fn();
-    executeAcceptHunk(state, dispatch, 0, 0);
+    executeAcceptHunk({ project, dispatch, projectRoot: PROJECT_ROOT, fileIdx: 0, hunkIdx: 0 });
     expect(dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'SET_DECISION', decision: 'accepted' }),
+      expect.objectContaining({
+        type: 'SET_DECISION',
+        projectRoot: PROJECT_ROOT,
+        decision: 'accepted',
+      }),
     );
-    expect(mockStageHunk).toHaveBeenCalledWith('/proj', 'diff patch text');
+    expect(mockStageHunk).toHaveBeenCalledWith(PROJECT_ROOT, 'diff patch text');
   });
 
   it('is a no-op when hunk decision is not pending', () => {
-    const state = makeState();
-    state.files[0].hunks[0].decision = 'accepted';
+    const project = makeProject();
+    project.files[0].hunks[0].decision = 'accepted';
     const dispatch = vi.fn();
-    executeAcceptHunk(state, dispatch, 0, 0);
+    executeAcceptHunk({ project, dispatch, projectRoot: PROJECT_ROOT, fileIdx: 0, hunkIdx: 0 });
     expect(dispatch).not.toHaveBeenCalled();
     expect(mockStageHunk).not.toHaveBeenCalled();
   });
 });
 
 describe('executeRejectHunk', () => {
-  it('dispatches SET_DECISION + CAPTURE_BATCH and calls revertHunk', () => {
-    const state = makeState();
+  it('dispatches SET_DECISION + CAPTURE_BATCH with projectRoot and calls revertHunk', () => {
+    const project = makeProject();
     const dispatch = vi.fn();
-    executeRejectHunk(state, dispatch, 0, 0);
+    executeRejectHunk({ project, dispatch, projectRoot: PROJECT_ROOT, fileIdx: 0, hunkIdx: 0 });
     expect(dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'SET_DECISION', decision: 'rejected' }),
+      expect.objectContaining({
+        type: 'SET_DECISION',
+        projectRoot: PROJECT_ROOT,
+        decision: 'rejected',
+      }),
     );
-    expect(mockRevertHunk).toHaveBeenCalledWith('/proj', 'diff patch text');
+    expect(mockRevertHunk).toHaveBeenCalledWith(PROJECT_ROOT, 'diff patch text');
   });
 });
 
 // ---------------------------------------------------------------------------
-// useConfirmStaleOp
+// useConfirmStaleOp — now finds active project from DiffReviewState
 // ---------------------------------------------------------------------------
 
 describe('useConfirmStaleOp', () => {
@@ -209,8 +247,10 @@ describe('useConfirmStaleOp', () => {
       result.current.confirmStaleOp();
     });
 
-    expect(dispatch).toHaveBeenCalledWith({ type: 'DISMISS_STALE_OP' });
-    expect(mockStageHunk).toHaveBeenCalledWith('/proj', 'diff patch text');
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'DISMISS_STALE_OP', projectRoot: PROJECT_ROOT }),
+    );
+    expect(mockStageHunk).toHaveBeenCalledWith(PROJECT_ROOT, 'diff patch text');
   });
 
   it('confirmStaleOp calls revertHunk for revert op', async () => {
@@ -225,14 +265,14 @@ describe('useConfirmStaleOp', () => {
       result.current.confirmStaleOp();
     });
 
-    expect(dispatch).toHaveBeenCalledWith({ type: 'DISMISS_STALE_OP' });
-    expect(mockRevertHunk).toHaveBeenCalledWith('/proj', 'diff patch text');
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'DISMISS_STALE_OP', projectRoot: PROJECT_ROOT }),
+    );
+    expect(mockRevertHunk).toHaveBeenCalledWith(PROJECT_ROOT, 'diff patch text');
   });
 
   it('dismissStaleOp dispatches DISMISS_STALE_OP without invoking IPC', () => {
-    const state = makeState({
-      stalePendingOp: { kind: 'stage', fileIdx: 0, hunkIdx: 0 },
-    });
+    const state = makeState({ stalePendingOp: { kind: 'stage', fileIdx: 0, hunkIdx: 0 } });
     const dispatch = vi.fn();
 
     const { result } = renderHook(() => useConfirmStaleOp(state, dispatch));
@@ -240,7 +280,9 @@ describe('useConfirmStaleOp', () => {
       result.current.dismissStaleOp();
     });
 
-    expect(dispatch).toHaveBeenCalledWith({ type: 'DISMISS_STALE_OP' });
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'DISMISS_STALE_OP', projectRoot: PROJECT_ROOT }),
+    );
     expect(mockStageHunk).not.toHaveBeenCalled();
   });
 
@@ -259,11 +301,11 @@ describe('useConfirmStaleOp', () => {
 });
 
 // ---------------------------------------------------------------------------
-// useStaleFileWatcher
+// useStaleFileWatcher — now watches across all projects
 // ---------------------------------------------------------------------------
 
 describe('useStaleFileWatcher', () => {
-  it('dispatches MARK_STALE when a tracked file emits a change event', () => {
+  it('dispatches MARK_STALE with projectRoot when a tracked file emits a change event', () => {
     const state = makeState();
     const dispatch = vi.fn();
 
@@ -275,6 +317,7 @@ describe('useStaleFileWatcher', () => {
 
     expect(dispatch).toHaveBeenCalledWith({
       type: 'MARK_STALE',
+      projectRoot: PROJECT_ROOT,
       relativePath: 'src/foo.ts',
     });
   });
@@ -312,14 +355,12 @@ describe('useStaleFileWatcher', () => {
     const { unmount } = renderHook(() => useStaleFileWatcher(state, dispatch));
     unmount();
 
-    // After unmount the callback reference should be cleared.
     expect(fileChangeCallback).toBeNull();
   });
 
   it('is a no-op when state is null', () => {
     const dispatch = vi.fn();
     renderHook(() => useStaleFileWatcher(null, dispatch));
-    // No subscription registered → onFileChange not called.
     expect(window.electronAPI.files.onFileChange).not.toHaveBeenCalled();
   });
 });

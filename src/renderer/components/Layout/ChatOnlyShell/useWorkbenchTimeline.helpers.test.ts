@@ -173,34 +173,40 @@ describe('appendReviewEntry', () => {
     const entries: WorkbenchTimelineEntry[] = [];
     appendReviewEntry(
       {
-        sessionId: 's1',
-        snapshotHash: 'snap-1',
-        projectRoot: '/root',
-        files: [
+        activeProjectRoot: '/root',
+        projects: [
           {
-            filePath: '/root/a.ts',
-            relativePath: 'a.ts',
-            status: 'modified',
-            hunks: [
+            sessionId: 's1',
+            snapshotHash: 'snap-1',
+            projectRoot: '/root',
+            projectLabel: 'root',
+            files: [
               {
-                id: 'h1',
-                header: '@@',
-                oldStart: 1,
-                oldCount: 1,
-                newStart: 1,
-                newCount: 1,
-                lines: ['+x'],
-                rawPatch: '@@',
-                decision: 'pending',
+                filePath: '/root/a.ts',
+                relativePath: 'a.ts',
+                status: 'modified',
+                hunks: [
+                  {
+                    id: 'h1',
+                    header: '@@',
+                    oldStart: 1,
+                    oldCount: 1,
+                    newStart: 1,
+                    newCount: 1,
+                    lines: ['+x'],
+                    rawPatch: '@@',
+                    decision: 'pending',
+                  },
+                ],
               },
             ],
+            loading: false,
+            error: null,
+            lastAcceptedBatch: null,
+            staleFiles: [],
+            stalePendingOp: null,
           },
         ],
-        loading: false,
-        error: null,
-        lastAcceptedBatch: null,
-        staleFiles: [],
-        stalePendingOp: null,
       },
       entries,
       9_000,

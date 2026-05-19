@@ -227,6 +227,10 @@ function renderActiveDiffReview(
     canRollback,
     rollback,
     closeReview,
+    closeProjectReview,
+    setActiveProject,
+    confirmStaleOp,
+    dismissStaleOp,
   } = review;
   return (
     <LazyDiffReview
@@ -241,6 +245,10 @@ function renderActiveDiffReview(
       onRejectAll={rejectAll}
       onRollback={rollback}
       onClose={closeReview}
+      onCloseProject={closeProjectReview}
+      onSetActiveProject={setActiveProject}
+      onConfirmStaleOp={confirmStaleOp}
+      onDismissStaleOp={dismissStaleOp}
     />
   );
 }
