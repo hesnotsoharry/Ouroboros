@@ -12,19 +12,36 @@ vi.mock('electron', () => ({
   },
 }));
 
+const originalPlatform = process.platform;
+const originalHome = process.env.HOME;
+
 async function loadModule(userDataDir: string) {
+  // resolveUserDataDir uses a lazy require('electron') (deliberately not a
+  // static import — see configPreflight.ts for the worker_threads electron
+  // hazard). A bare require() in vite-transformed code resolves natively and
+  // bypasses vi.mock('electron'), so resolveUserDataDir falls through to its
+  // platform-convention branch. Drive that branch deterministically: force
+  // linux + HOME so it returns <HOME>/.config/ouroboros === userDataDir.
+  // Also set the getPath mock so the test still passes if interception ever
+  // starts working (belt-and-suspenders — both paths resolve to userDataDir).
   const electron = (await import('electron')) as unknown as {
     app: { getPath: ReturnType<typeof vi.fn> };
   };
   electron.app.getPath.mockReturnValue(userDataDir);
+  Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+  process.env.HOME = path.resolve(userDataDir, '..', '..');
   vi.resetModules();
   electron.app.getPath.mockReturnValue(userDataDir);
   return import('./configPreflight');
 }
 
 function makeTmpUserData(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cfg-preflight-'));
-  tmpDirs.push(dir);
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'cfg-preflight-'));
+  tmpDirs.push(home);
+  // resolveUserDataDir's linux branch returns <HOME>/.config/ouroboros; mirror
+  // that layout so the resolved path equals the dir the test reads/writes.
+  const dir = path.join(home, '.config', 'ouroboros');
+  fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
 
@@ -44,6 +61,9 @@ describe('runConfigPreflight', () => {
   });
 
   afterEach(() => {
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
     while (tmpDirs.length > 0) {
       const dir = tmpDirs.pop()!;
       try {

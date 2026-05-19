@@ -9,22 +9,6 @@ vi.mock('electron', () => ({
   },
 }));
 
-const constructorCalls = { count: 0 };
-
-vi.mock('electron-store', () => {
-  return {
-    default: vi.fn(function ElectronStoreStub() {
-      constructorCalls.count += 1;
-      return {
-        store: {},
-        get: vi.fn((_key: string, defaultValue?: unknown) => defaultValue),
-        set: vi.fn(),
-        has: vi.fn(() => false),
-      };
-    }),
-  };
-});
-
 vi.mock('./configPreflight', () => ({
   runConfigPreflight: vi.fn(),
   resolveUserDataDir: vi.fn(() => '/tmp/test-userdata'),
@@ -33,7 +17,6 @@ vi.mock('./configPreflight', () => ({
 describe('configStoreLazy', () => {
   beforeEach(() => {
     vi.resetModules();
-    constructorCalls.count = 0;
   });
 
   afterEach(() => {
@@ -41,15 +24,27 @@ describe('configStoreLazy', () => {
   });
 
   it('does not construct the store at import time', async () => {
+    const { runConfigPreflight } = await import('./configPreflight');
     await import('./configStoreLazy');
-    expect(constructorCalls.count).toBe(0);
+    // No construction at import → constructWithRetry (and its preflight) never ran.
+    expect(runConfigPreflight).not.toHaveBeenCalled();
   });
 
+  // NOTE: electron-store is loaded via a lazy `require('electron-store')` inside
+  // configStoreLazy (deliberately not a static import — see that file for the
+  // worker_threads electron hazard). A bare require() in vite-transformed test
+  // code resolves natively and bypasses vi.mock('electron-store'), so the
+  // constructor stub counter is NOT a reliable construction signal here.
+  // Construction is instead asserted via the runConfigPreflight spy (our own
+  // module, import-intercepted by vi.mock) which constructWithRetry calls
+  // exactly once per construction, plus singleton identity.
+
   it('constructs the store on first proxy access', async () => {
+    const { runConfigPreflight } = await import('./configPreflight');
     const { lazyStore } = await import('./configStoreLazy');
-    expect(constructorCalls.count).toBe(0);
+    expect(runConfigPreflight).not.toHaveBeenCalled();
     void lazyStore.get('anyKey' as never);
-    expect(constructorCalls.count).toBe(1);
+    expect(runConfigPreflight).toHaveBeenCalledTimes(1);
   });
 
   it('runs the preflight before constructing the store', async () => {
@@ -61,10 +56,12 @@ describe('configStoreLazy', () => {
   });
 
   it('returns the same store instance across calls', async () => {
+    const { runConfigPreflight } = await import('./configPreflight');
     const { ensureStore } = await import('./configStoreLazy');
     const a = ensureStore();
     const b = ensureStore();
     expect(a).toBe(b);
-    expect(constructorCalls.count).toBe(1);
+    // Construction happened exactly once → preflight ran exactly once.
+    expect(runConfigPreflight).toHaveBeenCalledTimes(1);
   });
 });

@@ -148,9 +148,24 @@ function validateWeights(parsed: unknown): ValidationResult {
 const WEIGHTS_FILENAME = 'context-retrained-weights.json';
 
 function getUserDataPath(): string {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { app } = require('electron') as typeof import('electron');
-  return app.getPath('userData');
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { app } = require('electron') as typeof import('electron');
+    if (app && typeof app.getPath === 'function') {
+      return app.getPath('userData');
+    }
+  } catch {
+    // worker_threads context — electron unavailable in packaged builds.
+  }
+  // Fallback: derive userData the same way Electron does by convention.
+  const appName = 'ouroboros';
+  if (process.platform === 'win32' && process.env.APPDATA) {
+    return path.join(process.env.APPDATA, appName);
+  }
+  if (process.platform === 'darwin' && process.env.HOME) {
+    return path.join(process.env.HOME, 'Library', 'Application Support', appName);
+  }
+  return path.join(process.env.HOME ?? '.', '.config', appName);
 }
 
 /**

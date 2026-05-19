@@ -84,3 +84,7 @@ Three independent caches — all module-level `Map`s:
 | `../ipc-handlers/contextScanner`   | `scanProject` for entry points                                 |
 | `../ptyOutputBuffer`               | Terminal output snapshots for live IDE state                   |
 | `@shared/ipc/orchestrationChannels`| IPC channel name constants (shared with renderer)             |
+
+## Gotchas
+
+- **`contextWorker.ts` import graph must not execute `require('electron')` at module load time.** `contextWorker` runs in a `worker_threads` context with no `electron` module in packaged builds (crashes with `Cannot find module 'electron'`). Any file reachable from `contextWorker`'s static import graph that calls `require('electron')` or imports from a module that does so at the top level will kill the worker at startup. Pattern: wrap `require('electron')` in `try/catch` with a platform-convention fallback (see `configPreflight.ts::resolveUserDataDir` and `contextClassifier.ts::getUserDataPath`). The two live violations fixed in v2.19.3+: `configPreflight.ts` had a static `import { app } from 'electron'` at the top of the file (crashed on load), and `contextClassifier.ts::getUserDataPath` had a bare `require('electron')` with no catch. Both are now wrapped. Same class of bug as `codebaseGraph/CLAUDE.md`'s "Worker import graph must avoid electron" gotcha.

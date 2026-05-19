@@ -1,4 +1,4 @@
-import Store from 'electron-store';
+import type Store from 'electron-store';
 
 import type { AppConfig } from './config';
 import { resolveUserDataDir, runConfigPreflight } from './configPreflight';
@@ -31,7 +31,21 @@ export function ensureStore(): Store<AppConfig> {
  * error retry once after re-running preflight to coerce the file back to a
  * valid shape.
  */
+function loadStoreCtor(): typeof Store {
+  // Lazy require, NOT a top-level import: electron-store runs
+  // `require('electron')` in its own module-init code, which throws in
+  // worker_threads (no electron module). A static `import Store from
+  // 'electron-store'` crashes any worker that transitively imports config —
+  // even though the worker never constructs the store. Deferring construction
+  // alone (the original design) was insufficient; the import itself was the
+  // hazard. See contextWorker / indexingWorker electron-in-worker gotcha.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mod = require('electron-store') as { default?: typeof Store };
+  return mod.default ?? (mod as unknown as typeof Store);
+}
+
 function constructWithRetry(): Store<AppConfig> {
+  const Store = loadStoreCtor();
   runConfigPreflight();
   // Pin cwd explicitly: in main, electron-store would resolve to
   // `app.getPath('userData')` on its own, but in worker subprocesses it

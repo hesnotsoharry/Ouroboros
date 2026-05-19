@@ -1,4 +1,3 @@
-import { app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 
@@ -99,8 +98,15 @@ function deleteNestedKey(
  * from platform conventions + the package "name" field.
  */
 export function resolveUserDataDir(): string | null {
-  if (app && typeof app.getPath === 'function') {
-    return app.getPath('userData');
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { app } = require('electron') as typeof import('electron');
+    if (app && typeof app.getPath === 'function') {
+      return app.getPath('userData');
+    }
+  } catch {
+    // worker_threads context — electron module unavailable in packaged builds.
+    // Fall through to platform-convention path derivation below.
   }
   const appName = 'ouroboros';
   if (process.platform === 'win32' && process.env.APPDATA) {
