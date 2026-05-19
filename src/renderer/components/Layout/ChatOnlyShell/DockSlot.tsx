@@ -135,12 +135,13 @@ export function ShowSecondarySlotButton({ onClick }: { onClick: () => void }): R
     <button
       type="button"
       onClick={onClick}
-      title="Show secondary terminal slot"
-      aria-label="Show secondary terminal slot"
+      title="Show terminal slot below (currently hidden)"
+      aria-label="Show terminal slot below"
       data-testid="show-secondary-slot-affordance"
-      className="rounded p-0.5 text-text-semantic-secondary transition-colors hover:bg-surface-hover hover:text-text-semantic-primary"
+      className="flex items-center gap-1 rounded border border-border-semantic px-1.5 py-0.5 text-[10px] font-medium text-text-semantic-secondary transition-colors hover:bg-surface-hover hover:text-text-semantic-primary"
     >
-      <span aria-hidden className="text-xs">▾</span>
+      <span aria-hidden className="text-[9px]">▼</span>
+      <span>Show slot</span>
     </button>
   );
 }

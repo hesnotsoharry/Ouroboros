@@ -25,6 +25,28 @@ import { DockSlot } from './DockSlot';
 import { computeSlotDisplayHeights, useDockSlotHeights } from './useDockSlotHeights';
 
 // ---------------------------------------------------------------------------
+// useSectionHeight — ResizeObserver that tracks the dock section's rendered px
+// height. Returns 0 until the first measurement; computeSlotDisplayHeights
+// treats 0 as "pre-measurement" and returns raw stored heights unchanged.
+// ---------------------------------------------------------------------------
+
+function useSectionHeight(ref: React.RefObject<HTMLElement | null>): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof ResizeObserver === 'undefined') return; // jsdom / SSR — leave at 0, parent falls back to persisted heights
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setHeight(Math.round(entry.contentRect.height));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return height;
+}
+
+// ---------------------------------------------------------------------------
 // Legacy migration (pre-Wave-88 localStorage key — kept from Wave 88)
 // ---------------------------------------------------------------------------
 
@@ -143,15 +165,14 @@ interface DockState {
   secondaryHeight: number;
   primaryCollapsed: boolean;
   secondaryCollapsed: boolean;
+  sectionRef: React.RefObject<HTMLElement | null>;
+  measuredHeight: number;
   handleDividerPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPrimarySessionChange: (id: string | null) => void;
   onSecondarySessionChange: (id: string | null) => void;
   togglePrimaryCollapsed: () => void;
   toggleSecondaryCollapsed: () => void;
 }
-
-/** parentExtent used when no DOM measurement available (SSR / first render). */
-const FALLBACK_PARENT_EXTENT = 600;
 
 // Extracted to keep useDockState under 40 lines.
 function useCollapseToggles(toggleSlotCollapsed: (slot: 'primary' | 'secondary') => void): {
@@ -177,7 +198,8 @@ function useDockState(onActiveSessionChange?: (id: string | null) => void): Dock
     useActiveSlotSession();
   const { togglePrimaryCollapsed, toggleSecondaryCollapsed } =
     useCollapseToggles(toggleSlotCollapsed);
-
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const measuredHeight = useSectionHeight(sectionRef);
   useEffect(() => {
     onActiveSessionChange?.(primarySessionId ?? secondarySessionId);
   }, [primarySessionId, secondarySessionId, onActiveSessionChange]);
@@ -192,24 +214,18 @@ function useDockState(onActiveSessionChange?: (id: string | null) => void): Dock
       if (slotsCollapsed.primary || slotsCollapsed.secondary) return;
       event.preventDefault();
       (event.target as HTMLElement).setPointerCapture(event.pointerId);
-      startSiblingResize(buildSiblingOpts(sizes.terminal, event.clientY));
+      startSiblingResize(buildSiblingOpts(measuredHeight, event.clientY));
     },
-    [sizes.terminal, startSiblingResize, buildSiblingOpts, slotsCollapsed],
+    [measuredHeight, startSiblingResize, buildSiblingOpts, slotsCollapsed],
   );
 
-  const display = computeSlotDisplayHeights(
-    slotHeights, slotsCollapsed, sizes.terminal || FALLBACK_PARENT_EXTENT,
-  );
+  const d = computeSlotDisplayHeights(slotHeights, slotsCollapsed, measuredHeight);
   return {
-    primaryHeight: display.primary,
-    secondaryHeight: display.secondary,
-    primaryCollapsed: slotsCollapsed.primary,
-    secondaryCollapsed: slotsCollapsed.secondary,
-    handleDividerPointerDown,
-    onPrimarySessionChange,
-    onSecondarySessionChange,
-    togglePrimaryCollapsed,
-    toggleSecondaryCollapsed,
+    primaryHeight: d.primary, secondaryHeight: d.secondary,
+    primaryCollapsed: slotsCollapsed.primary, secondaryCollapsed: slotsCollapsed.secondary,
+    sectionRef, measuredHeight, handleDividerPointerDown,
+    onPrimarySessionChange, onSecondarySessionChange,
+    togglePrimaryCollapsed, toggleSecondaryCollapsed,
   };
 }
 
@@ -249,40 +265,32 @@ function SecondarySlot({
 export function ChatWorkbenchTerminalDock({
   onActiveSessionChange,
 }: ChatWorkbenchTerminalDockProps): React.ReactElement {
-  const {
-    primaryHeight,
-    secondaryHeight,
-    primaryCollapsed,
-    secondaryCollapsed,
-    handleDividerPointerDown,
-    onPrimarySessionChange,
-    onSecondarySessionChange,
-    togglePrimaryCollapsed,
-    toggleSecondaryCollapsed,
-  } = useDockState(onActiveSessionChange);
-
-  const showSecondarySlot = useSecondarySlotVisible(secondaryCollapsed);
-
+  const ds = useDockState(onActiveSessionChange);
+  const showSecondarySlot = useSecondarySlotVisible(ds.secondaryCollapsed);
+  // Phase E: when secondary is hidden, primary takes full measured section
+  // height. Fallback to ds.primaryHeight while measuredHeight is 0 (pre-measure).
+  const primaryH = !showSecondarySlot && ds.measuredHeight > 0 ? ds.measuredHeight : ds.primaryHeight;
   return (
     <section
+      ref={ds.sectionRef}
       className="flex flex-1 flex-col border-t border-border-semantic bg-surface-panel/95"
       data-testid="chat-workbench-terminal-dock"
     >
       <DockSlot
         slot="primary"
-        height={primaryHeight}
-        collapsed={primaryCollapsed}
-        onToggleCollapse={togglePrimaryCollapsed}
-        onActiveSessionChange={onPrimarySessionChange}
-        onShowSecondarySlot={showSecondarySlot ? undefined : toggleSecondaryCollapsed}
+        height={primaryH}
+        collapsed={ds.primaryCollapsed}
+        onToggleCollapse={ds.togglePrimaryCollapsed}
+        onActiveSessionChange={ds.onPrimarySessionChange}
+        onShowSecondarySlot={showSecondarySlot ? undefined : ds.toggleSecondaryCollapsed}
       />
       {showSecondarySlot && (
         <SecondarySlot
-          height={secondaryHeight}
-          collapsed={secondaryCollapsed}
-          onToggleCollapse={toggleSecondaryCollapsed}
-          onActiveSessionChange={onSecondarySessionChange}
-          handleDividerPointerDown={handleDividerPointerDown}
+          height={ds.secondaryHeight}
+          collapsed={ds.secondaryCollapsed}
+          onToggleCollapse={ds.toggleSecondaryCollapsed}
+          onActiveSessionChange={ds.onSecondarySessionChange}
+          handleDividerPointerDown={ds.handleDividerPointerDown}
         />
       )}
     </section>
