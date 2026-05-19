@@ -41,6 +41,7 @@ import {
   enableCodeMode,
   getMcpServers,
   isCodeModeEnabled,
+  maybeRestoreFromCrash,
   type McpServerConfig,
 } from './codemodeManager';
 
@@ -109,6 +110,14 @@ export async function enableCodeModeUserLevel(
     log.info('[codemode-startup] already enabled in this process — skipping');
     return { success: true };
   }
+  // Bug fix (Wave 98): restore any backed-up servers to ~/.claude.json BEFORE
+  // resolving eligible servers. Without this, the server list read here would
+  // be empty (servers were removed during the prior enable and stashed in the
+  // restoration file), causing enableCodeModeUserLevel to bail out before
+  // calling enableCodeMode — which meant maybeRestoreFromCrash never ran and
+  // the stale proxy config (potentially written by a dev-mode session with a
+  // source-tree context7Proxy.js path) was never overwritten.
+  await maybeRestoreFromCrash();
   const { serverNames, skippedHttp } = await resolveEligibleServers(cfg, opts.projectRoot);
   if (skippedHttp.length > 0) {
     log.info(`[codemode-startup] skipping HTTP-only upstreams: ${skippedHttp.join(',')}`);

@@ -18,6 +18,7 @@ vi.mock('./codemodeManager', () => ({
   disableCodeMode: vi.fn(),
   getMcpServers: vi.fn(),
   isCodeModeEnabled: vi.fn(),
+  maybeRestoreFromCrash: vi.fn(),
 }));
 
 import { getConfigValue } from '../config';
@@ -26,6 +27,7 @@ import {
   enableCodeMode,
   getMcpServers,
   isCodeModeEnabled,
+  maybeRestoreFromCrash,
 } from './codemodeManager';
 import { disableCodeModeUserLevel, enableCodeModeUserLevel } from './codemodeStartup';
 
@@ -34,6 +36,7 @@ const enabledFn = isCodeModeEnabled as ReturnType<typeof vi.fn>;
 const enableFn = enableCodeMode as ReturnType<typeof vi.fn>;
 const disableFn = disableCodeMode as ReturnType<typeof vi.fn>;
 const serversFn = getMcpServers as ReturnType<typeof vi.fn>;
+const restoreFn = maybeRestoreFromCrash as ReturnType<typeof vi.fn>;
 
 function setConfig(map: Record<string, unknown>): void {
   cfg.mockImplementation((key: string) => map[key as keyof typeof map]);
@@ -45,6 +48,7 @@ beforeEach(() => {
   enableFn.mockResolvedValue({ success: true });
   disableFn.mockResolvedValue({ success: true });
   serversFn.mockResolvedValue([]);
+  restoreFn.mockResolvedValue(undefined);
 });
 
 describe('enableCodeModeUserLevel — gate', () => {
@@ -132,6 +136,22 @@ describe('enableCodeModeUserLevel — eligibility filter', () => {
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/no eligible servers/);
     expect(enableFn).not.toHaveBeenCalled();
+  });
+
+  it('calls maybeRestoreFromCrash before resolving eligible servers (Wave 98 ordering fix)', async () => {
+    // Verifies the fix: crash-recovery runs before getMcpServers so that
+    // servers restored from the backup are visible when eligibility is assessed.
+    setConfig({ codemode: { enabled: true } });
+    const callOrder: string[] = [];
+    restoreFn.mockImplementation(async () => {
+      callOrder.push('restore');
+    });
+    serversFn.mockImplementation(async () => {
+      callOrder.push('getMcpServers');
+      return [];
+    });
+    await enableCodeModeUserLevel();
+    expect(callOrder.indexOf('restore')).toBeLessThan(callOrder.indexOf('getMcpServers'));
   });
 });
 

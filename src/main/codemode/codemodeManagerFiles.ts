@@ -246,11 +246,29 @@ export function buildContext7ProxyEntry(): McpServerConfig {
   };
 }
 
+/**
+ * Returns true when an existing context7 entry points to a valid path.
+ * Wave 98 bug: the "skip if exists" guard passed through stale entries that
+ * were written by a dev-mode session (source-tree path) and then used by the
+ * packaged app, where the path no longer exists.
+ */
+function context7EntryIsValid(entry: McpServerConfig): boolean {
+  const arg0 = entry.args?.[0];
+  if (typeof arg0 !== 'string') return false;
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- arg0 is a path we're validating
+  return existsSync(arg0);
+}
+
 export function augmentProxyServers(
   serversToProxy: Record<string, McpServerConfig>,
 ): Record<string, McpServerConfig> {
   if (Object.keys(serversToProxy).length === 0) return serversToProxy;
-  if (serversToProxy.context7 || !process.env.CONTEXT7_API_KEY) return serversToProxy;
+  if (!process.env.CONTEXT7_API_KEY) return serversToProxy;
+  // If a context7 entry already exists and its path resolves, keep it.
+  // If it exists but points to a non-existent path (e.g. a stale dev-mode
+  // source-tree path), replace it with a freshly resolved entry.
+  if (serversToProxy.context7 && context7EntryIsValid(serversToProxy.context7))
+    return serversToProxy;
   return {
     ...serversToProxy,
     context7: buildContext7ProxyEntry(),

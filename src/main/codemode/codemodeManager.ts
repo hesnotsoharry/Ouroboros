@@ -103,7 +103,7 @@ export async function getMcpServers(projectRoot?: string): Promise<McpServerEntr
 // so restoring the ouroboros entry is now safe (and correct — the IDE's
 // fresh injection will idempotently overwrite it on next startup).
 
-async function maybeRestoreFromCrash(): Promise<void> {
+export async function maybeRestoreFromCrash(): Promise<void> {
   const record = await readRestorationFile();
   if (!record) return;
   log.warn('[codemode] stale restoration file detected — recovering from prior crashed enable');

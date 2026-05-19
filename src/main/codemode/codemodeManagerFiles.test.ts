@@ -203,4 +203,28 @@ describe('context7 proxy helpers', () => {
     expect(servers.context7).toBeDefined();
     expect(servers.context7?.args?.[0]).toMatch(/context7Proxy\.js$/);
   });
+
+  it('augmentProxyServers replaces a context7 entry whose path does not exist (Wave 98 stale-path fix)', () => {
+    // Simulates a dev-mode session writing a source-tree path that the packaged
+    // app can't resolve. The stale entry should be overwritten, not trusted.
+    process.env.CONTEXT7_API_KEY = 'test-key';
+    const stalePath = 'C:\\does\\not\\exist\\src\\main\\codemode\\context7Proxy.js';
+    const servers = augmentProxyServers({
+      github: { command: 'npx' },
+      context7: { type: 'stdio', command: 'node', args: [stalePath] },
+    });
+    expect(servers.context7?.args?.[0]).not.toBe(stalePath);
+    expect(servers.context7?.args?.[0]).toMatch(/context7Proxy\.js$/);
+  });
+
+  it('augmentProxyServers keeps a context7 entry whose path exists', () => {
+    process.env.CONTEXT7_API_KEY = 'test-key';
+    // Use __filename as a guaranteed-existing path stand-in.
+    const validPath = __filename;
+    const servers = augmentProxyServers({
+      github: { command: 'npx' },
+      context7: { type: 'stdio', command: 'node', args: [validPath] },
+    });
+    expect(servers.context7?.args?.[0]).toBe(validPath);
+  });
 });
