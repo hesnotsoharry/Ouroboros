@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.2] - 2026-05-19
+
+### Changed
+- **Wave 97 — Shared-Types Extraction.** Eliminates the renderer/main `ClaudeCliSettings` drift that Wave 96 worked around with an in-place sync. Pure type-only refactor, no behavior change. Full story in `roadmap/wave-97-shared-types-extraction/wave-97-result.md`.
+  - **New canonical home for CLI-integration settings interfaces** at `src/shared/types/configSlices.ts`. Owns the definitions for `ClaudeCliSettings` (15 fields, full JSDoc) and `CodexCliSettings` (9 fields, full JSDoc).
+  - **Phase A** — `src/main/configTypes.ts` becomes a re-export shim: `export type { ClaudeCliSettings, CodexCliSettings } from '@shared/types/configSlices';`. Every main-side consumer keeps working unchanged (no import-path sweep). Net −48 lines in `configTypes.ts` (344 → 296, well under the 300-line ESLint limit).
+  - **Phase C** — `src/renderer/types/electron-foundation.d.ts` deletes the duplicate interface definitions and replaces with `import type { ... } from '@shared/types/configSlices';` + matching re-export. The renderer's `useClaudeCliSettings.ts` resolves through the same barrel. New fields no longer need hand-mirroring between sides.
+  - **W96 gotcha entry removed** from `src/renderer/types/CLAUDE.md` — the "until Wave 97 unifies them" line is gone.
+  - **Phase B no-op** — Phase 0 inventory found ~60 orchestration symbol re-exports from `main/orchestration/types` into the renderer, but those are NOT duplicated (no drift) and `tsconfig.web.json:30-33` already explicitly includes the 4 main/orchestration type files. Soft cap (≤10) exceeded; orchestration relocation deferred to a dedicated future wave focused on the architectural cleanliness rule. Follow-up: `roadmap/follow-ups/2026-05-19-orchestration-types-relocation.md`.
+
+### Architecture decisions (per `roadmap/wave-97-shared-types-extraction/wave-97-decisions.md`)
+- D1: Module location — single `src/shared/types/configSlices.ts` (matches in-repo convention).
+- D2: Import-path stability — re-export shim in `configTypes.ts`; no consumer sweep.
+- D3: Orchestration scope — inventory-gated; verdict NO-OP this wave.
+- D4: Renderer-local `ClaudeCliSettings` — delete outright (internal-only, not deprecated).
+- D5: Semver tier — patch (`v2.19.2`); pure type correctness, no runtime change.
+
 ## [2.19.1] - 2026-05-19
 
 ### Added
