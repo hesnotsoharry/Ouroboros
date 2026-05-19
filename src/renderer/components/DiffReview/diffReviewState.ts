@@ -2,6 +2,12 @@ import log from 'electron-log/renderer';
 import type { Dispatch } from 'react';
 import { useCallback } from 'react';
 
+import {
+  buildProjectReview,
+  updatePendingHunks,
+  updateProject,
+  updateProjectFile,
+} from './diffReviewState.helpers';
 import { loadReviewFiles } from './diffReviewState.ops';
 import type {
   DiffReviewState,
@@ -73,58 +79,6 @@ export interface DiffReviewActions {
 }
 
 type ReviewDispatch = Dispatch<DiffReviewAction>;
-
-// ── Project label derivation ──────────────────────────────────────────────────
-
-function deriveProjectLabel(p: string): string {
-  return (
-    p
-      .replace(/[\\/]$/, '')
-      .split(/[\\/]/)
-      .pop() ?? p
-  );
-}
-
-// ── Per-project helpers ───────────────────────────────────────────────────────
-
-function buildProjectReview(action: Extract<DiffReviewAction, { type: 'OPEN' }>): ProjectReview {
-  return {
-    projectRoot: action.projectRoot,
-    projectLabel: deriveProjectLabel(action.projectRoot),
-    sessionId: action.sessionId,
-    snapshotHash: action.snapshotHash,
-    filePaths: action.filePaths,
-    files: [],
-    loading: true,
-    error: null,
-    lastAcceptedBatch: null,
-    staleFiles: [],
-    stalePendingOp: null,
-  };
-}
-
-function updateProject(
-  projects: ProjectReview[],
-  projectRoot: string,
-  updater: (p: ProjectReview) => ProjectReview,
-): ProjectReview[] {
-  return projects.map((p) => (p.projectRoot === projectRoot ? updater(p) : p));
-}
-
-function updateProjectFile(
-  files: ReviewFile[],
-  fileIdx: number,
-  updater: (file: ReviewFile) => ReviewFile,
-): ReviewFile[] {
-  return files.map((file, index) => (index === fileIdx ? updater(file) : file));
-}
-
-function updatePendingHunks(file: ReviewFile, decision: HunkDecision): ReviewFile {
-  return {
-    ...file,
-    hunks: file.hunks.map((hunk) => (hunk.decision === 'pending' ? { ...hunk, decision } : hunk)),
-  };
-}
 
 // ── Per-project state mutators ────────────────────────────────────────────────
 

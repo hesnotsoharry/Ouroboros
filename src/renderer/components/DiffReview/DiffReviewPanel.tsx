@@ -180,6 +180,66 @@ function getStaleFilePath(project: ProjectReview): string | null {
   return project.files[op.fileIdx]?.relativePath ?? '';
 }
 
+interface PanelRenderProps {
+  state: DiffReviewState;
+  activeProject: ProjectReview;
+  stats: ReturnType<typeof getDiffReviewStats>;
+  canRollback: boolean;
+  enhancedEnabled: boolean;
+  focusedHunkId: string | null;
+  selectedFileIdx: number;
+  setSelectedFileIdx: (idx: number) => void;
+  setFileRef: (idx: number, el: HTMLDivElement | null) => void;
+  staleFilePath: string | null;
+  onConfirmStaleOp: () => void;
+  onDismissStaleOp: () => void;
+  onAcceptHunk: (projectRoot: string, fileIdx: number, hunkIdx: number) => void;
+  onRejectHunk: (projectRoot: string, fileIdx: number, hunkIdx: number) => void;
+  onAcceptAllFile: (projectRoot: string, fileIdx: number) => void;
+  onRejectAllFile: (projectRoot: string, fileIdx: number) => void;
+  onAcceptAll: (projectRoot: string) => void;
+  onRejectAll: (projectRoot: string) => void;
+  onRollback: (projectRoot: string) => void;
+  onClose: () => void;
+  onCloseProject: (projectRoot: string) => void;
+  onSetActiveProject: (projectRoot: string) => void;
+}
+
+function DiffReviewPanelBody(p: PanelRenderProps): React.ReactElement {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {p.staleFilePath !== null && (
+        <StalePromptBar
+          staleFile={p.staleFilePath}
+          onConfirm={p.onConfirmStaleOp}
+          onDismiss={p.onDismissStaleOp}
+        />
+      )}
+      <DiffReviewLayout
+        state={p.state}
+        activeProject={p.activeProject}
+        selectedFileIdx={p.selectedFileIdx}
+        stats={p.stats}
+        canRollback={p.canRollback}
+        enhancedEnabled={p.enhancedEnabled}
+        focusedHunkId={p.focusedHunkId}
+        onClose={p.onClose}
+        onCloseProject={p.onCloseProject}
+        onSetActiveProject={p.onSetActiveProject}
+        onAcceptAll={p.onAcceptAll}
+        onRejectAll={p.onRejectAll}
+        onRollback={p.onRollback}
+        onAcceptAllFile={p.onAcceptAllFile}
+        onRejectAllFile={p.onRejectAllFile}
+        onSelectFile={p.setSelectedFileIdx}
+        onAcceptHunk={p.onAcceptHunk}
+        onRejectHunk={p.onRejectHunk}
+        setFileRef={p.setFileRef}
+      />
+    </div>
+  );
+}
+
 export function DiffReviewPanel(props: DiffReviewPanelProps): React.ReactElement {
   const { state, canRollback, enhancedEnabled, onAcceptHunk, onRejectHunk } = props;
   const { onAcceptAllFile, onRejectAllFile, onAcceptAll, onRejectAll, onRollback, onClose } = props;
@@ -193,37 +253,30 @@ export function DiffReviewPanel(props: DiffReviewPanelProps): React.ReactElement
   const { selectedFileIdx, setSelectedFileIdx, setFileRef } = useFileNavState(activeProject);
 
   if (stateView) return stateView;
-  const staleFilePath = getStaleFilePath(activeProject);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {staleFilePath !== null && (
-        <StalePromptBar
-          staleFile={staleFilePath}
-          onConfirm={onConfirmStaleOp}
-          onDismiss={onDismissStaleOp}
-        />
-      )}
-      <DiffReviewLayout
-        state={state}
-        activeProject={activeProject}
-        selectedFileIdx={selectedFileIdx}
-        stats={stats}
-        canRollback={canRollback}
-        enhancedEnabled={enhancedEnabled}
-        focusedHunkId={focusedHunkId}
-        onClose={onClose}
-        onCloseProject={onCloseProject}
-        onSetActiveProject={onSetActiveProject}
-        onAcceptAll={onAcceptAll}
-        onRejectAll={onRejectAll}
-        onRollback={onRollback}
-        onAcceptAllFile={onAcceptAllFile}
-        onRejectAllFile={onRejectAllFile}
-        onSelectFile={setSelectedFileIdx}
-        onAcceptHunk={onAcceptHunk}
-        onRejectHunk={onRejectHunk}
-        setFileRef={setFileRef}
-      />
-    </div>
+    <DiffReviewPanelBody
+      state={state}
+      activeProject={activeProject}
+      stats={stats}
+      canRollback={canRollback}
+      enhancedEnabled={enhancedEnabled}
+      focusedHunkId={focusedHunkId}
+      selectedFileIdx={selectedFileIdx}
+      setSelectedFileIdx={setSelectedFileIdx}
+      setFileRef={setFileRef}
+      staleFilePath={getStaleFilePath(activeProject)}
+      onConfirmStaleOp={onConfirmStaleOp}
+      onDismissStaleOp={onDismissStaleOp}
+      onAcceptHunk={onAcceptHunk}
+      onRejectHunk={onRejectHunk}
+      onAcceptAllFile={onAcceptAllFile}
+      onRejectAllFile={onRejectAllFile}
+      onAcceptAll={onAcceptAll}
+      onRejectAll={onRejectAll}
+      onRollback={onRollback}
+      onClose={onClose}
+      onCloseProject={onCloseProject}
+      onSetActiveProject={onSetActiveProject}
+    />
   );
 }
