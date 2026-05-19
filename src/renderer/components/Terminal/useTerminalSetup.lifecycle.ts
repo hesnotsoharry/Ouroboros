@@ -248,9 +248,18 @@ function createTerminalDisposables(
 ): Omit<AttachedTerminalDisposables, 'clickHandler' | 'mouseUpHandler' | 'selD' | 'ro'> {
   return {
     filePathLink: registerFilePathLinks(term, () => context.projectRootRef.current),
-    oscFg: term.parser.registerOscHandler(10, () => true),
-    oscBg: term.parser.registerOscHandler(11, () => true),
-    oscCursor: term.parser.registerOscHandler(12, () => true),
+    oscFg: term.parser.registerOscHandler(10, (data: string) => {
+      log.info('[trace:osc] OSC 10 received', { data, sessionId: context.sessionId });
+      return true;
+    }),
+    oscBg: term.parser.registerOscHandler(11, (data: string) => {
+      log.info('[trace:osc] OSC 11 received', { data, sessionId: context.sessionId });
+      return true;
+    }),
+    oscCursor: term.parser.registerOscHandler(12, (data: string) => {
+      log.info('[trace:osc] OSC 12 received', { data, sessionId: context.sessionId });
+      return true;
+    }),
     titleD: term.onTitleChange((title) =>
       context.callbacks.onTitleChange?.(context.sessionId, title),
     ),

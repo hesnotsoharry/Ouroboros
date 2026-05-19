@@ -151,17 +151,48 @@ back to a wrong palette assumption.
 - *Experimental:* Allow writes too, let TUIs override theme. Rejected
   — explicitly contradicts the design intent documented in CLAUDE.md.
 
-**Pick:** PENDING — investigation-gated.
+**Pick:** RESOLVED 2026-05-18 — **read `--palette-term-bg` (opaque)
+in `buildXtermTheme` for the xterm `background` and `cursorAccent`
+fields, instead of `--term-bg` (which is forced transparent by the
+glass theme bridge).**
 
-**Rationale:** Cannot decide without Phase D narrowing the root cause.
-If OSC 11 is confirmed as the failure mode, the standard answer
-(read-allow / write-block) is the pick. If the root cause is theme
-palette ANSI slot mismatch instead, OSC handler is unchanged and the
-fix is in the theme.
+**Rationale:** Phase D diagnosis (high confidence) identified the root
+cause as the glass-transparency system + `allowTransparency: true`:
+`useTheme.tokens.ts:105` unconditionally sets `--term-bg =
+rgba(0,0,0,0)` for the glass aesthetic on chrome surfaces, and
+`buildXtermTheme()` reads that CSS var as the xterm canvas background.
+TUI fill-bg cells (Claude TUI status panel boxes, bordered regions)
+render with transparent backgrounds, compositing against the
+Mica/glass behind the IDE instead of the dark panel color the TUI
+intends. External Windows Terminal has an opaque background — the
+observable difference. `--palette-term-bg` (= `#0c0c0e`, defined at
+`tokens.css:36`) is the SAME opaque source for all themes (palette
+layer, not semantic layer) — reading it directly satisfies the
+project's own documented `*-solid` pattern (see renderer/CLAUDE.md
+glass gotcha: "when an opaque background is genuinely required (text
+contrast against arbitrary content beneath), use the `*-solid`
+variant").
 
-**Consequences:** TBD after Phase D investigation. If OSC handler
-changes: re-read of `Terminal/CLAUDE.md` rule and update of the
-"prevents theme color override" doc text to clarify read-vs-write.
+**Consequences:** Adds 2 changes in `terminalHelpers.ts`'s
+`buildXtermTheme()`:
+- `background` field reads `--palette-term-bg` instead of `--term-bg`.
+- `cursorAccent` derivation uses the same opaque source.
+Cell-level transparency disappears (the glass aesthetic is preserved
+for shell surfaces — terminal chrome, tab bars — via the unchanged
+`--term-bg` consumers there). xterm internal canvas is now opaque,
+which is what TUI fill cells require.
+
+Two follow-ups filed (NOT shipped in Wave 95 Phase D):
+1. **OSC 11 partial read-allow** — change OSC 11 handler from full
+   suppression to allow `?` read-query responses (so Claude TUI can
+   self-detect bg), keep write-blocked. Lower urgency once the bg
+   is actually opaque. Diagnostician's H2 (medium confidence) —
+   adding `[trace:osc]` instrumentation in Phase D implementer
+   dispatch so a future capture confirms before fixing.
+2. **ANSI palette tuning** — current muted slots
+   (`cyan: '#55aaaa'`, etc.) vs Windows Terminal Campbell defaults.
+   UX call beyond Phase D scope — affects all terminal content, not
+   just TUI.
 
 ---
 

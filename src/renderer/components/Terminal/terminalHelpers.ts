@@ -67,7 +67,7 @@ export function buildXtermTheme(): typeof ANSI_COLORS & {
   cursorAccent: string;
   selectionBackground: string;
 } {
-  const bg = getCssVar('--term-bg') || '#0d0d0d';
+  const bg = getCssVar('--palette-term-bg') || '#0d0d0d';
   const fg = getCssVar('--term-fg') || '#e0e0e0';
 
   return {
