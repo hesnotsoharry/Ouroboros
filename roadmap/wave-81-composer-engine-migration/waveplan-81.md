@@ -38,7 +38,7 @@ ADR file: `roadmap/wave-81-composer-engine-migration/wave-81-decisions.md`.
 - Behavior parity: Enter-to-send, Shift-Enter-newline, Escape-clear, Tab-cycle-permission, ArrowUp-restore-last-user-message, `@` mention dropdown (file/folder/diff/terminal/codebase/symbol), `/` slash command menu (existing static + dynamic commands), per-thread draft persistence + restore, image paste, drag-from-FileTree drop → mention insertion, `agent-ide:quote-to-composer` event handling, auto-resize up to 40vh, mid-turn inject button, send/stop/queue button states
 - `MentionChipsBar` continues to reflect `mentions[]` store contents (no behavioral change to the chip bar itself)
 - `AgentChatComposerInput.test.tsx` rewritten to test the Lexical path in phase F
-- Manual smoke entry in `roadmap/wave-81-composer-engine-migration/wave-81-auto-brief.md` per `~/.claude/rules/manual-smoke-gate.md`
+- Manual smoke entry in `roadmap/wave-81-composer-engine-migration/wave-81-result.md` per `~/.claude/rules/manual-smoke-gate.md`
 
 **Out of scope:**
 
@@ -59,7 +59,7 @@ ADR file: `roadmap/wave-81-composer-engine-migration/wave-81-decisions.md`.
 | C | `@` mention parity | sonnet-implementer | Wire `BeautifulMentionsPlugin` with `@` trigger only, **using the API names locked in Phase A's audit** (do not rediscover; if the audit's locked name differs from a name written here, the audit wins). Custom `menuItemComponent` re-uses styling/icons from existing `MentionAutocomplete.tsx` (file/folder/diff/terminal/codebase/symbol type colors and SVG icons). Bridge the mention-selection callback to existing `useAgentChatContext.addMention` so `mentions[]` zustand store remains the single source of truth for context preview / send pipeline. Backspace-into-mention removes the chip via the chip-removal callback identified in the audit. Tests: trigger detection, store-bridge call, backspace removal. |
 | D | `/` slash command integration | sonnet-implementer | Build a small custom Lexical plugin (`SlashCommandPlugin.ts` under `lexicalComposer/`) that registers an editor `update` listener, scans current text for cursor-position `/` patterns matching the existing `extractSlashQuery` rules, and drives the existing `SlashCommandMenu.tsx` component (no UI change). Slash tokens remain plain text — NOT routed through `BeautifulMentionsPlugin`. On selection: existing `selectComposerSlash` runs the action OR replaces with `/cmdId ` plain text. Tests: pattern detection at various cursor positions, menu open/close, selection behavior. |
 | E | Auxiliary feature parity | sonnet-implementer | Image paste: custom Lexical paste plugin that intercepts clipboard items at `COMMAND_PRIORITY_HIGH`, calls existing `useImageAttachmentHandlers.handlePaste` for image files, lets text fall through to default handling. Drag-from-FileTree drop: custom drop handler on the ContentEditable container that parses the existing JSON dataTransfer payload and inserts a mention via `editor.update()` + the programmatic mention-insertion hook locked in Phase A's audit (e.g. `useBeautifulMentions().insertMention(...)` — use the audit's verified name). `agent-ide:quote-to-composer` event listener uses `editor.update()` + `TextNode` insertion to append text. **Mid-turn inject button: verify positioning, fix if it shifts.** Compute `MidTurnInjectButton`'s top/right offsets against the ContentEditable's bounding box; if the button visibly shifts vs. the legacy RichTextarea anchor, wrap the composer in a positioning shim div to preserve the existing visual anchor. Smoke-check by opening a chat-only window with the flag on and confirming the inject button lands in the same pixel zone as legacy. |
-| F | Cutover + cleanup | sonnet-implementer | Flip `VITE_LEXICAL_COMPOSER` default behavior: Lexical mounts unconditionally; legacy RichTextarea path deleted from `AgentChatComposerInput.tsx`. Remove `rich-textarea` from `package.json` + `package-lock.json`. Verify `grep -r "from 'rich-textarea'" src/renderer` returns empty. Rewrite `AgentChatComposerInput.test.tsx` to test Lexical surface (existing tests assert RichTextarea-specific behavior). Append a Lexical-migration gotcha entry to `src/renderer/components/AgentChat/CLAUDE.md`. Manual smoke + result brief at `roadmap/wave-81-composer-engine-migration/wave-81-auto-brief.md` per `~/.claude/rules/manual-smoke-gate.md`. |
+| F | Cutover + cleanup | sonnet-implementer | Flip `VITE_LEXICAL_COMPOSER` default behavior: Lexical mounts unconditionally; legacy RichTextarea path deleted from `AgentChatComposerInput.tsx`. Remove `rich-textarea` from `package.json` + `package-lock.json`. Verify `grep -r "from 'rich-textarea'" src/renderer` returns empty. Rewrite `AgentChatComposerInput.test.tsx` to test Lexical surface (existing tests assert RichTextarea-specific behavior). Append a Lexical-migration gotcha entry to `src/renderer/components/AgentChat/CLAUDE.md`. Manual smoke + result brief at `roadmap/wave-81-composer-engine-migration/wave-81-result.md` per `~/.claude/rules/manual-smoke-gate.md`. |
 
 ### Phase ordering
 
@@ -96,7 +96,7 @@ B requires A's audit (integration seams, slash plugin strategy). C requires B (L
 | C | `lexicalMentionBridge.test.tsx` — trigger detection, `addMention` bridge call on selection, `removeMention` on backspace-into-chip | `AgentChatComposer.lexicalIntegration.test.tsx` (new) — mount full composer with flag on; type `@`, assert dropdown opens, click item, assert `mentions[]` store updated and chip rendered in `MentionChipsBar` | Mock `useAgentChatContext` to assert bridge calls. |
 | D | `slashCommandPlugin.test.ts` — pattern detection at various cursor positions, mixed `@`/`/` cursor cases | n/a (covered by phase C integration test extended) | Verify slash menu open/close + selection callback unchanged. |
 | E | `lexicalImagePaste.test.ts`, `lexicalFileTreeDrop.test.ts`, `lexicalQuoteListener.test.ts` | n/a | Each aux feature unit-tested in isolation. |
-| F | Updated `AgentChatComposerInput.test.tsx` — Lexical-path assertions replace RichTextarea-path | Full vitest suite + lint + typecheck + `/review 81` | Manual smoke checklist in `wave-81-auto-brief.md`. |
+| F | Updated `AgentChatComposerInput.test.tsx` — Lexical-path assertions replace RichTextarea-path | Full vitest suite + lint + typecheck + `/review 81` | Manual smoke checklist in `wave-81-result.md`. |
 
 ## Acceptance criteria
 
@@ -114,7 +114,7 @@ B requires A's audit (integration seams, slash plugin strategy). C requires B (L
 - [ ] `npm run build` and `npm run dist` succeed cleanly post-Phase F.
 - [ ] `npx tsc --noEmit` clean post-Phase F.
 - [ ] Full vitest suite green post-Phase F.
-- [ ] Manual smoke checklist in `roadmap/wave-81-composer-engine-migration/wave-81-auto-brief.md` complete and signed.
+- [ ] Manual smoke checklist in `roadmap/wave-81-composer-engine-migration/wave-81-result.md` complete and signed.
 
 ## Verification
 
@@ -198,5 +198,5 @@ Before declaring a phase complete, restate the observation point from the Verifi
 4. Phase C — `sonnet-implementer` — `@` mention bridge to `mentions[]` store. Gate: Cole verifies typing `@` surfaces dropdown identical to legacy; selection inserts chip + populates store + chip bar.
 5. Phase D — `sonnet-implementer` — custom slash-command plugin driving existing `SlashCommandMenu`. Gate: Cole verifies typing `/` opens existing menu identically; selection runs action OR replaces with plain text.
 6. Phase E — `sonnet-implementer` — image paste, drag-drop, quote event, mid-turn-inject button positioning. Gate: Cole verifies each behavior in turn with flag on.
-7. Phase F — `sonnet-implementer` — flip default to Lexical; remove `rich-textarea` from `package.json`; rewrite `AgentChatComposerInput.test.tsx`; append CLAUDE.md gotcha entry; manual smoke. Gate: full lint + typecheck + targeted tests pass; `/review 81` mechanical gap-check returns PASS or FLAG-with-resolutions; smoke checklist signed in `wave-81-auto-brief.md`.
+7. Phase F — `sonnet-implementer` — flip default to Lexical; remove `rich-textarea` from `package.json`; rewrite `AgentChatComposerInput.test.tsx`; append CLAUDE.md gotcha entry; manual smoke. Gate: full lint + typecheck + targeted tests pass; `/review 81` mechanical gap-check returns PASS or FLAG-with-resolutions; smoke checklist signed in `wave-81-result.md`.
 8. Final wrap: full vitest suite green, formatter run, orchestrator diff review of the entire wave, commit + push to GitHub with release tag bump (target v2.12.0).

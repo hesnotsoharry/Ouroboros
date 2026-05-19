@@ -41,7 +41,7 @@ Common patterns: `simple-import-sort/imports`, `@typescript-eslint/no-unused-var
 
 Wave 83's scope was the Playwright-electron repro harness (Path C). Fixing 21 unrelated lint errors across pre-existing files is scope expansion. Per `~/.claude/CLAUDE.md`: "A bug fix doesn't justify unrelated refactors."
 
-The Wave 83 auto-brief (`roadmap/wave-83-electron-renderer-browser-mcp-wiring/wave-83-auto-brief.md`) marks the "full lint clean" acceptance criterion as PARTIAL with this follow-up cited. Wave 83's own surface (`e2e/reproArtifacts.{ts,test.ts}`, `scripts/repro-electron.{mjs,test.mjs}`, `playwright.config.ts`, `package.json` script entry, `e2e/CLAUDE.md`, the wave-83 roadmap files) is clean.
+The Wave 83 result brief (`roadmap/wave-83-electron-renderer-browser-mcp-wiring/wave-83-result.md`) marks the "full lint clean" acceptance criterion as PARTIAL with this follow-up cited. Wave 83's own surface (`e2e/reproArtifacts.{ts,test.ts}`, `scripts/repro-electron.{mjs,test.mjs}`, `playwright.config.ts`, `package.json` script entry, `e2e/CLAUDE.md`, the wave-83 roadmap files) is clean.
 
 ## Suggested next steps
 

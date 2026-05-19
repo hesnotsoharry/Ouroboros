@@ -94,13 +94,13 @@ The 71 NOT-DONE items (genuine outstanding follow-ups not yet filed or closed) p
 
 ## From wave auto-briefs
 
-### Wave 53k (`roadmap/_archived/wave-53k/wave-53k-auto-brief.md`)
+### Wave 53k (`roadmap/_archived/wave-53k/wave-53k-result.md`)
 - **Wave 53k**: `codebase-memory-mcp.exe` stalls on `tools/list`; add `codemode.excludeFromMultiplex` config option.
 - **Wave 53k**: Triple-keyed `~/.claude.json projects` map (forward-slash/backslash/worktree variants) still unresolved.
 - **Wave 53k**: Auto-sync graph staleness — `files=0` despite file edits; change-detection not catching git-uncommitted writes.
 - **Wave 53k**: Wave 53l (universal multiplexer per-spawn → user-level takeover) not yet executed.
 
-### Wave 61 (`roadmap/wave-61-delegation-coach/wave-61-auto-brief.md`)
+### Wave 61 (`roadmap/wave-61-delegation-coach/wave-61-result.md`)
 - **Wave 61**: Live Opus-session smoke deferred — confirm at least one nudge fires and lands in `delegation-coach.jsonl`.
 - **Wave 61**: Phase F soak + analytics — run after ≥1 week; promote ≥1 pattern to ack tier or document soft-only decision.
 - **Wave 61**: Pattern auto-discovery — mine JSONL for repeated tool-use sequences not in the library.
@@ -111,14 +111,14 @@ The 71 NOT-DONE items (genuine outstanding follow-ups not yet filed or closed) p
 - **Wave 61**: `build:coach-hook` not wired into `postbuild`; currently a manual script.
 - **Wave 61**: Hook latency telemetry — measure `detectPatterns` if Phase F shows slow-fire reports.
 
-### Wave 62 (`roadmap/wave-62-rule-toggles/wave-62-auto-brief.md`)
+### Wave 62 (`roadmap/wave-62-rule-toggles/wave-62-result.md`)
 - **Wave 62**: No persistent rule profiles — ephemeral only by design; persistent profiles explicitly deferred.
 - **Wave 62**: Concurrent-window race — window A toggles off rule X while window B spawns sees it disabled; accepted for v1.
 - **Wave 62**: No telemetry on toggle usage — deferred per scope.
 - **Wave 62**: No Settings-modal mirror — user opted for popup-style surface only in v1.
 - **Wave 62**: Manual smoke gate not completed — user must sign checklist before push.
 
-### Wave 63 (`roadmap/wave-63-popover-tab-coverage/wave-63-auto-brief.md`)
+### Wave 63 (`roadmap/wave-63-popover-tab-coverage/wave-63-result.md`)
 - **Wave 63**: Live-path Tools enumeration (init-event capture from stream-json) deferred — static path only.
 - **Wave 63**: Tool toggling via `--allowedTools` / `--disallowedTools` deferred per ADR Decision 1.
 - **Wave 63**: Memory entry write/delete from popover deferred.
@@ -129,7 +129,7 @@ The 71 NOT-DONE items (genuine outstanding follow-ups not yet filed or closed) p
 - **Wave 63**: Pre-existing test failure in `mobile-touch-targets.test.ts` (button height check) — tracked separately.
 - **Wave 63**: Manual smoke gate not completed.
 
-### Wave 66 (`roadmap/wave-66-graph-mcp-fixes/wave-66-auto-brief.md`)
+### Wave 66 (`roadmap/wave-66-graph-mcp-fixes/wave-66-result.md`)
 - **Wave 66**: `manage_adr` per-ID targeting deferred — schema accepts `id`/`adr_id` but DB methods are project-scoped only.
 - **Wave 66**: Confidence values on call-resolution writes — column exists (default 1.0); nuanced scoring is next iteration.
 - **Wave 66**: Drop legacy parameter aliases (`name_pattern`, `function_name`, `qualified_name`, `inbound`/`outbound`) — kept for one wave per ADR Decision 2.
@@ -137,20 +137,20 @@ The 71 NOT-DONE items (genuine outstanding follow-ups not yet filed or closed) p
 - **Wave 66**: Graph tool adoption telemetry re-measure — was 0% in 369 sessions; re-measure post-Wave-66.
 - **Wave 66**: Manual smoke gate not completed.
 
-### Wave 67 (`roadmap/wave-67-indexer-coverage-repair/wave-67-auto-brief.md`)
+### Wave 67 (`roadmap/wave-67-indexer-coverage-repair/wave-67-result.md`)
 - **Wave 67**: Cypher engine quality bugs (confidence column access, `labels()` drop, `p.indexed_at` mismatch) — filed as Wave 68 candidate.
 - **Wave 67**: `@vscode/tree-sitter-wasm` upgrade for `accessor` keyword and TS 5.x features — out of scope.
 - **Wave 67**: Project-wide audit of files still showing File-only nodes after reindex — if count non-trivial, file Wave 68 follow-up.
 - **Wave 67**: Probe 4 (`parseAnomalies`) absent from `index_status` when count=0 — fix to always render the field.
 - **Wave 67**: Probe 6 (`CALLS→Class` Cypher) returned total node count — Cypher engine ignores target-label filters in relationship patterns.
 
-### Wave 68 (`roadmap/wave-68-cypher-engine-quality/wave-68-auto-brief.md`)
+### Wave 68 (`roadmap/wave-68-cypher-engine-quality/wave-68-result.md`)
 - **Wave 68**: Unsupported Cypher features — `OPTIONAL MATCH`, `WITH`, `UNWIND`, `OR` in WHERE, multi-pattern MATCH, custom aggregations. Parser rewrite needed.
 - **Wave 68**: Multi-label nodes — schema stores one label per node; `labels(n)` returns string not array. Schema change required.
 - **Wave 68**: `p.indexed_at` returned as Unix-ms in Cypher results — no ISO conversion at query time.
 - **Wave 68**: Confidence value population — all existing edges have confidence=1.0; differentiated scoring requires `indexingPipelineCallResolution.ts` updates.
 
-### Wave 69 (`roadmap/wave-69-context-layer-graph-integration/wave-69-auto-brief.md`)
+### Wave 69 (`roadmap/wave-69-context-layer-graph-integration/wave-69-result.md`)
 - **Wave 69**: Manual smoke gate not completed — user must sign checklist and inspect `.context/repo-map.json`.
 - **Wave 69**: B2 ranking precision — per-module COUNT(*) is coarse; switch to per-symbol scoring once cypherEngine grows GROUP BY.
 - **Wave 69**: B3 ESCALATE-2 — modules with >200 outbound edges drop edges over LIMIT; revisit if Wave 70 needs tighter coverage.

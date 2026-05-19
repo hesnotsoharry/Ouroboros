@@ -61,4 +61,4 @@ Wave 82 (chat-only polish bundle) closed 14 of 15 items. This is the last open i
 
 ## Marker for the wave brief
 
-`wave-82-auto-brief.md` should reflect: B2 (heat map) — **NOT CLOSED in wave-82**. Deferred to follow-up.
+`wave-82-result.md` should reflect: B2 (heat map) — **NOT CLOSED in wave-82**. Deferred to follow-up.

@@ -138,3 +138,18 @@ Context-specific rules are in `.claude/rules/` (injected automatically by glob m
 **Global pipeline rule:** `~/.claude/rules/development-pipeline.md` — three-lane (Build/Fix/Orient) pipeline. This repo's `roadmap/` aligns with its taxonomy (`follow-ups/`, `deferred/`, `bugs/`, `decisions/`).
 
 **Dispatch reflex** (added 2026-05-12): before 3+ exploration calls (Read/Grep/Glob) on the same question or continuing debug past one failed fix, DISPATCH from the catalog (`haiku-explorer`, `sonnet-explorer`, `sonnet-diagnostician`, `haiku-implementer`, etc. — see `~/.claude/rules/agent-catalog.md`). Hooks `~/.claude/hooks/dispatch_reflex_nudge.mjs` and `~/.claude/hooks/fresh_session_reminder.mjs` provide nudges. Fresh-session suggestions below 60% context utilization are usually wrong — hard work below threshold = dispatch a subagent, not session reset.
+
+## Vendor Gotchas
+
+Per-vendor lessons captured from wave work — load before touching a vendor's API surface for the second time. Written during waves; promoted via `/promote-vendor-lessons`.
+
+| File | Vendor | Key lesson |
+|---|---|---|
+| `.claude/vendor-gotchas/xterm.md` | `@xterm/xterm` + addons | v6 WebGL load order (AFTER `term.open()`), context-loss flash fix, unicode-graphemes version string `'15-graphemes'`, no public cell-size API, open ghost-cursor conflict |
+| `.claude/vendor-gotchas/stryker.md` | `@stryker-mutator/core` + vitest-runner | CI dual-frequency triggers, `--force` vs `--incremental`, `.stryker-tmp/` gitignore, `break:` floor discipline |
+| `.claude/vendor-gotchas/stryker-electron.md` | Stryker + Electron native modules | 4-module no-touch list (`better-sqlite3`, `node-pty`, `@parcel/watcher`, `@node-rs/xxhash`), two load-bearing config options (`vitest.configFile`, `testFiles`), subsystem-boundary exclusion pattern |
+| `.claude/vendor-gotchas/node-pty.md` | `node-pty` | Native module — Stryker exclusion only (see `stryker-electron.md`); no behavioral gotchas captured yet |
+| `.claude/vendor-gotchas/wsl2-lockgen.md` | WSL2 + npm lockfile | Cross-platform lockfile generation via WSL2; `lockfile:sync` wrapper; pre-push guard |
+| `.claude/vendor-gotchas/electron.md` | Electron | Electron-specific build and IPC gotchas |
+| `.claude/vendor-gotchas/tree-sitter.md` | `web-tree-sitter` | WASM ABI drift (`@vscode/tree-sitter-wasm` ABI vs `web-tree-sitter` ABI) |
+| `.claude/vendor-gotchas/claude-code.md` | Claude Code SDK | Claude Code integration gotchas |

@@ -18,7 +18,7 @@ Wave 83 adds an autonomous UI-bug-repro harness to Agent IDE. A fresh Claude Cod
 
 - `npx tsc --noEmit -p tsconfig.web.json`: exit 0
 - `npm run lint:claude-md`: All CLAUDE.md files within 200-line cap. Exit 0.
-- `npx prettier --check e2e/CLAUDE.md roadmap/wave-83-electron-renderer-browser-mcp-wiring/wave-83-auto-brief.md`: All matched files use Prettier code style. Exit 0.
+- `npx prettier --check e2e/CLAUDE.md roadmap/wave-83-electron-renderer-browser-mcp-wiring/wave-83-result.md`: All matched files use Prettier code style. Exit 0.
 - Scoped vitest (`e2e/reproArtifacts.test.ts scripts/repro-electron.test.mjs`): 21 tests passed (2 files). Exit 0.
 - `npm run repro -- template` (clean state, `out/` present): exit 0. `artifacts/repro-template-2026-05-05T18-33-08-395Z/` contained `screenshot-01-loaded.png` (802 KB), `console.jsonl` (4.3 KB, 17 entries), `trace.zip` (5.1 KB), `summary.json` (passed: true, tracePath non-null).
 - `npm run repro -- template` (post `rm -rf out/`): auto-rebuild triggered, exit 0. `artifacts/repro-template-2026-05-05T18-36-40-482Z/` produced all four expected files.
@@ -47,7 +47,7 @@ Wave 83 adds an autonomous UI-bug-repro harness to Agent IDE. A fresh Claude Cod
 **Phase 3 (this commit):**
 
 - `e2e/CLAUDE.md` — new: 43 lines (prettier-formatted); when/loop/artifact-contract/gestures/anti-patterns
-- `roadmap/wave-83-electron-renderer-browser-mcp-wiring/wave-83-auto-brief.md` — new: this file
+- `roadmap/wave-83-electron-renderer-browser-mcp-wiring/wave-83-result.md` — new: this file
 
 ## Acceptance walk-through
 
@@ -113,7 +113,7 @@ The exclusion is structural: `package.json#build.files` includes only `["out/**/
 - Phase 0: `2379987` — `e2e/reproArtifacts.{ts,test.ts}`, vitest + eslint config
 - Phase 1: `f5a7099` — `e2e/_repro-template.spec.ts`, `playwright.config.ts`
 - Phase 2: `f3109e1` — `scripts/repro-electron.{mjs,test.mjs}`, `package.json`, eslint + vitest config (Node globals)
-- Phase 3: `5e87bfd` — `e2e/CLAUDE.md`, `roadmap/wave-83-electron-renderer-browser-mcp-wiring/wave-83-auto-brief.md`
+- Phase 3: `5e87bfd` — `e2e/CLAUDE.md`, `roadmap/wave-83-electron-renderer-browser-mcp-wiring/wave-83-result.md`
 - Phase 4 (wave wrap): `<this commit>` — auto-brief Phase-4 update, mechanical-review report, CHANGELOG entry, version bump to v2.13.0, lint-debt follow-up
 
 ## Phase 4 wave wrap — gates

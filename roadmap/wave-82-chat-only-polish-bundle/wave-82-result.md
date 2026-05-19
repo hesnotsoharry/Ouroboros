@@ -205,7 +205,7 @@ roadmap/wave-82-chat-only-polish-bundle/waveplan-82.md                          
 roadmap/wave-82-chat-only-polish-bundle/wave-82-decisions.md                      (new)
 roadmap/wave-82-chat-only-polish-bundle/phase-a-audit.md                          (new)
 roadmap/wave-82-chat-only-polish-bundle/phase-e-diagnosis.md                      (new)
-roadmap/wave-82-chat-only-polish-bundle/wave-82-auto-brief.md                     (this file)
+roadmap/wave-82-chat-only-polish-bundle/wave-82-result.md                     (this file)
 roadmap/follow-ups/outstanding-2026-05-03.md                                      (new)
 ```
 

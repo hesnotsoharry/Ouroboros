@@ -131,7 +131,7 @@ A `sonnet-implementer` agent. Brief should:
    - `npm run build` → exit 0
    - `npm run dist` → exit 0 (Phase F-only requirement per wave plan acceptance criteria)
    - Capture post-Phase-F bundle size, compute delta vs `70,038,488` baseline. Document in result brief.
-4. Manual smoke per `~/.claude/rules/manual-smoke-gate.md` — you sign the checklist in `roadmap/wave-81-composer-engine-migration/wave-81-auto-brief.md`.
+4. Manual smoke per `~/.claude/rules/manual-smoke-gate.md` — you sign the checklist in `roadmap/wave-81-composer-engine-migration/wave-81-result.md`.
 5. After signoff: orchestrator commits the wave-81 roadmap docs separately, then commits Phase F, then pushes the entire wave + bumps release tag to v2.12.0 per the wave plan.
 
 ### Recovery procedure if Phase F surfaces a regression

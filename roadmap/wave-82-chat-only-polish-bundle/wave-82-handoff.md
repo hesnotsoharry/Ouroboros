@@ -25,7 +25,7 @@ roadmap/wave-82-chat-only-polish-bundle/
 ├── wave-82-decisions.md       — locked ADR (12 decisions)
 ├── phase-a-audit.md           — architect deliverable (wiring matrix etc.)
 ├── phase-e-diagnosis.md       — diagnostic findings for runtime-bug threads
-├── wave-82-auto-brief.md      — result brief (round 1 + round 2 patch log)
+├── wave-82-result.md      — result brief (round 1 + round 2 patch log)
 └── wave-82-handoff.md         — THIS FILE
 
 roadmap/follow-ups/outstanding-2026-05-03.md   — categorized digest of ~140 still-open items
@@ -60,7 +60,7 @@ src/   — 31 modified files + 5 new files. Touch points:
 
 ## What Cole tested in round 1 + how it was patched in round 2
 
-Cole's annotated brief (`wave-82-auto-brief.md`, lines 78-106) flagged 11 items. Round 2 patches:
+Cole's annotated brief (`wave-82-result.md`, lines 78-106) flagged 11 items. Round 2 patches:
 
 | #   | Item                                    | Round 2 patch                                                                                                                                                                                                                 |
 | --- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -110,7 +110,7 @@ For each issue:
 2. Find the root cause via code reading + targeted instrumentation (not via "try a fix and see").
 3. Apply minimal-surface fix.
 4. Run scoped tests (`npx vitest run <touched-test-file>`), then `npx tsc --noEmit`, then `npm run lint`.
-5. Append the patch to the round-2 patch log in `wave-82-auto-brief.md`.
+5. Append the patch to the round-2 patch log in `wave-82-result.md`.
 
 ### If everything passes smoke
 
@@ -126,7 +126,7 @@ For each issue:
 
 ### If the wave gets fragmented (some fixes ship, some don't)
 
-Open a Wave 82.1 follow-up file at `roadmap/wave-82.1-{slug}/` for the deferred work. Move the unfixed-item entries from `wave-82-auto-brief.md` into the new wave's plan.
+Open a Wave 82.1 follow-up file at `roadmap/wave-82.1-{slug}/` for the deferred work. Move the unfixed-item entries from `wave-82-result.md` into the new wave's plan.
 
 ---
 
@@ -162,7 +162,7 @@ git diff src/path/to/file
 
 # Where things live
 ls roadmap/wave-82-chat-only-polish-bundle/   # Wave 82 docs
-cat roadmap/wave-82-chat-only-polish-bundle/wave-82-auto-brief.md   # full result brief
+cat roadmap/wave-82-chat-only-polish-bundle/wave-82-result.md   # full result brief
 cat roadmap/follow-ups/outstanding-2026-05-03.md                    # what else is open
 ```
 

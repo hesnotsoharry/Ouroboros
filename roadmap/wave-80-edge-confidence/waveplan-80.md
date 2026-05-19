@@ -56,7 +56,7 @@ See `roadmap/wave-80-edge-confidence/wave-80-decisions.md`.
 | C | Forced reindex + distribution check | `indexingPipeline.ts`, `graphDatabaseHelpers.ts` | Distribution SQL returns non-uniform histogram |
 | D | Query-engine `minConfidence` param | `queryEngine.ts`, `queryEngineTypes.ts`, `graphControllerCompatQueries.ts`, `mcpToolHandlerHelpers.ts` | Existing callers unchanged; new param accepted |
 | E | Schema disclosure | `mcpToolHandlerDefs.ts`, `mcpToolHandlers.ts` | `get_graph_schema` output includes confidence description |
-| F | Manual smoke + result brief | `roadmap/wave-80-edge-confidence/wave-80-auto-brief.md` | Smoke checklist signed |
+| F | Manual smoke + result brief | `roadmap/wave-80-edge-confidence/wave-80-result.md` | Smoke checklist signed |
 
 ---
 

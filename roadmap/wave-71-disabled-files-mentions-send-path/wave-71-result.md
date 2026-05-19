@@ -67,7 +67,7 @@ UI-bearing wave per `~/.claude/rules/manual-smoke-gate.md`. Smoke not yet perfor
 ```
 roadmap/wave-71-disabled-files-mentions-send-path/waveplan-71.md           (re-scoped header)
 roadmap/wave-71-disabled-files-mentions-send-path/wave-71-decisions.md     (new ADR)
-roadmap/wave-71-disabled-files-mentions-send-path/wave-71-auto-brief.md    (this brief)
+roadmap/wave-71-disabled-files-mentions-send-path/wave-71-result.md    (this brief)
 src/renderer/components/AgentChat/agentChatWorkspaceActionHelpers.ts       (filter + clear)
 src/renderer/components/AgentChat/agentChatWorkspaceActionHelpers.test.ts  (8 new tests)
 src/renderer/components/AgentChat/agentChatWorkspaceActions.ts             (model fields)

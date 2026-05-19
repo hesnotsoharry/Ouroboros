@@ -18,7 +18,9 @@ This directory holds the project's wave-process artifacts, history indexes, and 
 | `bugs/` | 5 | Pre-existing bugs not yet in any active wave. |
 | `discovery/` | 4 | Stage-1 Profile B feature briefs (in-project features). |
 | `foundation/` | 2 | Durable foundational reference for major subsystems (chat orchestration, agent-chat best practices). |
-| `cleanup/`, `oldfiles/`, `future/` | — | Project-specific holdovers from earlier organizational schemes. Not part of the canon taxonomy; folded in as needed. |
+| `cleanup/`, `oldfiles/` | — | Project-specific holdovers from earlier organizational schemes. Not part of the canon taxonomy; folded in as needed. |
+
+> **Taxonomy note (2026-05-18):** `roadmap/future/` retired — items migrated to `deferred/` (scheduled work) or `follow-ups/` (noticed-during-work). Canonical inbox taxonomy: `follow-ups/`, `deferred/`, `bugs/`, `decisions/`.
 
 ## Project-specific files
 

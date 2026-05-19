@@ -61,3 +61,21 @@ webgl.dispose();
 **Why:** xterm addons depend on internal class identity from the core package.
 **Fix:** Bump `@xterm/xterm` and all `@xterm/addon-*` together. Never mix with the legacy unscoped `xterm` package. The full addon set and load order is declared in `terminalAddonManifest.ts`.
 **Source:** Pre-Wave-88 convention, codified in `src/renderer/components/Terminal/CLAUDE.md`.
+
+## Known open issues
+
+### Ghost cursor (WebGL/DOM overlap) resurfaced in Wave 94 — load-order conflict between CLAUDE.md and wave-88 decision
+
+**Symptom:** When running `claude` in a dock-slot terminal, a ghost cursor appears in random positions while Claude is "thinking", and a second cursor appears directly in front of the typing cursor on input.
+**Why:** There is a direct conflict in the repo between two pieces of documentation:
+- Wave 88 Decision 1 (`wave-88-decisions.md`) changed the WebGL addon load order to **AFTER** `term.open()`, citing xterm v6 upstream guidance that the v5 pre-open pattern was retired.
+- The terminal subsystem CLAUDE.md (`src/renderer/components/Terminal/CLAUDE.md`) still documents load order as **BEFORE** `term.open()` ("the VS Code pattern to avoid double cursor").
+
+The ghost cursor re-emerged in Wave 94 smoke (2026-05-18) without any xterm changes in that wave. Wave 94 did not touch WebGL initialization — but the pivot to terminal-first layout made the artifact more visible. The root cause is either: (a) the CLAUDE.md subsystem doc was not updated when Wave 88 swapped the order, leaving future agents working from the wrong rule, or (b) the "after" order does produce the double-cursor at the actual runtime sequence used (the v6 guidance may apply to a specific initialization context not matched by Agent IDE's setup).
+**Fix shape:**
+1. Audit `useTerminalSetup.lifecycle.ts` to confirm whether `loadAddon(WebglAddon)` runs before or after `term.open()` in the current code.
+2. If it's AFTER (Wave 88 Decision 1 was implemented), instrument with `console.log('[xterm-init]', { addonLoaded, opened })` to confirm actual runtime order.
+3. If the ghost cursor persists with AFTER order, revert to BEFORE order and update `terminalAddonManifest.ts` + `CLAUDE.md` + this file to record the v6 guidance as inapplicable to this codebase's init path.
+4. Whichever order is confirmed correct: update the subsystem CLAUDE.md so it matches — the conflict is the bug magnet.
+**Status:** OPEN — filed as `roadmap/follow-ups/2026-05-18-terminal-ghost-cursor-resurfaced.md`. Scheduled for Wave 95.
+**Source:** Wave 88 Decision 1; Wave 94 wave-wrap smoke (2026-05-18); follow-up `2026-05-18-terminal-ghost-cursor-resurfaced.md`.

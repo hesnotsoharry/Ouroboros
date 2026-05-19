@@ -67,7 +67,7 @@ Direct runtime observation was not possible (no live IDE session in this worktre
 ```
 roadmap/wave-72-swipe-nav/waveplan-72.md                          (new — wave plan)
 roadmap/wave-72-swipe-nav/wave-72-decisions.md                    (new — ADR)
-roadmap/wave-72-swipe-nav/wave-72-auto-brief.md                   (this brief)
+roadmap/wave-72-swipe-nav/wave-72-result.md                   (this brief)
 src/renderer/components/AgentChat/AgentChatWorkspace.swipe.ts     (new — cycleThread)
 src/renderer/components/AgentChat/AgentChatWorkspace.swipe.test.ts (new — 6 tests)
 src/renderer/components/AgentChat/AgentChatWorkspace.tsx          (ref + hook wired)

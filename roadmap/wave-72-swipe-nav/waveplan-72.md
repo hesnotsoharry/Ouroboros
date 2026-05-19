@@ -113,7 +113,7 @@ The data-shape probes below confirm the JSON / file-on-disk populates correctly.
 3. `src/renderer/components/AgentChat/AgentChatTabBar.tsx:101-103` — the TODO comment to remove.
 4. `src/renderer/components/AgentChat/useAgentChatWorkspace.ts` — `AgentChatWorkspaceModel` interface to confirm `threads: AgentChatThreadRecord[]` and `selectThread: (id: string | null) => void` are available.
 5. `roadmap/wave-72-swipe-nav/wave-72-decisions.md` — ADR committing to internal ref + wrap-around cycling.
-6. `roadmap/wave-71-disabled-files-mentions-send-path/wave-71-auto-brief.md` — prior wave brief for orientation.
+6. `roadmap/wave-71-disabled-files-mentions-send-path/wave-71-result.md` — prior wave brief for orientation.
 
 ## Note to the implementer
 
