@@ -22,7 +22,6 @@ describe('useWorkbenchSurfacePolicy', () => {
       (props: { artifactKey: string | null; artifactKind: 'empty' | 'file' | 'diff' }) =>
         useWorkbenchSurfacePolicy({
           approvalCount: 0,
-          diffKey: null,
           artifactKey: props.artifactKey,
           artifactKind: props.artifactKind,
           setArtifactOpen,
@@ -60,7 +59,6 @@ describe('useWorkbenchSurfacePolicy', () => {
       (approvalCount: number) =>
         useWorkbenchSurfacePolicy({
           approvalCount,
-          diffKey: null,
           artifactKey: null,
           artifactKind: 'empty',
           setArtifactOpen,
@@ -92,32 +90,6 @@ describe('useWorkbenchSurfacePolicy', () => {
     expect(setActiveUtilityTab).toHaveBeenCalledWith('approvals');
   });
 
-  it('opens review on new diff keys', () => {
-    const setArtifactOpen = vi.fn();
-    const setUtilityOpen = vi.fn();
-    const setActiveUtilityTab = vi.fn();
-
-    const { rerender } = renderHook(
-      (diffKey: string | null) =>
-        useWorkbenchSurfacePolicy({
-          approvalCount: 0,
-          diffKey,
-          artifactKey: null,
-          artifactKind: 'empty',
-          setArtifactOpen,
-          setUtilityOpen,
-          setActiveUtilityTab,
-        }),
-      {
-        initialProps: null,
-      },
-    );
-
-    rerender('session-1:hash-a');
-    expect(setUtilityOpen).toHaveBeenCalledWith(true);
-    expect(setActiveUtilityTab).toHaveBeenCalledWith('review');
-  });
-
   it('opens subagents on event and suppresses the same tool call after close', () => {
     const setArtifactOpen = vi.fn();
     const setUtilityOpen = vi.fn();
@@ -126,7 +98,6 @@ describe('useWorkbenchSurfacePolicy', () => {
     const { result } = renderHook(() =>
       useWorkbenchSurfacePolicy({
         approvalCount: 0,
-        diffKey: null,
         artifactKey: null,
         artifactKind: 'empty',
         setArtifactOpen,

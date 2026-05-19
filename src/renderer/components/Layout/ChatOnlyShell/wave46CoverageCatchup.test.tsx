@@ -110,7 +110,6 @@ describe('Surface policy — auto-open + dismissal-key flow', () => {
     const { rerender } = renderHook((props) => useWorkbenchSurfacePolicy(props), {
       initialProps: {
         approvalCount: 0,
-        diffKey: null,
         artifactKey: null,
         artifactKind: 'empty' as const,
         setArtifactOpen: vi.fn(),
@@ -124,7 +123,6 @@ describe('Surface policy — auto-open + dismissal-key flow', () => {
     act(() => {
       rerender({
         approvalCount: 1,
-        diffKey: null,
         artifactKey: null,
         artifactKind: 'empty' as const,
         setArtifactOpen: vi.fn(),
@@ -144,7 +142,6 @@ describe('Surface policy — auto-open + dismissal-key flow', () => {
     const { result } = renderHook(() =>
       useWorkbenchSurfacePolicy({
         approvalCount: 1,
-        diffKey: null,
         artifactKey: null,
         artifactKind: 'empty' as const,
         setArtifactOpen: vi.fn(),
@@ -212,7 +209,8 @@ describe('Layout persistence (useChatWorkbenchLayout)', () => {
 
 // ── 3. All drawer tabs render without crashing ────────────────────────────────
 describe('Drawer tab content panels — all five tabs mount real components', () => {
-  const tabs: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'review', 'rules', 'monitor'];
+  // Wave 95 Phase H: 'review' tab removed — diff review is status-bar pull only.
+  const tabs: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'rules', 'monitor'];
 
   it.each(tabs)('tab "%s" mounts without crashing', (tab) => {
     render(<ChatWorkbenchUtilityDrawer activeTab={tab} onSelectTab={vi.fn()} onClose={vi.fn()} />);

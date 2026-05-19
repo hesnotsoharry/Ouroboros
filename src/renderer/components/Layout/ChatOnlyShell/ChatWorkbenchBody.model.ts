@@ -4,7 +4,6 @@ import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { OPEN_MULTI_SESSION_EVENT } from '../../../hooks/appEventNames';
 import type { AgentChatThreadRecord, ApprovalRequest } from '../../../types/electron';
 import { useAgentChatStoreContext } from '../../AgentChat/agentChatStore';
-import { useDiffReview } from '../../DiffReview/DiffReviewManager';
 import {
   createStoredSessionFromPicker,
   createStoredSessionInProject,
@@ -57,14 +56,10 @@ function useWorkbenchListState(
 function useWorkbenchSurfaceState(
   layout: LayoutState,
   artifacts: ReturnType<typeof useWorkbenchArtifacts>,
-  diffReviewState: ReturnType<typeof useDiffReview>['state'],
   approvalCount: number,
 ): SurfacePolicyState {
   return useWorkbenchSurfacePolicy({
     approvalCount,
-    diffKey: diffReviewState
-      ? `${diffReviewState.sessionId}:${diffReviewState.snapshotHash}`
-      : null,
     artifactKey: artifacts.activeKey,
     artifactKind: artifacts.kind,
     setArtifactOpen: layout.setArtifactOpen,
@@ -79,7 +74,6 @@ export function useWorkbenchContextState(
 ): WorkbenchContextState {
   const artifacts = useWorkbenchArtifacts();
   const { requests: approvalRequests } = useApprovalContext();
-  const { state: diffReviewState } = useDiffReview();
   const threads = useAgentChatStoreContext((state) => state.threads);
   const selectThread = useAgentChatStoreContext((state) => state.onSelectThread);
   const sessionsState = useSessions();
@@ -91,12 +85,7 @@ export function useWorkbenchContextState(
     refreshSessions: sessionsState.refresh,
     actions: { selectThread },
   });
-  const surfacePolicy = useWorkbenchSurfaceState(
-    layout,
-    artifacts,
-    diffReviewState,
-    approvalRequests.length,
-  );
+  const surfacePolicy = useWorkbenchSurfaceState(layout, artifacts, approvalRequests.length);
 
   return {
     activation,

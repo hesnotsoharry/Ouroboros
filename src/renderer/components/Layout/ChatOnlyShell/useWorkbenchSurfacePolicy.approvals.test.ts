@@ -12,7 +12,6 @@ import { useWorkbenchSurfacePolicy } from './useWorkbenchSurfacePolicy';
 function makeOpts(overrides: Partial<Parameters<typeof useWorkbenchSurfacePolicy>[0]> = {}) {
   return {
     approvalCount: 0,
-    diffKey: null,
     artifactKey: null,
     artifactKind: 'empty' as const,
     setArtifactOpen: vi.fn(),

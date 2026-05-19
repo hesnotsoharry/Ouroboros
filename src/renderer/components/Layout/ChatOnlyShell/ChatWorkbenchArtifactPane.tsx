@@ -1,7 +1,5 @@
 import React from 'react';
 
-import { useDiffReview } from '../../DiffReview/DiffReviewManager';
-import { DiffReviewPanel } from '../../DiffReview/DiffReviewPanel';
 import { useFileViewerManager } from '../../FileViewer/FileViewerManager';
 import { FileViewerTabs } from '../../FileViewer/FileViewerTabs';
 import { EditorContent } from '../EditorContent';
@@ -51,45 +49,6 @@ function EmptyArtifactState(): React.ReactElement {
   );
 }
 
-function DiffArtifactContent(): React.ReactElement {
-  const {
-    state,
-    canRollback,
-    acceptHunk,
-    rejectHunk,
-    acceptAllFile,
-    rejectAllFile,
-    acceptAll,
-    rejectAll,
-    rollback,
-    closeReview,
-    confirmStaleOp,
-    dismissStaleOp,
-  } = useDiffReview();
-
-  if (!state) return <EmptyArtifactState />;
-
-  return (
-    <div className="flex flex-1 min-h-0 flex-col">
-      <DiffReviewPanel
-        state={state}
-        canRollback={canRollback}
-        enhancedEnabled={true}
-        onAcceptHunk={acceptHunk}
-        onRejectHunk={rejectHunk}
-        onAcceptAllFile={acceptAllFile}
-        onRejectAllFile={rejectAllFile}
-        onAcceptAll={acceptAll}
-        onRejectAll={rejectAll}
-        onRollback={rollback}
-        onClose={closeReview}
-        onConfirmStaleOp={confirmStaleOp}
-        onDismissStaleOp={dismissStaleOp}
-      />
-    </div>
-  );
-}
-
 function FileArtifactContent(): React.ReactElement {
   const {
     openFiles,
@@ -128,7 +87,6 @@ function FileArtifactContent(): React.ReactElement {
 }
 
 function titleForKind(kind: 'diff' | 'file' | 'empty'): string {
-  if (kind === 'diff') return 'Diff Review';
   if (kind === 'file') return 'File Viewer';
   return 'Artifacts';
 }
@@ -143,9 +101,8 @@ export function ChatWorkbenchArtifactPane({
       data-testid="chat-workbench-artifact-pane"
     >
       <ArtifactHeader title={titleForKind(artifact.kind)} onClose={onClose} />
-      {artifact.kind === 'diff' && <DiffArtifactContent />}
       {artifact.kind === 'file' && <FileArtifactContent />}
-      {artifact.kind === 'empty' && <EmptyArtifactState />}
+      {(artifact.kind === 'empty' || artifact.kind === 'diff') && <EmptyArtifactState />}
     </aside>
   );
 }

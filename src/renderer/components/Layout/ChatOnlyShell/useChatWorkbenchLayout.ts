@@ -4,7 +4,7 @@ import type { InnerSidebarTab } from './InnerSidebar';
 
 const STORAGE_KEY = 'agent-ide:chat-workbench-layout';
 
-export type ChatWorkbenchUtilityTab = 'activity' | 'review' | 'approvals' | 'rules' | 'monitor';
+export type ChatWorkbenchUtilityTab = 'activity' | 'approvals' | 'rules' | 'monitor';
 
 // ── Per-project state ─────────────────────────────────────────────────────────
 
@@ -82,13 +82,7 @@ function isRightPaneView(value: unknown): value is RightPaneView {
 // ── Persistence ────────────────────────────────────────────────────────────────
 
 function isUtilityTab(value: unknown): value is ChatWorkbenchUtilityTab {
-  return (
-    value === 'activity' ||
-    value === 'review' ||
-    value === 'approvals' ||
-    value === 'rules' ||
-    value === 'monitor'
-  );
+  return value === 'activity' || value === 'approvals' || value === 'rules' || value === 'monitor';
 }
 
 function isMobileViewport(): boolean {

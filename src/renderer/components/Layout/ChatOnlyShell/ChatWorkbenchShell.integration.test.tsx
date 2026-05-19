@@ -362,33 +362,6 @@ describe('ChatWorkbenchShell integration', () => {
     expect(screen.getByTestId('chat-workbench-utility-drawer')).toBeDefined();
   });
 
-  it('auto-opens the review tab when diff review becomes active', () => {
-    const view = renderShell();
-    diffState = {
-      sessionId: 'session-1',
-      snapshotHash: 'abc',
-      files: [{ hunks: [{ decision: 'pending' }] }],
-    };
-    view.rerender(
-      <ChatWorkbenchShell
-        projectRoot="/test/project"
-        diffOverlayOpen={false}
-        openDiffOverlay={vi.fn()}
-        closeDiffOverlay={vi.fn()}
-        toggleDrawer={vi.fn()}
-        paletteOpen={false}
-        closePalette={vi.fn()}
-        commands={[]}
-        recentIds={[]}
-        execute={vi.fn().mockResolvedValue(undefined)}
-      />,
-    );
-
-    expect(screen.getByTestId('chat-workbench-utility-drawer')).toBeDefined();
-    expect(screen.getByTestId('chat-workbench-utility-tab-review')).toBeDefined();
-    expect(screen.getByTestId('diff-review-panel')).toBeDefined();
-  });
-
   it('switches to the subagents tab when a subagent-open event fires', () => {
     currentSessions = [
       {

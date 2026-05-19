@@ -4,8 +4,6 @@ import { OPEN_FILE_EVENT } from '../../../hooks/appEventNames';
 import { useRulesAndSkills } from '../../../hooks/useRulesAndSkills';
 import { RulesTab } from '../../AgentChat/RulesTab';
 import { AgentMonitorManager } from '../../AgentMonitor';
-import { useDiffReview } from '../../DiffReview/DiffReviewManager';
-import { DiffReviewPanel } from '../../DiffReview/DiffReviewPanel';
 import type { ChatWorkbenchUtilityTab } from './useChatWorkbenchLayout';
 import { useWorkbenchTimeline } from './useWorkbenchTimeline';
 import { WorkbenchApprovalPanel } from './WorkbenchApprovalPanel';
@@ -25,7 +23,6 @@ export interface ChatWorkbenchUtilityDrawerProps {
 
 function tabLabel(tab: ChatWorkbenchUtilityTab): string {
   if (tab === 'approvals') return 'Approvals';
-  if (tab === 'review') return 'Review';
   if (tab === 'rules') return 'Rules';
   if (tab === 'monitor') return 'Monitor';
   return 'Timeline';
@@ -35,7 +32,6 @@ function useTabCounts(): Record<ChatWorkbenchUtilityTab, number> {
   const { counts } = useWorkbenchTimeline();
   return {
     approvals: counts.approvals,
-    review: counts.review,
     rules: 0,
     monitor: counts.monitor,
     activity: counts.activity,
@@ -75,56 +71,6 @@ function TabButton({
   );
 }
 
-function EmptyReviewState(): React.ReactElement {
-  return (
-    <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-text-semantic-secondary">
-      No diff review is pending.
-    </div>
-  );
-}
-
-function ReviewPanel(): React.ReactElement {
-  const {
-    state,
-    canRollback,
-    acceptHunk,
-    rejectHunk,
-    acceptAllFile,
-    rejectAllFile,
-    acceptAll,
-    rejectAll,
-    rollback,
-    closeReview,
-    confirmStaleOp,
-    dismissStaleOp,
-  } = useDiffReview();
-
-  if (!state) return <EmptyReviewState />;
-
-  return (
-    <div
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
-      data-testid="workbench-review-panel"
-    >
-      <DiffReviewPanel
-        state={state}
-        canRollback={canRollback}
-        enhancedEnabled={true}
-        onAcceptHunk={acceptHunk}
-        onRejectHunk={rejectHunk}
-        onAcceptAllFile={acceptAllFile}
-        onRejectAllFile={rejectAllFile}
-        onAcceptAll={acceptAll}
-        onRejectAll={rejectAll}
-        onRollback={rollback}
-        onClose={closeReview}
-        onConfirmStaleOp={confirmStaleOp}
-        onDismissStaleOp={dismissStaleOp}
-      />
-    </div>
-  );
-}
-
 function openFileInEditor(filePath: string): void {
   window.dispatchEvent(new CustomEvent(OPEN_FILE_EVENT, { detail: { filePath } }));
 }
@@ -160,7 +106,6 @@ function DrawerContent({
   activeProject: string | null;
 }): React.ReactElement {
   if (activeTab === 'approvals') return <WorkbenchApprovalPanel />;
-  if (activeTab === 'review') return <ReviewPanel />;
   if (activeTab === 'rules') return <WorkbenchRulesPanel projectRoot={activeProject} />;
   if (activeTab === 'monitor')
     return (
@@ -195,13 +140,7 @@ function DrawerHeader({ onClose }: DrawerHeaderProps): React.ReactElement {
   );
 }
 
-const DRAWER_TABS: ChatWorkbenchUtilityTab[] = [
-  'activity',
-  'approvals',
-  'review',
-  'rules',
-  'monitor',
-];
+const DRAWER_TABS: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'rules', 'monitor'];
 
 export function ChatWorkbenchUtilityDrawer({
   activeTab,

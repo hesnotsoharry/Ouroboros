@@ -11,7 +11,6 @@ interface UtilityTrigger {
 
 export interface UseWorkbenchSurfacePolicyOptions {
   approvalCount: number;
-  diffKey: string | null;
   artifactKey: string | null;
   artifactKind: WorkbenchArtifactKind;
   setArtifactOpen: (open: boolean) => void;
@@ -62,18 +61,12 @@ function useUtilityCallbacks(
 
 function useUtilityEffects(
   approvalCount: number,
-  diffKey: string | null,
   openUtility: (trigger: UtilityTrigger) => void,
 ): void {
   React.useEffect(() => {
     if (approvalCount <= 0) return;
     openUtility({ key: `approvals:${approvalCount}`, tab: 'approvals' });
   }, [approvalCount, openUtility]);
-
-  React.useEffect(() => {
-    if (!diffKey) return;
-    openUtility({ key: `review:${diffKey}`, tab: 'review' });
-  }, [diffKey, openUtility]);
 
   React.useEffect(() => {
     const handleSubagentOpen = (event: Event): void => {
@@ -89,7 +82,6 @@ function useUtilityEffects(
 
 export function useWorkbenchSurfacePolicy({
   approvalCount,
-  diffKey,
   artifactKey,
   artifactKind,
   setArtifactOpen,
@@ -100,7 +92,7 @@ export function useWorkbenchSurfacePolicy({
   const currentArtifactKeyRef = React.useRef<string | null>(null);
   const { openUtility, closeUtility } = useUtilityCallbacks(setUtilityOpen, setActiveUtilityTab);
 
-  useUtilityEffects(approvalCount, diffKey, openUtility);
+  useUtilityEffects(approvalCount, openUtility);
 
   React.useEffect(() => {
     const triggerKey = artifactTriggerKey(artifactKind, artifactKey);

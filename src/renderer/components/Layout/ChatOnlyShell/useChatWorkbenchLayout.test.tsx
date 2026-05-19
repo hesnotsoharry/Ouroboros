@@ -45,7 +45,8 @@ describe('useChatWorkbenchLayout', () => {
     expect(result.current.railOpen).toBe(true);
     expect(result.current.artifactOpen).toBe(true);
     expect(result.current.utilityOpen).toBe(true);
-    expect(result.current.activeUtilityTab).toBe('review');
+    // 'review' is no longer a valid tab — isUtilityTab() returns false, falls back to default.
+    expect(result.current.activeUtilityTab).toBe('activity');
   });
 
   it('falls back to defaults when persisted state is corrupted', () => {

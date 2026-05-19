@@ -12,7 +12,6 @@ let mockArtifactKind: 'empty' | 'file' | 'diff' = 'empty';
 let mockOnClose = vi.fn();
 const mockSelectArtifact = vi.fn();
 const mockOpenFile = vi.fn();
-const mockOpenReview = vi.fn();
 let mockHistory = [
   {
     key: 'file:/tmp/example.ts',
@@ -41,28 +40,6 @@ vi.mock('./useWorkbenchArtifacts', () => ({
     selectedKey: null,
     selectedArtifact: null,
   }),
-}));
-
-vi.mock('../../DiffReview/DiffReviewManager', () => ({
-  useDiffReview: () => ({
-    state: { sessionId: 's1', snapshotHash: 'abc', files: [] },
-    canRollback: false,
-    acceptHunk: vi.fn(),
-    rejectHunk: vi.fn(),
-    acceptAllFile: vi.fn(),
-    rejectAllFile: vi.fn(),
-    acceptAll: vi.fn(),
-    rejectAll: vi.fn(),
-    rollback: vi.fn(),
-    openReview: mockOpenReview,
-    closeReview: vi.fn(),
-    confirmStaleOp: vi.fn(),
-    dismissStaleOp: vi.fn(),
-  }),
-}));
-
-vi.mock('../../DiffReview/DiffReviewPanel', () => ({
-  DiffReviewPanel: () => <div data-testid="diff-review-panel" />,
 }));
 
 vi.mock('../../FileViewer/FileViewerManager', () => ({
@@ -104,7 +81,6 @@ afterEach(() => {
   ];
   mockSelectArtifact.mockReset();
   mockOpenFile.mockReset();
-  mockOpenReview.mockReset();
 });
 
 describe('ChatWorkbenchArtifactPane', () => {
@@ -128,10 +104,12 @@ describe('ChatWorkbenchArtifactPane', () => {
     expect(screen.getByTestId('editor-content')).toBeDefined();
   });
 
-  it('renders diff review content for diff artifacts', () => {
+  it('renders empty state for diff artifacts (Wave 95 — diff review moved to status-bar overlay only)', () => {
     mockArtifactKind = 'diff';
     render(<ChatWorkbenchArtifactPane onClose={mockOnClose} />);
-    expect(screen.getByTestId('diff-review-panel')).toBeDefined();
+    // Diff kind no longer renders inline — falls through to EmptyArtifactState.
+    expect(screen.queryByTestId('diff-review-panel')).toBeNull();
+    expect(screen.getByText(/Open a file reference or diff from chat/i)).toBeDefined();
   });
 
   it('calls onClose when the empty-state close button is clicked', () => {

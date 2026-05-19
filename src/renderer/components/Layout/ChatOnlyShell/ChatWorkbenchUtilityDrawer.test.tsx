@@ -15,32 +15,6 @@ let approvalRequests = [] as Array<{
   sessionId: string;
   timestamp: number;
 }>;
-let diffState: null | {
-  sessionId: string;
-  snapshotHash: string;
-  projectRoot: string;
-  files: Array<{
-    filePath: string;
-    relativePath: string;
-    status: 'modified';
-    hunks: Array<{
-      id: string;
-      header: string;
-      oldStart: number;
-      oldCount: number;
-      newStart: number;
-      newCount: number;
-      lines: string[];
-      rawPatch: string;
-      decision: 'pending';
-    }>;
-  }>;
-  loading: boolean;
-  error: null;
-  lastAcceptedBatch: null;
-  staleFiles: string[];
-  stalePendingOp: null;
-} = null;
 let currentSessions = [] as Array<{
   id: string;
   taskLabel: string;
@@ -80,9 +54,11 @@ vi.mock('../../../contexts/AgentEventsContext', () => ({
   }),
 }));
 
+// useDiffReview is still consumed by WorkbenchApprovalPanel / WorkbenchTimelinePanel
+// even though the review tab itself is removed from this drawer.
 vi.mock('../../DiffReview/DiffReviewManager', () => ({
   useDiffReview: () => ({
-    state: diffState,
+    state: null,
     canRollback: false,
     acceptHunk: vi.fn(),
     rejectHunk: vi.fn(),
@@ -97,10 +73,6 @@ vi.mock('../../DiffReview/DiffReviewManager', () => ({
   }),
 }));
 
-vi.mock('../../DiffReview/DiffReviewPanel', () => ({
-  DiffReviewPanel: () => <div data-testid="diff-review-panel" />,
-}));
-
 vi.mock('../../AgentMonitor', () => ({
   AgentMonitorManager: () => <div data-testid="agent-monitor-manager" />,
 }));
@@ -111,7 +83,6 @@ afterEach(() => {
 
 beforeEach(() => {
   approvalRequests = [];
-  diffState = null;
   currentSessions = [];
   window.electronAPI = {
     approval: {
@@ -154,7 +125,7 @@ describe('ChatWorkbenchUtilityDrawer', () => {
     expect(screen.getByText('Read')).toBeTruthy();
   });
 
-  it('switches across approvals, review, and monitor tabs', () => {
+  it('switches across approvals and monitor tabs (Wave 95 — review tab removed)', () => {
     approvalRequests = [
       {
         requestId: 'req-1',
@@ -162,48 +133,6 @@ describe('ChatWorkbenchUtilityDrawer', () => {
         toolInput: { command: 'npm test' },
         sessionId: 'session-1',
         timestamp: 3_000,
-      },
-    ];
-    diffState = {
-      sessionId: 'session-1',
-      snapshotHash: 'snap-1',
-      projectRoot: '/workspace',
-      files: [
-        {
-          filePath: '/workspace/src/a.ts',
-          relativePath: 'src/a.ts',
-          status: 'modified',
-          hunks: [
-            {
-              id: 'h1',
-              header: '@@',
-              oldStart: 1,
-              oldCount: 1,
-              newStart: 1,
-              newCount: 1,
-              lines: ['+const a = 1;'],
-              rawPatch: '@@',
-              decision: 'pending',
-            },
-          ],
-        },
-      ],
-      loading: false,
-      error: null,
-      lastAcceptedBatch: null,
-      staleFiles: [],
-      stalePendingOp: null,
-    };
-    currentSessions = [
-      {
-        id: 'child-1',
-        taskLabel: 'Investigate',
-        status: 'running',
-        startedAt: 5_000,
-        parentSessionId: 'parent-1',
-        toolCalls: [],
-        inputTokens: 0,
-        outputTokens: 0,
       },
     ];
 
@@ -217,16 +146,20 @@ describe('ChatWorkbenchUtilityDrawer', () => {
     );
     expect(screen.getByTestId('workbench-approval-panel')).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId('chat-workbench-utility-tab-review'));
-    expect(onSelectTab).toHaveBeenCalledWith('review');
-
-    rerender(
-      <ChatWorkbenchUtilityDrawer activeTab="review" onSelectTab={onSelectTab} onClose={vi.fn()} />,
-    );
-    expect(screen.getByTestId('diff-review-panel')).toBeTruthy();
+    // review tab must not exist in the drawer anymore
+    expect(screen.queryByTestId('chat-workbench-utility-tab-review')).toBeNull();
 
     fireEvent.click(screen.getByTestId('chat-workbench-utility-tab-monitor'));
     expect(onSelectTab).toHaveBeenCalledWith('monitor');
+
+    rerender(
+      <ChatWorkbenchUtilityDrawer
+        activeTab="monitor"
+        onSelectTab={onSelectTab}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId('agent-monitor-manager')).toBeTruthy();
   });
 
   it('renders AgentMonitorManager on the monitor tab', () => {

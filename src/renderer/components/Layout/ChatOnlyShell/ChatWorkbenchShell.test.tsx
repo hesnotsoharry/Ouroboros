@@ -33,7 +33,7 @@ let mockApprovalRequests: Array<{
   timestamp: number;
 }> = [];
 let mockDiffState: null | { sessionId: string; snapshotHash: string } = null;
-let mockActiveUtilityTab: 'activity' | 'review' | 'approvals' | 'monitor' = 'activity';
+let mockActiveUtilityTab: 'activity' | 'approvals' | 'rules' | 'monitor' = 'activity';
 const mockSetArtifactOpen = vi.fn();
 const mockSetUtilityOpen = vi.fn();
 const mockSetActiveUtilityTab = vi.fn();
@@ -496,13 +496,6 @@ describe('ChatWorkbenchShell', () => {
     ];
     renderShell();
     expect(screen.getByTestId('workbench-background-approval-prompt')).toBeDefined();
-  });
-
-  it('auto-opens the review utility tab for a diff review', () => {
-    mockDiffState = { sessionId: 'session-1', snapshotHash: 'hash-1' };
-    renderShell();
-    expect(mockSetUtilityOpen).toHaveBeenCalledWith(true);
-    expect(mockSetActiveUtilityTab).toHaveBeenCalledWith('review');
   });
 
   it('suppresses reopening the same artifact key after dismissal, but reopens on a new key', async () => {
