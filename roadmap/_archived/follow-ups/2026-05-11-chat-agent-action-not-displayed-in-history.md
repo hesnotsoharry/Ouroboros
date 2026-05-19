@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-11
 updated: 2026-05-11
 ---
@@ -41,3 +41,10 @@ This is a symptom of the broader state-architecture issues filed at `2026-05-11-
 ## Severity
 
 High. Silent agent actions are a trust-breaking experience. Even if the action was correct (Cole did eventually want them removed), users need to see what happened.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

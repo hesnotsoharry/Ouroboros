@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-95-chat-workbench-terminal-qol
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-20
 source: Wave 94 wave-wrap smoke
 severity: medium
 ---
@@ -41,3 +42,8 @@ where it didn't before.
 - Settings schema: `src/main/configSchemaTail*.ts` for the new key.
 
 Estimate: 1 file + setting + tests, ~1 hour.
+
+## Resolution (wave-95-chat-workbench-terminal-qol)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Wave 95 Phase B shipped with commit `11a76a17` ("terminal scrollback default 50000 + config key"). Verified in `src/main/configSchemaTailExt2.ts` (scrollback: 50000 default) and `src/renderer/components/Terminal/TerminalInstanceController.ts` (scrollback state initialized at 50000).

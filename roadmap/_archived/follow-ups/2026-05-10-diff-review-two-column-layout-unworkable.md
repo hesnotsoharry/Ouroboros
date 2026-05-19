@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-10
 updated: 2026-05-10
 ---
@@ -46,3 +46,10 @@ Medium. The diff review is unusable in chat-only shell width without horizontal 
 
 - `2026-05-10-diff-review-toolbar-cramped.md` — the toolbar at the top of the same pane has its own layout issue. Probably same fix surface (the artifact pane layout pass).
 - The original `2026-05-07-full-review-artifact-pane-empty.md` (Wave 84 bug 2) — the "empty pane" defect that follow-up describes is NOT reproducible on current master, but this layout issue is what you see when the pane works.
+
+
+---
+
+## Resolution: RESOLVED (2026-05-20)
+
+Closed during 2026-05-20 triage sweep. Wave 95 (Chat Workbench Terminal QoL) shipped the underlying fixes — old `ChatWorkbenchArtifactPane` deleted, full-screen `ChatOnlyDiffOverlay` consolidation replaces it (Phases G+H). Cole confirmed the cluster is resolved.

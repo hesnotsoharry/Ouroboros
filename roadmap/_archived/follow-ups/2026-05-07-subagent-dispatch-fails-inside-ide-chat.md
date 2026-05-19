@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-07
 updated: 2026-05-07
 ---
@@ -80,3 +80,10 @@ Medium-high — IDE-specific orchestration regression, blocks subagent dispatch 
 - Memory entry: `subagent-truncation investigation (#54018)` — async subagent loops silently truncated. Different shape (this one errors loudly mid-turn rather than silently truncating), but adjacent.
 - Memory entry: chat agent must have full IDE control (terminals, files, UI) — this regression undercuts that goal.
 - Adjacent open follow-ups (chat-only-shell post-chat-start state bugs): `2026-05-07-context-preview-rules-disappear-after-chat-start.md`, `2026-05-07-full-review-artifact-pane-empty.md`, `2026-05-07-chat-streaming-freezes-on-project-switch.md`, `2026-05-07-queued-message-no-autosend-and-text-reappears.md`.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

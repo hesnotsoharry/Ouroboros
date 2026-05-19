@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-95-chat-workbench-terminal-qol
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-20
 source: Wave 94 Phase E end-to-end smoke (post-bugs A-E fix)
 ---
 
@@ -80,3 +81,8 @@ is not polish — it's a usability blocker for the dominant use case.
 
 Estimate: 1 wave-phase, ~3–5 files, ~4–6 hours including the badge
 component, section collapse/expand state, and persistence.
+
+## Resolution (wave-95-chat-workbench-terminal-qol)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Wave 95 Phase G shipped with commit `d5f108a7` ("multi-project diff state + cross-project grouping"). Result brief documents: "Multi-project diff state + cross-project grouping in `FileListSidebar`. Reducer OPEN now merges (same project replaces, new project prepends)." Directly addresses the symptom: "no way to tell which project's file was edited" — project grouping + collapsible sections now implemented per scope.

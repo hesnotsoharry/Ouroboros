@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-11
 updated: 2026-05-11
 ---
@@ -36,3 +36,10 @@ Option 1 is the smallest fix and is consistent with showing "what will be loaded
 ## Severity
 
 Low. Doesn't affect functionality — the user sees their rules listed correctly post-send. The 18→19 jump is just a minor inconsistency between the two display states.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

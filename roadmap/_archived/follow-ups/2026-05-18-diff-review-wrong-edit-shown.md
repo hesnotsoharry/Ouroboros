@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-95-chat-workbench-terminal-qol
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-20
 source: Wave 94 Phase E end-to-end smoke (post-bugs A-E fix)
 ---
 
@@ -83,3 +84,8 @@ they don't trust the surface. Must be fixed before the feature is
 relied on for production review workflows.
 
 Estimate: 1–2 hours diagnose (Lane B B0–B2), then 1–3 files fix.
+
+## Resolution (wave-95-chat-workbench-terminal-qol)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Wave 95 Phase G + H. Result brief Phase H: "original Lane B 'wrong-edit-shown discard guard' spec was superseded by structural solution... Phase G's multi-project merge." Phase G's reducer merge logic (same project replaces, new project prepends) prevents the stale-content clobber that manifested as "wrong edit shown." Multi-project state isolation prevents cross-terminal leakage. Root cause (unconditional replace) solved more thoroughly than the original narrow fix proposed.

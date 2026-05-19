@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-07
 updated: 2026-05-07
 ---
@@ -61,3 +61,10 @@ Medium-high — workflow defect (user has to manually drive a feature whose enti
 ## Related
 
 - Adjacent open follow-ups: `2026-05-07-context-preview-rules-disappear-after-chat-start.md`, `2026-05-07-full-review-artifact-pane-empty.md`, `2026-05-07-chat-streaming-freezes-on-project-switch.md`. The growing pile of chat-only-shell post-chat-start state-management bugs may warrant a dedicated chat-state-machine wave; consider for triage at next sweep.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

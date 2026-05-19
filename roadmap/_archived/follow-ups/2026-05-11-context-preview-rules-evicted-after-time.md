@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-11
 updated: 2026-05-11
 ---
@@ -77,3 +77,10 @@ Medium. Rules ARE visible at the immediate point Phase A targeted (first agent r
 ## Why this wasn't caught in Phase A
 
 The Phase A acceptance criterion was "rules visible before AND after first agent reply." The fix satisfies that exactly. The eviction surfaces only after extended activity that wasn't in the original repro recipe. Updating Wave 84 hindsight: include "wait N minutes / switch projects / start a second chat" in the smoke checklist for similar lifecycle bugs.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

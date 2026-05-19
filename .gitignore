@@ -95,6 +95,9 @@ audit/
 plan/
 screenshots/
 
+# Scratch / experiment files (untracked workspace)
+tools/__scratch__/
+
 # Temporary lint analysis artifacts
 tmp-*.js
 lint-output.txt

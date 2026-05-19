@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-11
 updated: 2026-05-11
 supersedes: 2026-05-07-chat-streaming-freezes-on-project-switch.md
@@ -75,3 +75,10 @@ Medium-high. User-facing symptom is "chat appears frozen while agent works." Cur
 - Cole had not previously tested the bug in a two-window arrangement; doing so for the first time during Phase D produced no freeze (because `document.hidden` never flipped).
 
 The instrumentation cost was not wasted — it disproved the hypothesis cleanly and pointed at the actual mechanism. Next wave starts further along than this one did.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

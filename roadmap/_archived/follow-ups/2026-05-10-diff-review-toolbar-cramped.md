@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-10
 updated: 2026-05-10
 ---
@@ -51,3 +51,10 @@ Low-medium. Cosmetic / usability — the actions all work, they're just hard to 
 ## Related
 
 - `2026-05-10-diff-review-two-column-layout-unworkable.md` — adjacent layout issue in the same pane.
+
+
+---
+
+## Resolution: RESOLVED (2026-05-20)
+
+Closed during 2026-05-20 triage sweep. Wave 95 (Chat Workbench Terminal QoL) shipped the underlying fixes — old `ChatWorkbenchArtifactPane` deleted, full-screen `ChatOnlyDiffOverlay` consolidation replaces it (Phases G+H). Cole confirmed the cluster is resolved.

@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-95-chat-workbench-terminal-qol
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-20
 source: Wave 94 wave-wrap smoke
 severity: medium
 ---
@@ -54,3 +55,8 @@ visible/annoying than it was when terminal was a side panel.
   site.
 
 Estimate: investigation 30min + fix 30–60min.
+
+## Resolution (wave-95-chat-workbench-terminal-qol)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Wave 95 Phase C shipped with commit `d46b78d5` ("vendor xtermjs PR #5883 webgl atlas-merge fix"). Vendored xtermjs PR #5883 fixes the exact symptom (xterm#5847: ghost cursors on allowTransparency: true + heavy streaming). Postinstall patcher self-contained; live-confirmed by Cole per result brief.

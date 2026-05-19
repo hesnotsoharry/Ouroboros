@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-07
 updated: 2026-05-07
 ---
@@ -53,3 +53,10 @@ Medium — visible feature regression but workaround exists (expand the change s
 
 - Wave 82.1 (chat-project-binding) and Wave 82 (chat-only polish) recently touched the artifact-pane wiring. Verify whether either changed how `agent-ide:open-diff-review` is consumed.
 - Adjacent open follow-up: `2026-05-07-context-preview-rules-disappear-after-chat-start.md` — also a chat-only-shell post-chat-start state-loss bug. May share a root cause around session-binding side effects.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

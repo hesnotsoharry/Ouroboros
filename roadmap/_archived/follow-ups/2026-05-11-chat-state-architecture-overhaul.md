@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-11
 updated: 2026-05-11
 priority: high
@@ -67,3 +67,10 @@ High. The chat surface is the IDE's primary product experience. State-architectu
 - The Phase B `[heat-map]` instrumentation — still in place.
 - The Phase D `[trace:stream]` instrumentation — still in place.
 - All `[trace:*]` instrumentation should be kept in place during the discovery; Phase Z's retain-vs-remove decision is deferred to after the overhaul plan.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-95-chat-workbench-terminal-qol
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-20
 source: Wave 95 Phase D ADR D4
 severity: low
 ---
@@ -65,3 +66,8 @@ no-op — close as wontfix.
 
 15 min once OSC capture confirms `?` queries exist. Skip if no reads
 appear.
+
+## Resolution (wave-95-chat-workbench-terminal-qol)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Wave 95 Phase D filed this as deferred follow-up with prerequisite trace instrumentation added. `useTerminalSetup.lifecycle.ts` now logs `[trace:osc] OSC 11 received` via electron-log, enabling live capture of Claude TUI's OSC sequences. Prerequisite data-collection step (step 1–5 in the follow-up body) is ready to execute; implementation awaits Claude TUI emissions capture.

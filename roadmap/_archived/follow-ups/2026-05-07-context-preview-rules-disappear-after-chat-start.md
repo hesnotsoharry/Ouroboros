@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-07
 updated: 2026-05-07
 ---
@@ -40,3 +40,10 @@ Per `~/.claude/rules/debug-before-fix.md`, instrument first:
 ## Priority
 
 Medium — visibility regression, not data loss. User noticed during normal chat use, said "to check up on later." Wave 84 is taking the next slot.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

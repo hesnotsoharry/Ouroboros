@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-17
 updated: 2026-05-17
 type: review-needed
@@ -30,3 +30,10 @@ Tracked at meta-framework level: surfaced in M-6 sweep (`meta/CHANGELOG.md` hist
 
 - Files: `src/renderer/.../useChatWorkbenchLayout.ts`, `useWorkbenchSurfacePolicy.ts`, `ChatWorkbenchUtilityDrawer.tsx`
 - Wave context: ChatWorkbenchFollowThrough.integration.test.tsx OPEN_SUBAGENT_PANEL_EVENT (fixed test)
+
+
+---
+
+## Resolution: RESOLVED (2026-05-20)
+
+Closed during 2026-05-20 triage sweep. Wave 95 (Chat Workbench Terminal QoL) shipped the underlying fixes — old `ChatWorkbenchArtifactPane` deleted, full-screen `ChatOnlyDiffOverlay` consolidation replaces it (Phases G+H). Cole confirmed the cluster is resolved.

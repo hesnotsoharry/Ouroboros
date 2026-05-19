@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-18
 updated: 2026-05-18
 source: Wave 95 Phase D ADR D4
@@ -56,3 +56,10 @@ current look. UX decision — not a bug fix.
 - Option 1 or 2: 1 hour (table swap + visual smoke).
 - Option 3: 3-4 hours (per-theme migration).
 - Option 4: half-day (settings UI + persistence + plumb).
+
+
+---
+
+## Resolution: RESOLVED (2026-05-20)
+
+Closed during 2026-05-20 triage sweep. Wave 95 (Chat Workbench Terminal QoL) shipped the underlying fixes — old `ChatWorkbenchArtifactPane` deleted, full-screen `ChatOnlyDiffOverlay` consolidation replaces it (Phases G+H). Cole confirmed the cluster is resolved.

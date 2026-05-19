@@ -1,5 +1,5 @@
 ---
-status: TRIAGED
+status: WONTFIX
 created: 2026-05-17
 updated: 2026-05-17
 severity: medium
@@ -82,3 +82,10 @@ Real functional regression in context-packet quality. Tight diagnostic plan with
 
 - `2026-05-16-main-thread-hang-on-context-rebuild.md` — resolved by B3a algorithmic fix + B3b worker offload. THIS bug is the previously-invisible reason the post-graph-ready re-run wasn't producing the freeze that B3a/B3b also addressed via the worker. Sibling investigation.
 - `2026-05-17-chatstatenewpath-dynamic-require-threadstore.md` — unrelated; pre-existing Wave 86 chunker bug.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.

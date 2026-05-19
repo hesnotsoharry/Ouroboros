@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-95-chat-workbench-terminal-qol
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-20
 source: Wave 94 Phase E end-to-end smoke (post-bugs A-E fix)
 ---
 
@@ -63,3 +64,8 @@ not the wave that wired the pipeline.
   a new dependency.
 
 Estimate: 1–2 files, 1–2 hours including the persistence wiring.
+
+## Resolution (wave-95-chat-workbench-terminal-qol)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Wave 95 Phase H shipped with commit `68ef2c01` ("diff-review surface consolidation"). Result brief: "Removed `ChatWorkbenchArtifactPane` entirely + utility-drawer `review` tab. Single surface: `ChatOnlyDiffOverlay` triggered from status-bar `DiffButton`." The inverted 80/20 file-list-to-code ratio was a property of the old `DiffReviewPanel` artifact pane; Phase H consolidation to full-screen overlay eliminates the layout constraint entirely.

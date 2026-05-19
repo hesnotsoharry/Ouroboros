@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-95-chat-workbench-terminal-qol
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-20
 source: Wave 94 wave-wrap smoke
 ---
 
@@ -52,3 +53,8 @@ quality-of-life items).
   same edit affordance.
 
 Estimate: 1 small wave (~4–6 files, ~4 hours).
+
+## Resolution (wave-95-chat-workbench-terminal-qol)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-20.
+Evidence: Wave 95 Phase A shipped with commit `23f9d0a0` ("terminal tab rename + PTY titleChange suppression"). userRenamed flag and SlotHandle renameSession method wired per the result brief documentation; per-project persistence via `projectTerminalsSchema.ts` with userRenamed: boolean field.

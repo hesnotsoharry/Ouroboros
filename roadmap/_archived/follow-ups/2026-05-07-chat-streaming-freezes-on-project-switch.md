@@ -1,5 +1,5 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-07
 updated: 2026-05-07
 ---
@@ -66,3 +66,10 @@ Medium — does not lose data (final render is correct), but degrades UX during 
 
 - Adjacent open follow-ups touching chat-only-shell streaming/state: `2026-05-07-context-preview-rules-disappear-after-chat-start.md`, `2026-05-07-full-review-artifact-pane-empty.md`. Different surfaces; same area.
 - `src/renderer/components/AgentChat/CLAUDE.md` "rAF-batched streaming" section explicitly notes 20–50 chunks per frame on a fast model — if rAF is throttled to 1 Hz, that's hundreds of chunks queued before flush, which would manifest as a hard stall.
+
+
+---
+
+## Resolution: WONTFIX (2026-05-20)
+
+In-IDE chat surface retired in favor of terminal-driven design. `claude -p` moved from OAuth/Max subscription coverage to API pricing, making the chat path non-viable under the project's "Max subscription only, no API key" constraint. Terminal-driven UI (Wave 89+) is the replacement and has largely shipped. This item is closed without action.
