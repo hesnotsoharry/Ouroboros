@@ -22,6 +22,7 @@ export const CONTAINER_STYLE: React.CSSProperties = {
   flex: '1 1 0',
   minHeight: 0,
   overflow: 'hidden',
+  opacity: 'var(--terminal-canvas-opacity, 1)',
 };
 
 export const TOOLBAR_STYLE: React.CSSProperties = {

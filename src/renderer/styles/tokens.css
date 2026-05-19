@@ -157,6 +157,12 @@
   --term-fg:        var(--palette-term-fg);
   --term-cursor:    var(--palette-term-cursor);
   --term-selection: var(--palette-term-selection);
+  /* Wave 95 Phase D extension — xterm canvas opacity. Default 1 (opaque
+     canvas — see ADR D4 + Terminal/CLAUDE.md "Xterm canvas bg is opaque"
+     gotcha). Themes may override (e.g. 0.9 for a tinted-glass look that
+     lets the Mica blur faintly through the canvas). TUI rendering stays
+     correct at any value because cell BG opacity is uniform. */
+  --terminal-canvas-opacity: 1;
 
   /* Monaco (always solid — canvas rendering can't handle transparency) */
   --monaco-bg: var(--palette-bg);
