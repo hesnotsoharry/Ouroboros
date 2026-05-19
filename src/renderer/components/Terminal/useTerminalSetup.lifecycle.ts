@@ -52,18 +52,28 @@ function createTerminal(
   cursorStyle?: 'block' | 'underline' | 'bar',
   scrollback?: number,
 ): Terminal {
-  return new Terminal({
+  const opts = {
     fontFamily: getCssVar('--font-mono') || 'monospace',
     fontSize: fontSize ?? 13,
     lineHeight: 1.2,
     cursorBlink: true,
-    cursorStyle: cursorStyle ?? 'block',
-    cursorInactiveStyle: 'none',
+    cursorStyle: cursorStyle ?? ('block' as const),
+    cursorInactiveStyle: 'none' as const,
     scrollback: scrollback ?? 50000,
     allowProposedApi: true,
     allowTransparency: true,
     theme: buildXtermTheme(),
+  };
+  // [trace:xterm-init] Logs the exact Terminal construction options so future
+  // cursor / rendering reproductions can verify which flags were active.
+  log.info('[xterm-init] createTerminal', {
+    cursorBlink: opts.cursorBlink,
+    cursorStyle: opts.cursorStyle,
+    cursorInactiveStyle: opts.cursorInactiveStyle,
+    allowTransparency: opts.allowTransparency,
+    scrollback: opts.scrollback,
   });
+  return new Terminal(opts);
 }
 
 // ── Pre-open addon loading ────────────────────────────────────────────────────
@@ -107,6 +117,13 @@ function loadWebGLAddon(context: TerminalSetupLifecycleContext, term: Terminal):
   if (context.refs.webglFailedRef.current) return;
   try {
     const webgl = new WebglAddon();
+    // [trace:xterm-init] Confirms WebGL addon loaded post-open (v6 pattern).
+    // If you see ghost cursors / glyph ghosting, check this log relative to
+    // the createTerminal log above — both should appear before any PTY data.
+    log.info('[xterm-init] WebglAddon loaded post-open', {
+      sessionId: context.sessionId,
+      webglActive: true,
+    });
     webgl.onContextLoss(() => {
       log.warn('[terminal:webgl] context loss — canvas renderer takes over');
       // Hide the WebGL canvas immediately so the DOM renderer's elements show through
@@ -199,6 +216,10 @@ function loadTerminalAddons(
   container: HTMLDivElement,
 ): void {
   const { fitAddon, searchAddon } = loadPreOpenAddons(term);
+  // [trace:xterm-init] Marks the term.open() call site — pre-open addons
+  // (FitAddon, SearchAddon, WebLinksAddon) are loaded before this point;
+  // post-open addons (WebGL, Image, Clipboard, etc.) load after.
+  log.info('[xterm-init] term.open() called', { sessionId: context.sessionId });
   term.open(container);
   loadPostOpenAddons(context, term);
   context.refs.fitAddonRef.current = fitAddon;

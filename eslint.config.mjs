@@ -107,7 +107,7 @@ export default tseslint.config(
 
   // ── Node.js script files (scripts/*.mjs, assets/hooks/*.mjs) — Node globals + complexity ──
   {
-    files: ['scripts/**/*.mjs', 'assets/hooks/*.mjs'],
+    files: ['scripts/**/*.mjs', 'tools/**/*.mjs', 'assets/hooks/*.mjs'],
     plugins: {
       'simple-import-sort': simpleImportSort,
     },

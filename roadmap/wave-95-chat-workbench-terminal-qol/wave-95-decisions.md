@@ -105,13 +105,29 @@ or fall back to Canvas renderer.
 - *Experimental:* Custom cursor rendering layer outside xterm. Rejected
   — out of scope.
 
-**Pick:** PENDING — investigation-gated.
+**Pick:** RESOLVED 2026-05-18 — **keep WebGL, vendor PR #5883 patch via
+local postinstall script** (no new deps).
 
-**Rationale:** Cannot decide without the diagnostician's brief. If the
-fix is "re-order existing code so loadAddon runs first," no choice
-needed — keep WebGL. If the fix is non-trivial, the spectrum applies.
+**Rationale:** Phase C diagnosis (high confidence) identified the root
+cause as upstream `@xterm/addon-webgl 0.19.0` atlas-merge corruption,
+documented in xtermjs/xterm.js#5847 (OPEN, 2026-04-27), with fix in
+PR #5883 (OPEN, 2026-05-17, NOT YET MERGED). Same library version,
+same `allowTransparency: true` flag, same streaming workload as our
+Claude TUI use case. Canvas fallback would eliminate the bug but
+introduces visible stutter on heavy streams (the exact workload Claude
+TUI generates). Vendoring the patch preserves WebGL performance while
+upstream catches up. Self-contained Node postinstall script avoids
+adding `patch-package` dep + the per-repo lockfile-sync dance.
 
-**Consequences:** TBD after Phase C investigation.
+**Consequences:** Adds `patches/addon-webgl-0.19.0.patch` (unified diff
+against `node_modules/@xterm/addon-webgl/lib/addon-webgl.mjs` mapping
+PR #5883's 3 TS changes to their minified-bundle equivalents). Adds
+`tools/apply-patches.mjs` invoked via postinstall script. Patches/README
+documents the removal flow: when `@xterm/addon-webgl >= 0.19.1` ships
+with PR #5883 merged, bump the dep and delete `patches/` +
+`tools/apply-patches.mjs` invocation. Terminal/CLAUDE.md gets a gotcha
+entry pointing to the patch. Cole's live verification required at
+implementer report-back: "ghost cursor gone during Claude TUI streaming."
 
 ---
 
