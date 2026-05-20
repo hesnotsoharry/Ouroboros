@@ -9,13 +9,71 @@ import type {
   TerminalSetupRuntimeRefs,
 } from './useTerminalSetup.shared';
 
+// Ghost-cursor fix (2026-05-20): Claude (and other TUIs) draw their own cursor and leave the
+// terminal's native cursor parked elsewhere — visible as a duplicate "ghost". While a TUI is
+// active we strip its show-cursor (?25h) so the native cursor stays hidden; the TUI's own drawn
+// cursor remains. Detection is shell-integration-free, read from the PTY stream:
+//   ON  = ?1004h (focus reporting) — Claude emits it on entry; a shell prompt never does.
+//   OFF = ?1000l/?1002l/?1003l (mouse tracking disabled) — Claude's exit burst.
+// Per-terminal latch, so a shell running in the same terminal is unaffected (emits neither).
+const cursorSuppressed = new WeakMap<Terminal, boolean>();
+// Mirror the latch into sessionStorage (which survives a Ctrl+R renderer reload) so a TUI that was
+// active before the reload re-engages on mount — the session restore replays screen content but not
+// terminal mode state, so the persisted flag is the only thing that still knows a TUI is running.
+const suppressKey = (sessionId: string): string => `ouroboros:cursorSuppressed:${sessionId}`;
+
+function scanCursorModes(raw: string): { focusOn: boolean; mouseOff: boolean } {
+  let focusOn = false;
+  let mouseOff = false;
+  // eslint-disable-next-line no-control-regex
+  const re = /\x1b\[\?([\d;]+)([hl])/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw)) !== null) {
+    const on = m[2] === 'h';
+    for (const mode of m[1].split(';')) {
+      if (mode === '1004') focusOn = focusOn || on;
+      else if (mode === '1000' || mode === '1002' || mode === '1003') mouseOff = mouseOff || !on;
+    }
+  }
+  return { focusOn, mouseOff };
+}
+
+function stripShowCursor(raw: string): string {
+  // eslint-disable-next-line no-control-regex
+  return raw.replace(/\x1b\[\?25h/g, '');
+}
+
+function applyCursorSuppression(raw: string, term: Terminal, sessionId: string): string {
+  const { focusOn, mouseOff } = scanCursorModes(raw);
+  // mouseTrackingMode is set by a TUI on entry and cleared on exit (it does not linger like focus
+  // mode), so the live mode state also re-detects a TUI already running when this terminal mounted.
+  const tuiActive = focusOn || term.modes.mouseTrackingMode !== 'none';
+  if (tuiActive && cursorSuppressed.get(term) !== true) {
+    cursorSuppressed.set(term, true);
+    sessionStorage.setItem(suppressKey(sessionId), '1');
+    return `\x1b[?25l${stripShowCursor(raw)}`;
+  }
+  if (mouseOff && cursorSuppressed.get(term) === true) {
+    cursorSuppressed.set(term, false);
+    sessionStorage.removeItem(suppressKey(sessionId));
+    return `${raw}\x1b[?25h`;
+  }
+  return cursorSuppressed.get(term) === true ? stripShowCursor(raw) : raw;
+}
+
 export function setupDataBridge(
   context: TerminalSetupLifecycleContext,
   term: Terminal,
 ): () => void {
+  // Re-engage suppression after a renderer reload if a TUI was active before it (see suppressKey).
+  if (sessionStorage.getItem(suppressKey(context.sessionId)) === '1') {
+    cursorSuppressed.set(term, true);
+    term.write('\x1b[?25l');
+  }
   return window.electronAPI.pty.onData(context.sessionId, (data) => {
     const stripped = parseAndStripOsc133(context.runtimeRefs, data);
-    context.runtimeRefs.writeBufferRef.current += stripped;
+    const out = applyCursorSuppression(stripped, term, context.sessionId);
+    context.runtimeRefs.writeBufferRef.current += out;
     if (context.runtimeRefs.writeRafRef.current) return;
     context.runtimeRefs.writeRafRef.current = requestAnimationFrame(() => {
       context.runtimeRefs.writeRafRef.current = 0;
