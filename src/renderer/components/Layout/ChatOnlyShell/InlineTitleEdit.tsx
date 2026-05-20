@@ -11,7 +11,7 @@
  *  - Escape always cancels.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface InlineTitleEditProps {
   initial: string;
@@ -29,6 +29,16 @@ export function InlineTitleEdit({
   className,
 }: InlineTitleEditProps): React.ReactElement {
   const [draft, setDraft] = useState(initial);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Focus + select-all on mount so a single backspace clears the whole name
+  // (matches FileTree's InlineEditInput pattern). autoFocus alone only places
+  // the cursor; it does not select existing text.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus();
+    el.select();
+  }, []);
   const commit = useCallback(() => {
     const n = draft.trim();
     if (n && n !== initial) onCommit(n);
@@ -37,7 +47,7 @@ export function InlineTitleEdit({
   const onKey = useInlineEditKeydown(commit, onCancel);
   return (
     <input
-      autoFocus
+      ref={inputRef}
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onKeyDown={onKey}

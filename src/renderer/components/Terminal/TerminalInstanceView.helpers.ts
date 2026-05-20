@@ -22,6 +22,14 @@ export const CONTAINER_STYLE: React.CSSProperties = {
   flex: '1 1 0',
   minHeight: 0,
   overflow: 'hidden',
+  // Opaque terminal background behind/around the xterm canvas. xterm only paints
+  // whole character rows, so the sub-row remainder at the bottom of the wrapper
+  // would otherwise show the glass-transparent ROOT background — reading as a
+  // "gap" between stacked terminals and making the bottom-anchored toolbar appear
+  // to straddle a black/glass seam. Matching the canvas's opaque colour fills
+  // that strip. Composited at --terminal-canvas-opacity so tinted-glass themes
+  // (opacity < 1) tint the wrapper identically to the canvas.
+  backgroundColor: 'var(--palette-term-bg, #0c0c0e)',
   opacity: 'var(--terminal-canvas-opacity, 1)',
 };
 
@@ -36,7 +44,19 @@ export const TOOLBAR_STYLE: React.CSSProperties = {
 };
 
 export function getRootStyle(isActive: boolean): React.CSSProperties {
-  return { ...ROOT_STYLE, display: isActive ? 'flex' : 'none' };
+  // Inactive terminals stay mounted but use visibility:hidden, NOT display:none.
+  // A display:none element has zero client dimensions, so @xterm/addon-fit's
+  // proposeDimensions() returns undefined and fit() is skipped — output that
+  // arrives in a hidden tab then wraps at stale columns and cannot be un-wrapped
+  // on return (the "cut off / no scrollback" bug). visibility:hidden keeps the
+  // element laid out so fit stays correct; pointerEvents:none ensures clicks
+  // fall through the stacked hidden layers to the active terminal.
+  return {
+    ...ROOT_STYLE,
+    display: 'flex',
+    visibility: isActive ? 'visible' : 'hidden',
+    pointerEvents: isActive ? 'auto' : 'none',
+  };
 }
 
 export function applyCompletionSelection(

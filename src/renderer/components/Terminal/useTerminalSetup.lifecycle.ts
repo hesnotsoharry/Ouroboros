@@ -61,7 +61,16 @@ function createTerminal(
     cursorInactiveStyle: 'none' as const,
     scrollback: scrollback ?? 50000,
     allowProposedApi: true,
-    allowTransparency: true,
+    // allowTransparency MUST stay false: the xterm canvas background is opaque
+    // (buildXtermTheme reads --palette-term-bg = #0c0c0e), and the glass tint is
+    // applied via whole-canvas CSS opacity (--terminal-canvas-opacity), not xterm
+    // internal transparency. Setting this true re-enters @xterm/addon-webgl 0.19.0's
+    // transparency render path, which fails to clear stale glyphs during high-throughput
+    // TUI streaming → ghost/trailing cursor (focus-gated: visible only while window
+    // focused, since cursorInactiveStyle:'none' blanks the cursor on blur). Same trigger
+    // as the #5847 atlas-merge bug. Industry pattern (VS Code, Warp, Hyper): opaque WebGL
+    // canvas + CSS opacity for tint, never allowTransparency. See Terminal/CLAUDE.md.
+    allowTransparency: false,
     theme: buildXtermTheme(),
   };
   // [trace:xterm-init] Logs the exact Terminal construction options so future

@@ -56,30 +56,59 @@ function TerminalManagerShell({
   );
 }
 
+function SessionLayer({
+  session,
+  isActive,
+  manager,
+  state,
+}: {
+  session: TerminalSession;
+  isActive: boolean;
+  manager: TerminalManagerProps;
+  state: ReturnType<typeof useTerminalManagerState>;
+}): React.ReactElement {
+  return (
+    <div className="absolute inset-0">
+      <ActiveTerminalContent
+        session={session}
+        isActive={isActive}
+        onTitleChange={manager.onTitleChange}
+        onRestart={manager.onRestart}
+        onClose={manager.onClose}
+        onSplit={manager.onSplit}
+        onCloseSplit={manager.onCloseSplit ?? NOOP}
+        recordingSessions={manager.recordingSessions}
+        onToggleRecording={manager.onToggleRecording}
+        syncInput={state.syncInput}
+        allSessionIds={state.allSessionIds}
+        onToggleSync={state.handleToggleSync}
+      />
+    </div>
+  );
+}
+
+// Wave 97: every session stays mounted; only the active one is visible (via
+// getRootStyle's visibility toggle). Previously only the active session was
+// rendered, so switching tabs unmounted the xterm and destroyed its scrollback
+// buffer — and any output an agent produced in a backgrounded tab was lost.
+// Keeping all sessions mounted preserves scrollback and lets background tabs
+// keep consuming PTY output live (matches the IDE's sidebar/center-pane
+// "render-all, hide-inactive" pattern). RAM cost: ~1 scrollback buffer per
+// open terminal — see Terminal/CLAUDE.md.
 function buildActiveContent(
   props: TerminalManagerProps,
   state: ReturnType<typeof useTerminalManagerState>,
 ): React.ReactNode {
-  const { activeSession, allSessionIds, syncInput, handleToggleSync } = state;
-  if (!activeSession) return null;
-  return (
-    <div className="absolute inset-0">
-      <ActiveTerminalContent
-        session={activeSession}
-        isActive
-        onTitleChange={props.onTitleChange}
-        onRestart={props.onRestart}
-        onClose={props.onClose}
-        onSplit={props.onSplit}
-        onCloseSplit={props.onCloseSplit ?? NOOP}
-        recordingSessions={props.recordingSessions}
-        onToggleRecording={props.onToggleRecording}
-        syncInput={syncInput}
-        allSessionIds={allSessionIds}
-        onToggleSync={handleToggleSync}
-      />
-    </div>
-  );
+  if (props.sessions.length === 0) return null;
+  return props.sessions.map((session) => (
+    <SessionLayer
+      key={session.id}
+      session={session}
+      isActive={session.id === props.activeSessionId}
+      manager={props}
+      state={state}
+    />
+  ));
 }
 
 export function TerminalManager(props: TerminalManagerProps): React.ReactElement {

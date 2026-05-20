@@ -14,13 +14,16 @@
  * DockSlotTabs and owns close-with-activation semantics.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 
-import type { SlotHandle } from '../../../hooks/useProjectTerminals';
 import type { TerminalSession } from '../../Terminal/TerminalTabs';
-import type { SlotId } from './DockSlot';
-import { ShowSecondarySlotButton, SlotCollapseButton, SlotExpandedButtons } from './DockSlot';
+import { useTabDragDrop } from '../../Terminal/TerminalTabs.dnd';
+import type { TabDragProps, TabMenuPosition } from './DockSlotTabMenu';
+import { TabContextMenu, useTabDrag, useTabItemHandlers } from './DockSlotTabMenu';
 import { InlineTitleEdit } from './InlineTitleEdit';
+
+export type { SlotTabsHeaderProps } from './DockSlotTabs.header';
+export { SlotTabsHeader } from './DockSlotTabs.header';
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -41,6 +44,7 @@ export interface DockSlotTabsProps {
   onClose: (sessionId: string) => void;
   onSpawn: () => void;
   onRename: (sessionId: string, title: string) => void;
+  onReorder?: (reordered: TerminalSession[]) => void;
   /** Right-edge affordance buttons (collapse, recording, etc.) */
   rightControls?: React.ReactNode;
 }
@@ -83,12 +87,19 @@ function TabCloseButton({
 // Single tab
 // ---------------------------------------------------------------------------
 
+function tabActiveCls(isActive: boolean): string {
+  return isActive
+    ? 'bg-interactive-accent text-text-semantic-on-accent'
+    : 'text-text-semantic-secondary hover:bg-surface-hover hover:text-text-semantic-primary';
+}
+
 interface TabItemProps {
   session: TerminalSession;
   isActive: boolean;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
   onRename: (id: string, title: string) => void;
+  drag?: TabDragProps;
 }
 
 /** Renders the editable/static title area of a tab. */
@@ -132,44 +143,108 @@ function TabTitleContent({
   );
 }
 
+interface TabButtonProps {
+  session: TerminalSession;
+  isActive: boolean;
+  editing: boolean;
+  drag: TabDragProps | undefined;
+  guardedClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  wrappedDragStart: ((e: React.DragEvent) => void) | undefined;
+  wrappedDragEnd: (() => void) | undefined;
+  dragCls: string;
+  onClose: (id: string) => void;
+  setEditing: (v: boolean) => void;
+  handleCommit: (t: string) => void;
+}
+
+function TabButton(p: TabButtonProps): React.ReactElement {
+  return (
+    <button
+      type="button"
+      draggable={!!p.drag && !p.editing}
+      className={`flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${tabActiveCls(p.isActive)} ${p.dragCls}`}
+      onClick={p.guardedClick}
+      onDragStart={p.wrappedDragStart}
+      onDragOver={p.drag?.onDragOver}
+      onDragLeave={p.drag?.onDragLeave}
+      onDrop={p.drag?.onDrop}
+      onDragEnd={p.wrappedDragEnd}
+      aria-selected={p.isActive}
+      aria-label={`Tab: ${p.session.title}`}
+      data-testid={`dock-slot-tab-${p.session.id}`}
+    >
+      <TabTitleContent
+        sessionId={p.session.id}
+        title={p.session.title}
+        editing={p.editing}
+        onStartEdit={() => p.setEditing(true)}
+        onCommit={p.handleCommit}
+        onCancel={() => p.setEditing(false)}
+      />
+      <TabCloseButton sessionId={p.session.id} title={p.session.title} onClose={p.onClose} />
+    </button>
+  );
+}
+
+function TabItemMenu({
+  sessionId,
+  menuPos,
+  closeMenu,
+  setEditing,
+}: {
+  sessionId: string;
+  menuPos: TabMenuPosition | null;
+  closeMenu: () => void;
+  setEditing: (v: boolean) => void;
+}): React.ReactElement | null {
+  if (menuPos === null) return null;
+  return (
+    <TabContextMenu
+      sessionId={sessionId}
+      position={menuPos}
+      onClose={closeMenu}
+      onRename={() => setEditing(true)}
+    />
+  );
+}
+
 function TabItem({
   session,
   isActive,
   onActivate,
   onClose,
   onRename,
+  drag,
 }: TabItemProps): React.ReactElement {
-  const [editing, setEditing] = useState(false);
-  const handleActivate = useCallback(() => onActivate(session.id), [onActivate, session.id]);
-  const handleCommit = useCallback(
-    (title: string) => {
-      setEditing(false);
-      onRename(session.id, title);
-    },
-    [onRename, session.id],
+  const { editing, menuPos, handleClick, handleCommit, setEditing, closeMenu } = useTabItemHandlers(
+    session.id,
+    isActive,
+    onActivate,
+    onRename,
   );
-  const activeCls = isActive
-    ? 'bg-interactive-accent text-text-semantic-on-accent'
-    : 'text-text-semantic-secondary hover:bg-surface-hover hover:text-text-semantic-primary';
+  const { guardedClick, wrappedDragStart, wrappedDragEnd, dragCls } = useTabDrag(drag, handleClick);
   return (
-    <button
-      type="button"
-      className={`flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors ${activeCls}`}
-      onClick={handleActivate}
-      aria-selected={isActive}
-      aria-label={`Tab: ${session.title}`}
-      data-testid={`dock-slot-tab-${session.id}`}
-    >
-      <TabTitleContent
-        sessionId={session.id}
-        title={session.title}
+    <>
+      <TabButton
+        session={session}
+        isActive={isActive}
         editing={editing}
-        onStartEdit={() => setEditing(true)}
-        onCommit={handleCommit}
-        onCancel={() => setEditing(false)}
+        drag={drag}
+        guardedClick={guardedClick}
+        wrappedDragStart={wrappedDragStart}
+        wrappedDragEnd={wrappedDragEnd}
+        dragCls={dragCls}
+        onClose={onClose}
+        setEditing={setEditing}
+        handleCommit={handleCommit}
       />
-      <TabCloseButton sessionId={session.id} title={session.title} onClose={onClose} />
-    </button>
+      <TabItemMenu
+        sessionId={session.id}
+        menuPos={menuPos}
+        closeMenu={closeMenu}
+        setEditing={setEditing}
+      />
+    </>
   );
 }
 
@@ -184,7 +259,20 @@ interface TabListProps {
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
   onRename: (id: string, title: string) => void;
+  onReorder?: (reordered: TerminalSession[]) => void;
   onSpawn: () => void;
+}
+
+function buildDragProps(s: TerminalSession, dnd: ReturnType<typeof useTabDragDrop>): TabDragProps {
+  return {
+    isDragging: dnd.draggingId === s.id,
+    isDragOver: dnd.dragOverId === s.id,
+    onDragStart: () => dnd.handleDragStart(s.id),
+    onDragOver: (e: React.DragEvent) => dnd.handleDragOver(e, s.id),
+    onDragLeave: dnd.handleDragLeave,
+    onDrop: () => dnd.handleDrop(s.id),
+    onDragEnd: dnd.handleDragEnd,
+  };
 }
 
 function TabList({
@@ -194,8 +282,10 @@ function TabList({
   onActivate,
   onClose,
   onRename,
+  onReorder,
   onSpawn,
 }: TabListProps): React.ReactElement {
+  const dnd = useTabDragDrop(sessions, onReorder);
   return (
     <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1">
       {sessions.map((s) => (
@@ -206,6 +296,7 @@ function TabList({
           onActivate={onActivate}
           onClose={onClose}
           onRename={onRename}
+          drag={buildDragProps(s, dnd)}
         />
       ))}
       <button
@@ -232,6 +323,7 @@ export function DockSlotTabs({
   onClose,
   onSpawn,
   onRename,
+  onReorder,
   rightControls,
 }: DockSlotTabsProps): React.ReactElement {
   return (
@@ -247,107 +339,12 @@ export function DockSlotTabs({
         onActivate={onActivate}
         onClose={onClose}
         onRename={onRename}
+        onReorder={onReorder}
         onSpawn={onSpawn}
       />
       {rightControls !== undefined && (
         <div className="flex shrink-0 items-center gap-1 px-1">{rightControls}</div>
       )}
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// SlotTabsHeader — wired tab strip for DockSlot (has-sessions state)
-// Owns close-with-neighbour-activation semantics and right-edge affordances.
-// ---------------------------------------------------------------------------
-
-export interface SlotTabsHeaderProps {
-  slot: SlotId;
-  terminal: SlotHandle;
-  collapsed: boolean;
-  isRecording: boolean;
-  onSpawn: () => void;
-  onToggleRecording: () => void;
-  onToggleCollapse: () => void;
-  onShowSecondarySlot?: () => void;
-}
-
-/** Activate the neighbouring tab when the active one is closed. */
-function activateNeighbour(terminal: SlotHandle, closedId: string): void {
-  const { sessions, activeSessionId, setActiveSessionId } = terminal;
-  if (closedId !== activeSessionId || sessions.length <= 1) return;
-  const idx = sessions.findIndex((s) => s.id === closedId);
-  const next = sessions[idx > 0 ? idx - 1 : 1];
-  if (next) setActiveSessionId(next.id);
-}
-
-function useTabHandlers(terminal: SlotHandle) {
-  const handleActivate = useCallback((id: string) => terminal.setActiveSessionId(id), [terminal]);
-  const handleClose = useCallback(
-    (id: string) => {
-      activateNeighbour(terminal, id);
-      terminal.handleTerminalClose(id);
-    },
-    [terminal],
-  );
-  return { handleActivate, handleClose };
-}
-
-interface RightControlsOpts {
-  collapsed: boolean;
-  terminal: SlotHandle;
-  isRecording: boolean;
-  onToggleRecording: () => void;
-  onToggleCollapse: () => void;
-  onShowSecondarySlot?: () => void;
-}
-
-function buildRightControls(opts: RightControlsOpts): React.ReactNode {
-  const { collapsed, terminal, isRecording, onToggleRecording, onToggleCollapse, onShowSecondarySlot } = opts;
-  return (
-    <>
-      {!collapsed && (
-        <SlotExpandedButtons
-          activeSessionId={terminal.activeSessionId}
-          isRecording={isRecording}
-          onToggleRecording={onToggleRecording}
-        />
-      )}
-      {onShowSecondarySlot && <ShowSecondarySlotButton onClick={onShowSecondarySlot} />}
-      <SlotCollapseButton collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
-    </>
-  );
-}
-
-export function SlotTabsHeader({
-  slot,
-  terminal,
-  collapsed,
-  isRecording,
-  onSpawn,
-  onToggleRecording,
-  onToggleCollapse,
-  onShowSecondarySlot,
-}: SlotTabsHeaderProps): React.ReactElement {
-  const { handleActivate, handleClose } = useTabHandlers(terminal);
-  const rightControls = buildRightControls({
-    collapsed,
-    terminal,
-    isRecording,
-    onToggleRecording,
-    onToggleCollapse,
-    onShowSecondarySlot,
-  });
-  return (
-    <DockSlotTabs
-      slot={slot}
-      sessions={terminal.sessions}
-      activeSessionId={terminal.activeSessionId}
-      onActivate={handleActivate}
-      onClose={handleClose}
-      onRename={terminal.renameSession}
-      onSpawn={onSpawn}
-      rightControls={rightControls}
-    />
   );
 }
