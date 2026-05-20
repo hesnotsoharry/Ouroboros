@@ -14,6 +14,7 @@ import { createPortal } from 'react-dom';
 
 import { useProject } from '../../../contexts/ProjectContext';
 import { WORKBENCH_OPEN_CHAT_SEARCH_EVENT } from '../../../hooks/appEventNames';
+import { ProjectStatusDot } from './OuterProjectRail.dot';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,8 @@ export interface OuterProjectRailProps {
   onOpenSettings: () => void;
   /** Called when user removes a project from the rail (does not delete files). */
   onRemoveProject?: (projectPath: string) => void;
+  /** Per-project completion status — green dot for 'complete', red for 'error'. */
+  statusByProject?: Record<string, 'complete' | 'error'>;
 }
 
 interface ProjectMenuState {
@@ -66,11 +69,13 @@ function ProjectIconButton({
   onClick,
   onContextMenu,
   path,
+  status,
 }: {
   isActive: boolean;
   onClick: () => void;
   onContextMenu?: (e: React.MouseEvent, path: string) => void;
   path: string;
+  status?: 'complete' | 'error';
 }): React.ReactElement {
   const label = projectInitials(path);
   const title = path.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? path;
@@ -83,9 +88,10 @@ function ProjectIconButton({
       onClick={onClick}
       onContextMenu={(e) => onContextMenu?.(e, path)}
       data-testid={`project-icon-${label}`}
-      className={`${ICON_BTN_BASE} ${isActive ? ICON_BTN_ACTIVE : ICON_BTN_IDLE}`}
+      className={`relative ${ICON_BTN_BASE} ${isActive ? ICON_BTN_ACTIVE : ICON_BTN_IDLE}`}
     >
       {label}
+      {status && <ProjectStatusDot status={status} />}
     </button>
   );
 }
@@ -214,11 +220,13 @@ function ProjectList({
   onSelectProject,
   onContextMenu,
   projects,
+  statusByProject,
 }: {
   activeProject: string | null;
   onSelectProject: (p: string) => void;
   onContextMenu?: (e: React.MouseEvent, path: string) => void;
   projects: string[];
+  statusByProject?: Record<string, 'complete' | 'error'>;
 }): React.ReactElement {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 overflow-y-auto py-1">
@@ -229,6 +237,7 @@ function ProjectList({
           onClick={() => onSelectProject(projectPath)}
           onContextMenu={onContextMenu}
           path={projectPath}
+          status={statusByProject?.[projectPath]}
         />
       ))}
     </div>
@@ -302,6 +311,7 @@ export function OuterProjectRail({
   onRemoveProject,
   onSelectProject,
   projects,
+  statusByProject,
 }: OuterProjectRailProps): React.ReactElement {
   const handleAdd = useAddProject(onAddProject);
   const { menu, open, close } = useProjectMenuState();
@@ -319,6 +329,7 @@ export function OuterProjectRail({
         onSelectProject={onSelectProject}
         onContextMenu={handleContextMenu}
         projects={projects}
+        statusByProject={statusByProject}
       />
       <RailFooter onOpenSettings={onOpenSettings} />
       {menu && onRemoveProject && (

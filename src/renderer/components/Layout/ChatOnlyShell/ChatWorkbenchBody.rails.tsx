@@ -10,9 +10,15 @@ import log from 'electron-log/renderer';
 import React, { useCallback, useMemo } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
+import { useProjectTerminalsContext } from '../../../contexts/ProjectTerminalsContext';
 import { OPEN_SETTINGS_EVENT } from '../../../hooks/appEventNames';
 import { useConfig } from '../../../hooks/useConfig';
-import type { AgentChatThreadRecord, ApprovalRequest } from '../../../types/electron';
+import type {
+  AgentChatThreadRecord,
+  ApprovalRequest,
+  SessionRecord,
+} from '../../../types/electron';
+import { useAgentCompletionIndicatorsContext } from './AgentCompletionIndicatorsContext';
 import type {
   CompareState,
   DockState,
@@ -25,6 +31,10 @@ import { InnerSidebarChats } from './InnerSidebarChats';
 import { InnerSidebarCode } from './InnerSidebarCode';
 import { InnerSidebarTerminals } from './InnerSidebarTerminals';
 import { OuterProjectRail } from './OuterProjectRail';
+import {
+  buildTerminalClaudeIdMap,
+  deriveAgentStatusBySessionRecordId,
+} from './useWorkbenchAttention.agentSource';
 
 // ── Project list helpers ───────────────────────────────────────────────────────
 
@@ -74,12 +84,6 @@ function useActiveProjectValidator(
   }, [activeProject, projects, layout, isReady]);
 }
 
-function useProjectsReady(): boolean {
-  const { isLoaded: projectsLoaded } = useProject();
-  const { isLoading: configLoading } = useConfig();
-  return projectsLoaded && !configLoading;
-}
-
 // ── Rail handlers ──────────────────────────────────────────────────────────────
 
 interface RailHandlers {
@@ -97,7 +101,10 @@ interface RailHandlers {
 // `{success:false}` and the file tree silently rendered as empty. Promoting
 // the path via `addProjectRoot` (idempotent) registers it with the sandbox
 // before activation.
-function useProjectSelection(layout: LayoutState): {
+function useProjectSelection(
+  layout: LayoutState,
+  onSelected?: (path: string) => void,
+): {
   handleSelectOrAdd: (path: string) => void;
   handleRemoveProject: (path: string) => void;
 } {
@@ -107,8 +114,9 @@ function useProjectSelection(layout: LayoutState): {
     (path: string) => {
       addProjectRoot(path);
       layout.setActiveProject(path);
+      onSelected?.(path);
     },
-    [addProjectRoot, layout],
+    [addProjectRoot, layout, onSelected],
   );
   const handleRemoveProject = useCallback(
     (path: string) => {
@@ -127,9 +135,12 @@ function useProjectSelection(layout: LayoutState): {
   return { handleSelectOrAdd, handleRemoveProject };
 }
 
-function useRailHandlers(layout: LayoutState): RailHandlers {
+function useRailHandlers(
+  layout: LayoutState,
+  onProjectSelected?: (path: string) => void,
+): RailHandlers {
   const activeProject = layout.activeProject;
-  const { handleSelectOrAdd, handleRemoveProject } = useProjectSelection(layout);
+  const { handleSelectOrAdd, handleRemoveProject } = useProjectSelection(layout, onProjectSelected);
   const handleOpenSettings = useCallback(() => {
     window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT));
   }, []);
@@ -152,6 +163,7 @@ function useRailHandlers(layout: LayoutState): RailHandlers {
 
 interface InnerTabContentsArgs {
   activeProject: string | null;
+  agentStatusBySessionRecordId: Record<string, 'running' | 'complete' | 'error'>;
   approvalRequests: ApprovalRequest[];
   dock: DockState;
   handlers: WorkbenchHandlers;
@@ -166,7 +178,15 @@ interface InnerTabContents {
 }
 
 function buildInnerTabContents(args: InnerTabContentsArgs): InnerTabContents {
-  const { activeProject, approvalRequests, dock, handlers, sessionsState, threads } = args;
+  const {
+    activeProject,
+    agentStatusBySessionRecordId,
+    approvalRequests,
+    dock,
+    handlers,
+    sessionsState,
+    threads,
+  } = args;
   const openDock = (): void => {
     dock.setVisible(true);
   };
@@ -175,6 +195,7 @@ function buildInnerTabContents(args: InnerTabContentsArgs): InnerTabContents {
       <InnerSidebarChats
         activeProjectRoot={activeProject}
         activeThreadId={null}
+        agentStatusBySessionRecordId={agentStatusBySessionRecordId}
         approvalRequests={approvalRequests}
         onCreateChat={() => {
           void handlers.handleCreateSession(activeProject ?? undefined);
@@ -196,7 +217,9 @@ interface RailSurfaceViewProps {
   activeTab: ReturnType<LayoutState['getProjectState']>['activeInnerTab'];
   projects: string[];
   railHandlers: RailHandlers;
+  statusByProject?: Record<string, 'complete' | 'error'>;
   tabContents: InnerTabContents;
+  agentStatusBySessionRecordId: Record<string, 'running' | 'complete' | 'error'>;
 }
 
 function RailSurfaceView(props: RailSurfaceViewProps): React.ReactElement {
@@ -209,6 +232,7 @@ function RailSurfaceView(props: RailSurfaceViewProps): React.ReactElement {
         onAddProject={props.railHandlers.handleAddProject}
         onRemoveProject={props.railHandlers.handleRemoveProject}
         onOpenSettings={props.railHandlers.handleOpenSettings}
+        statusByProject={props.statusByProject}
       />
       <InnerSidebar
         activeProject={props.activeProject}
@@ -234,24 +258,88 @@ export interface TwoTierRailSurfaceProps {
   dock: DockState;
 }
 
+function useAgentIndicators(sessions: SessionRecord[]) {
+  const { primary, secondary } = useProjectTerminalsContext();
+  const { statusByProject, statusByClaudeSessionId, markProjectViewed, markSessionViewed } =
+    useAgentCompletionIndicatorsContext();
+  const terminalClaudeIds = React.useMemo(
+    () => buildTerminalClaudeIdMap([...primary.sessions, ...secondary.sessions]),
+    [primary.sessions, secondary.sessions],
+  );
+  const agentStatusBySessionRecordId = React.useMemo(
+    () => deriveAgentStatusBySessionRecordId(sessions, terminalClaudeIds, statusByClaudeSessionId),
+    [sessions, terminalClaudeIds, statusByClaudeSessionId],
+  );
+  return {
+    agentStatusBySessionRecordId,
+    terminalClaudeIds,
+    statusByProject,
+    markProjectViewed,
+    markSessionViewed,
+  };
+}
+
+function useSelectSessionWithMark(
+  handlers: WorkbenchHandlers,
+  sessions: SessionRecord[],
+  terminalClaudeIds: Map<string, string>,
+  markSessionViewed: (id: string) => void,
+): (sessionId: string) => void {
+  return React.useCallback(
+    (sessionId: string) => {
+      handlers.handleSelectSession(sessionId);
+      const session = sessions.find((s) => s.id === sessionId);
+      if (!session) return;
+      for (const terminalId of session.activeTerminalIds) {
+        const claudeId = terminalClaudeIds.get(terminalId);
+        if (claudeId) markSessionViewed(claudeId);
+      }
+    },
+    [handlers, sessions, terminalClaudeIds, markSessionViewed],
+  );
+}
+
+function useHandlersWithMark(
+  handlers: WorkbenchHandlers,
+  sessions: SessionRecord[],
+  terminalClaudeIds: Map<string, string>,
+  markSessionViewed: (id: string) => void,
+): WorkbenchHandlers {
+  const sel = useSelectSessionWithMark(handlers, sessions, terminalClaudeIds, markSessionViewed);
+  return React.useMemo(() => ({ ...handlers, handleSelectSession: sel }), [handlers, sel]);
+}
+
 export function TwoTierRailSurface(props: TwoTierRailSurfaceProps): React.ReactElement {
   const { layout, sessionsState, threads, approvalRequests, dock, handlers } = props;
+  const { isLoaded: projectsReady } = useProject();
+  const { isLoading: configLoading } = useConfig();
+  const isReady = projectsReady && !configLoading;
   const activeProject = layout.activeProject;
   const projectState = layout.getProjectState(activeProject ?? '');
   const projects = useWorkbenchProjects();
-  const isReady = useProjectsReady();
   useActiveProjectValidator(layout, projects, isReady);
+  const indicators = useAgentIndicators(sessionsState.sessions);
+  const handlersWithMark = useHandlersWithMark(
+    handlers,
+    sessionsState.sessions,
+    indicators.terminalClaudeIds,
+    indicators.markSessionViewed,
+  );
+  const railHandlers = useRailHandlers(layout, indicators.markProjectViewed);
   return (
     <RailSurfaceView
       activeProject={activeProject}
       activeTab={projectState.activeInnerTab}
+      agentStatusBySessionRecordId={indicators.agentStatusBySessionRecordId}
       projects={projects}
-      railHandlers={useRailHandlers(layout)}
+      railHandlers={railHandlers}
+      statusByProject={indicators.statusByProject}
       tabContents={buildInnerTabContents({
         activeProject,
+        agentStatusBySessionRecordId: indicators.agentStatusBySessionRecordId,
         approvalRequests,
         dock,
-        handlers,
+        handlers: handlersWithMark,
         sessionsState,
         threads,
       })}

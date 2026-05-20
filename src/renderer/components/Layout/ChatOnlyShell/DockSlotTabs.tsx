@@ -16,11 +16,13 @@
 
 import React, { useCallback } from 'react';
 
+import type { SessionStatus } from '../../../hooks/useAgentCompletionIndicators';
 import type { TerminalSession } from '../../Terminal/TerminalTabs';
 import { useTabDragDrop } from '../../Terminal/TerminalTabs.dnd';
+import { CompletionDot } from './CompletionDot';
 import type { TabDragProps, TabMenuPosition } from './DockSlotTabMenu';
 import { TabContextMenu, useTabDrag, useTabItemHandlers } from './DockSlotTabMenu';
-import { InlineTitleEdit } from './InlineTitleEdit';
+import { TabTitleContent } from './DockSlotTabs.parts';
 
 export type { SlotTabsHeaderProps } from './DockSlotTabs.header';
 export { SlotTabsHeader } from './DockSlotTabs.header';
@@ -47,6 +49,8 @@ export interface DockSlotTabsProps {
   onReorder?: (reordered: TerminalSession[]) => void;
   /** Right-edge affordance buttons (collapse, recording, etc.) */
   rightControls?: React.ReactNode;
+  /** Agent-completion status keyed by claudeSessionId. When present, a dot is shown per tab. */
+  statusByClaudeSessionId?: Record<string, SessionStatus>;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,47 +104,7 @@ interface TabItemProps {
   onClose: (id: string) => void;
   onRename: (id: string, title: string) => void;
   drag?: TabDragProps;
-}
-
-/** Renders the editable/static title area of a tab. */
-function TabTitleContent({
-  sessionId,
-  title,
-  editing,
-  onStartEdit,
-  onCommit,
-  onCancel,
-}: {
-  sessionId: string;
-  title: string;
-  editing: boolean;
-  onStartEdit: () => void;
-  onCommit: (t: string) => void;
-  onCancel: () => void;
-}): React.ReactElement {
-  if (editing) {
-    return (
-      <InlineTitleEdit
-        initial={title}
-        onCommit={onCommit}
-        onCancel={onCancel}
-        testId={`dock-slot-tab-title-${sessionId}`}
-        className="max-w-[80px] bg-transparent text-xs outline-none"
-      />
-    );
-  }
-  return (
-    <span
-      className="max-w-[80px] truncate"
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        onStartEdit();
-      }}
-      data-testid={`dock-slot-tab-title-${sessionId}`}
-    >
-      {title}
-    </span>
-  );
+  completionStatus?: SessionStatus;
 }
 
 interface TabButtonProps {
@@ -155,6 +119,7 @@ interface TabButtonProps {
   onClose: (id: string) => void;
   setEditing: (v: boolean) => void;
   handleCommit: (t: string) => void;
+  completionStatus?: SessionStatus;
 }
 
 function TabButton(p: TabButtonProps): React.ReactElement {
@@ -173,6 +138,7 @@ function TabButton(p: TabButtonProps): React.ReactElement {
       aria-label={`Tab: ${p.session.title}`}
       data-testid={`dock-slot-tab-${p.session.id}`}
     >
+      <CompletionDot status={p.completionStatus} />
       <TabTitleContent
         sessionId={p.session.id}
         title={p.session.title}
@@ -208,6 +174,18 @@ function TabItemMenu({
   );
 }
 
+function useTabItemState({
+  session,
+  isActive,
+  onActivate,
+  onRename,
+  drag,
+}: Pick<TabItemProps, 'session' | 'isActive' | 'onActivate' | 'onRename' | 'drag'>) {
+  const handlers = useTabItemHandlers(session.id, isActive, onActivate, onRename);
+  const dragState = useTabDrag(drag, handlers.handleClick);
+  return { ...handlers, ...dragState };
+}
+
 function TabItem({
   session,
   isActive,
@@ -215,34 +193,30 @@ function TabItem({
   onClose,
   onRename,
   drag,
+  completionStatus,
 }: TabItemProps): React.ReactElement {
-  const { editing, menuPos, handleClick, handleCommit, setEditing, closeMenu } = useTabItemHandlers(
-    session.id,
-    isActive,
-    onActivate,
-    onRename,
-  );
-  const { guardedClick, wrappedDragStart, wrappedDragEnd, dragCls } = useTabDrag(drag, handleClick);
+  const state = useTabItemState({ session, isActive, onActivate, onRename, drag });
   return (
     <>
       <TabButton
         session={session}
         isActive={isActive}
-        editing={editing}
+        editing={state.editing}
         drag={drag}
-        guardedClick={guardedClick}
-        wrappedDragStart={wrappedDragStart}
-        wrappedDragEnd={wrappedDragEnd}
-        dragCls={dragCls}
+        guardedClick={state.guardedClick}
+        wrappedDragStart={state.wrappedDragStart}
+        wrappedDragEnd={state.wrappedDragEnd}
+        dragCls={state.dragCls}
         onClose={onClose}
-        setEditing={setEditing}
-        handleCommit={handleCommit}
+        setEditing={state.setEditing}
+        handleCommit={state.handleCommit}
+        completionStatus={completionStatus}
       />
       <TabItemMenu
         sessionId={session.id}
-        menuPos={menuPos}
-        closeMenu={closeMenu}
-        setEditing={setEditing}
+        menuPos={state.menuPos}
+        closeMenu={state.closeMenu}
+        setEditing={state.setEditing}
       />
     </>
   );
@@ -261,6 +235,7 @@ interface TabListProps {
   onRename: (id: string, title: string) => void;
   onReorder?: (reordered: TerminalSession[]) => void;
   onSpawn: () => void;
+  statusByClaudeSessionId?: Record<string, SessionStatus>;
 }
 
 function buildDragProps(s: TerminalSession, dnd: ReturnType<typeof useTabDragDrop>): TabDragProps {
@@ -284,6 +259,7 @@ function TabList({
   onRename,
   onReorder,
   onSpawn,
+  statusByClaudeSessionId,
 }: TabListProps): React.ReactElement {
   const dnd = useTabDragDrop(sessions, onReorder);
   return (
@@ -297,6 +273,9 @@ function TabList({
           onClose={onClose}
           onRename={onRename}
           drag={buildDragProps(s, dnd)}
+          completionStatus={
+            s.claudeSessionId ? statusByClaudeSessionId?.[s.claudeSessionId] : undefined
+          }
         />
       ))}
       <button
@@ -325,6 +304,7 @@ export function DockSlotTabs({
   onRename,
   onReorder,
   rightControls,
+  statusByClaudeSessionId,
 }: DockSlotTabsProps): React.ReactElement {
   return (
     <div
@@ -341,6 +321,7 @@ export function DockSlotTabs({
         onRename={onRename}
         onReorder={onReorder}
         onSpawn={onSpawn}
+        statusByClaudeSessionId={statusByClaudeSessionId}
       />
       {rightControls !== undefined && (
         <div className="flex shrink-0 items-center gap-1 px-1">{rightControls}</div>

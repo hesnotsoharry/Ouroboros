@@ -51,6 +51,17 @@ vi.mock('../../../contexts/ProjectTerminalsContext', () => ({
   }),
 }));
 
+// AgentCompletionIndicatorsContext — stub so SlotTabsHeader doesn't throw
+vi.mock('./AgentCompletionIndicatorsContext', () => ({
+  AgentCompletionIndicatorsProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAgentCompletionIndicatorsContext: () => ({
+    statusByProject: {},
+    statusByClaudeSessionId: {},
+    markProjectViewed: vi.fn(),
+    markSessionViewed: vi.fn(),
+  }),
+}));
+
 // TerminalManager — no xterm in jsdom
 vi.mock('../../Terminal/TerminalManager', () => ({
   TerminalManager: ({ slot }: { slot?: string }) => (

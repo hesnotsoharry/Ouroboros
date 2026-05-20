@@ -8,9 +8,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SlotHandle } from '../../../hooks/useProjectTerminals';
 import { InnerSidebarTerminals } from './InnerSidebarTerminals';
 
-// Mock the context
+// Mock the terminals context
 vi.mock('../../../contexts/ProjectTerminalsContext', () => ({
   useProjectTerminalsContext: vi.fn(),
+}));
+
+// Mock the agent completion indicators context so tests don't need the Provider
+vi.mock('./AgentCompletionIndicatorsContext', () => ({
+  AgentCompletionIndicatorsProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAgentCompletionIndicatorsContext: vi.fn(() => ({
+    statusByProject: {},
+    statusByClaudeSessionId: {},
+    markProjectViewed: vi.fn(),
+    markSessionViewed: vi.fn(),
+  })),
 }));
 
 import { useProjectTerminalsContext } from '../../../contexts/ProjectTerminalsContext';
@@ -345,5 +356,119 @@ describe('InnerSidebarTerminals', () => {
 
     // Verify secondary's renameSession was called
     expect(secondary.renameSession).toHaveBeenCalledWith('t2', 'Shell Window');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wave 99 Phase 4 — completion dot + markSessionViewed
+// ---------------------------------------------------------------------------
+
+import { useAgentCompletionIndicatorsContext } from './AgentCompletionIndicatorsContext';
+
+describe('InnerSidebarTerminals — completion dot for session with matching claudeSessionId', () => {
+  it("renders a complete dot next to a session whose claudeSessionId has status 'complete'", () => {
+    const mockMarkSessionViewed = vi.fn();
+    vi.mocked(useAgentCompletionIndicatorsContext).mockReturnValue({
+      statusByProject: {},
+      statusByClaudeSessionId: { 'claude-abc': 'complete' },
+      markProjectViewed: vi.fn(),
+      markSessionViewed: mockMarkSessionViewed,
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary: makeSlotHandle({
+        sessions: [{ id: 't1', title: 'bash', status: 'running', claudeSessionId: 'claude-abc' }],
+        activeSessionId: 't1',
+      }),
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+    expect(screen.getByTestId('terminal-completion-dot-complete')).toBeTruthy();
+  });
+
+  it("renders an error dot next to a session whose claudeSessionId has status 'error'", () => {
+    vi.mocked(useAgentCompletionIndicatorsContext).mockReturnValue({
+      statusByProject: {},
+      statusByClaudeSessionId: { 'claude-err': 'error' },
+      markProjectViewed: vi.fn(),
+      markSessionViewed: vi.fn(),
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary: makeSlotHandle({
+        sessions: [{ id: 't1', title: 'bash', status: 'running', claudeSessionId: 'claude-err' }],
+        activeSessionId: 't1',
+      }),
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+    expect(screen.getByTestId('terminal-completion-dot-error')).toBeTruthy();
+  });
+
+  it('renders no dot for a session without claudeSessionId', () => {
+    vi.mocked(useAgentCompletionIndicatorsContext).mockReturnValue({
+      statusByProject: {},
+      statusByClaudeSessionId: { 'claude-abc': 'complete' },
+      markProjectViewed: vi.fn(),
+      markSessionViewed: vi.fn(),
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary: makeSlotHandle({
+        sessions: [{ id: 't1', title: 'bash', status: 'running' }], // no claudeSessionId
+        activeSessionId: 't1',
+      }),
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+    expect(screen.queryByTestId('terminal-completion-dot-complete')).toBeNull();
+    expect(screen.queryByTestId('terminal-completion-dot-error')).toBeNull();
+  });
+});
+
+describe('InnerSidebarTerminals — clicking a session calls markSessionViewed with its claudeSessionId', () => {
+  it('calls markSessionViewed(claudeSessionId) when a session row is clicked', () => {
+    const mockMarkSessionViewed = vi.fn();
+    vi.mocked(useAgentCompletionIndicatorsContext).mockReturnValue({
+      statusByProject: {},
+      statusByClaudeSessionId: { 'claude-abc': 'complete' },
+      markProjectViewed: vi.fn(),
+      markSessionViewed: mockMarkSessionViewed,
+    });
+    const primary = makeSlotHandle({
+      sessions: [{ id: 't1', title: 'bash', status: 'running', claudeSessionId: 'claude-abc' }],
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary,
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+    fireEvent.click(screen.getByText('bash'));
+
+    expect(mockMarkSessionViewed).toHaveBeenCalledWith('claude-abc');
+    expect(mockMarkSessionViewed).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT call markSessionViewed when the clicked session has no claudeSessionId', () => {
+    const mockMarkSessionViewed = vi.fn();
+    vi.mocked(useAgentCompletionIndicatorsContext).mockReturnValue({
+      statusByProject: {},
+      statusByClaudeSessionId: {},
+      markProjectViewed: vi.fn(),
+      markSessionViewed: mockMarkSessionViewed,
+    });
+    const primary = makeSlotHandle({
+      sessions: [{ id: 't1', title: 'bash', status: 'running' }], // no claudeSessionId
+    });
+    vi.mocked(useProjectTerminalsContext).mockReturnValue({
+      primary,
+      secondary: makeSlotHandle(),
+    });
+
+    render(<InnerSidebarTerminals />);
+    fireEvent.click(screen.getByText('bash'));
+
+    expect(mockMarkSessionViewed).not.toHaveBeenCalled();
   });
 });

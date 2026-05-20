@@ -5,6 +5,7 @@ import type {
   ApprovalRequest,
   SessionRecord,
 } from '../../../types/electron';
+import type { AgentRowStatus } from './useWorkbenchAttention.agentSource';
 import {
   type AttentionCacheEntry,
   type AttentionCaches,
@@ -36,6 +37,12 @@ export interface UseWorkbenchAttentionOptions {
   activeSessionId?: string | null;
   activeThreadId?: string | null;
   approvalRequests?: ApprovalRequest[];
+  /**
+   * Wave 99 Phase 3 (ADR Decision 6): precomputed per-row agent status,
+   * keyed by SessionRecord.id. Derived from the cross-store join in
+   * ChatWorkbenchBody.rails.tsx. Absent entries mean 'none' (seen or idle).
+   */
+  agentStatusBySessionRecordId?: Record<string, AgentRowStatus>;
 }
 
 export interface UseWorkbenchAttentionResult {
@@ -82,6 +89,7 @@ interface SessionTargetsArgs {
   approvalCounts: Map<string, number>;
   threads: AgentChatThreadRecord[];
   activeThreadId: string | null;
+  agentStatusBySessionRecordId: Record<string, AgentRowStatus>;
 }
 
 function buildSessionTargets(args: SessionTargetsArgs) {
@@ -93,6 +101,7 @@ function buildSessionTargets(args: SessionTargetsArgs) {
       isActive: session.id === args.activeSessionId,
       approvalCount: args.approvalCounts.get(session.id) ?? 0,
       thread: resolveSessionThread(session, index, args.activeSessionId),
+      agentStatus: args.agentStatusBySessionRecordId[session.id],
     })),
   };
 }
@@ -120,6 +129,7 @@ interface ComputeMapsArgs {
   activeThreadId: string | null;
   approvalRequests: ApprovalRequest[];
   caches: AttentionCaches;
+  agentStatusBySessionRecordId: Record<string, AgentRowStatus>;
 }
 
 function buildAttentionMaps(
@@ -157,6 +167,7 @@ function computeMaps(
     approvalCounts,
     threads: args.threads,
     activeThreadId: args.activeThreadId,
+    agentStatusBySessionRecordId: args.agentStatusBySessionRecordId,
   });
   const chatTargets = buildChatTargets(
     args.threads,
@@ -182,6 +193,8 @@ export function useWorkbenchAttention(
 
   const { sessions, threads, activeSessionId, activeThreadId, approvalRequests } = options;
 
+  const { agentStatusBySessionRecordId } = options;
+
   const maps = useMemo(
     () =>
       computeMaps({
@@ -191,8 +204,16 @@ export function useWorkbenchAttention(
         activeThreadId: activeThreadId ?? null,
         approvalRequests: approvalRequests ?? [],
         caches: cachesRef.current,
+        agentStatusBySessionRecordId: agentStatusBySessionRecordId ?? {},
       }),
-    [sessions, threads, activeSessionId, activeThreadId, approvalRequests],
+    [
+      sessions,
+      threads,
+      activeSessionId,
+      activeThreadId,
+      approvalRequests,
+      agentStatusBySessionRecordId,
+    ],
   );
 
   return { ...maps, snoozeSession };

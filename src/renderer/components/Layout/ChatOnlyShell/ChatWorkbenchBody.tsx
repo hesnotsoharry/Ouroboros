@@ -4,6 +4,7 @@ import { WORKBENCH_NEW_SESSION_EVENT } from '../../../hooks/appEventNames';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import type { UseTerminalSessionsReturn } from '../../../hooks/useTerminalSessions';
 import { useAgentChatStoreContext } from '../../AgentChat/agentChatStore';
+import { AgentCompletionIndicatorsProvider } from './AgentCompletionIndicatorsContext';
 import {
   useActiveApprovalSessionIds,
   useWorkbenchContextState,
@@ -143,8 +144,8 @@ function useBodyContent(props: ChatWorkbenchBodyProps): BodyContentProps {
 export function ChatWorkbenchBody(props: ChatWorkbenchBodyProps): React.ReactElement {
   const content = useBodyContent(props);
   const isMobile = useIsMobile();
-  if (isMobile) return <MobileBody {...content} />;
-  return <DesktopBody {...content} />;
+  const body = isMobile ? <MobileBody {...content} /> : <DesktopBody {...content} />;
+  return <AgentCompletionIndicatorsProvider>{body}</AgentCompletionIndicatorsProvider>;
 }
 
 function DesktopBody({

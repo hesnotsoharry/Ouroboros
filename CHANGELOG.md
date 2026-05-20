@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.20.0] - 2026-05-20
+
+### Added
+- **Wave 99 — Agent-completion rail indicators.** When a Claude Code agent finishes inside a project, the chat-workbench now surfaces it on three rail tiers, styled in the existing attention language. Full story in `roadmap/wave-99-agent-completion-rail-indicators/wave-99-result.md`.
+  - **Outer project rail** — each `OuterProjectRail` icon shows a corner status dot: green (`status-success`) for an unseen clean finish, red (`status-error`) for an unseen error. Derived directly from `AgentSession.status` by `cwd`, so it works even when you're not in that project. Clears when you click into the project.
+  - **Dock terminal tabs + inner-rail terminals list** — a `CompletionDot` per terminal, keyed by the terminal's `claudeSessionId`. Clears when you focus/select that terminal. The most literal "which terminal finished."
+  - **New `useAgentCompletionIndicators` hook** — single derivation of project- and session-level completion status from the live `AgentSession` store, with independent project/session viewed-watermarks (clicking a project clears only the outer dot, not the per-terminal dots) and timestamp-based re-light (a newer completion re-lights a cleared indicator). Mounted once via `AgentCompletionIndicatorsContext` so all surfaces share one viewed-state.
+
+### Fixed
+- **Revived the workbench "Live" indicator for terminal sessions.** `useWorkbenchAttention` derived `live`/`completed-unseen`/`failed` only from the retired chat-thread status, so terminal-launched `claude` sessions lit nothing. Added an additive `AgentSession`-status source (ADR 6) — the Live chip works again, and completion/failure chips populate on session rows. The legacy chat-thread path is preserved as a fallback. Also fixed a latent `deriveAttention` quirk where a threadless session resolved to `completed-unseen`.
+
+### Notes
+- The session-row completion chip is wired into `InnerSidebarChats`, which currently sits behind a disabled `chats` tab from the Wave-89 terminal-first pivot — the wiring is correct but dormant until that tab returns. The visible inner indicator is the terminals list + dock tabs.
+- Per-terminal indicators inherit the pre-existing heuristic terminal↔session binding (`useClaudeSessionCapture`); the cwd-based outer project dot is the reliable signal.
+
 ## [2.19.3] - 2026-05-20
 
 ### Changed

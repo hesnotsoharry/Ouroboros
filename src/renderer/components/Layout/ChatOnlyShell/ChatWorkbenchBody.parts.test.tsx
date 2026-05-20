@@ -15,6 +15,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../../contexts/ProjectContext', () => ({
   useProject: () => ({ projectRoot: '/test', projectRoots: ['/test'], addProjectRoot: vi.fn() }),
 }));
+vi.mock('./AgentCompletionIndicatorsContext', () => ({
+  useAgentCompletionIndicatorsContext: () => ({
+    statusByProject: {},
+    statusByClaudeSessionId: {},
+    markProjectViewed: vi.fn(),
+    markSessionViewed: vi.fn(),
+  }),
+  AgentCompletionIndicatorsProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock('../../../hooks/useConfig', () => ({
   useConfig: () => ({ config: { recentProjects: [] } }),
 }));
@@ -134,7 +143,9 @@ describe('TwoTierRailSurface', () => {
   });
 
   it('passes activeProject=null to InnerSidebar (shows "No project")', () => {
-    render(<TwoTierRailSurface {...makeRailProps({ layout: makeLayout({ activeProject: null }) })} />);
+    render(
+      <TwoTierRailSurface {...makeRailProps({ layout: makeLayout({ activeProject: null }) })} />,
+    );
     expect(screen.getByText('No project')).toBeDefined();
   });
 

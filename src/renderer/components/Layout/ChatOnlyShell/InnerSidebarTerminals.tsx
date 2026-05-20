@@ -12,7 +12,9 @@
 import React, { useCallback, useState } from 'react';
 
 import { useProjectTerminalsContext } from '../../../contexts/ProjectTerminalsContext';
+import type { SessionStatus } from '../../../hooks/useAgentCompletionIndicators';
 import type { SlotHandle } from '../../../hooks/useProjectTerminals';
+import { useAgentCompletionIndicatorsContext } from './AgentCompletionIndicatorsContext';
 import { TerminalRow } from './InnerSidebarTerminals.row';
 
 export interface InnerSidebarTerminalsProps {
@@ -159,39 +161,59 @@ function NewTerminalRow({
 
 // ── SlotGroup ────────────────────────────────────────────────────────────────
 
-function SlotGroup({
-  slotName,
-  slotHandle,
-  onSelect,
-  onClose,
-  onActivateInDock,
-}: {
+interface SlotGroupProps {
   slotName: string;
   slotHandle: SlotHandle;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onActivateInDock?: () => void;
-}): React.ReactElement | null {
-  if (slotHandle.sessions.length === 0) return null;
+  statusByClaudeSessionId: Record<string, SessionStatus>;
+  onMarkViewed: (claudeSessionId: string) => void;
+}
+
+function SlotGroupRows({
+  slotHandle,
+  onSelect,
+  onClose,
+  onActivateInDock,
+  statusByClaudeSessionId,
+  onMarkViewed,
+}: Omit<SlotGroupProps, 'slotName'>): React.ReactElement {
+  return (
+    <>
+      {slotHandle.sessions.map((s) => {
+        const completionStatus = s.claudeSessionId
+          ? statusByClaudeSessionId[s.claudeSessionId]
+          : undefined;
+        return (
+          <TerminalRow
+            key={s.id}
+            sessionId={s.id}
+            active={s.id === slotHandle.activeSessionId}
+            label={s.title || s.id}
+            onClick={() => {
+              onSelect(s.id);
+              onActivateInDock?.();
+              if (s.claudeSessionId) onMarkViewed(s.claudeSessionId);
+            }}
+            onClose={() => onClose(s.id)}
+            onRename={slotHandle.renameSession}
+            completionStatus={completionStatus}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function SlotGroup(p: SlotGroupProps): React.ReactElement | null {
+  if (p.slotHandle.sessions.length === 0) return null;
   return (
     <>
       <div className="sticky top-0 bg-surface-panel px-3 py-1.5 text-xs font-semibold text-text-semantic-muted">
-        {slotName}
+        {p.slotName}
       </div>
-      {slotHandle.sessions.map((s) => (
-        <TerminalRow
-          key={s.id}
-          sessionId={s.id}
-          active={s.id === slotHandle.activeSessionId}
-          label={s.title || s.id}
-          onClick={() => {
-            onSelect(s.id);
-            onActivateInDock?.();
-          }}
-          onClose={() => onClose(s.id)}
-          onRename={slotHandle.renameSession}
-        />
-      ))}
+      <SlotGroupRows {...p} />
     </>
   );
 }
@@ -221,42 +243,47 @@ function useTerminalHandlers(
 
 // ── SessionListArea ──────────────────────────────────────────────────────────
 
-function SessionListArea({
-  primary,
-  secondary,
-  selectPrimary,
-  selectSecondary,
-  onActivateInDock,
-}: {
+interface SessionListAreaProps {
   primary: SlotHandle;
   secondary: SlotHandle;
   selectPrimary: (id: string) => void;
   selectSecondary: (id: string) => void;
   onActivateInDock?: () => void;
-}): React.ReactElement {
-  const hasAny = primary.sessions.length > 0 || secondary.sessions.length > 0;
-  if (!hasAny) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-4 text-center">
-        <p className="text-xs text-text-semantic-faint">No terminals open.</p>
-      </div>
-    );
-  }
+  statusByClaudeSessionId: Record<string, SessionStatus>;
+  onMarkViewed: (claudeSessionId: string) => void;
+}
+
+function NoTerminalsPlaceholder(): React.ReactElement {
+  return (
+    <div className="flex flex-1 items-center justify-center p-4 text-center">
+      <p className="text-xs text-text-semantic-faint">No terminals open.</p>
+    </div>
+  );
+}
+
+function SessionListArea(p: SessionListAreaProps): React.ReactElement {
+  const hasAny = p.primary.sessions.length > 0 || p.secondary.sessions.length > 0;
+  if (!hasAny) return <NoTerminalsPlaceholder />;
+  const shared = {
+    onActivateInDock: p.onActivateInDock,
+    statusByClaudeSessionId: p.statusByClaudeSessionId,
+    onMarkViewed: p.onMarkViewed,
+  };
   return (
     <>
       <SlotGroup
         slotName="Primary"
-        slotHandle={primary}
-        onSelect={selectPrimary}
-        onClose={primary.handleTerminalClose}
-        onActivateInDock={onActivateInDock}
+        slotHandle={p.primary}
+        onSelect={p.selectPrimary}
+        onClose={p.primary.handleTerminalClose}
+        {...shared}
       />
       <SlotGroup
         slotName="Shell"
-        slotHandle={secondary}
-        onSelect={selectSecondary}
-        onClose={secondary.handleTerminalClose}
-        onActivateInDock={onActivateInDock}
+        slotHandle={p.secondary}
+        onSelect={p.selectSecondary}
+        onClose={p.secondary.handleTerminalClose}
+        {...shared}
       />
     </>
   );
@@ -268,6 +295,7 @@ export function InnerSidebarTerminals({
   onActivateInDock,
 }: InnerSidebarTerminalsProps): React.ReactElement {
   const { primary, secondary } = useProjectTerminalsContext();
+  const { statusByClaudeSessionId, markSessionViewed } = useAgentCompletionIndicatorsContext();
   const { selectPrimary, selectSecondary, createPrimary, createSecondary } = useTerminalHandlers(
     primary,
     secondary,
@@ -286,6 +314,8 @@ export function InnerSidebarTerminals({
           selectPrimary={selectPrimary}
           selectSecondary={selectSecondary}
           onActivateInDock={onActivateInDock}
+          statusByClaudeSessionId={statusByClaudeSessionId}
+          onMarkViewed={markSessionViewed}
         />
       </div>
     </div>

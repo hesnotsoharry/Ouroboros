@@ -1,5 +1,6 @@
 import type { AgentChatThreadRecord, ApprovalRequest } from '../../../types/electron';
 import type { WorkbenchAttentionKind, WorkbenchAttentionState } from './useWorkbenchAttention';
+import type { AgentRowStatus } from './useWorkbenchAttention.agentSource';
 
 export interface SessionThreadIndex {
   activeThread: AgentChatThreadRecord | null;
@@ -14,6 +15,8 @@ export interface AttentionTarget {
   isActive: boolean;
   approvalCount: number;
   thread: AgentChatThreadRecord | null;
+  /** Agent-source status (Wave 99 Phase 3 — ADR Decision 6). */
+  agentStatus?: AgentRowStatus;
 }
 
 export interface AttentionCacheEntry {
@@ -119,16 +122,52 @@ function toThreadKey(thread: AgentChatThreadRecord | null): string | null {
   return thread ? `${thread.id}:${thread.updatedAt}` : null;
 }
 
-function deriveAttentionKind(
-  status: AgentChatThreadRecord['status'] | null,
-  approvalCount: number,
-  hasUnseenCompletion: boolean,
-): WorkbenchAttentionKind {
-  if (approvalCount > 0) return 'approval';
-  if (status === 'failed') return 'failed';
-  if (status === 'needs_review') return 'review';
-  if (hasUnseenCompletion) return 'completed-unseen';
-  if (isBusyStatus(status)) return 'live';
+/**
+ * Derive kind from agent-source status (Wave 99 Phase 3).
+ * Called when agentStatus is present AND no thread is resolved.
+ * Precedence handled by the caller; approval is pre-checked.
+ */
+function agentStatusToKind(agentStatus: AgentRowStatus): WorkbenchAttentionKind {
+  if (agentStatus === 'error') return 'failed';
+  if (agentStatus === 'complete') return 'completed-unseen';
+  return 'live'; // 'running'
+}
+
+/**
+ * Precedence (highest → lowest):
+ *   approval > failed (agent error | thread failed) > review
+ *   > completed-unseen (agent complete | unseen thread)
+ *   > live (agent running | busy thread)
+ *   > none
+ *
+ * Threadless-quirk fix (Wave 99 Phase 3):
+ *   When there is NO resolved thread (thread === null), the legacy path
+ *   produces `hasUnseenCompletion = (null === null) = true` → wrong
+ *   'completed-unseen'. Guard: if agentStatus is present, use the agent
+ *   path for threadless sessions so the legacy quirk never fires.
+ */
+interface DeriveKindArgs {
+  status: AgentChatThreadRecord['status'] | null;
+  approvalCount: number;
+  hasUnseenCompletion: boolean;
+  agentStatus: AgentRowStatus | undefined;
+  hasThread: boolean;
+}
+
+function deriveAttentionKind(args: DeriveKindArgs): WorkbenchAttentionKind {
+  if (args.approvalCount > 0) return 'approval';
+  // Agent path for sessions without a resolved chat thread.
+  // Also handles the threadless-quirk fix: a session with no thread and no
+  // agentStatus must return 'none' — the legacy null===null 'completed-unseen'
+  // false-positive is suppressed here.
+  if (!args.hasThread) {
+    return args.agentStatus !== undefined ? agentStatusToKind(args.agentStatus) : 'none';
+  }
+  // Legacy chat-thread path (ADR Decision 6 — kept as fallback).
+  if (args.status === 'failed') return 'failed';
+  if (args.status === 'needs_review') return 'review';
+  if (args.hasUnseenCompletion) return 'completed-unseen';
+  if (isBusyStatus(args.status)) return 'live';
   return 'none';
 }
 
@@ -137,7 +176,13 @@ export function deriveAttention(
   hasUnseenCompletion: boolean,
 ): WorkbenchAttentionState {
   const status = target.thread?.status ?? null;
-  const kind = deriveAttentionKind(status, target.approvalCount, hasUnseenCompletion);
+  const kind = deriveAttentionKind({
+    status,
+    approvalCount: target.approvalCount,
+    hasUnseenCompletion,
+    agentStatus: target.agentStatus,
+    hasThread: target.thread !== null,
+  });
   if (kind === 'approval') {
     const label = target.approvalCount === 1 ? 'Approval' : `${target.approvalCount} approvals`;
     return attentionState({ kind, tone: 'warning', label, rank: 5, isSticky: true });

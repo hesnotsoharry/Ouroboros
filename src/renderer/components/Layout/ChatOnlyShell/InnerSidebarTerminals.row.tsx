@@ -11,6 +11,8 @@
 
 import React, { useCallback, useState } from 'react';
 
+import type { SessionStatus } from '../../../hooks/useAgentCompletionIndicators';
+import { CompletionDot } from './CompletionDot';
 import { InlineTitleEdit } from './InlineTitleEdit';
 
 // ---------------------------------------------------------------------------
@@ -172,6 +174,7 @@ interface TerminalRowBodyProps {
   onCommit: (title: string) => void;
   onCancel: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
+  completionStatus?: SessionStatus;
 }
 
 function TerminalRowBody({
@@ -185,6 +188,7 @@ function TerminalRowBody({
   onCancel,
   onContextMenu,
   sessionId,
+  completionStatus,
 }: TerminalRowBodyProps): React.ReactElement {
   const cls = active
     ? 'bg-interactive-selection text-text-semantic-primary'
@@ -195,6 +199,7 @@ function TerminalRowBody({
       onContextMenu={onContextMenu}
       className={`group flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors ${cls}`}
     >
+      <CompletionDot status={completionStatus} />
       <TerminalRowContent
         sessionId={sessionId}
         label={label}
@@ -264,6 +269,7 @@ export interface TerminalRowProps {
   onClick: () => void;
   onClose: () => void;
   onRename: (sessionId: string, title: string) => void;
+  completionStatus?: SessionStatus;
 }
 
 export function TerminalRow({
@@ -273,6 +279,7 @@ export function TerminalRow({
   onClick,
   onClose,
   onRename,
+  completionStatus,
 }: TerminalRowProps): React.ReactElement {
   const [editing, setEditing] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -295,6 +302,7 @@ export function TerminalRow({
         onCommit={handleCommit}
         onCancel={() => setEditing(false)}
         onContextMenu={handleContextMenu}
+        completionStatus={completionStatus}
       />
       <MaybeRenameMenu
         menu={menu}

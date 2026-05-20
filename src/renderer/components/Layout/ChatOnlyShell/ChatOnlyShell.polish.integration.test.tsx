@@ -37,7 +37,15 @@ vi.mock('../../../contexts/ProjectContext', () => ({
 
 vi.mock('../../../contexts/AgentEventsContext', () => ({
   AgentEventsProvider: ({ children }: React.PropsWithChildren) => <>{children}</>,
-  useAgentEventsContext: () => ({ currentSessions: [] }),
+  useAgentEventsContext: () => ({ currentSessions: [], agents: [] }),
+}));
+vi.mock('../../../hooks/useAgentCompletionIndicators', () => ({
+  useAgentCompletionIndicators: () => ({
+    statusByProject: {},
+    statusByClaudeSessionId: {},
+    markProjectViewed: vi.fn(),
+    markSessionViewed: vi.fn(),
+  }),
 }));
 
 // No branch, no tokens, no diffs → status bar must return null.
@@ -62,10 +70,7 @@ vi.mock('../../FileViewer/FileViewerManager', () => ({
 // The mock is retained as a no-op stub so deep imports don't fail.
 vi.mock('../../AgentChat/AgentChatWorkspace', () => ({
   AgentChatWorkspace: () => {
-    return (
-      <div data-testid="agent-chat-workspace">
-      </div>
-    );
+    return <div data-testid="agent-chat-workspace"></div>;
   },
 }));
 

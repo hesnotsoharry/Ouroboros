@@ -17,6 +17,15 @@ vi.mock('../../../contexts/ProjectContext', () => ({
 vi.mock('../../../hooks/useConfig', () => ({
   useConfig: () => ({ config: { recentProjects: [] } }),
 }));
+vi.mock('./AgentCompletionIndicatorsContext', () => ({
+  AgentCompletionIndicatorsProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAgentCompletionIndicatorsContext: () => ({
+    statusByProject: {},
+    statusByClaudeSessionId: {},
+    markProjectViewed: vi.fn(),
+    markSessionViewed: vi.fn(),
+  }),
+}));
 vi.mock('./useWorkbenchRailActions', () => ({
   useWorkbenchRailActions: () => ({
     actions: {

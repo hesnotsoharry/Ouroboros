@@ -9,6 +9,7 @@
 import React, { useCallback } from 'react';
 
 import type { SlotHandle } from '../../../hooks/useProjectTerminals';
+import { useAgentCompletionIndicatorsContext } from './AgentCompletionIndicatorsContext';
 import type { SlotId } from './DockSlot';
 import { ShowSecondarySlotButton, SlotCollapseButton, SlotExpandedButtons } from './DockSlot';
 import { DockSlotTabs } from './DockSlotTabs';
@@ -37,8 +38,15 @@ function activateNeighbour(terminal: SlotHandle, closedId: string): void {
   if (next) setActiveSessionId(next.id);
 }
 
-function useTabHandlers(terminal: SlotHandle) {
-  const handleActivate = useCallback((id: string) => terminal.setActiveSessionId(id), [terminal]);
+function useTabHandlers(terminal: SlotHandle, markSessionViewed: (id: string) => void) {
+  const handleActivate = useCallback(
+    (id: string) => {
+      terminal.setActiveSessionId(id);
+      const session = terminal.sessions.find((s) => s.id === id);
+      if (session?.claudeSessionId) markSessionViewed(session.claudeSessionId);
+    },
+    [terminal, markSessionViewed],
+  );
   const handleClose = useCallback(
     (id: string) => {
       activateNeighbour(terminal, id);
@@ -92,7 +100,8 @@ export function SlotTabsHeader({
   onToggleCollapse,
   onShowSecondarySlot,
 }: SlotTabsHeaderProps): React.ReactElement {
-  const { handleActivate, handleClose } = useTabHandlers(terminal);
+  const { statusByClaudeSessionId, markSessionViewed } = useAgentCompletionIndicatorsContext();
+  const { handleActivate, handleClose } = useTabHandlers(terminal, markSessionViewed);
   const rightControls = buildRightControls({
     collapsed,
     terminal,
@@ -112,6 +121,7 @@ export function SlotTabsHeader({
       onReorder={terminal.handleTerminalReorder}
       onSpawn={onSpawn}
       rightControls={rightControls}
+      statusByClaudeSessionId={statusByClaudeSessionId}
     />
   );
 }

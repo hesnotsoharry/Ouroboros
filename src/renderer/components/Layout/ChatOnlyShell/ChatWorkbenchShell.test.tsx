@@ -94,6 +94,14 @@ vi.mock('../../../contexts/ProjectContext', () => ({
 vi.mock('../../../hooks/useConfig', () => ({
   useConfig: () => ({ config: { recentProjects: [] } }),
 }));
+vi.mock('../../../hooks/useAgentCompletionIndicators', () => ({
+  useAgentCompletionIndicators: () => ({
+    statusByProject: {},
+    statusByClaudeSessionId: {},
+    markProjectViewed: vi.fn(),
+    markSessionViewed: vi.fn(),
+  }),
+}));
 vi.mock('../../FileViewer/FileViewerManager', () => ({
   useFileViewerManager: () => ({ openFile: vi.fn(), activeFile: null, openFiles: [] }),
 }));

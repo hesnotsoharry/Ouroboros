@@ -15,6 +15,7 @@ import type {
   SessionRecord,
 } from '../../../types/electron';
 import { useWorkbenchAttention } from './useWorkbenchAttention';
+import type { AgentRowStatus } from './useWorkbenchAttention.agentSource';
 import { useWorkbenchRailActions } from './useWorkbenchRailActions';
 import {
   useWorkbenchRecentChats,
@@ -31,6 +32,8 @@ import { WorkbenchSessionRow } from './WorkbenchSessionRow';
 export interface InnerSidebarChatsProps {
   activeProjectRoot: string | null;
   activeThreadId?: string | null;
+  /** Wave 99 Phase 3 — agent status by SessionRecord.id for session attention. */
+  agentStatusBySessionRecordId?: Record<string, AgentRowStatus>;
   approvalRequests: ApprovalRequest[];
   onCreateChat?: () => void;
   onSelectRecentChat?: (threadId: string) => void;
@@ -77,6 +80,7 @@ function useChatsState(props: InnerSidebarChatsProps): UseWorkbenchRecentChatsRe
   const attention = useWorkbenchAttention({
     activeSessionId: null,
     activeThreadId: props.activeThreadId ?? null,
+    agentStatusBySessionRecordId: props.agentStatusBySessionRecordId,
     approvalRequests: props.approvalRequests,
     sessions: props.sessions,
     threads: props.threads,

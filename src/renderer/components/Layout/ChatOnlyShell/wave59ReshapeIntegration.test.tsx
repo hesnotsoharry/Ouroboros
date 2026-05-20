@@ -28,6 +28,15 @@ vi.mock('../../../contexts/ProjectContext', () => ({
     addProjectRoot: vi.fn(),
   }),
 }));
+vi.mock('./AgentCompletionIndicatorsContext', () => ({
+  useAgentCompletionIndicatorsContext: () => ({
+    statusByProject: {},
+    statusByClaudeSessionId: {},
+    markProjectViewed: vi.fn(),
+    markSessionViewed: vi.fn(),
+  }),
+  AgentCompletionIndicatorsProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock('../../../hooks/useConfig', () => ({
   useConfig: () => ({ config: { recentProjects: [] } }),
 }));

@@ -149,6 +149,51 @@ describe('OuterProjectRail', () => {
   });
 });
 
+describe('OuterProjectRail — status dot', () => {
+  it('renders a complete dot with bg-status-success token class when statusByProject has complete', () => {
+    const statusByProject = { [PROJECTS[0]]: 'complete' as const };
+    render(<OuterProjectRail {...makeProps({ statusByProject })} />);
+    const dot = screen.getByTestId('project-status-dot-complete');
+    expect(dot.className).toContain('bg-status-success');
+  });
+
+  it('renders an error dot with bg-status-error token class when statusByProject has error', () => {
+    const statusByProject = { [PROJECTS[1]]: 'error' as const };
+    render(<OuterProjectRail {...makeProps({ statusByProject })} />);
+    const dot = screen.getByTestId('project-status-dot-error');
+    expect(dot.className).toContain('bg-status-error');
+  });
+
+  it('renders no dot when statusByProject is absent', () => {
+    render(<OuterProjectRail {...makeProps()} />);
+    expect(screen.queryByTestId('project-status-dot-complete')).toBeNull();
+    expect(screen.queryByTestId('project-status-dot-error')).toBeNull();
+  });
+
+  it('renders no dot for a project not in statusByProject', () => {
+    const statusByProject = { [PROJECTS[0]]: 'complete' as const };
+    render(<OuterProjectRail {...makeProps({ statusByProject })} />);
+    // PROJECTS[1] has no entry — its button should not contain a dot
+    expect(screen.queryByTestId('project-status-dot-error')).toBeNull();
+    // PROJECTS[0] has the dot
+    expect(screen.getByTestId('project-status-dot-complete')).toBeDefined();
+  });
+
+  it('dot has the correct aria-label for complete', () => {
+    const statusByProject = { [PROJECTS[0]]: 'complete' as const };
+    render(<OuterProjectRail {...makeProps({ statusByProject })} />);
+    const dot = screen.getByTestId('project-status-dot-complete');
+    expect(dot.getAttribute('aria-label')).toBe('finished');
+  });
+
+  it('dot has the correct aria-label for error', () => {
+    const statusByProject = { [PROJECTS[0]]: 'error' as const };
+    render(<OuterProjectRail {...makeProps({ statusByProject })} />);
+    const dot = screen.getByTestId('project-status-dot-error');
+    expect(dot.getAttribute('aria-label')).toBe('error');
+  });
+});
+
 describe('projectInitials', () => {
   it('returns first 2 chars uppercased from the last path segment', () => {
     expect(projectInitials('/home/user/my-app')).toBe('MY');

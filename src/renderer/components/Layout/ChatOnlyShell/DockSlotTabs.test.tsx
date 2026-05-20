@@ -332,3 +332,58 @@ describe('DockSlotTabs — double-click rename (Wave 95)', () => {
     expect(onRename).toHaveBeenCalledWith('a1', 'First Tab');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Wave 99 Phase 4 — completion dot via statusByClaudeSessionId
+// ---------------------------------------------------------------------------
+
+function makeSessionWithClaude(
+  id: string,
+  title: string,
+  claudeSessionId: string,
+): TerminalSession {
+  return { id, title, status: 'running', claudeSessionId };
+}
+
+describe('DockSlotTabs — completion dot renders for tab whose claudeSessionId has a status', () => {
+  it("renders a complete dot when the tab's claudeSessionId maps to 'complete'", () => {
+    const session = makeSessionWithClaude('t1', 'bash', 'claude-abc');
+    renderTabs([session], 't1', {
+      statusByClaudeSessionId: { 'claude-abc': 'complete' },
+    });
+    expect(screen.getByTestId('terminal-completion-dot-complete')).toBeTruthy();
+  });
+
+  it("renders an error dot when the tab's claudeSessionId maps to 'error'", () => {
+    const session = makeSessionWithClaude('t1', 'bash', 'claude-abc');
+    renderTabs([session], 't1', {
+      statusByClaudeSessionId: { 'claude-abc': 'error' },
+    });
+    expect(screen.getByTestId('terminal-completion-dot-error')).toBeTruthy();
+  });
+
+  it('renders no dot when the tab has no claudeSessionId', () => {
+    renderTabs([SESSION_A], 'a1', {
+      statusByClaudeSessionId: { 'claude-abc': 'complete' },
+    });
+    expect(screen.queryByTestId('terminal-completion-dot-complete')).toBeNull();
+    expect(screen.queryByTestId('terminal-completion-dot-error')).toBeNull();
+  });
+
+  it("renders no dot when the tab's claudeSessionId has no entry in statusByClaudeSessionId", () => {
+    const session = makeSessionWithClaude('t1', 'bash', 'claude-xyz');
+    renderTabs([session], 't1', {
+      statusByClaudeSessionId: { 'claude-abc': 'complete' },
+    });
+    expect(screen.queryByTestId('terminal-completion-dot-complete')).toBeNull();
+  });
+
+  it("renders no dot when statusByClaudeSessionId maps the session to 'running'", () => {
+    const session = makeSessionWithClaude('t1', 'bash', 'claude-abc');
+    renderTabs([session], 't1', {
+      statusByClaudeSessionId: { 'claude-abc': 'running' },
+    });
+    expect(screen.queryByTestId('terminal-completion-dot-complete')).toBeNull();
+    expect(screen.queryByTestId('terminal-completion-dot-error')).toBeNull();
+  });
+});
