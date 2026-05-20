@@ -10,8 +10,13 @@ export interface CrashLogsResult extends IpcResult {
   logs?: CrashLog[];
 }
 
+export interface CrashLogCountResult extends IpcResult {
+  count?: number;
+}
+
 export interface CrashAPI {
   getCrashLogs: () => Promise<CrashLogsResult>;
+  getCrashLogCount: () => Promise<CrashLogCountResult>;
   clearCrashLogs: () => Promise<IpcResult>;
   openCrashLogDir: () => Promise<IpcResult>;
   openCrashReportsDir: () => Promise<IpcResult>;
