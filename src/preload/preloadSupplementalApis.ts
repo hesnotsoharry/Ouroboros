@@ -108,6 +108,7 @@ export const supplementalApis: SupplementalApis = {
 
   crash: {
     getCrashLogs: () => ipcRenderer.invoke('app:getCrashLogs'),
+    getCrashLogCount: () => ipcRenderer.invoke('app:getCrashLogCount'),
     clearCrashLogs: () => ipcRenderer.invoke('app:clearCrashLogs'),
     openCrashLogDir: () => ipcRenderer.invoke('app:openCrashLogDir'),
     openCrashReportsDir: () => ipcRenderer.invoke('platform:openCrashReportsDir'),

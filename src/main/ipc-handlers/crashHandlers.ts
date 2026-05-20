@@ -2,9 +2,9 @@ import { app, ipcMain, shell } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { getErrorMessage } from '../agentChat/utils';
 import { getCrashReportDirPath } from '../crashReporterStorage';
 import log from '../logger';
+import { getErrorMessage } from '../utils';
 
 type ChannelList = string[];
 type IpcHandler = Parameters<typeof ipcMain.handle>[1];
@@ -78,20 +78,6 @@ async function readCrashLog(
   return { name: fileName, content, mtime: stat.mtime.getTime() };
 }
 
-async function getCrashLogs(): Promise<Array<{ name: string; content: string; mtime: number }>> {
-  const logFiles = await getCrashLogFiles();
-  const logs = await Promise.all(
-    logFiles.map(async (fileName) => {
-      try {
-        return await readCrashLog(fileName);
-      } catch {
-        return null;
-      }
-    }),
-  );
-  return logs.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-}
-
 async function clearCrashLogs(): Promise<void> {
   const logFiles = await getCrashLogFiles();
   await Promise.all(
@@ -102,6 +88,53 @@ async function clearCrashLogs(): Promise<void> {
       }),
     ),
   );
+}
+
+const CRASH_LOG_RETENTION = 50;
+
+async function pruneCrashLogs(): Promise<void> {
+  const logFiles = await getCrashLogFiles();
+  if (logFiles.length <= CRASH_LOG_RETENTION) return;
+  const withMtimes = await Promise.all(
+    logFiles.map(async (fileName) => {
+      const filePath = path.join(getCrashLogDir(), fileName);
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- filePath derived from crashLogDir constant + filtered filename
+      const stat = await fs.stat(filePath).catch(() => null);
+      return { fileName, mtime: stat?.mtime.getTime() ?? 0 };
+    }),
+  );
+  withMtimes.sort((a, b) => b.mtime - a.mtime);
+  const toDelete = withMtimes.slice(CRASH_LOG_RETENTION);
+  await Promise.all(
+    toDelete.map(({ fileName }) =>
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- path derived from crashLogDir constant + filtered filename
+      fs.unlink(path.join(getCrashLogDir(), fileName)).catch((error) => {
+        log.error('Failed to prune crash log file:', fileName, error);
+      }),
+    ),
+  );
+}
+
+async function readCrashLogsCapped(): Promise<
+  Array<{ name: string; content: string; mtime: number }>
+> {
+  const logFiles = await getCrashLogFiles();
+  // Filenames are `crash-<ISO-timestamp>.log`, so lexicographic order is
+  // chronological — take the last N (newest), not the first.
+  logFiles.sort();
+  const sorted = logFiles.slice(-CRASH_LOG_RETENTION);
+  const logs = await Promise.all(
+    sorted.map(async (fileName) => {
+      try {
+        return await readCrashLog(fileName);
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return logs
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    .sort((a, b) => b.mtime - a.mtime);
 }
 
 async function writeCrashLog(source: string, message: string, stack?: string): Promise<void> {
@@ -120,14 +153,23 @@ async function writeCrashLog(source: string, message: string, stack?: string): P
   ].join('\n');
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- filePath derived from crashLogDir constant + timestamp, not user input
   await fs.writeFile(filePath, content, 'utf-8');
+  void pruneCrashLogs().catch((error) => log.error('pruneCrashLogs after write failed:', error));
 }
 
 export function registerCrashLogHandlers(channels: ChannelList): void {
+  // One-time background prune to clear any pre-existing backlog (fire-and-forget).
+  void pruneCrashLogs().catch((error) =>
+    log.error('pruneCrashLogs on registration failed:', error),
+  );
+
   registerChannel(channels, 'app:getCrashLogs', async () =>
+    runQuery(async () => ({ logs: await readCrashLogsCapped() })),
+  );
+
+  registerChannel(channels, 'app:getCrashLogCount', async () =>
     runQuery(async () => {
-      const logs = await getCrashLogs();
-      logs.sort((left, right) => right.mtime - left.mtime);
-      return { logs };
+      const files = await getCrashLogFiles();
+      return { count: files.length };
     }),
   );
   registerChannel(channels, 'app:clearCrashLogs', async () => runAction(clearCrashLogs));

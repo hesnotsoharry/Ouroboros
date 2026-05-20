@@ -238,6 +238,39 @@ function registerCodeModeHandlers(channels: string[]): void {
 let handlersRegistered = false;
 let allChannels: string[] = [];
 
+// ── Slow-IPC timing net ────────────────────────────────────────────────────────
+// Wraps ipcMain.handle once, before any domain registrar runs, so every channel
+// gets timed for free.  Logs only when a handler call exceeds SLOW_IPC_MS so
+// normal fast calls don't produce noise.  The wrap is applied per-registration
+// (not per-call) so there is no per-call overhead when calls are fast.
+
+const SLOW_IPC_MS = 500;
+const _originalHandle = ipcMain.handle.bind(ipcMain);
+
+function patchIpcMainHandle(): void {
+  // Type signature mirrors Electron's ipcMain.handle overloads.
+  // We widen to unknown here to stay out of the overload resolution machinery
+  // while still forwarding the call unchanged.
+  type HandleFn = (
+    channel: string,
+    handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown,
+  ) => void;
+  (ipcMain as unknown as { handle: HandleFn }).handle = (channel, handler): void => {
+    const timed = async (event: IpcMainInvokeEvent, ...args: unknown[]): Promise<unknown> => {
+      const t = Date.now();
+      try {
+        return await handler(event, ...args);
+      } finally {
+        const ms = Date.now() - t;
+        if (ms >= SLOW_IPC_MS) {
+          log.warn('[ipc-perf] slow handler', { channel, ms });
+        }
+      }
+    };
+    _originalHandle(channel, timed);
+  };
+}
+
 export function registerIpcHandlers(win: BrowserWindow): () => void {
   if (handlersRegistered) {
     return () => {
@@ -246,6 +279,7 @@ export function registerIpcHandlers(win: BrowserWindow): () => void {
   }
 
   handlersRegistered = true;
+  patchIpcMainHandle();
   ensureSchedulerInit();
   allChannels = registerDomainHandlers(win);
   registerCodeModeHandlers(allChannels);

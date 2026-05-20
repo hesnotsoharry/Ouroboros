@@ -162,8 +162,8 @@ export function CrashLogsSection({ showToast }: { showToast: ToastFn }): React.R
 
   useEffect(() => {
     if (!('electronAPI' in window)) return;
-    void window.electronAPI.crash.getCrashLogs().then((result) => {
-      if (result.success) setCount(result.logs?.length ?? 0);
+    void window.electronAPI.crash.getCrashLogCount().then((result) => {
+      if (result.success) setCount(result.count ?? 0);
     });
   }, []);
 

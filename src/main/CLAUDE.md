@@ -42,3 +42,4 @@ Node.js main process for the Ouroboros IDE. Entry point is `main.ts`. Each subdi
 - **LSP connections are per-project root**: `lspState.ts` maps `projectPath → client`. Opening a new project root spawns a new language server; the old one stays alive until explicitly stopped.
 - **`jankDetector.ts`**: Logs main-thread event loop stalls above a threshold. If you see `[jank]` log lines, a synchronous operation in main is blocking. Don't remove the detector — investigate the cause.
 - **`hookInstaller.ts` skips when `config.autoInstallHooks === false`**: Check this flag before debugging "why didn't hooks install".
+- **IPC perf net**: `patchIpcMainHandle()` in `ipc.ts` wraps every `ipcMain.handle` channel; handlers taking ≥500ms emit `[ipc-perf] slow handler { channel, ms }` to the main-process log.
