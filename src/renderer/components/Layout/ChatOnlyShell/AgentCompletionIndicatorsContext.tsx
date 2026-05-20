@@ -1,5 +1,5 @@
 /**
- * AgentCompletionIndicatorsContext.tsx — Wave 99 Phase 4
+ * AgentCompletionIndicatorsContext.tsx — Wave 99 Phase 4 / Wave 99 follow-up
  *
  * Mounts useAgentCompletionIndicators ONCE at the ChatWorkbenchBody level and
  * exposes the result to all descendants (outer rail, inner-sidebar terminals,
@@ -9,14 +9,22 @@
  * hook separately, their lastViewedAt watermarks would diverge — focusing a dock
  * tab would NOT clear the inner-rail dot for the same session. One shared
  * instance fixes that.
+ *
+ * Wave 99 follow-up: the Provider now also builds a sessionProjectMap
+ * (claudeSessionId → projectRoot) via the terminal→SessionRecord join so that
+ * terminal-launched sessions (which never set agent.cwd) light the outer
+ * project rail dot correctly.
  */
 
 import React, { createContext, useContext, useMemo } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
+import { useProjectTerminalsContext } from '../../../contexts/ProjectTerminalsContext';
 import type { AgentCompletionIndicators } from '../../../hooks/useAgentCompletionIndicators';
 import { useAgentCompletionIndicators } from '../../../hooks/useAgentCompletionIndicators';
 import { useConfig } from '../../../hooks/useConfig';
+import type { SessionRecord } from '../../../types/electron';
+import { buildTerminalClaudeIdMap } from './useWorkbenchAttention.agentSource';
 
 // ── Context ────────────────────────────────────────────────────────────────────
 
@@ -40,17 +48,58 @@ function useWorkbenchProjectsLocal(): string[] {
   }, [projectRoots, config?.recentProjects]);
 }
 
+// ── sessionProjectMap builder ──────────────────────────────────────────────────
+
+/**
+ * Build a map from claudeSessionId → projectRoot using the
+ * terminal→SessionRecord join. This enables the project-level indicator
+ * to light for terminal-launched agents that never set agent.cwd.
+ *
+ * Join path:
+ *   TerminalSession.claudeSessionId
+ *     → SessionRecord.activeTerminalIds (reverse lookup via terminalClaudeIdMap)
+ *     → SessionRecord.projectRoot
+ */
+function buildSessionProjectMap(
+  sessions: SessionRecord[],
+  terminalClaudeIds: Map<string, string>,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const session of sessions) {
+    for (const terminalId of session.activeTerminalIds ?? []) {
+      const claudeId = terminalClaudeIds.get(terminalId);
+      if (claudeId) result[claudeId] = session.projectRoot;
+    }
+  }
+  return result;
+}
+
 // ── Provider ───────────────────────────────────────────────────────────────────
 
 interface AgentCompletionIndicatorsProviderProps {
   children: React.ReactNode;
+  /** SessionRecord list from the workbench sessions state. */
+  sessions: SessionRecord[];
 }
 
 export function AgentCompletionIndicatorsProvider({
   children,
+  sessions,
 }: AgentCompletionIndicatorsProviderProps): React.ReactElement {
   const projects = useWorkbenchProjectsLocal();
-  const indicators = useAgentCompletionIndicators(projects);
+  const { primary, secondary } = useProjectTerminalsContext();
+
+  const terminalClaudeIds = useMemo(
+    () => buildTerminalClaudeIdMap([...primary.sessions, ...secondary.sessions]),
+    [primary.sessions, secondary.sessions],
+  );
+
+  const sessionProjectMap = useMemo(
+    () => buildSessionProjectMap(sessions, terminalClaudeIds),
+    [sessions, terminalClaudeIds],
+  );
+
+  const indicators = useAgentCompletionIndicators(projects, sessionProjectMap);
   return (
     <AgentCompletionIndicatorsContext.Provider value={indicators}>
       {children}

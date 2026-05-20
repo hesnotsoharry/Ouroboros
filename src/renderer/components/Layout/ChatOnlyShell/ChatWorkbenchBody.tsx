@@ -145,7 +145,11 @@ export function ChatWorkbenchBody(props: ChatWorkbenchBodyProps): React.ReactEle
   const content = useBodyContent(props);
   const isMobile = useIsMobile();
   const body = isMobile ? <MobileBody {...content} /> : <DesktopBody {...content} />;
-  return <AgentCompletionIndicatorsProvider>{body}</AgentCompletionIndicatorsProvider>;
+  return (
+    <AgentCompletionIndicatorsProvider sessions={content.state.sessionsState.sessions}>
+      {body}
+    </AgentCompletionIndicatorsProvider>
+  );
 }
 
 function DesktopBody({

@@ -6,6 +6,10 @@
  * re-light, undefined cwd, Windows path normalization, nested projects,
  * the mark-viewed watermark behavior, and the critical split-watermark
  * interaction (project and session marks are independent).
+ *
+ * Wave 99 follow-up: added sessionProjectMap regression tests — agent with
+ * undefined cwd but an entry in sessionProjectMap lights the project dot,
+ * and cwd fallback still works when sessionProjectMap has no entry.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -36,7 +40,12 @@ describe('deriveCompletionStatus', () => {
   it('complete agent under project → statusByProject complete + sessionId complete', () => {
     const agents = [makeAgent({ id: 'a1', status: 'complete', completedAt: 2000 })];
     const projects = ['C:/projects/foo'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     expect(result.statusByProject['C:/projects/foo']).toBe('complete');
     expect(result.statusByClaudeSessionId['a1']).toBe('complete');
@@ -47,10 +56,63 @@ describe('deriveCompletionStatus', () => {
   it('error agent → statusByProject error + sessionId error', () => {
     const agents = [makeAgent({ id: 'a2', status: 'error', completedAt: 3000 })];
     const projects = ['C:/projects/foo'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     expect(result.statusByProject['C:/projects/foo']).toBe('error');
     expect(result.statusByClaudeSessionId['a2']).toBe('error');
+  });
+
+  // ─── Subagent exclusion: child sessions never light an indicator ─────────
+
+  it('excludes subagent (parentSessionId) sessions from both maps', () => {
+    const agents = [
+      makeAgent({ id: 'child', status: 'complete', completedAt: 2000, parentSessionId: 'top' }),
+    ];
+    const projects = ['C:/projects/foo'];
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      sessionProjectMap: { child: 'C:/projects/foo' },
+    });
+
+    expect(result.statusByClaudeSessionId['child']).toBeUndefined();
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+
+  it('a running subagent does not appear as a Live session', () => {
+    const agents = [makeAgent({ id: 'child', status: 'running', parentSessionId: 'top' })];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: ['C:/projects/foo'],
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
+
+    expect(result.statusByClaudeSessionId['child']).toBeUndefined();
+  });
+
+  it('a top-level session (no parentSessionId) still lights when a subagent is present', () => {
+    const agents = [
+      makeAgent({ id: 'top', status: 'complete', completedAt: 2000 }),
+      makeAgent({ id: 'child', status: 'complete', completedAt: 2100, parentSessionId: 'top' }),
+    ];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: ['C:/projects/foo'],
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
+
+    expect(result.statusByClaudeSessionId['top']).toBe('complete');
+    expect(result.statusByClaudeSessionId['child']).toBeUndefined();
+    expect(result.statusByProject['C:/projects/foo']).toBe('complete');
   });
 
   // ─── Test 3: project with unseen complete + error → error wins ───────────
@@ -61,7 +123,12 @@ describe('deriveCompletionStatus', () => {
       makeAgent({ id: 'a3b', status: 'error', completedAt: 3000 }),
     ];
     const projects = ['C:/projects/foo'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     expect(result.statusByProject['C:/projects/foo']).toBe('error');
   });
@@ -71,7 +138,12 @@ describe('deriveCompletionStatus', () => {
   it('running agent → statusByClaudeSessionId running, absent from statusByProject', () => {
     const agents = [makeAgent({ id: 'a4', status: 'running', completedAt: undefined })];
     const projects = ['C:/projects/foo'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     expect(result.statusByClaudeSessionId['a4']).toBe('running');
     expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
@@ -86,7 +158,12 @@ describe('deriveCompletionStatus', () => {
     const agents = [makeAgent({ id: 'a5', status: 'complete', completedAt: 2000 })];
     const projects = ['C:/projects/foo'];
     // lastSessionViewedAt equals completedAt → session seen
-    const result = deriveCompletionStatus(agents, projects, {}, { a5: 2000 });
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: { a5: 2000 },
+    });
 
     // Session entry is cleared
     expect(result.statusByClaudeSessionId['a5']).toBeUndefined();
@@ -100,12 +177,12 @@ describe('deriveCompletionStatus', () => {
     const agents = [makeAgent({ id: 'a6', status: 'complete', completedAt: 5000 })];
     const projects = ['C:/projects/foo'];
     // Previous project view at 3000, session view at 3000, but new completion at 5000
-    const result = deriveCompletionStatus(
+    const result = deriveCompletionStatus({
       agents,
       projects,
-      { 'c:/projects/foo': 3000 },
-      { a6: 3000 },
-    );
+      lastProjectViewedAt: { 'c:/projects/foo': 3000 },
+      lastSessionViewedAt: { a6: 3000 },
+    });
 
     expect(result.statusByProject['C:/projects/foo']).toBe('complete');
     expect(result.statusByClaudeSessionId['a6']).toBe('complete');
@@ -116,7 +193,12 @@ describe('deriveCompletionStatus', () => {
   it('agent with undefined cwd contributes to no project and does not throw', () => {
     const agents = [makeAgent({ id: 'a7', status: 'complete', cwd: undefined })];
     const projects = ['C:/projects/foo'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
     // Session indicator is still set (cwd only affects project map)
@@ -135,7 +217,12 @@ describe('deriveCompletionStatus', () => {
       }),
     ];
     const projects = ['C:/Web App/Agent IDE'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     expect(result.statusByProject['C:/Web App/Agent IDE']).toBe('complete');
   });
@@ -150,7 +237,12 @@ describe('deriveCompletionStatus', () => {
       }),
     ];
     const projects = ['C:\\Web App\\Agent IDE'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     // Key is the original un-normalized project path from the array
     expect(result.statusByProject['C:\\Web App\\Agent IDE']).toBe('complete');
@@ -168,7 +260,12 @@ describe('deriveCompletionStatus', () => {
       }),
     ];
     const projects = ['C:/projects/foo', 'C:/projects/foo/bar'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     // Shallow project gets nothing
     expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
@@ -183,17 +280,22 @@ describe('deriveCompletionStatus', () => {
     const projects = ['C:/projects/foo'];
 
     // Before mark: unseen in both maps
-    const before = deriveCompletionStatus(agents, projects, {}, {});
+    const before = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
     expect(before.statusByProject['C:/projects/foo']).toBe('complete');
     expect(before.statusByClaudeSessionId['a10']).toBe('complete');
 
     // After stamping BOTH watermarks: both maps are cleared
-    const after = deriveCompletionStatus(
+    const after = deriveCompletionStatus({
       agents,
       projects,
-      { 'c:/projects/foo': 9999 },
-      { a10: 9999 },
-    );
+      lastProjectViewedAt: { 'c:/projects/foo': 9999 },
+      lastSessionViewedAt: { a10: 9999 },
+    });
     expect(after.statusByProject['C:/projects/foo']).toBeUndefined();
     expect(after.statusByClaudeSessionId['a10']).toBeUndefined();
   });
@@ -205,7 +307,12 @@ describe('deriveCompletionStatus', () => {
       makeAgent({ id: 'a11', status: 'complete', completedAt: 2000, cwd: 'C:/projects/foo' }),
     ];
     const projects = ['C:/projects/foo'];
-    const result = deriveCompletionStatus(agents, projects, {}, {});
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+    });
 
     expect(result.statusByProject['C:/projects/foo']).toBe('complete');
   });
@@ -220,12 +327,12 @@ describe('deriveCompletionStatus', () => {
     const lastProjectViewedAt = { 'c:/projects/foo': 9999 };
     const lastSessionViewedAt = {}; // session watermark untouched
 
-    const result = deriveCompletionStatus(
+    const result = deriveCompletionStatus({
       agents,
       projects,
       lastProjectViewedAt,
       lastSessionViewedAt,
-    );
+    });
 
     // Project dot is cleared
     expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
@@ -243,12 +350,12 @@ describe('deriveCompletionStatus', () => {
     const lastProjectViewedAt = {}; // project watermark untouched
     const lastSessionViewedAt = { ix2: 9999 };
 
-    const result = deriveCompletionStatus(
+    const result = deriveCompletionStatus({
       agents,
       projects,
       lastProjectViewedAt,
       lastSessionViewedAt,
-    );
+    });
 
     // Session dot is cleared
     expect(result.statusByClaudeSessionId['ix2']).toBeUndefined();
@@ -266,15 +373,97 @@ describe('deriveCompletionStatus', () => {
     const lastProjectViewedAt = { 'c:/projects/foo': 5000 };
     const lastSessionViewedAt = { ix3: 5000 };
 
-    const result = deriveCompletionStatus(
+    const result = deriveCompletionStatus({
       agents,
       projects,
       lastProjectViewedAt,
       lastSessionViewedAt,
-    );
+    });
 
     expect(result.statusByProject['C:/projects/foo']).toBe('complete');
     expect(result.statusByClaudeSessionId['ix3']).toBe('complete');
+  });
+
+  // ─── sessionProjectMap regression tests (Wave 99 follow-up) ─────────────
+  // Root cause: terminal-launched sessions never set agent.cwd, so the outer
+  // project rail dot never lit. The fix threads a sessionProjectMap (derived
+  // from the terminal→SessionRecord→projectRoot join) into the derivation.
+
+  it('agent with undefined cwd but matching sessionProjectMap entry → statusByProject set', () => {
+    // This test FAILS on the pre-fix code because applyProjectIndicator returned
+    // early on !cwd, ignoring the sessionProjectMap entirely.
+    const agents = [
+      makeAgent({ id: 'sp1', status: 'complete', cwd: undefined, completedAt: 2000 }),
+    ];
+    const projects = ['C:/projects/foo'];
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      sessionProjectMap: { sp1: 'C:/projects/foo' },
+    });
+
+    // Project dot must light via the sessionProjectMap path
+    expect(result.statusByProject['C:/projects/foo']).toBe('complete');
+    // Session indicator also set (independent path — unaffected by the fix)
+    expect(result.statusByClaudeSessionId['sp1']).toBe('complete');
+  });
+
+  it('agent with undefined cwd and sessionProjectMap pointing to different project → correct project lights', () => {
+    const agents = [makeAgent({ id: 'sp2', status: 'error', cwd: undefined, completedAt: 3000 })];
+    const projects = ['C:/projects/foo', 'C:/projects/bar'];
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      sessionProjectMap: { sp2: 'C:/projects/bar' },
+    });
+
+    expect(result.statusByProject['C:/projects/bar']).toBe('error');
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+
+  it('agent with cwd but no sessionProjectMap entry → still matches by cwd fallback', () => {
+    // Regression guard: sessionProjectMap support must not break the cwd path.
+    const agents = [
+      makeAgent({ id: 'sp3', status: 'complete', cwd: 'C:/projects/foo/src', completedAt: 2000 }),
+    ];
+    const projects = ['C:/projects/foo'];
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      sessionProjectMap: {}, // no entry for sp3
+    });
+
+    expect(result.statusByProject['C:/projects/foo']).toBe('complete');
+  });
+
+  it('sessionProjectMap entry takes priority over cwd when both are present', () => {
+    // If both exist, sessionProjectMap wins (it has stronger binding certainty).
+    const agents = [
+      makeAgent({
+        id: 'sp4',
+        status: 'complete',
+        cwd: 'C:/projects/foo',
+        completedAt: 2000,
+      }),
+    ];
+    const projects = ['C:/projects/foo', 'C:/projects/bar'];
+    const result = deriveCompletionStatus({
+      agents,
+      projects,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      sessionProjectMap: { sp4: 'C:/projects/bar' },
+    });
+
+    // sessionProjectMap override wins
+    expect(result.statusByProject['C:/projects/bar']).toBe('complete');
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
   });
 });
 

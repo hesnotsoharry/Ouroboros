@@ -106,55 +106,87 @@ function applySessionIndicator(
 interface ProjectLookup {
   projects: string[];
   normalizedProjects: string[];
+  lastProjectViewedAt: Record<string, number>;
+  sessionProjectMap: Record<string, string>;
 }
 
 /**
  * Contribute one finished agent to the project-level indicator map.
- * Mutates `out` in place; skips if cwd is absent, no project matches, or already seen.
+ * Mutates `out` in place; skips if no project association exists or already seen.
+ *
+ * Project association is resolved in priority order:
+ *   1. lookup.sessionProjectMap[agent.id] — set by the terminal→session→projectRoot join
+ *      (reliable for terminal-launched sessions that never set agent.cwd)
+ *   2. agent.cwd — fallback for sessions that do carry a working directory
  */
 function applyProjectIndicator(
   agent: AgentSession,
   lookup: ProjectLookup,
-  lastProjectViewedAt: Record<string, number>,
   out: Record<string, CompletionStatus>,
 ): void {
-  const { status, cwd, completedAt } = agent;
-  if (!cwd || (status !== 'complete' && status !== 'error')) return;
+  const { id, status, cwd, completedAt } = agent;
+  if (status !== 'complete' && status !== 'error') return;
 
-  const normalizedCwd = normalizePath(cwd);
-  const matchedProject = matchProjectForCwd(normalizedCwd, lookup.normalizedProjects);
+  const rawPath = lookup.sessionProjectMap[id] ?? cwd;
+  if (!rawPath) return;
+
+  const normalizedPath = normalizePath(rawPath);
+  const matchedProject = matchProjectForCwd(normalizedPath, lookup.normalizedProjects);
   if (matchedProject === null) return;
 
-  const projectSeen = (completedAt ?? 0) <= (lastProjectViewedAt[matchedProject] ?? 0);
+  const projectSeen = (completedAt ?? 0) <= (lookup.lastProjectViewedAt[matchedProject] ?? 0);
   if (projectSeen) return;
 
   const originalProject = lookup.projects[lookup.normalizedProjects.indexOf(matchedProject)];
   out[originalProject] = reduceProjectStatus(out[originalProject], status);
 }
 
+// ─── Args object for deriveCompletionStatus ───────────────────────────────────
+
+export interface DeriveCompletionStatusArgs {
+  /** Live agent sessions from the store. */
+  agents: AgentSession[];
+  /** List of project root paths (un-normalized). */
+  projects: string[];
+  /** Watermark keyed by normalized project path; stamped by markProjectViewed. */
+  lastProjectViewedAt: Record<string, number>;
+  /** Watermark keyed by sessionId; stamped by markSessionViewed. */
+  lastSessionViewedAt: Record<string, number>;
+  /**
+   * Optional map of AgentSession.id → projectRoot, built from the
+   * terminal→SessionRecord→projectRoot join. Takes priority over agent.cwd
+   * when present, enabling the outer project dot to light for terminal-launched
+   * sessions (which never set agent.cwd).
+   */
+  sessionProjectMap?: Record<string, string>;
+}
+
 /**
  * Pure derivation — no React, no side-effects.
- *
- * @param agents              Live agent sessions from the store.
- * @param projects            List of project root paths (un-normalized).
- * @param lastProjectViewedAt Watermark keyed by normalized project path; stamped by markProjectViewed.
- * @param lastSessionViewedAt Watermark keyed by sessionId; stamped by markSessionViewed.
  */
-export function deriveCompletionStatus(
-  agents: AgentSession[],
-  projects: string[],
-  lastProjectViewedAt: Record<string, number>,
-  lastSessionViewedAt: Record<string, number>,
-): DerivedStatus {
+export function deriveCompletionStatus({
+  agents,
+  projects,
+  lastProjectViewedAt,
+  lastSessionViewedAt,
+  sessionProjectMap = {},
+}: DeriveCompletionStatusArgs): DerivedStatus {
   const lookup: ProjectLookup = {
     projects,
     normalizedProjects: projects.map(normalizePath),
+    lastProjectViewedAt,
+    sessionProjectMap,
   };
   const statusByClaudeSessionId: Record<string, SessionStatus> = {};
   const statusByProject: Record<string, CompletionStatus> = {};
 
   for (const agent of agents) {
     const { id, status } = agent;
+
+    // Subagents (Task-tool child sessions) never represent "the agent finished":
+    // the parent keeps working after a subagent's SubagentStop fires. A child's
+    // completion must not light any indicator. Exclude all sessions with a parent.
+    if (agent.parentSessionId) continue;
 
     if (status === 'running') {
       statusByClaudeSessionId[id] = 'running';
@@ -164,7 +196,7 @@ export function deriveCompletionStatus(
     if (status !== 'complete' && status !== 'error') continue;
 
     applySessionIndicator(agent, lastSessionViewedAt, statusByClaudeSessionId);
-    applyProjectIndicator(agent, lookup, lastProjectViewedAt, statusByProject);
+    applyProjectIndicator(agent, lookup, statusByProject);
   }
 
   return { statusByProject, statusByClaudeSessionId };
@@ -172,42 +204,49 @@ export function deriveCompletionStatus(
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useAgentCompletionIndicators(projects: string[]): AgentCompletionIndicators {
-  const { agents } = useAgentEventsContext();
+/** Mark callbacks — stamp a watermark ref and bump the version counter. */
+function makeMarkCallback(
+  ref: React.MutableRefObject<Record<string, number>>,
+  key: string,
+  bump: () => void,
+): void {
+  ref.current[key] = Date.now();
+  bump();
+}
 
-  // Two independent watermark refs + a shared version counter for re-derive trigger
+export function useAgentCompletionIndicators(
+  projects: string[],
+  sessionProjectMap?: Record<string, string>,
+): AgentCompletionIndicators {
+  const { agents } = useAgentEventsContext();
   const lastProjectViewedAtRef = useRef<Record<string, number>>({});
   const lastSessionViewedAtRef = useRef<Record<string, number>>({});
   const [viewedVersion, setViewedVersion] = useState(0);
   const bump = useCallback(() => setViewedVersion((v) => v + 1), []);
 
   const markSessionViewed = useCallback(
-    (sessionId: string) => {
-      lastSessionViewedAtRef.current[sessionId] = Date.now();
-      bump();
-    },
+    (sessionId: string) => makeMarkCallback(lastSessionViewedAtRef, sessionId, bump),
     [bump],
   );
 
   const markProjectViewed = useCallback(
-    (projectPath: string) => {
-      lastProjectViewedAtRef.current[normalizePath(projectPath)] = Date.now();
-      bump();
-    },
+    (projectPath: string) =>
+      makeMarkCallback(lastProjectViewedAtRef, normalizePath(projectPath), bump),
     [bump],
   );
 
   const derived = useMemo(
     () =>
-      deriveCompletionStatus(
+      deriveCompletionStatus({
         agents,
         projects,
-        lastProjectViewedAtRef.current,
-        lastSessionViewedAtRef.current,
-      ),
+        lastProjectViewedAt: lastProjectViewedAtRef.current,
+        lastSessionViewedAt: lastSessionViewedAtRef.current,
+        sessionProjectMap,
+      }),
     // viewedVersion triggers re-derive after marks fire.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [agents, projects, viewedVersion],
+    [agents, projects, sessionProjectMap, viewedVersion],
   );
 
   return {
