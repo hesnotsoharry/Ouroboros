@@ -172,12 +172,13 @@ function makeCompat(root: string, name = 'proj'): GraphControllerCompat {
   return new GraphControllerCompat(makeCompatHandle(root, name));
 }
 
-function setupDeps(): void {
+function setupDeps(ensureIndexed?: (projectName: string, projectRoot: string) => void): void {
   initCompatRegistry({
     db: makeDb(),
     buildQueryEngine: () => makeQueryEngine(),
     buildCypherEngine: () => makeCypherEngine(),
     workerClient: makeWorkerClient(),
+    ensureIndexed: ensureIndexed ?? vi.fn(),
   });
 }
 
@@ -323,6 +324,27 @@ describe('acquireGraphController', () => {
     const compat = await acquireGraphController('/proj/w', makePipeline());
     expect(compat).toBeInstanceOf(GraphControllerCompat);
     expect(compat.rootPath).toBe(fakeHandle.projectRoot);
+  });
+
+  it('calls ensureIndexed exactly once with correct (projectName, projectRoot) on new acquire', async () => {
+    const ensureIndexed = vi.fn();
+    setupDeps(ensureIndexed);
+    const fakeHandle = makeFakeS2Handle('/proj/ei-new', 'ei-new');
+    vi.mocked(systemTwoRegistry.acquire).mockResolvedValue(fakeHandle);
+    await acquireGraphController('/proj/ei-new', makePipeline());
+    expect(ensureIndexed).toHaveBeenCalledTimes(1);
+    expect(ensureIndexed).toHaveBeenCalledWith('ei-new', fakeHandle.projectRoot);
+  });
+
+  it('does NOT call ensureIndexed on repeat acquire of already-registered root', async () => {
+    const ensureIndexed = vi.fn();
+    setupDeps(ensureIndexed);
+    const fakeHandle = makeFakeS2Handle('/proj/ei-repeat', 'ei-repeat');
+    vi.mocked(systemTwoRegistry.acquire).mockResolvedValue(fakeHandle);
+    await acquireGraphController('/proj/ei-repeat', makePipeline());
+    ensureIndexed.mockClear();
+    await acquireGraphController('/proj/ei-repeat', makePipeline());
+    expect(ensureIndexed).not.toHaveBeenCalled();
   });
 });
 

@@ -2,25 +2,23 @@
  * mainStartup.ts — Startup helpers extracted from main.ts to satisfy max-lines.
  * Contains crash logging, auto-updater wiring, web-contents security setup,
  * and synchronous bootstrap functions for V8 snapshot safety.
+ *
+ * Codebase graph initialization lives in mainStartupGraph.ts.
  */
 
 import { app } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { initConflictMonitor } from './agentConflict/conflictMonitor';
 import { getCredential } from './auth/credentialStore';
-import {
-  acquireGraphController as acquireCompatController,
-  initCompatRegistry,
-} from './codebaseGraph/graphControllerCompatRegistry';
-import { setGraphController, setSystem2Db } from './codebaseGraph/graphControllerSupport';
-import type { GraphDatabase } from './codebaseGraph/graphDatabase';
-import { pruneExpiredProjects, purgeSkippedNodes } from './codebaseGraph/graphGc';
-import { getConfigValue } from './config';
 import log from './logger';
-import { triggerContextLayerRebuildAfterGraphReady } from './mainStartupContextLayerTrigger';
+import { broadcastToActiveWindows } from './mainStartupBroadcast';
 import { initEditProvenance } from './orchestration/editProvenance';
+import { setGithubTokenForPty } from './ptyEnv';
+import { configureUpdaterChannel, getAutoUpdater, setUpdaterGitHubToken } from './updater';
+
+export { broadcastToActiveWindows };
+export { disposeCodebaseGraph, initCodebaseGraph } from './mainStartupGraph';
 export { initEditProvenance };
 export {
   bootstrapApp,
@@ -28,10 +26,6 @@ export {
   closeEditProvenance,
   scheduleJsonlRetentionPurge,
 } from './mainStartupHelpers';
-import { setGithubTokenForPty } from './ptyEnv';
-import { configureUpdaterChannel, getAutoUpdater, setUpdaterGitHubToken } from './updater';
-import { broadcastToWebClients } from './web';
-import { getAllActiveWindows } from './windowManager';
 
 // ---------------------------------------------------------------------------
 // Crash logging
@@ -63,19 +57,6 @@ export async function writeCrashLog(source: string, details: string): Promise<vo
   } catch (err) {
     log.error('Failed to write crash log:', err);
   }
-}
-
-// ---------------------------------------------------------------------------
-// Window broadcasting
-// ---------------------------------------------------------------------------
-
-export function broadcastToActiveWindows(channel: string, payload: unknown): void {
-  for (const win of getAllActiveWindows()) {
-    if (!win.isDestroyed()) {
-      win.webContents.send(channel, payload);
-    }
-  }
-  broadcastToWebClients(channel, payload);
 }
 
 // ---------------------------------------------------------------------------
@@ -158,190 +139,6 @@ export async function seedGithubTokenWithRetry(maxAttempts = 3): Promise<void> {
       if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, 2000));
     }
   }
-}
-
-// ---------------------------------------------------------------------------
-// Codebase graph initialization — System 2
-// ---------------------------------------------------------------------------
-
-let sharedSystem2Db: GraphDatabase | null = null;
-
-type IndexReason = 'first-launch' | 'hash-mismatch' | 'post-gc';
-
-interface System2IndexProgressEvent {
-  kind: 'start' | 'progress' | 'complete' | 'error';
-  projectName: string;
-  projectRoot?: string;
-  reason?: IndexReason;
-  phase?: string;
-  filesProcessed?: number;
-  filesTotal?: number;
-  elapsedMs?: number;
-  filesIndexed?: number;
-  nodesCreated?: number;
-  durationMs?: number;
-  message?: string;
-}
-
-function sendIndexProgress(event: System2IndexProgressEvent): void {
-  broadcastToActiveWindows('system2:indexProgress', event);
-}
-
-interface InitialIndexArgs {
-  workerClient: import('./codebaseGraph/indexingWorkerClient').IndexingWorkerClient;
-  db: import('./codebaseGraph/graphDatabase').GraphDatabase;
-  projectRoot: string;
-  projectName: string;
-  reason: IndexReason;
-}
-
-async function runInitialIndex(args: InitialIndexArgs): Promise<void> {
-  const { workerClient, db, projectRoot, projectName, reason } = args;
-  sendIndexProgress({ kind: 'start', projectName, projectRoot, reason });
-  const result = await workerClient.runIndex({
-    projectRoot,
-    projectName,
-    incremental: false,
-    onProgress: (p) => {
-      sendIndexProgress({
-        kind: 'progress',
-        projectName,
-        phase: p.phase,
-        filesProcessed: p.filesProcessed,
-        filesTotal: p.filesTotal,
-        elapsedMs: p.elapsedMs,
-      });
-    },
-  });
-  if (result.success) {
-    db.writeCatalogHash(projectName);
-    sendIndexProgress({
-      kind: 'complete',
-      projectName,
-      filesIndexed: result.filesIndexed,
-      nodesCreated: result.nodesCreated,
-      durationMs: result.durationMs,
-    });
-    log.info(
-      `[system2] initial index complete: ${result.filesIndexed} files, ${result.nodesCreated} nodes`,
-    );
-    // Wave 69 follow-up: contextLayer's first rebuild on cold start typically
-    // races ahead of the graph's initial index, so every signature ends up
-    // null via the soft-fallback path. Now that the graph is populated,
-    // trigger a contextLayer rebuild so the repo map picks up signatures,
-    // hotspot scores, and graph-derived deps. Fire-and-forget; never blocks.
-    void triggerContextLayerRebuildAfterGraphReady();
-  } else {
-    const message = result.errors.join('; ');
-    sendIndexProgress({ kind: 'error', projectName, message });
-    log.warn('[system2] initial index failed:', message);
-  }
-}
-
-function resolveIndexReason(
-  db: GraphDatabase,
-  projectName: string,
-  gcPrunedNames: string[],
-): IndexReason | null {
-  if (gcPrunedNames.includes(projectName)) return 'post-gc';
-  const hashOk = db.verifyCatalogHash(projectName);
-  if (!hashOk) {
-    log.info('[system2] catalog hash mismatch, triggering full rebuild', { projectName });
-    return 'hash-mismatch';
-  }
-  if (db.getNodeCount(projectName) === 0) return 'first-launch';
-  return null;
-}
-
-function runGraphGcPasses(db: import('./codebaseGraph/graphDatabase').GraphDatabase): string[] {
-  const gcConfig = getConfigValue('codebaseGraph');
-  let prunedNames: string[] = [];
-  if (gcConfig?.gcEnabled) {
-    const report = pruneExpiredProjects(db, gcConfig.gcDaysThreshold);
-    if (report.prunedCount > 0) {
-      log.info(
-        `[system2] GC pruned ${report.prunedCount} stale project(s): ${report.prunedProjects.join(', ')}`,
-      );
-      prunedNames = report.prunedProjects;
-    }
-  }
-  purgeSkippedNodes(db); // one-time migration: evict .claude/worktrees nodes
-  return prunedNames;
-}
-
-async function initCodebaseGraphImpl(projectRoot: string): Promise<void> {
-  const { GraphDatabase } = await import('./codebaseGraph/graphDatabase');
-  const { IndexingPipeline } = await import('./codebaseGraph/indexingPipeline');
-  const { TreeSitterParser } = await import('./codebaseGraph/treeSitterParser');
-  const { QueryEngine } = await import('./codebaseGraph/queryEngine');
-  const { CypherEngine } = await import('./codebaseGraph/cypherEngine');
-  const { getIndexingWorkerClient } = await import('./codebaseGraph/indexingWorkerClient');
-
-  const db = new GraphDatabase();
-  sharedSystem2Db = db;
-  setSystem2Db(db);
-
-  const workerClient = getIndexingWorkerClient();
-  initCompatRegistry({
-    db,
-    buildQueryEngine: (name, root) => new QueryEngine(db, name, root),
-    buildCypherEngine: (name) => new CypherEngine(db, name),
-    workerClient,
-  });
-
-  const projectName = path.basename(projectRoot);
-  const gcPrunedNames = runGraphGcPasses(db);
-
-  const reason = resolveIndexReason(db, projectName, gcPrunedNames);
-  if (reason !== null) {
-    runInitialIndex({ workerClient, db, projectRoot, projectName, reason }).catch((err: Error) => {
-      log.error('[system2] initial index failed:', err);
-    });
-  }
-
-  const parser = new TreeSitterParser();
-  await parser.init();
-  const pipeline = new IndexingPipeline(db, parser);
-  const compat = await acquireCompatController(projectRoot, pipeline);
-  setGraphController(compat);
-  db.touchProjectOpened(projectName);
-  log.info(`[system2] controller initialized for ${projectName}`);
-}
-
-/** Dispose all graph controllers on app shutdown. */
-export async function disposeCodebaseGraph(): Promise<void> {
-  const { disposeAllCompat } = await import('./codebaseGraph/graphControllerCompatRegistry');
-  const { disposeAll } = await import('./codebaseGraph/systemTwoRegistry');
-  const { disposeIndexingWorkerClient } = await import('./codebaseGraph/indexingWorkerClient');
-
-  await disposeAllCompat();
-  await disposeAll();
-  await disposeIndexingWorkerClient();
-
-  try {
-    sharedSystem2Db?.close();
-  } finally {
-    sharedSystem2Db = null;
-    setSystem2Db(null);
-  }
-}
-
-export async function initCodebaseGraph(): Promise<void> {
-  const defaultRoot = getConfigValue('defaultProjectRoot') as string | undefined;
-  if (!defaultRoot) {
-    log.info('No default project root configured, skipping graph init');
-    return;
-  }
-
-  try {
-    await initCodebaseGraphImpl(defaultRoot);
-  } catch (err) {
-    log.warn('Failed to start graph:', err);
-  }
-
-  // Initialize conflict monitor after graph (operates in file-only mode if graph is cold)
-  initConflictMonitor();
-  log.info('[conflictMonitor] initialized after codebase graph');
 }
 
 // ---------------------------------------------------------------------------

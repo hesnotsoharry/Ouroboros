@@ -22,6 +22,8 @@ export interface RegistryDeps {
   buildQueryEngine: (projectName: string, projectRoot: string) => QueryEngine;
   buildCypherEngine: (projectName: string) => CypherEngine;
   workerClient: IndexingWorkerClient;
+  /** Called after a NEW root is acquired. Fire-and-forget async indexing. */
+  ensureIndexed: (projectName: string, projectRoot: string) => void;
 }
 
 let _deps: RegistryDeps | null = null;
@@ -106,6 +108,7 @@ export async function acquireGraphController(
 
   if (!_defaultRoot) _defaultRoot = key;
   log.info(`[compat-registry] acquired (new) ${s2Handle.projectName}`);
+  _deps.ensureIndexed(s2Handle.projectName, s2Handle.projectRoot);
   return compat;
 }
 
