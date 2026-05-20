@@ -15,7 +15,11 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AgentSession } from '../components/AgentMonitor/types';
-import { deriveCompletionStatus, normalizePath } from './useAgentCompletionIndicators';
+import {
+  COMPLETION_DEBOUNCE_MS,
+  deriveCompletionStatus,
+  normalizePath,
+} from './useAgentCompletionIndicators';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -463,6 +467,190 @@ describe('deriveCompletionStatus', () => {
 
     // sessionProjectMap override wins
     expect(result.statusByProject['C:/projects/bar']).toBe('complete');
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+});
+
+// ─── Debounce eligibility tests ───────────────────────────────────────────────
+// All cases pass explicit `now` so results are deterministic and independent of
+// wall-clock time.
+
+describe('deriveCompletionStatus — debounce gate', () => {
+  const NOW = 1_000_000;
+  const PROJECTS = ['C:/projects/foo'];
+
+  // ── complete agent, age 0 (just completed) → NOT in either map ─────────────
+
+  it('complete agent with completedAt === now (age 0) is not yet eligible → absent from both maps', () => {
+    const agents = [makeAgent({ id: 'db1', status: 'complete', completedAt: NOW })];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+      debounceMs: COMPLETION_DEBOUNCE_MS,
+    });
+
+    expect(result.statusByClaudeSessionId['db1']).toBeUndefined();
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+
+  // ── complete agent, age > 10 s → eligible → IN both maps ───────────────────
+
+  it('complete agent with completedAt = now - 11_000 (age > debounce) → in both maps', () => {
+    const agents = [makeAgent({ id: 'db2', status: 'complete', completedAt: NOW - 11_000 })];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+      debounceMs: COMPLETION_DEBOUNCE_MS,
+    });
+
+    expect(result.statusByClaudeSessionId['db2']).toBe('complete');
+    expect(result.statusByProject['C:/projects/foo']).toBe('complete');
+  });
+
+  // ── error agent, age 0 → NOT in either map ─────────────────────────────────
+
+  it('error agent with completedAt === now (age 0) is not yet eligible → absent from both maps', () => {
+    const agents = [makeAgent({ id: 'db3', status: 'error', completedAt: NOW })];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+    });
+
+    expect(result.statusByClaudeSessionId['db3']).toBeUndefined();
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+
+  // ── error agent, age > 10 s → eligible → IN both maps ─────────────────────
+
+  it('error agent with completedAt = now - 11_000 (age > debounce) → in both maps as error', () => {
+    const agents = [makeAgent({ id: 'db4', status: 'error', completedAt: NOW - 11_000 })];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+    });
+
+    expect(result.statusByClaudeSessionId['db4']).toBe('error');
+    expect(result.statusByProject['C:/projects/foo']).toBe('error');
+  });
+
+  // ── running agent → 'running' immediately, debounce does not apply ──────────
+
+  it('running agent → statusByClaudeSessionId running immediately, debounce does not apply', () => {
+    const agents = [makeAgent({ id: 'db5', status: 'running', completedAt: undefined })];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+    });
+
+    expect(result.statusByClaudeSessionId['db5']).toBe('running');
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+
+  // ── subagent still excluded regardless of age ───────────────────────────────
+
+  it('subagent (parentSessionId) is excluded from both maps even when older than debounce', () => {
+    const agents = [
+      makeAgent({
+        id: 'db6',
+        status: 'complete',
+        completedAt: NOW - 60_000, // 60 s ago — way past debounce
+        parentSessionId: 'parent',
+      }),
+    ];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+      sessionProjectMap: { db6: 'C:/projects/foo' },
+    });
+
+    expect(result.statusByClaudeSessionId['db6']).toBeUndefined();
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+
+  // ── completedAt undefined → not eligible (no debounce clock to measure) ────
+
+  it('complete agent with completedAt undefined → absent from both maps (no clock reference)', () => {
+    const agents = [makeAgent({ id: 'db7', status: 'complete', completedAt: undefined })];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+    });
+
+    expect(result.statusByClaudeSessionId['db7']).toBeUndefined();
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+
+  // ── age exactly at threshold (debounceMs - 1) → still not eligible ──────────
+
+  it('complete agent with age = debounceMs - 1 → still not eligible (strict less-than gate)', () => {
+    const agents = [
+      makeAgent({ id: 'db8', status: 'complete', completedAt: NOW - COMPLETION_DEBOUNCE_MS + 1 }),
+    ];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+    });
+
+    expect(result.statusByClaudeSessionId['db8']).toBeUndefined();
+    expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
+  });
+
+  // ── age exactly at threshold (debounceMs) → eligible ───────────────────────
+
+  it('complete agent with age = debounceMs exactly → eligible (boundary case)', () => {
+    const agents = [
+      makeAgent({ id: 'db9', status: 'complete', completedAt: NOW - COMPLETION_DEBOUNCE_MS }),
+    ];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: {},
+      lastSessionViewedAt: {},
+      now: NOW,
+    });
+
+    expect(result.statusByClaudeSessionId['db9']).toBe('complete');
+    expect(result.statusByProject['C:/projects/foo']).toBe('complete');
+  });
+
+  // ── viewed watermark still respected for eligible agents ───────────────────
+
+  it('eligible (old enough) but viewed agent → absent from both maps (watermark still respected)', () => {
+    const COMPLETED_AT = NOW - 11_000;
+    const agents = [makeAgent({ id: 'db10', status: 'complete', completedAt: COMPLETED_AT })];
+    const result = deriveCompletionStatus({
+      agents,
+      projects: PROJECTS,
+      lastProjectViewedAt: { 'c:/projects/foo': COMPLETED_AT },
+      lastSessionViewedAt: { db10: COMPLETED_AT },
+      now: NOW,
+    });
+
+    expect(result.statusByClaudeSessionId['db10']).toBeUndefined();
     expect(result.statusByProject['C:/projects/foo']).toBeUndefined();
   });
 });
