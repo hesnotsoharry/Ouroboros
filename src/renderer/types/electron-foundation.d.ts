@@ -234,12 +234,15 @@ export interface AppConfig {
   useMcpHost: boolean;
   /** @internal — do not expose in Settings UI */
   routerLastRetrainCount: number;
-  /** Wave 17–44 layout flags; Wave 59A chatWorkbench retired (workbench IS the chat shell). */
+  /** Wave 17–44 layout flags; Wave 59A chatWorkbench retired (workbench IS the chat shell).
+   *  Wave 1 — canonWorkbench (experimental, default-off). */
   layout?: {
     presets?: { v2?: boolean };
     dragAndDrop?: boolean;
     mobilePrimary?: boolean;
     immersiveChat?: boolean;
+    /** Wave 1 — canon workbench shell (experimental, default-off). */
+    canonWorkbench?: boolean;
     chatSidebarMode?: 'pinned' | 'collapsed' | 'hidden';
   };
   /** Wave 22 Phase B/E — chat message density + desktop notification settings. Wave 22 Phase E adds desktopNotifications. */

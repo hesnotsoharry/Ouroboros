@@ -7,6 +7,7 @@ import {
   AccentPicker,
   AppearanceSectionVsCodeImport,
   BackgroundGradientSection,
+  CanonWorkbenchSection,
   CustomCSSSection,
   GlassOpacitySection,
   MaterialVariantSection,
@@ -67,7 +68,23 @@ export function AppearanceSectionContent({
       />
       <AppearanceSectionVsCodeImport />
       <CustomCSSSection draft={draft} onChange={onChange} />
+      <CanonWorkbenchToggle draft={draft} onChange={onChange} />
     </div>
+  );
+}
+
+function CanonWorkbenchToggle({
+  draft,
+  onChange,
+}: {
+  draft: AppConfig;
+  onChange: <K extends keyof AppConfig>(key: K, value: AppConfig[K]) => void;
+}): React.ReactElement {
+  return (
+    <CanonWorkbenchSection
+      checked={draft.layout?.canonWorkbench ?? false}
+      onChange={(value) => onChange('layout', { ...(draft.layout ?? {}), canonWorkbench: value })}
+    />
   );
 }
 

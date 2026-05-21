@@ -7,7 +7,9 @@ import { useCommandRegistry } from './components/CommandPalette/useCommandRegist
 import { ChatOnlyShellWrapper } from './components/Layout/ChatOnlyShell';
 import type { InnerAppLayoutProps } from './components/Layout/InnerAppLayout';
 import { InnerAppLayout } from './components/Layout/InnerAppLayout';
+import { Workbench } from './components/Workbench/Workbench';
 import { useProject } from './contexts/ProjectContext';
+import { useCanonWorkbenchFlag } from './hooks/useCanonWorkbenchFlag';
 import { useChatWindowMode } from './hooks/useChatWindowMode';
 import { useExtensionThemes } from './hooks/useExtensionThemes';
 import { useFirstLaunchAuth } from './hooks/useFirstLaunchAuth';
@@ -242,6 +244,7 @@ function InnerApp({
   const hooks = useInnerAppHooks(initialRecentProjects, keybindings);
   const { isChatWindow } = useChatWindowMode();
   const immersiveFlag = useImmersiveChatFlag();
+  const canonWorkbenchFlag = useCanonWorkbenchFlag();
   // Mobile web is locked to the chat workbench shell — the IDE shell is unusable
   // on phone-sized viewports (no resize handles, panels squish each other).
   const isMobileWeb =
@@ -253,6 +256,10 @@ function InnerApp({
   const isImmersive = isChatWindow || immersiveFlag || isMobileWeb;
 
   if (isImmersive) return <ChatOnlyShellWrapper terminal={hooks.terminal} />;
+
+  // Wave 1 — experimental canon workbench shell (default-off).
+  // Evaluated AFTER the immersive check so mobile/chat-window modes are not affected.
+  if (canonWorkbenchFlag) return <Workbench />;
 
   return (
     <InnerAppLayout

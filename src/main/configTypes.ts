@@ -251,6 +251,8 @@ export interface AppLayoutConfig {
   globalCustomPresets?: import('@shared/types/layout').SerializedGlobalCustomPreset[];
   mobilePrimary?: boolean;
   immersiveChat?: boolean;
+  /** Wave 1 — canon workbench shell (experimental, default-off). */
+  canonWorkbench?: boolean;
   /** Wave 59 Phase A — chatWorkbench retired. Retained as optional unknown to prevent
    * config-schema errors when loading pre-59 user configs containing this key. */
   chatWorkbench?: never;

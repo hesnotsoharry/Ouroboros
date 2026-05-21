@@ -2,6 +2,7 @@ export { AccentPicker } from './AccentPicker';
 export { CustomCSSSection } from './AppearanceSectionCustomCSS';
 export {
   BackgroundGradientSection,
+  CanonWorkbenchSection,
   GlassOpacitySection,
   MaterialVariantSection,
   ThemeEditorSection,

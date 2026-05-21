@@ -227,6 +227,28 @@ function ThemeEditorHeader({
   );
 }
 
+export function CanonWorkbenchSection({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}): React.ReactElement {
+  return (
+    <section>
+      <SectionLabel>Experimental</SectionLabel>
+      <div style={panelStyle}>
+        <ToggleSwitch
+          checked={checked}
+          onChange={onChange}
+          label="Canon workbench (experimental)"
+          description="Switch to the new six-region workbench shell. Default off — work in progress."
+        />
+      </div>
+    </section>
+  );
+}
+
 export function ThemeEditorSection({
   activeThemeId,
   draft,

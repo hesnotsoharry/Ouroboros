@@ -25,6 +25,8 @@ export const tailSchemaExt = {
       globalCustomPresets: { type: 'array', items: { type: 'object' }, default: [] },
       mobilePrimary: { type: 'boolean', default: false },
       immersiveChat: { type: 'boolean', default: false },
+      /** Wave 1 — canon workbench shell (experimental). Default false. */
+      canonWorkbench: { type: 'boolean', default: false },
       chatSidebarMode: {
         type: 'string',
         enum: ['pinned', 'collapsed', 'hidden'],
@@ -39,6 +41,7 @@ export const tailSchemaExt = {
       globalCustomPresets: [],
       mobilePrimary: false,
       immersiveChat: false,
+      canonWorkbench: false,
       chatSidebarMode: 'pinned',
     },
   },
