@@ -4,6 +4,19 @@
 
 ---
 
+## 🔼 UPDATE 2026-05-21 — backlog pushed; freeze fix in PR #10; Wave 100 parked
+
+Most of this HANDOFF below is now historical. Current state:
+
+- **Master backlog pushed.** `origin/master` is now fully synced (Wave 98, Wave 99 `8c75e940`, terminal-dock `e1d34d3a`, graph cold-acquire `b8666432`, ghost-cursor `fd929b3b`). Tag `v2.20.0` pushed. The "Push backlog held until 2026-06-01" section below is **resolved** — the current bulletin sanctions pushing; only PR *merges* into protected branches wait for CI minutes.
+- **Crash-log freeze fix → PR #10** (https://github.com/hesnotsoharry/Ouroboros/pull/10). Branch `fix/crash-log-settings-freeze`. Decoupled from Wave 100 by redirecting `getErrorMessage` imports (`crashHandlers.ts` + test) from `../utils` → `../agentChat/utils`. Pre-push gate green. **Merge waits until 2026-06-01** (branch protection / CI minutes).
+- **Wave 100 (chat-surface removal) parked** on branch `wave-100-chat-surface-removal`: parking commit `dec0d793` + `stash@{0}` (Phase A relocation incl. `src/main/utils.ts`). Still PAUSED, 1/11 phases, needs re-scope per the SCOPE CORRECTION in `waveplan-100.md`. The tree no longer holds mixed uncommitted Wave 100 work.
+- **Still open:** Wave 99 live UI smoke (`/ui-smoke 99`) — deferrable now that the tree is clean. PR #10 merge on 2026-06-01.
+
+The "Concurrent work in the tree" warning below is **historical** — the tree is clean on master.
+
+---
+
 ## ⚠️ Concurrent work in the tree — read this first
 
 This checkout currently holds **two independent efforts**:
