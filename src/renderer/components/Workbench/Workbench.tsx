@@ -52,8 +52,12 @@ function PlaceholderRegion({
 const stageStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  width: '100%',
-  height: '100%',
+  width: '100vw',
+  // 100vh (not 100%) so the stage fills the window regardless of the parent
+  // chain's height — the canon workbench owns the whole window, incl. its own
+  // 40px title bar. With a plain 100% the 1fr middle row collapsed to content
+  // height and every region squished to the top.
+  height: '100vh',
   background: 'var(--bg-wash)',
   overflow: 'hidden',
 };
