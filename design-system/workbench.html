@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent IDE · Workbench overhaul</title>
+  <link rel="stylesheet" href="workbench-tokens.css">
+  <style>
+    /* Page-level: make the design canvas full-screen */
+    html, body, #root { height: 100%; margin: 0; padding: 0; }
+    body {
+      background: #06070d;
+      color: var(--ink);
+      font-family: var(--font-ui);
+    }
+  </style>
+  <template id="__bundler_thumbnail">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#0a0b14"/>
+          <stop offset="100%" stop-color="#161830"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%" stop-color="#818cf8" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="#818cf8" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="200" height="200" fill="url(#g)"/>
+      <circle cx="100" cy="100" r="80" fill="url(#glow)"/>
+      <g transform="translate(60 70)" fill="none" stroke="#a5b4fc" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="0 30 22 12 0 -6"/>
+        <line x1="32" y1="36" x2="80" y2="36"/>
+      </g>
+      <rect x="44" y="38" width="112" height="80" rx="14" fill="none" stroke="#818cf8" stroke-width="2.5" opacity="0.5"/>
+    </svg>
+  </template>
+
+  <!-- React + Babel (pinned) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Starter components (must load before they're referenced) -->
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <!-- Data + tiny pieces (icons, mock data) -->
+  <script type="text/babel" src="workbench-data.jsx"></script>
+
+  <!-- The hero workbench + the variant artboards -->
+  <script type="text/babel" src="workbench-hero.jsx"></script>
+  <script type="text/babel" src="workbench-variants.jsx"></script>
+  <script type="text/babel" src="workbench-states.jsx"></script>
+
+  <!-- App / canvas mount -->
+  <script type="text/babel" src="workbench-app.jsx"></script>
+</body>
+</html>

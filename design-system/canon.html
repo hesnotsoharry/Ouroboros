@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent IDE · Workbench Canon</title>
+  <link rel="stylesheet" href="canon.css">
+</head>
+<body>
+
+<!-- ─── Top status banner ─────────────────────────────────────────────── -->
+<div class="canon-banner">
+  <span class="dot"></span>
+  <span><strong>CANON</strong> · single source of truth for the workbench overhaul</span>
+  <span class="sep">·</span>
+  <span>Target: <strong>Windows</strong></span>
+  <span class="sep">·</span>
+  <span>Companion: <a href="workbench.html">workbench.html</a></span>
+</div>
+
+<!-- ─── Layout: sticky TOC + main ─────────────────────────────────────── -->
+<div class="canon-layout">
+
+  <!-- Table of contents -->
+  <aside class="canon-toc" id="toc">
+    <div class="canon-toc-head">
+      <div class="canon-mark">A</div>
+      <div>
+        <div class="canon-toc-title">Agent IDE</div>
+        <div class="canon-toc-sub">Workbench canon · v1.0</div>
+      </div>
+    </div>
+    <nav>
+      <a href="#cover">Cover</a>
+      <a href="#principles">01 · Principles</a>
+      <a href="#layout">02 · Layout & dimensions</a>
+      <a href="#tokens">03 · Token reference</a>
+      <a href="#typography">04 · Typography</a>
+      <a href="#radii">05 · Radii, shadows, blurs</a>
+      <a href="#titlebar">06 · Title bar</a>
+      <a href="#rails">07 · Rails (project + inner + unified)</a>
+      <a href="#terminals">08 · Terminals</a>
+      <a href="#agentsidebar">09 · Agent sidebar</a>
+      <a href="#statusbar">10 · Status bar</a>
+      <a href="#hooks">11 · Hook event schemas</a>
+      <a href="#statemachine">12 · Session state machine</a>
+      <a href="#permission">13 · Permission prompt</a>
+      <a href="#states">14 · Empty / error states</a>
+      <a href="#themes">15 · Themes</a>
+      <a href="#responsive">16 · Responsive collapse</a>
+      <a href="#assets">17 · Assets &amp; file structure</a>
+      <a href="#outofscope">18 · Out of scope</a>
+    </nav>
+  </aside>
+
+  <main class="canon-main">
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         COVER
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="cover" class="cover">
+      <div class="canon-eyebrow">Workbench overhaul · v1.0</div>
+      <h1>A terminal-first workbench<br>that wears glass without breaking it.</h1>
+      <p class="lede">
+        This document is the canonical implementation reference for the Agent&nbsp;IDE workbench redesign.
+        Every dimension, token, component contract, and state transition described below matches the live
+        mockup in <a href="workbench.html">workbench.html</a> exactly. Implementations should treat both as
+        a paired truth — if they ever disagree, both should be amended back into alignment.
+      </p>
+
+      <div class="cover-meta">
+        <div><span>Target platform</span><strong>Windows 10/11 · Electron</strong></div>
+        <div><span>Default theme</span><strong>Modern (indigo glass)</strong></div>
+        <div><span>Default rail mode</span><strong>Dual</strong></div>
+        <div><span>Default terminal treatment</span><strong>Tinted well</strong></div>
+        <div><span>Design dimensions</span><strong>1760 × 1020 px @ 1×</strong></div>
+        <div><span>CC TUI handling</span><strong>Sealed-box (no scrollback parsing)</strong></div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         01 · PRINCIPLES
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="principles">
+      <h2><span class="num">01</span> Principles</h2>
+      <p class="section-lede">Three rules above all. Any implementation choice that violates them is wrong, regardless of how good it looks.</p>
+
+      <div class="principles">
+        <div class="principle">
+          <div class="principle-n">01</div>
+          <h3>The TUI is sacred</h3>
+          <p>The Claude Code TUI runs inside xterm. We don't draw inside it, parse its scrollback, or intercept its keys. The workbench wraps the terminal — the terminal is never the workbench.</p>
+        </div>
+        <div class="principle">
+          <div class="principle-n">02</div>
+          <h3>Hooks &gt; parsing</h3>
+          <p>Every rich-UI signal — current tool, files touched, diffs, context, errors — comes from Claude Code hooks (<code>PreToolUse</code>, <code>PostToolUse</code>, <code>UserPromptSubmit</code>, <code>Stop</code>). Never regex against terminal output.</p>
+        </div>
+        <div class="principle">
+          <div class="principle-n">03</div>
+          <h3>Glass with a deeper well</h3>
+          <p>The xterm canvas drops to <code>rgba(6,8,16,0.62)</code> with <code>--terminal-canvas-opacity: 0.86</code> so the glass shell reads through it. The terminal becomes a deeper well in the glass, not a black hole punched through it.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         02 · LAYOUT & DIMENSIONS
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="layout">
+      <h2><span class="num">02</span> Layout &amp; dimensions</h2>
+      <p class="section-lede">All measurements are in CSS pixels at 1× device pixel ratio. The hero designs at 1760 × 1020. See §16 for responsive collapse.</p>
+
+      <!-- Layout diagram -->
+      <div class="layout-diagram">
+        <svg viewBox="0 0 880 540" width="100%" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="dots" x="0" y="0" width="3" height="3" patternUnits="userSpaceOnUse">
+              <circle cx="1.5" cy="1.5" r="0.5" fill="rgba(255,255,255,0.08)" />
+            </pattern>
+          </defs>
+          <rect width="880" height="540" fill="rgba(10,11,20,0.4)" />
+          <!-- title bar -->
+          <rect x="0" y="0" width="880" height="22" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" />
+          <text x="440" y="14" text-anchor="middle" font-size="9" fill="#a5b4fc" font-family="system-ui">Title bar · 40px</text>
+          <!-- status bar -->
+          <rect x="0" y="525" width="880" height="15" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.08)" />
+          <text x="440" y="535" text-anchor="middle" font-size="9" fill="#a5b4fc" font-family="system-ui">Status bar · 24px</text>
+          <!-- project rail -->
+          <rect x="0" y="22" width="36" height="503" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" />
+          <text x="18" y="285" text-anchor="middle" font-size="9" fill="#a5b4fc" font-family="system-ui" transform="rotate(-90 18 285)">Project rail · 56px</text>
+          <!-- inner rail -->
+          <rect x="36" y="22" width="155" height="503" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" />
+          <text x="113" y="285" text-anchor="middle" font-size="9" fill="#a5b4fc" font-family="system-ui">Inner rail · 256px</text>
+          <!-- terminals -->
+          <rect x="191" y="32" width="475" height="295" fill="rgba(6,8,16,0.7)" stroke="rgba(129,140,248,0.2)" rx="6" />
+          <text x="428" y="178" text-anchor="middle" font-size="11" fill="#a5b4fc" font-family="system-ui">Upper terminal · Claude Code</text>
+          <text x="428" y="194" text-anchor="middle" font-size="9" fill="#7a7f96" font-family="system-ui">62% of centre column height</text>
+          <rect x="191" y="335" width="475" height="180" fill="rgba(6,8,16,0.7)" stroke="rgba(129,140,248,0.15)" rx="6" />
+          <text x="428" y="420" text-anchor="middle" font-size="11" fill="#a5b4fc" font-family="system-ui">Lower terminal · Shell</text>
+          <text x="428" y="436" text-anchor="middle" font-size="9" fill="#7a7f96" font-family="system-ui">38% of centre column height</text>
+          <!-- agent sidebar -->
+          <rect x="666" y="22" width="214" height="503" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" />
+          <text x="773" y="285" text-anchor="middle" font-size="9" fill="#a5b4fc" font-family="system-ui">Agent rail · 348px</text>
+          <!-- labels for terminal split -->
+          <text x="191" y="55" font-size="8" fill="#a5b4fc" font-family="system-ui">tab bar 30px</text>
+          <text x="191" y="356" font-size="8" fill="#a5b4fc" font-family="system-ui">tab bar 30px</text>
+          <!-- arrows -->
+        </svg>
+      </div>
+
+      <h3>Surface dimensions (default · 1760 × 1020)</h3>
+      <table class="canon-table">
+        <thead><tr><th>Surface</th><th>Width</th><th>Height</th><th>Position</th><th>Material</th></tr></thead>
+        <tbody>
+          <tr><td>Title bar</td><td>flex</td><td>40 px</td><td>top, full-width</td><td>glass (subtle gradient)</td></tr>
+          <tr><td>Project rail</td><td>56 px</td><td>flex</td><td>left of inner rail</td><td>glass-rail</td></tr>
+          <tr><td>Inner rail (dual mode)</td><td>256 px</td><td>flex</td><td>between project rail and centre</td><td>glass-soft</td></tr>
+          <tr><td>Unified rail</td><td>272 px</td><td>flex</td><td>replaces project + inner rails</td><td>glass-soft</td></tr>
+          <tr><td>Centre column</td><td>flex (~1108 px)</td><td>flex</td><td>between rails and agent rail</td><td>transparent · 10 px padding</td></tr>
+          <tr><td>Upper terminal</td><td>flex</td><td>62%</td><td>top of centre</td><td>tinted well + glass shell</td></tr>
+          <tr><td>Lower terminal</td><td>flex</td><td>38%</td><td>bottom of centre · 10 px gap above</td><td>tinted well + glass shell</td></tr>
+          <tr><td>Agent rail</td><td>348 px</td><td>flex</td><td>right of centre</td><td>glass-soft</td></tr>
+          <tr><td>Status bar</td><td>flex</td><td>24 px</td><td>bottom, full-width</td><td>opaque scrim · <code>rgba(0,0,0,0.25)</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Component sub-dimensions</h3>
+      <table class="canon-table">
+        <thead><tr><th>Element</th><th>Size</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Terminal tab bar</td><td>30 px tall</td><td>30 px also for editor tab bar; matches design system precedent.</td></tr>
+          <tr><td>Title chip (project/branch)</td><td>26 px tall · 8 px padding · 7 px radius</td><td>Hover: <code>bg rgba(255,255,255,0.04)</code> + 1 px <code>stroke-inner</code>.</td></tr>
+          <tr><td>Window control button (Win)</td><td>46 × 40 px</td><td>Borderless. Close hover bg <code>#e81123</code>, fg <code>#fff</code>.</td></tr>
+          <tr><td>Project rail chip</td><td>38 × 38 px · 11 px radius</td><td>Active glow: <code>0 6px 18px -4px {color}90</code> + 3 px accent indicator on left.</td></tr>
+          <tr><td>Project rail collapse handle</td><td>24 × 18 px</td><td>Chevron icon, top of rail, dims to <code>--ink-4</code>.</td></tr>
+          <tr><td>Agent globe pill</td><td>auto · 28 px tall</td><td>Pill radius 999 px. Live shimmer sweep 3s linear.</td></tr>
+          <tr><td>Card padding (sidebar)</td><td>12 px</td><td>Use <code>--r-md</code> (10 px) radius.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         03 · TOKEN REFERENCE
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="tokens">
+      <h2><span class="num">03</span> Token reference</h2>
+      <p class="section-lede">
+        The mockup uses short local CSS variables for clarity (<code>--accent</code>, <code>--ink-2</code>, <code>--glass-panel</code>). These must map onto the existing Tier 1/Tier 2/Tier 3 semantic tokens already defined in <code>src/renderer/styles/tokens.css</code>. The right-hand columns give the canonical target.
+      </p>
+
+      <h3>Wash &amp; ambient (the back of the glass)</h3>
+      <table class="canon-table">
+        <thead><tr><th>Mockup var</th><th>Real app token</th><th>Modern value</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>--wash-1</code></td><td><code>--bg-wash</code> (gradient stop 1)</td><td><code>#0a0b14</code></td><td>Stage gradient top.</td></tr>
+          <tr><td><code>--wash-2</code></td><td><code>--bg-wash</code> (gradient stop 2)</td><td><code>#0d0e1b</code></td><td>Stage gradient bottom.</td></tr>
+          <tr><td><code>--glow-a/b/c</code></td><td><code>--bg-glows</code></td><td>3 radial gradients</td><td>Modern: indigo top-left, purple bottom-right, sky centre. Strengths .18 / .12 / .05.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Glass material</h3>
+      <table class="canon-table">
+        <thead><tr><th>Mockup var</th><th>Real app token</th><th>Modern value</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>--glass-panel</code></td><td><code>--material-panel</code></td><td><code>rgba(20, 22, 36, 0.42)</code></td><td>Default panel material.</td></tr>
+          <tr><td><code>--glass-panel-hi</code></td><td><code>--material-panel-raised</code></td><td><code>rgba(28, 30, 50, 0.55)</code></td><td>Raised cards (NOW, files, hooks, hunk).</td></tr>
+          <tr><td><code>--glass-overlay</code></td><td><code>--surface-overlay</code></td><td><code>rgba(14, 16, 28, 0.78)</code></td><td>Menus, dialogs, permission popover.</td></tr>
+          <tr><td><code>--glass-rail</code></td><td><code>--surface-panel</code> (glass)</td><td><code>rgba(16, 18, 30, 0.55)</code></td><td>Project rail bg.</td></tr>
+          <tr><td><code>--blur-strong</code></td><td>(direct)</td><td><code>blur(28px) saturate(160%)</code></td><td>Use on title bar, agent globe, permission overlay.</td></tr>
+          <tr><td><code>--blur-soft</code></td><td>(direct)</td><td><code>blur(16px) saturate(130%)</code></td><td>Default for rails and sidebar.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Strokes</h3>
+      <table class="canon-table">
+        <thead><tr><th>Mockup var</th><th>Real app token</th><th>Modern value</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>--stroke-inner</code></td><td><code>--stroke-inner</code></td><td><code>rgba(255,255,255,0.07)</code></td><td>1 px inner border on glass surfaces.</td></tr>
+          <tr><td><code>--stroke-faint</code></td><td><code>--stroke-faint</code></td><td><code>rgba(255,255,255,0.04)</code></td><td>Section dividers, tab bar bottom border.</td></tr>
+          <tr><td><code>--stroke-strong</code></td><td>(new) <code>--stroke-strong</code></td><td><code>rgba(255,255,255,0.12)</code></td><td>Selected chip borders, agent globe divider.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Text</h3>
+      <table class="canon-table">
+        <thead><tr><th>Mockup var</th><th>Real app token</th><th>Modern value</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>--ink</code></td><td><code>--text-primary</code></td><td><code>#e8eaf6</code></td><td>Body, important labels, active states.</td></tr>
+          <tr><td><code>--ink-2</code></td><td><code>--text-secondary</code></td><td><code>#b8bccf</code></td><td>Sub-labels, paths, secondary text.</td></tr>
+          <tr><td><code>--ink-3</code></td><td><code>--text-muted</code></td><td><code>#7a7f96</code></td><td>Captions, metadata, idle dots.</td></tr>
+          <tr><td><code>--ink-4</code></td><td><code>--text-faint</code></td><td><code>#4d5167</code></td><td>Disabled, separators, ghost text.</td></tr>
+          <tr><td><code>--ink-on-accent</code></td><td><code>--text-on-accent</code></td><td><code>#0a0b14</code></td><td>Foreground on accent buttons / chips.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Accent &amp; status</h3>
+      <table class="canon-table">
+        <thead><tr><th>Mockup var</th><th>Real app token</th><th>Modern value</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>--accent</code></td><td><code>--interactive-accent</code></td><td><code>#818cf8</code></td><td>All primary actions and active indicators.</td></tr>
+          <tr><td><code>--accent-hi</code></td><td><code>--interactive-hover</code></td><td><code>#a5b4fc</code></td><td>Accent on text, hover states.</td></tr>
+          <tr><td><code>--accent-tint</code></td><td><code>--interactive-accent-subtle</code></td><td><code>rgba(129,140,248,0.14)</code></td><td>Active row bg, primary-light buttons.</td></tr>
+          <tr><td><code>--accent-edge</code></td><td>(new) <code>--accent-edge</code></td><td><code>rgba(129,140,248,0.35)</code></td><td>Active card border, agent globe stroke.</td></tr>
+          <tr><td><code>--accent-glow</code></td><td>(new) <code>--accent-glow</code></td><td><code>0 2px 14px -2px rgba(129,140,248,0.5)</code></td><td>Accent glow box-shadow.</td></tr>
+          <tr><td><code>--success</code></td><td><code>--status-success</code></td><td><code>#34d399</code></td><td>OK ticks, passed tests, +adds in diffs.</td></tr>
+          <tr><td><code>--warning</code></td><td><code>--status-warning</code></td><td><code>#fbbf24</code></td><td>Permission prompts, unstaged badges.</td></tr>
+          <tr><td><code>--error</code></td><td><code>--status-error</code></td><td><code>#f87171</code></td><td>Tool failures, disconnected stream, −dels in diffs.</td></tr>
+          <tr><td><code>--info</code></td><td><code>--status-info</code></td><td><code>#60a5fa</code></td><td>Vite/HMR info, neutral system events.</td></tr>
+          <tr><td><code>--purple</code></td><td><code>--palette-purple</code></td><td><code>#c084fc</code></td><td>Tool badges (Grep, Glob, Read, Edit headers).</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Terminal</h3>
+      <table class="canon-table">
+        <thead><tr><th>Mockup var</th><th>Real app token</th><th>Modern value</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>--term-bg</code></td><td><code>--term-bg</code> (override)</td><td><code>rgba(6, 8, 16, 0.62)</code></td><td><strong>Critical.</strong> Tinted; the well effect depends on this.</td></tr>
+          <tr><td><code>--term-canvas-opacity</code></td><td><code>--terminal-canvas-opacity</code></td><td><code>0.86</code></td><td>Applied to xterm canvas via CSS; lets glass wash through.</td></tr>
+          <tr><td><code>--term-inset</code></td><td>(new)</td><td>see below</td><td>3-layer inset shadow for the well effect.</td></tr>
+          <tr><td><code>--term-prompt-bg</code></td><td>(new)</td><td><code>rgba(20, 22, 36, 0.45)</code></td><td>CC prompt box bg (the rounded input).</td></tr>
+        </tbody>
+      </table>
+      <pre class="canon-code">--term-inset:
+  inset 0 0 0 1px rgba(255,255,255,0.04),
+  inset 0 1px 0 rgba(255,255,255,0.05),
+  inset 0 -60px 80px -20px rgba(0,0,0,0.4);</pre>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         04 · TYPOGRAPHY
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="typography">
+      <h2><span class="num">04</span> Typography</h2>
+
+      <h3>Font families</h3>
+      <table class="canon-table">
+        <thead><tr><th>Token</th><th>Stack</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>--font-ui</code></td><td>Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif</td><td>All UI text. Buttons, labels, body.</td></tr>
+          <tr><td><code>--font-mono</code></td><td>Geist Mono, JetBrains Mono, ui-monospace, Cascadia Code, monospace</td><td>Code, paths, durations, hook event payloads, status line.</td></tr>
+          <tr><td><code>--font-term</code></td><td>Geist Mono, JetBrains Mono, ui-monospace, monospace</td><td>Inside the terminal pane. Falls back to xterm's font.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Sizes &amp; weights</h3>
+      <table class="canon-table">
+        <thead><tr><th>Role</th><th>Size</th><th>Weight</th><th>Line height</th><th>Letter spacing</th></tr></thead>
+        <tbody>
+          <tr><td>Section label (caps)</td><td>10 px</td><td>600</td><td>1</td><td>0.08em</td></tr>
+          <tr><td>Caption / meta</td><td>10–10.5 px</td><td>400–500</td><td>1.4</td><td>0</td></tr>
+          <tr><td>Body small</td><td>11–11.5 px</td><td>400–500</td><td>1.5</td><td>0</td></tr>
+          <tr><td>Body</td><td>12–12.5 px</td><td>400–500</td><td>1.55</td><td>0</td></tr>
+          <tr><td>Title (chip / row)</td><td>12 px</td><td>600</td><td>1.3</td><td>0</td></tr>
+          <tr><td>Heading (panel title)</td><td>13–15 px</td><td>600–700</td><td>1.3</td><td>−0.01em</td></tr>
+          <tr><td>Terminal line</td><td>12 px</td><td>400</td><td>1.55</td><td>0</td></tr>
+          <tr><td>Status bar</td><td>11 px</td><td>400</td><td>1</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         05 · RADII, SHADOWS, BLURS
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="radii">
+      <h2><span class="num">05</span> Radii, shadows, blurs</h2>
+
+      <h3>Border radii</h3>
+      <table class="canon-table">
+        <thead><tr><th>Token</th><th>Value</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>--r-xs</code></td><td>4 px</td><td>Input borders, inline pills.</td></tr>
+          <tr><td><code>--r-sm</code></td><td>6 px</td><td>Tabs, buttons, small chips.</td></tr>
+          <tr><td><code>--r-md</code></td><td>10 px</td><td>Cards, panels, terminal body.</td></tr>
+          <tr><td><code>--r-lg</code></td><td>12 px</td><td>Permission overlay, larger cards.</td></tr>
+          <tr><td><code>--r-xl</code></td><td>16 px</td><td>Reserved for future modal surfaces.</td></tr>
+          <tr><td><code>--r-pill</code></td><td>9999 px</td><td>Pills, agent globe, status dots.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Shadows</h3>
+      <table class="canon-table">
+        <thead><tr><th>Token</th><th>Value</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td><code>--shadow-panel</code></td><td><code>0 30px 80px -40px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.3)</code></td><td>Glass panels.</td></tr>
+          <tr><td><code>--shadow-card</code></td><td><code>0 8px 28px -12px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)</code></td><td>Raised cards.</td></tr>
+          <tr><td><code>--inset-hi</code></td><td><code>inset 0 1px 0 rgba(255,255,255,0.06)</code></td><td>Top-edge highlight on all glass surfaces.</td></tr>
+          <tr><td><code>--accent-glow</code></td><td><code>0 2px 14px -2px rgba(129,140,248,0.5)</code></td><td>Accent buttons, active project chip.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         06 · TITLE BAR
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="titlebar">
+      <h2><span class="num">06</span> Title bar</h2>
+      <p class="section-lede">
+        40 px tall · full width · Windows window controls on the far right · NO macOS traffic lights anywhere.
+        The center carries the live <strong>Agent Globe</strong> pill — the headline change from v0.
+      </p>
+
+      <!-- visual mock -->
+      <div class="component-mock" aria-label="Title bar layout">
+        <div class="tb-mock">
+          <div class="tb-app">A</div>
+          <div class="tb-chip"><span class="tb-chip-init">A</span> agent-ide <span class="tb-chev">▾</span></div>
+          <div class="tb-chip"><span class="tb-glyph">⎇</span> <code>wave/96-glass-pivot</code> <span class="tb-chev">▾</span></div>
+          <div class="tb-spacer"></div>
+          <div class="tb-globe">
+            <span class="tb-globe-sparkle">✻</span>
+            <strong>sonnet-4.5</strong>
+            <span class="tb-globe-sep"></span>
+            <span class="tb-globe-tool">✎ Edit</span>
+            <span class="tb-globe-target">TerminalPane.tsx</span>
+            <span class="tb-globe-sep"></span>
+            <span class="tb-globe-time">6s</span>
+            <span class="tb-globe-dot"></span>
+          </div>
+          <div class="tb-spacer"></div>
+          <div class="tb-ctrl"><span>⌕</span> <code>Ctrl K</code></div>
+          <div class="tb-ctrl"><span class="tb-bell">🔔<span class="tb-bell-badge"></span></span></div>
+          <div class="tb-ctrl">⚙</div>
+          <div class="tb-win-controls">
+            <div class="tb-win-btn" title="Minimize"><span class="ic-min"></span></div>
+            <div class="tb-win-btn" title="Maximize"><span class="ic-max"></span></div>
+            <div class="tb-win-btn close" title="Close"><span class="ic-close"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <h3>Left cluster (left → right)</h3>
+      <ol class="canon-list">
+        <li><strong>App mark</strong>. 22 × 22 px · radius 6 · indigo→purple gradient · the letter <code>A</code> in <code>#0a0b14</code>, font-weight 800. Provides the window's drag handle on Windows.</li>
+        <li><strong>Project chip</strong>. <code>TitleChip</code> component. Contains the project initial chip (18 × 18 px, project-color gradient, dark ink letter), project name in <code>--ink</code>/600, chevron-down in <code>--ink-4</code>. <strong>Click → project switcher dropdown.</strong></li>
+        <li><strong>Branch chip</strong>. <code>TitleChip</code>. Branch icon in <code>--ink-3</code>, branch name in <code>--ink-2</code>/mono/11px, chevron-down. <strong>Click → branch switcher dropdown.</strong></li>
+      </ol>
+
+      <h3>Centre: Agent Globe pill</h3>
+      <p>The headline addition. Reads the current state of the active session. Always present; dims when idle.</p>
+      <table class="canon-table">
+        <thead><tr><th>State</th><th>Background</th><th>Content</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Running</strong></td><td>Linear-gradient <code>var(--accent-tint)</code> → 4% accent. 1 px <code>--accent-edge</code>. Shimmer sweep 3 s linear.</td><td>✻ model · | · 🔧 tool · target · | · NNs · live dot</td></tr>
+          <tr><td><strong>Awaiting</strong></td><td>Same shell but border <code>--warning</code>; shimmer pauses.</td><td>✻ model · | · ⚠ awaiting permission · | · paused</td></tr>
+          <tr><td><strong>Idle</strong></td><td>Reduce opacity to 0.6; remove shimmer.</td><td>✻ model · idle</td></tr>
+          <tr><td><strong>Errored</strong></td><td>Border <code>--error</code>; shimmer pauses.</td><td>✻ model · | · ✕ tool failed · | · view</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Click</strong>: scrolls the agent rail to the NOW block and pulses it. <strong>Right-click</strong>: model picker dropdown.</p>
+
+      <h3>Right cluster (left → right)</h3>
+      <ol class="canon-list">
+        <li><strong>Ctrl K command palette</strong>. Icon + shortcut text, no input field in the bar. <em>Never</em> show <code>⌘K</code> — Windows target.</li>
+        <li><strong>Bell</strong>. Icon button with a <code>--warning</code> 8 × 8 dot badge when permission requests are pending; <code>0 0 6px var(--warning)</code> glow + 2 px <code>--wash-2</code> ring to separate from icon.</li>
+        <li><strong>Settings</strong>. Cog icon button. Margin-right 6 px before window controls.</li>
+        <li><strong>Window controls</strong>. Three buttons, full title-bar height, 46 px wide each. Borderless. Icons: 10 × 10 SVG, 1 px stroke. Hover bg: <code>rgba(255,255,255,0.06)</code>. <strong>Close hover</strong>: bg <code>#e81123</code>, fg <code>#fff</code>.</li>
+      </ol>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         07 · RAILS
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="rails">
+      <h2><span class="num">07</span> Rails — project + inner + unified</h2>
+      <p class="section-lede">
+        Two modes: <strong>dual</strong> (default — separate project rail + inner rail) and <strong>unified</strong> (single rail with projects as accordion groups). The toggle lives on the project rail's top chevron and in the inner rail header.
+      </p>
+
+      <h3>Project rail (outer · 56 px · dual mode only)</h3>
+      <table class="canon-table">
+        <thead><tr><th>Element</th><th>Size</th><th>Behavior</th></tr></thead>
+        <tbody>
+          <tr><td>Collapse handle</td><td>24 × 18 px · top</td><td>Chevron pointing inward. Click → switch to unified mode.</td></tr>
+          <tr><td>Project chip</td><td>38 × 38 px · radius 11</td><td>Gradient from project color. Initial letter. Active: outer 3 px left indicator + glow.</td></tr>
+          <tr><td>Dirty count badge</td><td>~14 px chip on top-right of inactive projects</td><td>Warning background. Indicates unstaged files. Hide on active project (it's shown in the title bar branch chip).</td></tr>
+          <tr><td>Add-project button</td><td>38 × 38 px · 1 px dashed border</td><td>Plus icon. Opens directory picker.</td></tr>
+          <tr><td>Footer</td><td>2 buttons</td><td>Layout selector + user avatar (settings/account).</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Inner rail (256 px · dual mode)</h3>
+      <p>Two sections, divided by a 1 px <code>--stroke-faint</code> line:</p>
+
+      <ol class="canon-list">
+        <li>
+          <strong>Running</strong> (top). Shows ALL active CC + shell sessions <em>across projects</em>. Each row prefixed with a 16 × 16 project chip so cross-project context is obvious.
+          <ul>
+            <li>Row layout: <code>[project chip · 16×16] [kind icon · sparkle or terminal] [label + sub] [status dot]</code></li>
+            <li>Group: current project first, then a 6 px spacer, then others.</li>
+            <li>Active session row: <code>--accent-tint</code> bg, <code>--accent-edge</code> border.</li>
+            <li>Header has a collapse-to-unified button (chevron rotated 180°).</li>
+          </ul>
+        </li>
+        <li>
+          <strong>Files</strong> (scrollable, fills remaining height).
+          <ul>
+            <li>Indented tree. Depth × 12 px + 6 px base padding.</li>
+            <li>Directory icon in <code>--accent-hi</code>, file icon in <code>--ink-3</code>.</li>
+            <li>Status badge: <code>M</code> (modified, warning), <code>A</code> (added, success). 14 px wide right-aligned.</li>
+          </ul>
+        </li>
+      </ol>
+
+      <p><strong>Footer</strong> (bottom of rail, full width): branch icon · branch name · spacer · <code>+adds</code> in success · <code>−dels</code> in error.</p>
+
+      <h3>Unified rail (272 px · unified mode)</h3>
+      <p>Replaces both rails. Header has a layers icon, "Projects" label, plus button, and a chevron to expand back to dual.</p>
+      <p>Each project is a <code>ProjectAccordion</code>:</p>
+      <ul class="canon-list">
+        <li><strong>Header row</strong>: chevron + 20 × 20 project chip + name + dirty count + running dot.</li>
+        <li><strong>Expanded body</strong>: <code>RUNNING</code> label · session rows · <code>FILES</code> label · file tree.</li>
+        <li>Only one project may be expanded at a time (the active one). Clicking another's header switches active project and expands it.</li>
+      </ul>
+      <p>Footer matches the dual mode's inner rail footer.</p>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         08 · TERMINALS
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="terminals">
+      <h2><span class="num">08</span> Terminals</h2>
+      <p class="section-lede">
+        The centre column holds a vertical split: <strong>upper terminal</strong> (Claude Code primary, ~62% height) and <strong>lower terminal</strong> (shell / servers, ~38%). Each has its own tab bar and independent state.
+        Treatment: <strong>tinted well</strong> (the canonical solution to the black-canvas-vs-glass problem). The other three treatments in the canvas are exploratory and NOT to be implemented unless explicitly approved.
+      </p>
+
+      <h3>Terminal shell wrapper</h3>
+      <p>Glass container, radius <code>--r-md</code>, contains a tab bar (30 px) + terminal body (flex).</p>
+
+      <h3>Tab bar</h3>
+      <table class="canon-table">
+        <thead><tr><th>Element</th><th>Spec</th></tr></thead>
+        <tbody>
+          <tr><td>Height</td><td>30 px · bg <code>rgba(255,255,255,0.02)</code> · 1 px <code>--stroke-faint</code> bottom</td></tr>
+          <tr><td>Tab</td><td>12 px horizontal padding · status dot + label · close × appears on hover · radius <code>--r-sm</code> top corners</td></tr>
+          <tr><td>Active indicator</td><td>2 px <code>--accent</code> underline · <code>0 0 10px var(--accent)</code> glow · positioned bottom: −1 px so it sits on top of the divider</td></tr>
+          <tr><td>+ button</td><td>Renders after last tab · text color <code>--ink-4</code></td></tr>
+          <tr><td>Right cluster</td><td>Split icon · Maximize icon · both 12 × 12 in <code>--ink-3</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Tinted-well body (canonical)</h3>
+      <pre class="canon-code">.terminal-body {
+  background: rgba(6, 8, 16, 0.62);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -60px 80px -20px rgba(0, 0, 0, 0.4);
+}
+
+.xterm canvas {
+  opacity: var(--terminal-canvas-opacity, 0.86);
+}</pre>
+      <p>The opacity reduction on the xterm canvas is what lets the underlying glass bleed through. Test: any glass element behind the terminal (a wash glow, a popover edge) should be faintly visible through the canvas.</p>
+
+      <h3>CC TUI viewport rules</h3>
+      <ol class="canon-list">
+        <li><strong>Do not draw inside the terminal.</strong> Any UI on top of the terminal canvas (e.g., a permission overlay) must be a sibling, not a child of xterm.</li>
+        <li><strong>Do not parse scrollback.</strong> Every signal comes from hooks. See §11.</li>
+        <li><strong>Status line</strong> below the prompt box <em>belongs to CC</em>; we don't add chrome to it. The "✻ sonnet-4.5 · ⏵⏵ auto-accept on · NN% context left · esc to interrupt" line is the literal CC TUI status — render only what CC outputs.</li>
+        <li><strong>Prompt box</strong> styling (the rounded input at the bottom of CC) follows the <code>.wb-cc-prompt</code> spec: glass-soft bg, 1 px <code>--stroke-inner</code>, radius <code>--r-md</code>, 8 px margin from canvas edges. This is CC's own input area — we don't replace it; if the styling diverges it's because CC changed and we update.</li>
+      </ol>
+
+      <h3>Shell terminal body (lower)</h3>
+      <p>Same tinted-well treatment as upper. No CC prompt or status line — just raw xterm content. Inputs at the bottom (e.g., a <code>$</code> prompt) come from the shell itself.</p>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         09 · AGENT SIDEBAR
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="agentsidebar">
+      <h2><span class="num">09</span> Agent sidebar — 348 px</h2>
+      <p class="section-lede">
+        Right edge of the workbench. Glass-soft background. Contains five panels stacked vertically. Each panel is independently re-rendered by hook events; no panel needs the others to render.
+      </p>
+
+      <h3>Header (top, full width)</h3>
+      <p>Status dot + session label (<code>claude · main</code>) + sub (<code>5m 12s · 12 tool calls</code>) + Stop button (red square icon) + Maximize button. Bottom border <code>--stroke-faint</code>.</p>
+
+      <h3>① NOW block</h3>
+      <p>The current tool call. Updates on every <code>PreToolUse</code> / <code>PostToolUse</code> hook.</p>
+      <ul class="canon-list">
+        <li>Label "NOW" in <code>--accent-hi</code>.</li>
+        <li>Live duration pill (top-right): mono · animates seconds.</li>
+        <li>28 × 28 px tool glyph (radius 8 · <code>--accent-tint</code> bg · 1 px <code>--accent-edge</code>).</li>
+        <li>Tool name + arrow + path (mono, 11 px).</li>
+        <li>One-line tool input or description in <code>--ink-3</code>.</li>
+        <li>Progress bar (3 px · gradient <code>--accent</code> → <code>--accent-hi</code> · accent glow). Indeterminate when duration is unknown.</li>
+      </ul>
+
+      <h3>② Context block</h3>
+      <p>Token usage donut + numeric counts + session meta.</p>
+      <ul class="canon-list">
+        <li>56 × 56 SVG donut · radius 22 · stroke 4 px · accent stroke with <code>drop-shadow(0 0 6px var(--accent))</code>.</li>
+        <li>Centre: percent + "USED" caption.</li>
+        <li>Right column: "CONTEXT" label · <code>46.2k / 200k tokens</code> mono · then <code>⏱ 5m 12s · $ 0.18</code> meta line.</li>
+      </ul>
+
+      <h3>③ Files touched</h3>
+      <p>Sourced from PostToolUse events on Read / Edit / Write tools.</p>
+      <ul class="canon-list">
+        <li>Label "FILES TOUCHED" + count.</li>
+        <li>Each row: file icon · path (mono, ellipsized RTL so the filename stays visible) · <code>+N</code> in success · <code>−N</code> in error · live dot if currently editing.</li>
+        <li>Active row (currently editing) gets <code>--accent-edge</code> border.</li>
+      </ul>
+
+      <h3>④ Latest hunk</h3>
+      <p>Most recent diff applied. Source: Claude Code's <code>PostToolUse</code> for <code>Edit</code> with the diff payload, or git status delta.</p>
+      <ul class="canon-list">
+        <li>Header: "LATEST HUNK" label · file path · line number anchor.</li>
+        <li>Body: 6–8 lines of unified diff with gutter (line numbers in <code>--ink-4</code> · <code>+</code>/<code>−</code> signs in success/error · row backgrounds <code>--success-tint</code> / <code>--error-tint</code>).</li>
+        <li>Footer: <code>Accept</code> (accent button) · <code>Reject</code> (ghost-border) · <code>Open</code> (ghost-border with eye icon).</li>
+        <li>On Accept: hunk dismissed, NOW block continues.</li>
+        <li>On Reject: revert the change (file written back from prior content), tool call marked rejected.</li>
+      </ul>
+
+      <h3>⑤ Hook timeline</h3>
+      <p>Reverse-chronological list of recent hook events.</p>
+      <ul class="canon-list">
+        <li>Vertical 1 px rail on the left (gradient: <code>--accent</code> top → <code>--stroke-faint</code> bottom).</li>
+        <li>Each event row: 9 × 9 px node on the rail · tool glyph + name · duration mono · target path mono.</li>
+        <li><strong>Prompts</strong>: italic quote, accent node.</li>
+        <li><strong>Thinking</strong>: brain icon, purple node, duration.</li>
+        <li><strong>Tools</strong>: status colors — success/warning/error/accent(running).</li>
+        <li>Running events: 8 px glow + 1.4 s pulse animation on node.</li>
+        <li>"View all" button at top-right opens a full-history view (out of scope for v1).</li>
+      </ul>
+
+      <h3>Adaptive cards rule (canonical for hook events)</h3>
+      <p>This is treatment "B" from §6 of the canvas — selected as canonical.</p>
+      <ul class="canon-list">
+        <li><strong>Running</strong> tool: full glass card (10 px padding) with progress bar.</li>
+        <li><strong>Most recent completed</strong>: full card.</li>
+        <li><strong>Older completed</strong>: collapse to one-line summary at 0.7 opacity.</li>
+        <li>On hover of a collapsed line: re-expand to full card temporarily.</li>
+      </ul>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         10 · STATUS BAR
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="statusbar">
+      <h2><span class="num">10</span> Status bar — 24 px</h2>
+      <p>Bottom of the window. Opaque scrim <code>rgba(0,0,0,0.25)</code>, 1 px top border <code>--stroke-faint</code>, 11 px text in <code>--ink-3</code>.</p>
+
+      <h3>Left to right (default content)</h3>
+      <table class="canon-table">
+        <thead><tr><th>Slot</th><th>Content</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Branch icon · branch name (<code>--ink-2</code>) · <code>+adds</code> in success · <code>−dels</code> in error</td></tr>
+          <tr><td>2</td><td>Sparkle (<code>--accent</code>) · model name (<code>--ink-2</code>)</td></tr>
+          <tr><td>3</td><td>Context: <code>46.2k</code> (<code>--ink-2</code>) · <code>/ 200k ctx</code></td></tr>
+          <tr><td>4</td><td>Tests passing pill: <code>● 24 tests passing</code> in <code>--success</code></td></tr>
+          <tr><td>—flex spacer—</td><td>&nbsp;</td></tr>
+          <tr><td>5</td><td>Cost: <code>$0.18</code> (<code>--ink-2</code>)</td></tr>
+          <tr><td>6</td><td>Clock: <code>HH:MM:SS</code> 24 h format</td></tr>
+          <tr><td>7</td><td>Connection: live dot + <code>connected</code></td></tr>
+        </tbody>
+      </table>
+      <p>Slot separators: <code>·</code> in <code>--ink-4</code>.</p>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         11 · HOOK EVENT SCHEMAS
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="hooks">
+      <h2><span class="num">11</span> Hook event schemas</h2>
+      <p class="section-lede">
+        The workbench subscribes to Claude Code's hook stream. These are the event shapes the UI expects. Any hook that fires but doesn't match the schema is logged as a warning and ignored.
+      </p>
+
+      <h3>Subscription contract</h3>
+      <p>The renderer subscribes via a single <code>useHookSubscription</code> hook in <code>src/renderer/hooks/useHookSubscription.ts</code>. The main process spawns CC with hook scripts that write JSON Lines to a socket; the renderer reads them and dispatches by <code>hook_event_name</code>.</p>
+
+      <pre class="canon-code">// Common envelope on every event
+interface HookEnvelope {
+  hook_event_name: string;        // discriminator
+  session_id: string;             // CC session uuid
+  cwd: string;                    // working directory
+  transcript_path: string;        // .jsonl on disk
+  timestamp: string;              // ISO 8601
+}</pre>
+
+      <h3>PreToolUse</h3>
+      <pre class="canon-code">interface PreToolUseEvent extends HookEnvelope {
+  hook_event_name: "PreToolUse";
+  tool_name: "Read" | "Edit" | "Write" | "Bash" | "Grep" | "Glob"
+           | "WebFetch" | "Task" | "TodoWrite" | string;
+  tool_input: Record&lt;string, unknown&gt;;
+  // Hook script may return one of these to gate the call:
+  decision?: "allow" | "block" | "request";
+  reason?: string;
+}</pre>
+      <p><strong>UI impact:</strong> push a new <code>running</code> entry into the hook timeline, set the NOW block, mark the matching tab's status dot live. If <code>decision === "request"</code>: enter Awaiting state (§13).</p>
+
+      <h3>PostToolUse</h3>
+      <pre class="canon-code">interface PostToolUseEvent extends HookEnvelope {
+  hook_event_name: "PostToolUse";
+  tool_name: string;
+  tool_input: Record&lt;string, unknown&gt;;
+  tool_response: {
+    success: boolean;
+    output?: string;
+    error?: string;
+    duration_ms: number;
+    // Tool-specific fields:
+    lines?: number;        // Read
+    matches?: number;      // Grep
+    files?: number;        // Glob
+    diff?: UnifiedDiff;    // Edit / Write
+    exit_code?: number;    // Bash
+    stdout?: string;       // Bash
+    stderr?: string;       // Bash
+  };
+}
+
+interface UnifiedDiff {
+  path: string;
+  hunks: Array&lt;{
+    old_start: number; old_lines: number;
+    new_start: number; new_lines: number;
+    rows: Array&lt;{ type: "add" | "del" | "ctx"; n: number; text: string }&gt;;
+  }&gt;;
+  adds: number;
+  dels: number;
+}</pre>
+      <p><strong>UI impact:</strong> update the matching hook timeline entry with status (success → green, exit_code > 0 → red), duration, and details (lines / matches / +adds / −dels). If the tool returns a diff, push it into Latest Hunk and Files Touched.</p>
+
+      <h3>UserPromptSubmit</h3>
+      <pre class="canon-code">interface UserPromptSubmitEvent extends HookEnvelope {
+  hook_event_name: "UserPromptSubmit";
+  prompt: string;
+}</pre>
+      <p><strong>UI impact:</strong> add a prompt node to the hook timeline (italic, accent node). Transition session to <code>thinking</code> state.</p>
+
+      <h3>Stop</h3>
+      <pre class="canon-code">interface StopEvent extends HookEnvelope {
+  hook_event_name: "Stop";
+  reason?: "complete" | "interrupted" | "error";
+  message?: string;
+}</pre>
+      <p><strong>UI impact:</strong> NOW block clears; session transitions to <code>done</code> for ~3 s then to <code>idle</code>. If <code>reason === "error"</code>, transition to <code>errored</code> with the message.</p>
+
+      <h3>SubagentStop</h3>
+      <p>Same shape as <code>Stop</code> but for sub-agent (Task tool) completion. Hook timeline shows the spawned-thread converging back to its parent.</p>
+
+      <h3>Notification</h3>
+      <pre class="canon-code">interface NotificationEvent extends HookEnvelope {
+  hook_event_name: "Notification";
+  title: string;
+  message: string;
+  level: "info" | "warning" | "error";
+}</pre>
+      <p><strong>UI impact:</strong> bell icon shows a badge; clicking opens the notification center (the panel design lives in the existing design system).</p>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         12 · SESSION STATE MACHINE
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="statemachine">
+      <h2><span class="num">12</span> Session state machine</h2>
+      <p class="section-lede">
+        Every CC session is in exactly one state at a time. The state determines the agent globe appearance, the status dot in the rail and tab bar, and which sidebar panels render which content.
+      </p>
+
+      <h3>States</h3>
+      <table class="canon-table">
+        <thead><tr><th>State</th><th>Globe</th><th>Status dot</th><th>Trigger</th></tr></thead>
+        <tbody>
+          <tr><td><code>fresh</code></td><td>n/a (no globe)</td><td>idle (gray)</td><td>Project opened, no CC session yet</td></tr>
+          <tr><td><code>idle</code></td><td>Dim · <code>sonnet-4.5 · idle</code></td><td>idle</td><td>Stop hook fired with reason: complete</td></tr>
+          <tr><td><code>thinking</code></td><td>Pulse · <code>sonnet-4.5 · thinking</code> · brain icon</td><td>purple, pulsing</td><td>UserPromptSubmit fired</td></tr>
+          <tr><td><code>running</code></td><td>Active · current tool + target + duration · shimmer</td><td>accent, pulsing</td><td>PreToolUse fired</td></tr>
+          <tr><td><code>awaiting</code></td><td>Warning border · ⚠ awaiting permission · paused</td><td>warning</td><td>PreToolUse returned decision: "request"</td></tr>
+          <tr><td><code>errored</code></td><td>Error border · ✕ tool failed · view</td><td>error</td><td>PostToolUse with success:false or Stop with reason:error</td></tr>
+          <tr><td><code>done</code></td><td>Success badge · 3 s linger</td><td>success briefly</td><td>Stop with reason:complete; auto-transitions to idle after 3 s</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Transitions</h3>
+      <table class="canon-table">
+        <thead><tr><th>From</th><th>To</th><th>Trigger</th></tr></thead>
+        <tbody>
+          <tr><td><code>fresh</code></td><td><code>idle</code></td><td>First user prompt or <code>/init</code></td></tr>
+          <tr><td><code>idle</code></td><td><code>thinking</code></td><td>UserPromptSubmit</td></tr>
+          <tr><td><code>thinking</code></td><td><code>running</code></td><td>PreToolUse</td></tr>
+          <tr><td><code>running</code></td><td><code>running</code></td><td>Next PreToolUse fires (self-loop)</td></tr>
+          <tr><td><code>running</code></td><td><code>awaiting</code></td><td>PreToolUse decision: "request"</td></tr>
+          <tr><td><code>awaiting</code></td><td><code>running</code></td><td>User approves (UI or hotkey Y)</td></tr>
+          <tr><td><code>awaiting</code></td><td><code>errored</code></td><td>User denies (N) or timeout (5 min default)</td></tr>
+          <tr><td><code>running</code></td><td><code>errored</code></td><td>PostToolUse success:false</td></tr>
+          <tr><td><code>running</code></td><td><code>done</code></td><td>Stop reason:complete</td></tr>
+          <tr><td><code>errored</code></td><td><code>idle</code></td><td>User dismisses the error</td></tr>
+          <tr><td><code>done</code></td><td><code>idle</code></td><td>3 s linger expires</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Cross-state UI rules</h3>
+      <ol class="canon-list">
+        <li><strong>Awaiting</strong> blocks the session: no other hook events are processed for that session until resolved.</li>
+        <li><strong>Errored</strong> persists across re-prompts; clearing requires explicit user dismiss or a successful subsequent tool call.</li>
+        <li><strong>Disconnected</strong> (hook stream lost) is a meta-state that overlays any session state: sidebar dims, banner appears, last-known values stay visible but stale.</li>
+      </ol>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         13 · PERMISSION PROMPT
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="permission">
+      <h2><span class="num">13</span> Permission prompt</h2>
+      <p class="section-lede">
+        Triggered when <code>PreToolUse</code> returns <code>decision: "request"</code>. CC pauses until the user resolves.
+        The prompt surfaces in two places simultaneously: a glass overlay inside the terminal pane, and a takeover of the NOW block in the agent sidebar.
+      </p>
+
+      <h3>Terminal overlay</h3>
+      <table class="canon-table">
+        <thead><tr><th>Property</th><th>Spec</th></tr></thead>
+        <tbody>
+          <tr><td>Position</td><td>Absolute · centered horizontally · 24 px from bottom of terminal pane</td></tr>
+          <tr><td>Size</td><td>460 px wide · auto height · max-width <code>calc(100% - 28px)</code></td></tr>
+          <tr><td>Background</td><td><code>var(--glass-overlay)</code> · <code>backdrop-filter: var(--blur-strong)</code></td></tr>
+          <tr><td>Border</td><td>1 px <code>--warning</code></td></tr>
+          <tr><td>Shadow</td><td><code>0 24px 60px -20px rgba(251,191,36,0.4), 0 0 0 1px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.06)</code></td></tr>
+          <tr><td>Animation</td><td><code>slideUp 240 ms ease-out</code></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Content</h3>
+      <ol class="canon-list">
+        <li>Header row: 26 × 26 warning icon tile · "Permission required" + session sub-label · "paused" pill on the right.</li>
+        <li>Command preview (mono, padded, dark bg with 1 px <code>--stroke-faint</code>).</li>
+        <li>One-line reason / scope explanation.</li>
+        <li>Action row (left to right): <strong>Approve</strong> (accent button · ⌨ Y) · <strong>Always · &lt;tool&gt;</strong> (ghost border · ⌨ A) · <strong>Deny</strong> (error-tinted ghost border · ⌨ N).</li>
+      </ol>
+
+      <h3>Sidebar takeover</h3>
+      <p>The NOW block becomes the permission card. Border <code>--warning</code> + warning-tint background + accent glow. The card contains the same actions in a tighter stack: full-width Approve, then a row of Always/Deny.</p>
+      <p>Rest of sidebar visually dims (opacity 0.7) until resolved; users can still scroll and inspect.</p>
+
+      <h3>Levels of approval</h3>
+      <table class="canon-table">
+        <thead><tr><th>Level</th><th>Behavior</th><th>Persists</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Approve once</strong></td><td>Allow this single tool call</td><td>Session only</td></tr>
+          <tr><td><strong>Always for &lt;tool&gt;</strong></td><td>Whitelist this tool for the rest of the session</td><td>Session only</td></tr>
+          <tr><td><strong>Always for project</strong> (v2)</td><td>Whitelist for this project across sessions</td><td>Until revoked in settings</td></tr>
+          <tr><td><strong>Deny</strong></td><td>Reject; CC receives <code>blocked</code> as the tool result</td><td>This call only</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Audit</h3>
+      <p>Every approval/denial writes a line to <code>~/.agent-ide/audit.jsonl</code>:</p>
+      <pre class="canon-code">{
+  "ts": "2026-05-21T14:32:34.812Z",
+  "project": "agent-ide",
+  "session_id": "...",
+  "tool_name": "Bash",
+  "tool_input": { "command": "rm -rf node_modules && pnpm install" },
+  "decision": "approve_once" | "always_tool" | "always_project" | "deny",
+  "reason": "(optional user-provided note)"
+}</pre>
+
+      <h3>Timeout</h3>
+      <p>If the user is away for 5 minutes (no keyboard or mouse activity in the workbench window), the prompt auto-denies. CC receives <code>blocked</code> with reason <code>"timeout"</code>. Configurable in settings.</p>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         14 · EMPTY / ERROR STATES
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="states">
+      <h2><span class="num">14</span> Empty &amp; error states</h2>
+
+      <h3>Sidebar · empty (fresh project · no session yet)</h3>
+      <ul class="canon-list">
+        <li>Header: idle dot · "no session yet" · "waiting for first prompt"</li>
+        <li>Centered CTA: 56 × 56 sparkle tile with dashed accent border + glow.</li>
+        <li>Heading: "Ready when you are"</li>
+        <li>Sub: "Submit a prompt in the terminal and Claude's activity will appear here — tool calls, files touched, diffs."</li>
+        <li>Suggestion pills: <code>/init</code> <code>/plan</code> <code>/test</code></li>
+        <li>Footer: "Hooks subscribed · waiting for events" (faint, with a layers icon)</li>
+      </ul>
+
+      <h3>Sidebar · idle (session live · nothing happening)</h3>
+      <ul class="canon-list">
+        <li>Header: idle dot · "claude · main" · "response sent · idle Ns"</li>
+        <li>NOW block at 0.6 opacity, content "Waiting for next prompt"</li>
+        <li>Context block + Files Touched persist (last known values).</li>
+      </ul>
+
+      <h3>Sidebar · errored (tool failed)</h3>
+      <ul class="canon-list">
+        <li>Header background tint <code>rgba(248,113,113,0.05)</code>.</li>
+        <li>NOW becomes an error card: error-tint bg, error border, <code>TOOL FAILED</code> label, tool glyph + name + target, raw stderr in mono, dark bg.</li>
+        <li>Action row: <code>Re-run</code> · <code>Open log</code>.</li>
+      </ul>
+
+      <h3>Sidebar · disconnected (hook stream offline)</h3>
+      <ul class="canon-list">
+        <li>Header background tint <code>rgba(248,113,113,0.05)</code>.</li>
+        <li>Banner under the header: 1 px error border · spinning ring · "Hook stream disconnected · reconnecting…"</li>
+        <li>All panels dim to 0.5 opacity, <code>pointer-events: none</code>.</li>
+        <li>NOW block sub-text changes to "last update Ns ago".</li>
+      </ul>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         15 · THEMES
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="themes">
+      <h2><span class="num">15</span> Themes</h2>
+      <p class="section-lede">
+        Three themes are in scope for v1: <strong>Modern</strong> (default · indigo glass), <strong>Warp</strong> (amber sand · glass), <strong>Retro</strong> (CRT phosphor · NOT glass — opaque matte). Theme switches modify the wash, accent, stroke layers and (for Retro) the material itself.
+      </p>
+
+      <h3>Modern (default)</h3>
+      <div class="theme-grid">
+        <div class="swatch" style="background:#0a0b14"><code>--wash-1</code> <span>#0a0b14</span></div>
+        <div class="swatch" style="background:#0d0e1b"><code>--wash-2</code> <span>#0d0e1b</span></div>
+        <div class="swatch" style="background:#818cf8;color:#0a0b14"><code>--accent</code> <span>#818cf8</span></div>
+        <div class="swatch" style="background:#a5b4fc;color:#0a0b14"><code>--accent-hi</code> <span>#a5b4fc</span></div>
+        <div class="swatch" style="background:#e8eaf6;color:#0a0b14"><code>--ink</code> <span>#e8eaf6</span></div>
+        <div class="swatch" style="background:#34d399;color:#0a0b14"><code>--success</code> <span>#34d399</span></div>
+        <div class="swatch" style="background:#fbbf24;color:#0a0b14"><code>--warning</code> <span>#fbbf24</span></div>
+        <div class="swatch" style="background:#f87171;color:#0a0b14"><code>--error</code> <span>#f87171</span></div>
+        <div class="swatch" style="background:#c084fc;color:#0a0b14"><code>--purple</code> <span>#c084fc</span></div>
+      </div>
+
+      <h3>Warp</h3>
+      <div class="theme-grid">
+        <div class="swatch" style="background:#16100a"><code>--wash-1</code> <span>#16100a</span></div>
+        <div class="swatch" style="background:#1b140c"><code>--wash-2</code> <span>#1b140c</span></div>
+        <div class="swatch" style="background:#f97316;color:#16100a"><code>--accent</code> <span>#f97316</span></div>
+        <div class="swatch" style="background:#fb923c;color:#16100a"><code>--accent-hi</code> <span>#fb923c</span></div>
+        <div class="swatch" style="background:#f0e6d3;color:#16100a"><code>--ink</code> <span>#f0e6d3</span></div>
+        <div class="swatch" style="background:#86efac;color:#16100a"><code>--success</code> <span>#86efac</span></div>
+        <div class="swatch" style="background:#fbbf24;color:#16100a"><code>--warning</code> <span>#fbbf24</span></div>
+        <div class="swatch" style="background:#f87171;color:#16100a"><code>--error</code> <span>#f87171</span></div>
+        <div class="swatch" style="background:#d4729a;color:#16100a"><code>--purple</code> <span>#d4729a</span></div>
+      </div>
+
+      <h3>Retro (CRT · matte · NOT glass)</h3>
+      <p>The only theme that pivots off glass. Materials become opaque (panel opacities 0.85–0.95). Add CRT scanlines (1 px stripes every 3 px at <code>rgba(57,255,90,0.03)</code> overlay). Drop most shadows; keep the green phosphor glow on accents.</p>
+      <div class="theme-grid">
+        <div class="swatch" style="background:#050a07"><code>--wash-1</code> <span>#050a07</span></div>
+        <div class="swatch" style="background:#060f0a"><code>--wash-2</code> <span>#060f0a</span></div>
+        <div class="swatch" style="background:#39ff5a;color:#050a07"><code>--accent</code> <span>#39ff5a</span></div>
+        <div class="swatch" style="background:#5fffa0;color:#050a07"><code>--accent-hi</code> <span>#5fffa0</span></div>
+        <div class="swatch" style="background:#39ff5a;color:#050a07"><code>--ink</code> <span>#39ff5a</span></div>
+        <div class="swatch" style="background:#39ff5a;color:#050a07"><code>--success</code> <span>#39ff5a</span></div>
+        <div class="swatch" style="background:#e5c07b;color:#050a07"><code>--warning</code> <span>#e5c07b</span></div>
+        <div class="swatch" style="background:#ff4757;color:#050a07"><code>--error</code> <span>#ff4757</span></div>
+        <div class="swatch" style="background:#c678a0;color:#050a07"><code>--purple</code> <span>#c678a0</span></div>
+      </div>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         16 · RESPONSIVE COLLAPSE
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="responsive">
+      <h2><span class="num">16</span> Responsive collapse</h2>
+      <p class="section-lede">Below 1760 px the workbench progressively sheds chrome. The terminal pane is the last to give up space.</p>
+
+      <h3>Breakpoints</h3>
+      <table class="canon-table">
+        <thead><tr><th>Width</th><th>Label</th><th>Layout</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>≥ 1760</code></td><td>Full</td><td>project · inner · centre · agent (348)</td><td>The hero design as drawn.</td></tr>
+          <tr><td><code>1440 – 1759</code></td><td>Compact</td><td>project · inner · centre · agent (300)</td><td>Latest Hunk collapses to one-line indicator. Click expands.</td></tr>
+          <tr><td><code>1180 – 1439</code></td><td>Unified</td><td>unified rail · centre · agent (300)</td><td>Project rail merges into inner.</td></tr>
+          <tr><td><code>&lt; 1180</code></td><td>HUD</td><td>unified rail · centre · floating HUD</td><td>Agent rail becomes a corner-pinned HUD pill.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Collapse order (highest priority kept longest)</h3>
+      <ol class="canon-list">
+        <li><strong>Terminal</strong> never goes below 720 × 420.</li>
+        <li>Latest Hunk diff (sidebar §4) collapses first.</li>
+        <li>Agent rail narrows from 348 → 300.</li>
+        <li>Project rail merges into inner (unified mode).</li>
+        <li>Agent rail becomes floating HUD.</li>
+        <li>Inner rail becomes a drawer (slide-in).</li>
+      </ol>
+
+      <h3>Tabs hold their ground</h3>
+      <p>Terminal tab bars always render. Tabs may shrink to their status dot + project initial, but never disappear. They're the user's primary multi-session affordance.</p>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         17 · ASSETS & FILE STRUCTURE
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="assets">
+      <h2><span class="num">17</span> Assets &amp; file structure</h2>
+
+      <h3>Fonts</h3>
+      <p>All shipped under <code>assets/fonts/</code> as woff2 per the existing convention in <code>src/renderer/styles/fonts.css</code>.</p>
+      <ul class="canon-list">
+        <li><strong>Inter</strong> · weights 400, 500, 600, 700 · UI in Modern theme.</li>
+        <li><strong>Geist Mono</strong> · 400, 500, 700 · code/terminal in Modern theme.</li>
+        <li><strong>JetBrains Mono</strong> · 400, 500, 700 · Retro theme + fallback.</li>
+        <li><strong>Hack</strong> · 400, 700 + italic · Warp theme.</li>
+        <li><strong>Fira Code</strong> · 400, 500, 700 · Warp theme fallback.</li>
+        <li><strong>IBM Plex Sans / Mono</strong> · Kiro theme (not in v1 scope but bundled).</li>
+      </ul>
+
+      <h3>Icons</h3>
+      <p>The mockup uses a small inline SVG set (Lucide-style, 1.6–1.7 px stroke, 14–16 px). For implementation, either lift the inline set into a single <code>Icon</code> component OR import the equivalent Lucide icons. Names used: <code>Terminal · Folder · File · Chevron · ChevronD · Plus · X · Search · Settings · Edit · Read · Bash · Grep · Glob · Write · Web · Brain · Git · Branch · Bolt · Sparkle · Layers · Bell · Box · Stop · Play · Pause · Clock · Dollar · Split · Maximize · Eye · Pin · Check · Diamond</code>.</p>
+      <p>Window control icons are drawn inline (10 × 10 SVG with 1 px lines), not Lucide.</p>
+
+      <h3>Suggested file structure</h3>
+      <pre class="canon-code">src/renderer/
+├── styles/
+│   ├── tokens.css          ← merge wash/glass/stroke tokens from §03
+│   ├── fonts.css           ← already exists
+│   └── globals.css         ← keep existing structure; add glass adjustments
+├── themes/
+│   ├── modern.ts           ← default; matches §15 Modern table
+│   ├── warp.ts             ← §15 Warp
+│   └── retro.ts            ← §15 Retro (set effects.scanlines = true)
+├── components/
+│   ├── Workbench/
+│   │   ├── Workbench.tsx        ← top assembly (TitleBar + Rails + Centre + AgentSidebar + StatusBar)
+│   │   ├── TitleBar/
+│   │   │   ├── TitleBar.tsx
+│   │   │   ├── TitleChip.tsx
+│   │   │   ├── AgentGlobe.tsx
+│   │   │   └── WindowControls.tsx
+│   │   ├── Rails/
+│   │   │   ├── ProjectRail.tsx
+│   │   │   ├── InnerRail.tsx
+│   │   │   ├── UnifiedRail.tsx
+│   │   │   └── FileNode.tsx
+│   │   ├── Terminals/
+│   │   │   ├── CenterPane.tsx
+│   │   │   ├── TerminalShell.tsx       ← tabs + body wrapper
+│   │   │   └── (CC TUI mounts inside via xterm)
+│   │   ├── AgentSidebar/
+│   │   │   ├── AgentSidebar.tsx
+│   │   │   ├── NowBlock.tsx
+│   │   │   ├── ContextBlock.tsx
+│   │   │   ├── FilesTouched.tsx
+│   │   │   ├── LatestHunk.tsx
+│   │   │   └── HookTimeline.tsx
+│   │   ├── PermissionPrompt/
+│   │   │   ├── TerminalOverlay.tsx
+│   │   │   └── SidebarTakeover.tsx
+│   │   └── StatusBar.tsx
+│   └── shared/
+│       └── Icon.tsx
+└── hooks/
+    ├── useHookSubscription.ts   ← subscribes to hook stream; dispatches by event_name
+    ├── useSessionState.ts       ← state machine from §12
+    └── useTheme.ts              ← already exists</pre>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         18 · OUT OF SCOPE
+         ═════════════════════════════════════════════════════════════════ -->
+    <section id="outofscope">
+      <h2><span class="num">18</span> Out of scope · what we explicitly removed</h2>
+      <ul class="canon-list">
+        <li><strong>Dispatch screen</strong> (multi-session launcher). Discarded — user does not use it. <code>DispatchScreen.tsx</code> and its styles can be deleted along with related routes.</li>
+        <li><strong>Chat-only shell</strong>. The old chat UI is gone. Terminal is now the primary input surface.</li>
+        <li><strong>macOS traffic lights</strong>. This is a Windows-only build. Window controls are the Win10/11 minimize / maximize / close set, on the far right, 46 × 40 px, with the Windows red (<code>#e81123</code>) close-hover.</li>
+        <li><strong>⌘ symbols anywhere</strong>. Use <code>Ctrl</code> for keyboard shortcut labels.</li>
+        <li><strong>Scrollback parsing of the CC TUI</strong>. Replaced wholesale by hook subscriptions (§11). The old <code>CommandBlockOverlayBody.tsx</code> regex logic must be removed.</li>
+        <li><strong>Cards-only terminal treatment</strong> (option D in the canvas). Explored but not selected. Cards in the sidebar carry the rich-UI weight; the terminal stays a real terminal.</li>
+        <li><strong>Floating HUD and bottom dock</strong> for the agent surface (canvas options B and C). Not in v1. The right rail is canonical. (HUD returns as the &lt;1180 px responsive fallback in §16.)</li>
+      </ul>
+    </section>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         Footer
+         ═════════════════════════════════════════════════════════════════ -->
+    <footer>
+      <div class="footer-line">
+        <div>
+          <strong>Agent IDE · Workbench Canon · v1.0</strong><br>
+          <span>This document and <code>workbench.html</code> are paired truth. When they disagree, both should be amended back into alignment.</span>
+        </div>
+        <div class="footer-meta">
+          <div>Target: <strong>Windows</strong></div>
+          <div>Material: <strong>Glass (Modern) · Matte (Retro)</strong></div>
+        </div>
+      </div>
+    </footer>
+
+  </main>
+</div>
+
+</body>
+</html>
