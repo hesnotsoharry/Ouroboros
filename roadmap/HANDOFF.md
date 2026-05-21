@@ -4,6 +4,17 @@
 
 ---
 
+## 🔼 UPDATE 2026-05-21 (latest) — Workbench overhaul kicked off; Wave 0 SHIPPED to master
+
+The **workbench overhaul** is the new active initiative. Design canon lives in-repo at `design-system/` (`canon.html` = 18-section written spec; `workbench-tokens.css` = real token values; `workbench-*.jsx` = rendered mockup). Canon-vs-codebase reconciliation: `roadmap/discovery/workbench-overhaul-reconciliation.md` (decisions resolved: **replace everything** → single canon shell at end state; keep all 7 themes, full treatment Modern/Warp/Retro; delete DispatchScreen + "Explain error" at cutover). 8-wave sequence (0→7) in that doc.
+
+- **Wave 0 — token foundations: SHIPPED** to `master` (commits `b4fbc855` docs + `c253cb2e` impl), tag **`v2.21.0`** pushed. Renderer-only. (1) Canon-name alias block in `tokens.css` (29 net-new names; divergences marked). (2) Opt-in theme-driven terminal "tinted well" — new `Theme.terminalWell`/`terminalCanvasOpacity`, wired in `useTheme.tokens.ts`; Modern terminal now translucent; default-preserving for the 4 untouched themes. 6 bridge tests incl. a default-preservation regression guard; phase-reviewer PASS. Plan/ADR/result in `roadmap/wave-0-workbench-token-foundations/`.
+- **Wave 0 NOT done:** rendered tinted-well terminal **not visually smoke-verified** — `/ui-smoke 0` skipped; Cole verifies on next `npm run dev` (Modern terminal should read as a translucent indigo well, not opaque black). `/audit-followups` + `/promote-vendor-lessons` skipped (no follow-ups, no vendor).
+- **Next action:** Wave 1 — static workbench shell (titlebar + Agent Globe placeholder + dual/unified rails + stacked terminal frame + agent-sidebar frame + statusbar) with mock data, behind a flag. See the reconciliation doc's wave sequence.
+- **Branch note:** Wave 0 landed directly on `master` per Cole's call. The `fix/crash-log-settings-freeze` branch (PR #10) is **untouched and intact** — its 2 commits are preserved; return to it for the PR-#10 merge on 2026-06-01.
+
+---
+
 ## 🔼 UPDATE 2026-05-21 — backlog pushed; freeze fix in PR #10; Wave 100 parked
 
 Most of this HANDOFF below is now historical. Current state:
