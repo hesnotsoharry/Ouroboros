@@ -194,3 +194,67 @@
   --purple:         var(--palette-purple);
   --purple-muted:   var(--palette-purple-muted);
 }
+
+/* ─── Canon aliases (workbench overhaul) ──────────────────────────────────────
+ * Short-name tokens authored by the design canon (design-system/workbench-tokens.css
+ * and canon.html §03). Workbench components in later waves author against these.
+ *
+ * Strategy (ADR Decision 1): aligned names → var() reference (inherits bridge
+ * per-theme writes for free). Divergent names → canon literal + marker comment.
+ *
+ * DO NOT merge into the legacy compat block above — separate lifecycles.
+ * DO NOT redefine any name already in the legacy block (--accent, --accent-hover,
+ * --accent-muted, --success, --warning, --error, --purple, --purple-muted,
+ * --bg*, --text, --border*, --selection, --focus-ring).
+ * ─────────────────────────────────────────────────────────────────────────── */
+:root {
+
+  /* ── Aligned aliases: resolve to semantic tokens (theme-reactive via bridge) */
+
+  --accent-hi:      var(--interactive-hover);
+  --accent-tint:    var(--interactive-muted);         /* ≈ rgba(129,140,248,0.15); canon wants 0.14 — close enough, no literal override */
+
+  --ink:            var(--text-primary);
+  --ink-2:          var(--text-secondary);
+  --ink-3:          var(--text-muted);                /* canon-divergence: bridge hardcodes --text-muted #c0c0d4 (useTheme.tokens.ts:73), canon ink-3 is #7a7f96; reconcile semantic token later */
+  --ink-4:          var(--text-faint);                /* canon-divergence: bridge hardcodes #a0a0b8, canon ink-4 #4d5167; reconcile semantic token later */
+  --ink-on-accent:  var(--text-on-accent);            /* canon-divergence: --text-on-accent = colors.bg, may be transparent for glass themes; canon wants #0a0b14; verify when consumed */
+
+  --glass-panel:    var(--material-panel);
+  --glass-overlay:  var(--surface-overlay);
+  --glass-rail:     var(--surface-panel);             /* note: --surface-panel is forced transparent at runtime (glass); if a rail needs opacity use --material-panel instead — flag when consumed */
+
+  /* ── Divergent / genuinely new: literal values with marker comments */
+
+  --glass-panel-hi: rgba(28, 30, 50, 0.55);          /* canon-divergence: --material-panel-raised is a gradient (tokens.css:120), canon wants a solid raised panel */
+  --stroke-strong:  rgba(255, 255, 255, 0.12);        /* new; stroke-inner/faint already exist as material tokens (tokens.css:121-122) */
+
+  --info:           #60a5fa;                          /* canon-divergence: --status-info aliases to accent (useTheme.tokens.ts:87), canon info is blue */
+
+  --success-tint:   rgba(52, 211, 153, 0.14);
+  --warning-tint:   rgba(251, 191, 36, 0.14);
+  --error-tint:     rgba(248, 113, 113, 0.14);
+  --info-tint:      rgba(96, 165, 250, 0.14);
+  --purple-tint:    rgba(192, 132, 252, 0.16);
+
+  /* --purple diverges (legacy #a78bfa vs canon #c084fc) — reconcile later, not overridden here */
+
+  --blur-strong:    blur(28px) saturate(160%);        /* canon direct; distinct from --material-blur (24px) */
+  --blur-soft:      blur(16px) saturate(130%);
+
+  /* ── Radii: constants, not theme-reactive (canon §05) */
+
+  --r-xs:   4px;
+  --r-sm:   6px;
+  --r-md:   10px;
+  --r-lg:   12px;
+  --r-xl:   16px;
+  --r-pill: 9999px;
+
+  /* ── Theme-driven tokens: MODERN defaults here; Phase 2 makes per-theme via applyComponentTokens */
+  /* default; theme-driven via applyComponentTokens in Phase 2 */
+
+  --accent-edge:    rgba(129, 140, 248, 0.35);
+  --accent-glow:    0 2px 14px -2px rgba(129, 140, 248, 0.5);
+  --term-prompt-bg: rgba(20, 22, 36, 0.45);
+}

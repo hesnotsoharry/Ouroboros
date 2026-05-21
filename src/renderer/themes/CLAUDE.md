@@ -9,7 +9,7 @@
 
 | File                              | Role                                                                                                                                                        |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `types.ts`                        | `Theme` interface — colors, fonts, optional effects (`scanlines`, `glowText`). Material grammar (blur, radius, stroke, wash, glows) lives in `material.ts`, not on the theme. |
+| `types.ts`                        | `Theme` interface — colors, fonts, optional effects (`scanlines`, `glowText`), and optional workbench terminal-well fields (`terminalWell`, `terminalCanvasOpacity` — Wave 0). Material grammar (blur, radius, stroke, wash, glows) lives in `material.ts`, not on the theme. |
 | `material.ts`                     | Wave 45 material variants — `MATERIAL_VARIANTS = { vapor, prism, warp }`. User-selected via `config.materialVariant`; themes paint accent/text on top.       |
 | `index.ts`                        | Theme registry — exports `themes` record, `getTheme()`, `themeList`, and extension theme registration (`registerExtensionTheme`/`unregisterExtensionTheme`) |
 | `retro.ts`                        | Green-on-black CRT theme — only theme using `effects` (scanlines + glow). Pairs naturally with the Warp material variant.                                   |
@@ -48,3 +48,5 @@ Every theme must define all 25 color tokens in `Theme.colors`. The tokens map to
 - `themeList` deliberately excludes `customTheme` — it only shows in the picker when the user has saved custom colors
 - Theme `id` must match the key in the `themes` record (e.g. `id: 'high-contrast'` → `themes['high-contrast']`)
 - `effects` is only used by `retro` theme — the renderer checks `theme.effects?.scanlines` to conditionally apply CSS overlay
+- **Tinted-well terminal is opt-in (Wave 0).** `applyComponentTokens` (in `../hooks/useTheme.tokens.ts`) writes `--term-bg` ← `theme.terminalWell ?? 'rgba(0,0,0,0)'` and `--terminal-canvas-opacity` ← `theme.terminalCanvasOpacity ?? 1`. A theme that sets neither field keeps the always-on-glass default (transparent `--term-bg`, opaque canvas) — do NOT remove the `??` fallbacks; the four themes without these fields (cursor/kiro/light/high-contrast) depend on them, and `useTheme.tokens.test.ts` will go red if you do. Modern/Warp/Retro set `terminalWell`; only Modern sets `terminalCanvasOpacity` (0.86).
+- **Canon-name aliases live in `../styles/tokens.css`**, not here — a labeled "Canon aliases (workbench overhaul)" `:root` block. Several carry `canon-divergence` markers where the canon value differs from the nearest semantic token (`--info`, `--ink-3/-4`, `--glass-panel-hi`, `--purple`); a later token-cleanup pass reconciles them.

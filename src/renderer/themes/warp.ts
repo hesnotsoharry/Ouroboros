@@ -32,4 +32,5 @@ export const warpTheme: Theme = {
     termCursor: '#f97316',
     termSelection: 'rgba(249, 115, 22, 0.3)',
   },
+  terminalWell: 'rgba(14, 9, 4, 0.7)',
 };

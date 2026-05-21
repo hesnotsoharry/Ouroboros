@@ -92,7 +92,11 @@ export function applySemanticTokens(root: HTMLElement, colors: Theme['colors']):
   root.style.setProperty('--surface-chat', 'var(--material-panel)');
 }
 
-export function applyComponentTokens(root: HTMLElement, colors: Theme['colors']): void {
+export function applyComponentTokens(
+  root: HTMLElement,
+  colors: Theme['colors'],
+  terminal: { well?: string; canvasOpacity?: number } = {},
+): void {
   // Wave 45 Phase C — active tab inherits the material variant's editor-bg so
   // the tab visually "merges" with the editor body. Inactive tabs stay
   // transparent (showing the title-bar / panel behind).
@@ -102,7 +106,8 @@ export function applyComponentTokens(root: HTMLElement, colors: Theme['colors'])
   root.style.setProperty('--tab-active-border', colors.accent);
   root.style.setProperty('--composer-bg', 'transparent');
   root.style.setProperty('--composer-border', 'rgba(255, 255, 255, 0.08)');
-  root.style.setProperty('--term-bg', 'rgba(0,0,0,0)');
+  root.style.setProperty('--term-bg', terminal.well ?? 'rgba(0,0,0,0)');
+  root.style.setProperty('--terminal-canvas-opacity', String(terminal.canvasOpacity ?? 1));
   root.style.setProperty('--term-fg', colors.termFg);
   root.style.setProperty('--term-cursor', colors.termCursor);
   root.style.setProperty('--term-selection', colors.termSelection);
@@ -215,6 +220,8 @@ interface EffectiveTheme {
   fontFamily: Theme['fontFamily'];
   effects: Theme['effects'] | undefined;
   id: string;
+  terminalWell: string | undefined;
+  terminalCanvasOpacity: number | undefined;
 }
 
 function resolveEffectiveTheme(
@@ -226,6 +233,8 @@ function resolveEffectiveTheme(
     fontFamily: theme?.fontFamily ?? FALLBACK_FONTS,
     effects: theme?.effects,
     id: theme?.id ?? 'none',
+    terminalWell: theme?.terminalWell,
+    terminalCanvasOpacity: theme?.terminalCanvasOpacity,
   };
 }
 
@@ -247,7 +256,10 @@ export function applyThemeToDom(
   if (theme) applyPaletteTokens(root, theme.colors);
   applyMaterialTokens(root, materialVariant);
   applySemanticTokens(root, eff.colors);
-  applyComponentTokens(root, eff.colors);
+  applyComponentTokens(root, eff.colors, {
+    well: eff.terminalWell,
+    canvasOpacity: eff.terminalCanvasOpacity,
+  });
   applyDerivedTokens(root, eff.colors);
   root.style.setProperty('--glass-dim', buildGlassDim(showBgGradient, glassOpacity));
   root.style.setProperty('--font-mono', eff.fontFamily.mono);

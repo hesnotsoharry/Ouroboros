@@ -36,4 +36,5 @@ export const retroTheme: Theme = {
     scanlines: true,
     glowText: true,
   },
+  terminalWell: 'rgba(4, 10, 6, 0.96)',
 };

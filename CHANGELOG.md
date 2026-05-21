@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.21.0] - 2026-05-21
+
+### Added
+- **Wave 0 — Workbench token foundations.** First wave of the workbench overhaul (`roadmap/discovery/workbench-overhaul-reconciliation.md`). Establishes the token grammar later workbench waves build on. Full story in `roadmap/wave-0-workbench-token-foundations/wave-0-result.md`.
+  - **Canon token aliases** — a labeled alias block in `src/renderer/styles/tokens.css` exposing the design canon's short names (`--accent-hi`, `--ink`/`--ink-2`/…, `--glass-panel`, `--stroke-strong`, `--r-xs`…`--r-pill`, etc.). Aligned names resolve to the existing semantic tokens (theme-reactive); divergent canon values are defined with `canon-divergence` markers for a later reconciliation. No component consumes them yet — this is the grammar workbench components will author against.
+  - **Theme-driven terminal "tinted well."** New optional `Theme.terminalWell` + `Theme.terminalCanvasOpacity` fields, wired through the theme bridge. Modern now renders its terminal as a translucent indigo well (`--term-bg: rgba(6,8,16,0.62)`, canvas opacity `0.86`) instead of opaque black; Warp and Retro get their own well tints. Opt-in and default-preserving — themes that set neither field keep the prior always-on-glass behavior (`--term-bg: rgba(0,0,0,0)`, opacity `1`).
+
+### Notes
+- `--accent-edge`/`--accent-glow`/`--term-prompt-bg` carry static Modern defaults; per-theme wiring is deferred to the themes wave.
+- The rendered tinted-well terminal is covered by bridge unit tests but not yet visually smoke-verified in a live IDE.
+
 ## [2.20.0] - 2026-05-20
 
 ### Added
