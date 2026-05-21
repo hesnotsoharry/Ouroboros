@@ -21,7 +21,7 @@ vi.mock('fs/promises', () => ({
   },
 }));
 
-vi.mock('../utils', () => ({
+vi.mock('../agentChat/utils', () => ({
   getErrorMessage: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }));
 
