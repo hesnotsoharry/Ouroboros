@@ -1,9 +1,10 @@
 /**
  * useTerminalSetup.lifecycle — Phase 1 acceptance tests
  *
- * These tests verify the Wave 88 Phase 1 contracts:
+ * These tests verify the terminal lifecycle contracts:
  *   1. Addon load-order matches the manifest (pre-open before term.open(), post-open after)
- *   2. WebGL failure is non-fatal; webglFailedRef is set and no throw propagates
+ *   2. WebGL addon is NOT in the manifest (DOM renderer is the sole renderer; WebGL dropped
+ *      per xterm #1004 — WebGL composites the canvas opaque regardless of allowTransparency)
  *   3. Required addon failure throws; optional addon failure logs and continues
  *   4. getCellHeight uses the public terminal.dimensions API (no _core access)
  *
@@ -20,10 +21,9 @@ import { TERMINAL_ADDONS } from './terminalAddonManifest';
 // ── Manifest shape ────────────────────────────────────────────────────────────
 
 describe('TERMINAL_ADDONS manifest', () => {
-  it('declares WebGL with loadOrder post-open per Wave 88 Decision 1', () => {
+  it('does not declare WebGL (DOM renderer is sole renderer; WebGL dropped per xterm #1004)', () => {
     const webgl = TERMINAL_ADDONS.find((e) => e.packageName === '@xterm/addon-webgl');
-    expect(webgl).toBeDefined();
-    expect(webgl?.loadOrder).toBe('post-open');
+    expect(webgl).toBeUndefined();
   });
 
   it('declares FitAddon with loadOrder pre-open', () => {
@@ -41,9 +41,12 @@ describe('TERMINAL_ADDONS manifest', () => {
     expect(fit?.required).toBe(true);
   });
 
-  it('marks WebGL as not required (canvas fallback acceptable)', () => {
-    const webgl = TERMINAL_ADDONS.find((e) => e.packageName === '@xterm/addon-webgl');
-    expect(webgl?.required).toBe(false);
+  it('marks all post-open addons as not required (each has an acceptable degraded path)', () => {
+    const postOpen = TERMINAL_ADDONS.filter((e) => e.loadOrder === 'post-open');
+    expect(postOpen.length).toBeGreaterThan(0);
+    for (const entry of postOpen) {
+      expect(entry.required).toBe(false);
+    }
   });
 
   it('has no unknown loadOrder values', () => {

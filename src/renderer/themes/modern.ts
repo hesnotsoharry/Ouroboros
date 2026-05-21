@@ -32,6 +32,6 @@ export const modernTheme: Theme = {
     termCursor: '#818cf8',
     termSelection: 'rgba(129, 140, 248, 0.3)',
   },
-  terminalWell: 'rgba(6, 8, 16, 0.62)',
+  terminalWell: 'rgba(6, 8, 16, 0.35)',
   terminalCanvasOpacity: 0.86,
 };

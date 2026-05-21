@@ -6,7 +6,6 @@ import { SearchAddon } from '@xterm/addon-search';
 import { SerializeAddon } from '@xterm/addon-serialize';
 import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import log from 'electron-log/renderer';
 
@@ -61,20 +60,17 @@ function createTerminal(
     cursorInactiveStyle: 'none' as const,
     scrollback: scrollback ?? 50000,
     allowProposedApi: true,
-    // allowTransparency MUST stay false: the xterm canvas background is opaque
-    // (buildXtermTheme reads --palette-term-bg = #0c0c0e), and the glass tint is
-    // applied via whole-canvas CSS opacity (--terminal-canvas-opacity), not xterm
-    // internal transparency. Setting this true re-enters @xterm/addon-webgl 0.19.0's
-    // transparency render path, which fails to clear stale glyphs during high-throughput
-    // TUI streaming → ghost/trailing cursor (focus-gated: visible only while window
-    // focused, since cursorInactiveStyle:'none' blanks the cursor on blur). Same trigger
-    // as the #5847 atlas-merge bug. Industry pattern (VS Code, Warp, Hyper): opaque WebGL
-    // canvas + CSS opacity for tint, never allowTransparency. See Terminal/CLAUDE.md.
-    allowTransparency: false,
+    // allowTransparency:true enables the tinted-well canvas for themes that set a well
+    // (e.g. Modern: rgba(6,8,16,0.62)). The DOM renderer (now the sole renderer) honours
+    // this flag correctly — transparency shows through to the glass/Mica behind.
+    // The WebGL renderer ignored it (composited opaque per xterm #1004), which is why
+    // WebGL was dropped. Themes WITHOUT a well (cursor, kiro, light, high-contrast)
+    // resolve --term-canvas-bg to --palette-term-bg (#0c0c0e, opaque) → no change.
+    // RISK: Claude TUI fill-bg cells may composite against Mica with a translucent canvas.
+    // Revert to false if live verification shows broken status boxes (Wave 95 ADR D4).
+    allowTransparency: true,
     theme: buildXtermTheme(),
   };
-  // [trace:xterm-init] Logs the exact Terminal construction options so future
-  // cursor / rendering reproductions can verify which flags were active.
   log.info('[xterm-init] createTerminal', {
     cursorBlink: opts.cursorBlink,
     cursorStyle: opts.cursorStyle,
@@ -122,39 +118,12 @@ function buildPreOpenAddon(packageName: string): FitAddon | SearchAddon | WebLin
 
 // ── Post-open addon loading ───────────────────────────────────────────────────
 
-function loadWebGLAddon(context: TerminalSetupLifecycleContext, term: Terminal): void {
-  if (context.refs.webglFailedRef.current) return;
-  try {
-    const webgl = new WebglAddon();
-    // [trace:xterm-init] Confirms WebGL addon loaded post-open (v6 pattern).
-    // If you see ghost cursors / glyph ghosting, check this log relative to
-    // the createTerminal log above — both should appear before any PTY data.
-    log.info('[xterm-init] WebglAddon loaded post-open', {
-      sessionId: context.sessionId,
-      webglActive: true,
-    });
-    webgl.onContextLoss(() => {
-      log.warn('[terminal:webgl] context loss — canvas renderer takes over');
-      // Hide the WebGL canvas immediately so the DOM renderer's elements show through
-      // without a white flash. The browser blanks the GL canvas synchronously on
-      // context loss before any JS handler fires; hiding it here prevents that blank
-      // canvas from being visible during the dispose() → setRenderer() round-trip.
-      // querySelector('canvas') is unambiguous here: only WebglRenderer appends a
-      // <canvas> to screenElement; DomRenderer uses divs; OverviewRuler and
-      // addon-image canvases are inserted elsewhere in the DOM.
-      const webglCanvas = term.element?.querySelector('canvas');
-      if (webglCanvas) (webglCanvas as HTMLElement).style.display = 'none';
-      webgl.dispose();
-      context.refs.webglAddonRef.current = null;
-      context.refs.webglFailedRef.current = true;
-    });
-    term.loadAddon(webgl);
-    context.refs.webglAddonRef.current = webgl;
-  } catch (err) {
-    log.warn('[terminal:webgl] failed to load — canvas renderer will be used', err);
-    context.refs.webglFailedRef.current = true;
-  }
-}
+// DOM renderer is now the sole renderer (transparency support for glass themes +
+// single-renderer simplicity). WebGL was dropped because xterm's WebGL renderer
+// composites the canvas opaque regardless of allowTransparency (xterm #1004);
+// the DOM renderer honours it correctly, enabling the tinted-well/glass aesthetic.
+// The @xterm/addon-webgl package + patches/ remain installed but are not loaded —
+// removal is tracked in roadmap/follow-ups/2026-05-21-remove-xterm-webgl-dependency.md.
 
 function buildPostOpenAddon(
   packageName: string,
@@ -192,10 +161,6 @@ function buildPostOpenAddon(
 function loadPostOpenAddons(context: TerminalSetupLifecycleContext, term: Terminal): void {
   for (const entry of TERMINAL_ADDONS.filter((e) => e.loadOrder === 'post-open')) {
     try {
-      if (entry.packageName === '@xterm/addon-webgl') {
-        loadWebGLAddon(context, term);
-        continue;
-      }
       const instance = buildPostOpenAddon(entry.packageName, context, term);
       if (instance) term.loadAddon(instance);
     } catch (err) {

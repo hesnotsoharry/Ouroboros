@@ -11,7 +11,6 @@ const EXPECTED_PACKAGES = [
   '@xterm/addon-serialize',
   '@xterm/addon-unicode-graphemes',
   '@xterm/addon-web-links',
-  '@xterm/addon-webgl',
 ] as const;
 
 describe('terminalAddonManifest', () => {
@@ -30,10 +29,9 @@ describe('terminalAddonManifest', () => {
     }
   });
 
-  it('marks WebGL as post-open per Wave 88 Decision 1', () => {
+  it('does not include WebGL addon (DOM renderer is sole renderer; WebGL dropped per xterm #1004)', () => {
     const webgl = TERMINAL_ADDONS.find((a) => a.packageName === '@xterm/addon-webgl');
-    expect(webgl).toBeDefined();
-    expect(webgl?.loadOrder).toBe('post-open');
+    expect(webgl).toBeUndefined();
   });
 
   it('marks fit and search as required', () => {

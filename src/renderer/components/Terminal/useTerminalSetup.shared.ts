@@ -2,7 +2,6 @@ import type { FitAddon } from '@xterm/addon-fit';
 import type { ProgressAddon } from '@xterm/addon-progress';
 import type { SearchAddon } from '@xterm/addon-search';
 import type { SerializeAddon } from '@xterm/addon-serialize';
-import type { WebglAddon } from '@xterm/addon-webgl';
 import type { Terminal } from '@xterm/xterm';
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 
@@ -21,8 +20,6 @@ export interface TerminalRefs {
   progressAddonRef: MutableRefObject<ProgressAddon | null>;
   serializeAddonRef: MutableRefObject<SerializeAddon | null>;
   isReadyRef: MutableRefObject<boolean>;
-  webglAddonRef: MutableRefObject<WebglAddon | null>;
-  webglFailedRef: MutableRefObject<boolean>;
 }
 
 export interface SetupCallbacks {

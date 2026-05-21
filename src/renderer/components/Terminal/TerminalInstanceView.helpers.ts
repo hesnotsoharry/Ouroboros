@@ -22,14 +22,15 @@ export const CONTAINER_STYLE: React.CSSProperties = {
   flex: '1 1 0',
   minHeight: 0,
   overflow: 'hidden',
-  // Opaque terminal background behind/around the xterm canvas. xterm only paints
-  // whole character rows, so the sub-row remainder at the bottom of the wrapper
-  // would otherwise show the glass-transparent ROOT background — reading as a
-  // "gap" between stacked terminals and making the bottom-anchored toolbar appear
-  // to straddle a black/glass seam. Matching the canvas's opaque colour fills
-  // that strip. Composited at --terminal-canvas-opacity so tinted-glass themes
-  // (opacity < 1) tint the wrapper identically to the canvas.
-  backgroundColor: 'var(--palette-term-bg, #0c0c0e)',
+  // Terminal background behind/around the xterm canvas. xterm only paints whole
+  // character rows, so the sub-row remainder at the bottom of the wrapper would
+  // otherwise show the glass-transparent ROOT background — reading as a "gap"
+  // between stacked terminals and making the bottom-anchored toolbar appear to
+  // straddle a black/glass seam. Uses the same fallback chain as the canvas token
+  // so well themes get the translucent tint (glass shows through) and non-well
+  // themes stay opaque. Composited at --terminal-canvas-opacity so tinted-glass
+  // themes (opacity < 1) tint the wrapper identically to the canvas.
+  backgroundColor: 'var(--term-canvas-bg, var(--palette-term-bg, #0c0c0e))',
   opacity: 'var(--terminal-canvas-opacity, 1)',
 };
 

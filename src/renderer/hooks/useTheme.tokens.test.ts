@@ -64,6 +64,26 @@ describe('applyComponentTokens — tinted well', () => {
     expect(document.documentElement.style.getPropertyValue('--term-bg')).toBe('rgba(0,0,0,0)');
     expect(document.documentElement.style.getPropertyValue('--terminal-canvas-opacity')).toBe('1');
   });
+
+  it('sets --term-canvas-bg to the well value when a well is provided — tinted canvas guard', () => {
+    applyComponentTokens(document.documentElement, modernTheme.colors, {
+      well: 'rgba(6,8,16,0.62)',
+    });
+
+    expect(document.documentElement.style.getPropertyValue('--term-canvas-bg')).toBe(
+      'rgba(6,8,16,0.62)',
+    );
+  });
+
+  it('removes --term-canvas-bg when no well is set — unset-theme-preservation guard', () => {
+    // Pre-set the property so the removeProperty branch is exercised, not just an absent value.
+    document.documentElement.style.setProperty('--term-canvas-bg', 'rgba(6,8,16,0.62)');
+
+    applyComponentTokens(document.documentElement, modernTheme.colors, {});
+
+    // getPropertyValue returns '' for a removed property in jsdom.
+    expect(document.documentElement.style.getPropertyValue('--term-canvas-bg')).toBe('');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -71,15 +91,19 @@ describe('applyComponentTokens — tinted well', () => {
 // ---------------------------------------------------------------------------
 
 describe('applyThemeToDom — tinted well end-to-end', () => {
-  it('applies Modern well values end-to-end: --term-bg rgba(6,8,16,0.62) and --terminal-canvas-opacity 0.86', () => {
+  it("applies Modern's well values end-to-end (asserts against the theme's own fields, not magic numbers, so tuning the well doesn't break this test)", () => {
     applyThemeToDom(modernTheme);
 
+    // modernTheme.terminalWell / terminalCanvasOpacity are the source of truth; the
+    // bridge must flow them through to the CSS vars verbatim.
     expect(document.documentElement.style.getPropertyValue('--term-bg')).toBe(
-      'rgba(6, 8, 16, 0.62)',
+      modernTheme.terminalWell,
     );
     expect(document.documentElement.style.getPropertyValue('--terminal-canvas-opacity')).toBe(
-      '0.86',
+      String(modernTheme.terminalCanvasOpacity),
     );
+    // Sanity: Modern must actually declare a well (guards against the field being dropped).
+    expect(modernTheme.terminalWell).toBeTruthy();
   });
 
   it('preserves always-on-glass default for a theme with no terminal fields: --term-bg rgba(0,0,0,0) and --terminal-canvas-opacity 1', () => {

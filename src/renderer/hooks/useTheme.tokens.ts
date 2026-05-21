@@ -108,6 +108,12 @@ export function applyComponentTokens(
   root.style.setProperty('--composer-border', 'rgba(255, 255, 255, 0.08)');
   root.style.setProperty('--term-bg', terminal.well ?? 'rgba(0,0,0,0)');
   root.style.setProperty('--terminal-canvas-opacity', String(terminal.canvasOpacity ?? 1));
+  // --term-canvas-bg is set ONLY when the theme declares a well so xterm's canvas
+  // background becomes the tinted rgba. When no well is set it is removed, causing
+  // buildXtermTheme() to fall back to --palette-term-bg (#0c0c0e — opaque) — preserving
+  // today's behaviour byte-for-byte for unset-well themes (cursor, kiro, light, high-contrast).
+  if (terminal.well) root.style.setProperty('--term-canvas-bg', terminal.well);
+  else root.style.removeProperty('--term-canvas-bg');
   root.style.setProperty('--term-fg', colors.termFg);
   root.style.setProperty('--term-cursor', colors.termCursor);
   root.style.setProperty('--term-selection', colors.termSelection);

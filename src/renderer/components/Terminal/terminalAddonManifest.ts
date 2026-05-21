@@ -76,11 +76,4 @@ export const TERMINAL_ADDONS: readonly TerminalAddonEntry[] = [
     required: false,
     purpose: 'Detects and linkifies URLs in terminal output.',
   },
-  {
-    packageName: '@xterm/addon-webgl',
-    exportName: 'WebglAddon',
-    loadOrder: 'post-open',
-    required: false,
-    purpose: 'GPU-accelerated rendering via WebGL; falls back to canvas on context loss.',
-  },
 ];

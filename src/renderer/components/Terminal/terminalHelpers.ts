@@ -67,14 +67,21 @@ export function buildXtermTheme(): typeof ANSI_COLORS & {
   cursorAccent: string;
   selectionBackground: string;
 } {
-  const bg = getCssVar('--palette-term-bg') || '#0d0d0d';
+  // --term-canvas-bg is set by applyComponentTokens ONLY when the theme declares a well
+  // (tinted-glass themes like Modern). For themes without a well (cursor, kiro, light,
+  // high-contrast) the property is absent → falls back to --palette-term-bg (#0c0c0e,
+  // opaque), preserving today's behaviour byte-for-byte. allowTransparency:true is now
+  // safe because the atlas-merge bug (#5847) is patched locally (patches/addon-webgl-0.19.0.patched.*).
+  const bg = getCssVar('--term-canvas-bg') || getCssVar('--palette-term-bg') || '#0d0d0d';
   const fg = getCssVar('--term-fg') || '#e0e0e0';
 
   return {
     background: bg,
     foreground: fg,
     cursor: getCssVar('--term-cursor') || '#e0e0e0',
-    cursorAccent: bg,
+    // cursorAccent must be opaque — use --palette-term-bg directly so the colour
+    // inside the cursor block never becomes semi-transparent regardless of well tint.
+    cursorAccent: getCssVar('--palette-term-bg') || '#0d0d0d',
     selectionBackground: getCssVar('--term-selection') || 'rgba(255,255,255,0.2)',
     ...ANSI_COLORS,
   };

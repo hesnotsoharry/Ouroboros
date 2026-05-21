@@ -2,7 +2,6 @@ import type { FitAddon } from '@xterm/addon-fit';
 import type { ProgressAddon } from '@xterm/addon-progress';
 import type { SearchAddon } from '@xterm/addon-search';
 import type { SerializeAddon } from '@xterm/addon-serialize';
-import type { WebglAddon } from '@xterm/addon-webgl';
 import type { Terminal } from '@xterm/xterm';
 import type { Dispatch, MouseEvent, MutableRefObject, RefObject, SetStateAction } from 'react';
 
@@ -90,8 +89,6 @@ export interface TerminalFoundation {
   progressAddonRef: RefObject<ProgressAddon | null>;
   serializeAddonRef: RefObject<SerializeAddon | null>;
   isReadyRef: RefObject<boolean | null>;
-  webglAddonRef: MutableRefObject<WebglAddon | null>;
-  webglFailedRef: MutableRefObject<boolean>;
   projectRootRef: MutableRefObject<string | null>;
   syncInputRef: MutableRefObject<boolean>;
   allSessionIdsRef: MutableRefObject<string[]>;
