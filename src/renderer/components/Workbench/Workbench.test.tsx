@@ -1,11 +1,14 @@
 /**
  * @vitest-environment jsdom
  *
- * Workbench.test.tsx — Phase 1 walking skeleton tests.
+ * Workbench.test.tsx — Phase 1 + Phase 2 tests.
  *
- * Trophy: the flag branch + frame render is the seam.
+ * Phase 1 trophy: the flag branch + frame render is the seam.
  * (a) flag on → Workbench mounts and all six region test-ids are present
  * (b) flag off → the prior InnerApp shell branch is unchanged (Workbench not rendered)
+ *
+ * Phase 2 additions: TitleBar renders the app mark, project + branch chips,
+ * AgentGlobe (running content from mock), and the three window controls.
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
@@ -33,10 +36,10 @@ describe('Workbench', () => {
     expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
   });
 
-  it('renders each region placeholder label', () => {
+  it('renders the five remaining placeholder region labels', () => {
     render(<Workbench />);
 
-    expect(screen.getByText('Title Bar')).toBeDefined();
+    // Title Bar placeholder is now replaced by real TitleBar component — no placeholder text.
     expect(screen.getByText('Project Rail')).toBeDefined();
     expect(screen.getByText('Inner Rail')).toBeDefined();
     expect(screen.getByText('Terminals')).toBeDefined();
@@ -50,6 +53,56 @@ describe('Workbench', () => {
     // which has no xterm or IPC shims wired.
     const mod = await import('./Workbench');
     expect(typeof mod.Workbench).toBe('function');
+  });
+});
+
+// ── Phase 2: TitleBar content tests ──────────────────────────────────────────
+
+describe('TitleBar', () => {
+  it('renders the app mark "A" glyph', () => {
+    render(<Workbench />);
+    const titleBar = screen.getByTestId('workbench-titlebar');
+    expect(titleBar.textContent).toContain('A');
+  });
+
+  it('renders the active project name from mock data', () => {
+    render(<Workbench />);
+    // MOCK_PROJECTS[0] is agent-ide with active: true
+    expect(screen.getByText('agent-ide')).toBeDefined();
+  });
+
+  it('renders the active project branch name from mock data', () => {
+    render(<Workbench />);
+    // MOCK_PROJECTS[0].branch = 'wave/1-workbench-static-shell'
+    expect(screen.getByText('wave/1-workbench-static-shell')).toBeDefined();
+  });
+
+  it('renders the AgentGlobe with running model name from mock data', () => {
+    render(<Workbench />);
+    const globe = screen.getByTestId('agent-globe');
+    // MOCK_CONTEXT_STATS.model = 'claude-sonnet-4-6'
+    expect(globe.textContent).toContain('claude-sonnet-4-6');
+  });
+
+  it('renders the Ctrl K command palette affordance (Windows shortcut, not ⌘K)', () => {
+    render(<Workbench />);
+    expect(screen.getByText('Ctrl K')).toBeDefined();
+  });
+
+  it('renders the three window control buttons', () => {
+    render(<Workbench />);
+    expect(screen.getByTitle('Minimize')).toBeDefined();
+    expect(screen.getByTitle('Maximize')).toBeDefined();
+    expect(screen.getByTitle('Close')).toBeDefined();
+  });
+
+  it('workbench-titlebar test-id resolves on the TitleBar root element', () => {
+    render(<Workbench />);
+    const el = screen.getByTestId('workbench-titlebar');
+    // TitleBar is the outermost element of the title bar region
+    expect(el).toBeDefined();
+    // Should contain the window controls container
+    expect(el.querySelector('[data-testid="window-controls"]')).toBeDefined();
   });
 });
 

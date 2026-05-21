@@ -17,6 +17,8 @@
 
 import React from 'react';
 
+import { TitleBar } from './TitleBar/TitleBar';
+
 function PlaceholderRegion({
   label,
   testId,
@@ -101,11 +103,7 @@ function MiddleRow(): React.ReactElement {
 export function Workbench(): React.ReactElement {
   return (
     <div data-testid="workbench-root" style={stageStyle}>
-      <PlaceholderRegion
-        label="Title Bar"
-        testId="workbench-titlebar"
-        style={{ height: '40px', flexShrink: 0, borderRadius: 0, border: 'none', borderBottom: '1px solid var(--stroke-inner)' }}
-      />
+      <TitleBar />
       <MiddleRow />
       <PlaceholderRegion
         label="Status Bar"
