@@ -255,11 +255,12 @@ function InnerApp({
     window.matchMedia('(max-width: 768px)').matches;
   const isImmersive = isChatWindow || immersiveFlag || isMobileWeb;
 
-  if (isImmersive) return <ChatOnlyShellWrapper terminal={hooks.terminal} />;
-
-  // Wave 1 — experimental canon workbench shell (default-off).
-  // Evaluated AFTER the immersive check so mobile/chat-window modes are not affected.
+  // Wave 1 — experimental canon workbench shell (default-off). Checked FIRST so the
+  // explicit opt-in flag wins over the default immersive routing; otherwise users
+  // already in the chat/workbench (immersive) shell could never reach it.
   if (canonWorkbenchFlag) return <Workbench />;
+
+  if (isImmersive) return <ChatOnlyShellWrapper terminal={hooks.terminal} />;
 
   return (
     <InnerAppLayout
