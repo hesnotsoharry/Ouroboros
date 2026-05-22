@@ -247,7 +247,11 @@ function FilesSectionHeader(): React.ReactElement {
     >
       <SectionLabel>Files</SectionLabel>
       <div style={{ display: 'flex', gap: 2 }}>
-        <button title="Search files" onClick={() => undefined} style={iconBtnStyle}>
+        <button
+          title="Search files"
+          style={iconBtnStyle}
+          onClick={() => window.dispatchEvent(new CustomEvent('agent-ide:open-file-picker'))}
+        >
           <Icon name="Search" size={11} />
         </button>
         <button title="New file" onClick={() => undefined} style={iconBtnStyle}>

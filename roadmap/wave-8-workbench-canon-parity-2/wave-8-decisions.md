@@ -63,7 +63,7 @@ The rail "Search files" button (§07) needs a target.
   the button and Ctrl-K reach.
 - *Alternative:* A dedicated palette "mode" for files separate from commands.
 
-**Pick:** A file-quick-open command in the registry. — *standard*
+**Pick (REVISED by Cole 2026-05-22 — see below):** A file-quick-open command in the registry. — *standard*
 
 **Rationale:** The Wave 7 palette + `useCommandRegistry` already exist; a command is the
 lowest-friction surface and keeps one palette. The button just dispatches the command.
@@ -71,24 +71,48 @@ lowest-friction surface and keeps one palette. The button just dispatches the co
 **Consequences:** File search lives alongside commands in one palette (acceptable per the
 product decision). If a richer file-search UX is wanted later, it can graduate to its own mode.
 
-## Decision 4: Session-restore in the canon two-frame model — PENDING architect validation
+**REVISION (Cole, 2026-05-22).** During Phase 3 planning, investigation surfaced that the
+canon shell has **no file-open destination** (no editor/viewer pane) — selecting a file in a
+quick-open had nowhere to go — AND that the legacy `FilePickerConnected` is mounted nowhere
+(dormant), so the original "fold into a command" framing solved the wrong half. Cole's
+direction: **reuse the existing full-featured `FileViewer/` subsystem (Monaco-based,
+view + edit) as a MODAL in the canon shell.** The command + Ctrl-K palette + rail "Search
+files" button still drive quick-open (selection), but the selected file opens in the ported
+`FileViewer` modal (full view/edit), not "a command that does nothing." `FileViewer/` is NOT
+in the Wave 9 teardown scope (only `Layout/**` + `Editor*` wrappers are), so the canon shell
+must mount `FileViewer`/`FileViewerManager` **directly**, not via the legacy `Layout/Editor*`
+host components. This supersedes the "no standalone overlay / a single command" framing above.
+Phase 3 re-planned accordingly (architect pass: reuse plan + coupling assessment).
 
-**Context:** Cole resolved session-restore → KEEP. But the canon shell has **two fixed
-frames** (upper `claude`, lower shell, auto-spawned on mount by `useWorkbenchTerminals`),
-whereas the legacy `RestoreSessionsGate` restores **N arbitrary dock sessions**. These models
-do not map 1:1, so "wire `RestoreSessionsGate` in" is not a clean drop-in.
+## Decision 4: Session-restore in the canon two-frame model — RESOLVED: SPLIT to its own wave
 
-**Proposed pick (to validate, NOT yet locked):** Adapt restore to the two-frame model —
-restore the two frames' prior working directories and offer `claude --resume` for the upper
-frame — rather than restoring arbitrary N terminals.
+**Context:** Cole resolved session-restore → KEEP. The canon shell has **two fixed frames**
+(upper `claude`, lower shell, auto-spawned on mount by `useWorkbenchTerminals`), whereas the
+legacy `RestoreSessionsGate` restores **N arbitrary dock sessions**.
 
-**Why this is not yet locked:** It depends on `RestoreSessionsGate`'s actual API and what
-`persistTerminalSessions` actually persists (session list shape, cwd, claude session ids).
-Phase 4 opens with a `sonnet-architect` read of `RestoreSessionsGate.tsx` +
-`useTerminalSessions` restore path to confirm the adaptation fits — and revises this decision
-(or splits Phase 4 to its own wave) if the gap is larger than expected.
+**Architect validation (2026-05-22, `sonnet-architect`):** the adaptation FITS the actual APIs
+(the "N sessions" concern lives only in the dialog/`restore(id)` layer; the underlying data —
+`usePersistedTerminalSessions` → `listPersistedSessions` IPC → electron-store `terminalSessions`
+— exposes `cwd` per session and maps cleanly to two frames). BUT the clean implementation
+requires:
+- a **main-process IPC change** — `PersistedSessionInfo` (the read type) omits `claudeSessionId`
+  / `isClaude`; they're persisted in `SavedSessionSnapshot` but stripped on the IPC read, so
+  offering `claude --resume` for the upper frame needs the type + `listPersistedSessions`
+  handler extended (or an abstraction-violating direct electron-store read from the renderer);
+- a **user-facing behavior change** — the upper frame would auto-`spawnClaude({resumeMode})` on
+  relaunch instead of being a plain shell the user types `claude` into.
 
-**Consequences if validated:** Restore preserves the terminal-first user's working context
-across restarts without contorting the canon two-frame model. If invalidated, session-restore
-becomes a standalone wave and Wave 9 cutover proceeds with restore explicitly deferred (and
-flagged to Cole as a parity gap that didn't make this round).
+**Pick:** **SPLIT Phase 4 into its own wave** (Cole, 2026-05-22). — *scope decision*
+
+**Rationale:** Wave 8 is scoped renderer-only; the clean restore path needs main-process IPC
+work, and the auto-resume UX deserves its own design pass. The plan explicitly permitted the
+split. Keeping it out preserves Wave 8 as a tight, renderer-only, shippable wave (Phases 1–3).
+
+**Consequences:** Wave 8 ships without session-restore. A dedicated wave owns the
+`PersistedSessionInfo` IPC extension + handler passthrough, the `useWorkbenchRestore` hook,
+threading restored cwds into `useWorkbenchTerminals` (gated on `isReady` to avoid the
+auto-spawn race), and the upper-frame `spawnClaude --resume` UX. Deferral artifact:
+`roadmap/deferred/2026-05-22-canon-workbench-session-restore.md` (carries the architect's full
+integration plan + risks). **Wave 9 cutover note:** the legacy `RestoreSessionsGate` restore
+behavior is NOT in the canon shell yet — flag this as a known parity gap at cutover; do not
+delete the legacy restore path until the split wave lands, or sequence accordingly.

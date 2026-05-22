@@ -51,7 +51,9 @@ Workbench/
 │   └── PermissionSidebarTakeover.tsx — sidebar NOW-slot takeover (canon §13b); pure props, no hook
 ├── Overlays/                   — Wave 7: canon §06 TitleBar right-cluster affordances (live)
 │   ├── WorkbenchSettingsOverlay.tsx — listens OPEN_SETTINGS_EVENT → shared SettingsModal (cog)
-│   └── WorkbenchCommandPalette.tsx — useCommandPalette + useCommandRegistry → CommandPalette (Ctrl-K pill)
+│   ├── WorkbenchCommandPalette.tsx — useCommandPalette + useCommandRegistry → CommandPalette (Ctrl-K pill)
+│   ├── WorkbenchFilePicker.tsx  — Wave 8 P3: listens agent-ide:open-file-picker → shared FilePicker (quick-open)
+│   └── WorkbenchFileViewerModal.tsx — Wave 8 P3: LAZY FileViewer in a modal (opened by the picker)
 ├── TitleBar/WorkbenchBell.tsx  — Wave 7: live notification bell → shared NotificationCenter (canon §06 dot)
 └── StatusBar.tsx               — Phase 6
 ```
@@ -175,6 +177,22 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
   via `UnifiedRail`'s expand button, NOT on window-widen (tracked: `follow-ups/2026-05-22-workbench-forceunified-no-autoclear.md`).
 - **Sidebar is session-scoped via a threaded `claudeSessionId` (Wave 8 Phase 1).** `useWorkbenchAgentData(claudeSessionId?)` takes the bound session id: when supplied it returns `agents.find(s => s.id === id)` (NOT `selectPrimarySession`) and BYPASSES the project filter; when omitted it falls back to `selectPrimarySession` over agents filtered by the active project root (read via the **non-throwing `useProjectOptional()`** — so the hook stays safe to render with no `ProjectProvider`, which preserves ~90 existing tests). The id is captured by `useWorkbenchClaudeCapture` in `useWorkbenchTerminals.ts` and threaded `CenterPane → Workbench (state) → AgentSidebar`. **BOTH** `AgentSidebar` call sites (root + `SidebarHeader`) must pass it or the header diverges from the panel stack. Reason: the sidebar previously read from the global session pool and showed any machine-wide `claude` session.
 - **The `wb-cc-*` claudeSessionId binding is a weak heuristic (Wave 8 Phase 1, accepted debt).** `useWorkbenchClaudeCapture` rebinds to the session id of *any* binding-class agent event (`TERMINAL_BIND_TRIGGER_TYPES`), not specifically the upper terminal's `claude`. An external session — or the IDE-runs-in-itself session — emitting a binding event can hijack the bound id, and the bound path does NOT apply the project-cwd filter, so the fallback does not catch it. Accepted per the Wave 8 plan; the precise fix (forward the real `CLAUDE_SESSION_ID` from the pty spawn payload) is main-process work — `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md`. Reason: hook events carry the claude `session_id`, not the pty id, so the renderer can only guess the pty↔session association by timing.
+- **File quick-open → FileViewer modal (Wave 8 Phase 3).** The InnerRail "Search files" button + the
+  `file:open-file` command (Ctrl-K) both dispatch `agent-ide:open-file-picker`. `Overlays/WorkbenchFilePicker`
+  listens for it and renders the shared `CommandPalette/FilePicker`; on select it lifts `openFilePath` into
+  `Workbench.tsx` state, which mounts `Overlays/WorkbenchFileViewerModal`. The modal mounts `FileViewer`
+  **directly** (NOT `FileViewerManager` — a second manager instance would double-register the global
+  `agent-ide:open-file`/`save-active-file`/`close-active-tab` listeners and collide with the still-mounted
+  legacy shell during Wave 8). Post-Wave-9 teardown it can upgrade to the full manager. Dirty-on-close uses a
+  `window.confirm` guard (v1).
+- **The FileViewer modal MUST stay lazy (`React.lazy`) — load-bearing (Wave 8 Phase 3).**
+  `Overlays/WorkbenchFileViewerModal` imports `FileViewer` via `React.lazy(() => import('../../FileViewer/FileViewer'))`,
+  rendered under `<Suspense>` and only when `openFilePath` is non-null. **Do NOT convert this to a static
+  import.** `FileViewer` statically pulls Monaco + pdfjs, whose module-init touches browser APIs jsdom lacks
+  (`document.queryCommandSupported`, `DOMMatrix`, `CSS.escape`). A static import would land Monaco/pdfjs in the
+  Workbench shell's module graph, crashing EVERY test that renders `<Workbench/>` at import time (0 tests
+  collected) — and bloat the main renderer chunk. Lazy keeps the heavy deps out of the shell's static graph
+  and out of the initial bundle. (Phase 3 regressed exactly this, then fixed it.)
 - **Scanlines render via a Workbench-local overlay (Wave 6).** `useScanlines()` in `Workbench.tsx`
   reads `document.documentElement.dataset.scanlines` (written by the theme bridge for Retro) and
   re-reads on `agent-ide:theme-applied`; the overlay is a `pointer-events:none` absolute div. Retro-only.

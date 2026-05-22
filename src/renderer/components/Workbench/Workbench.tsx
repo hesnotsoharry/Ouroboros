@@ -15,6 +15,8 @@ import React, { useEffect, useState } from 'react';
 
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { WorkbenchCommandPalette } from './Overlays/WorkbenchCommandPalette';
+import { WorkbenchFilePicker } from './Overlays/WorkbenchFilePicker';
+import { WorkbenchFileViewerModal } from './Overlays/WorkbenchFileViewerModal';
 import { WorkbenchSettingsOverlay } from './Overlays/WorkbenchSettingsOverlay';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
@@ -128,6 +130,8 @@ export function Workbench(): React.ReactElement {
   // Wave 8 Phase 1: capture the Claude session bound to the upper terminal and
   // thread it down to AgentSidebar so it scopes to this terminal's session only.
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
+  // Wave 8 Phase 3: file path for the quick-open viewer modal (null = closed).
+  const [openFilePath, setOpenFilePath] = useState<string | null>(null);
 
   const isUnified = forceUnified || breakpointMode === 'unified';
 
@@ -148,6 +152,11 @@ export function Workbench(): React.ReactElement {
       <StatusBar />
       <WorkbenchSettingsOverlay />
       <WorkbenchCommandPalette />
+      <WorkbenchFilePicker onSelectFile={setOpenFilePath} />
+      <WorkbenchFileViewerModal
+        openFilePath={openFilePath}
+        onClose={() => setOpenFilePath(null)}
+      />
       {scanlines && (
         <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
       )}
