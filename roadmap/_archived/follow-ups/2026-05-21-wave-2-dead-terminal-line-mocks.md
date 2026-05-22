@@ -1,6 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-3-workbench-hook-pipeline-state-machine
 created: 2026-05-21
+updated: 2026-05-21
 wave-origin: 2
 slug: wave-2-dead-terminal-line-mocks
 priority: low
@@ -35,3 +37,8 @@ wholesale (swaps mock → live hook data). The natural home for the sweep is Wav
 and their re-exports from the `workbenchMockData.ts` barrel; confirm `tsc` + `eslint`
 clean. If Wave 3's mock rework removes the module section anyway, this is already
 covered — just verify nothing else imports them.
+
+## Resolution (wave-3-workbench-hook-pipeline-state-machine)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-21.
+Evidence: Phase 4 deleted all six symbols (`TermLineTone`, `MockTerminalLine`, `MOCK_CC_STATUS_LINE`, `MOCK_CC_PROMPT_PLACEHOLDER`, `MOCK_CC_TUI_LINES`, `MOCK_SHELL_LINES`) from `src/renderer/components/Workbench/workbenchMockData.sidebar.ts` and their re-exports from the barrel. Grep confirms zero remaining references in the Workbench component tree (only CLAUDE.md note remains).

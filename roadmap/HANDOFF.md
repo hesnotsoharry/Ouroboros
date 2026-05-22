@@ -4,7 +4,18 @@
 
 ---
 
-## 🔼 UPDATE 2026-05-21 (latest) — Workbench Wave 2 SHIPPED (live terminals + divider)
+## 🔼 UPDATE 2026-05-21 (latest) — Workbench Wave 3 SHIPPED (live agent state + hook pipeline)
+
+Workbench overhaul: **Waves 0 + 1 + 2 + 3 all on `master`.**
+
+- **Wave 3 — hook pipeline + live agent state: SHIPPED** (local tag `v2.24.0`). Behind the same default-off `layout.canonWorkbench` flag, the canon workbench's **non-terminal regions now react to real agent activity** instead of `workbenchMockData`. New `useWorkbenchAgentData` adapter derives a six-state presentation status (`fresh/thinking/running/awaiting/errored/done`) from the live `AgentEventsContext` **without mutating the canonical 4-value `AgentStatus`** (~48 AgentMonitor consumers — ADR D1). Live now: the **Agent Globe** (real model/tool/idle), the inner-rail **session list** (status dots: live/warn/idle), the **agent-sidebar header**, **project chips** (+ deterministic per-path color), **git branch name**, **clock**, and **status-bar context stats**. New `useWorkbenchProjects` (workbench-local). Renderer-only, no IPC/schema change. Plan/ADR/recon/result/review/audit in `roadmap/wave-3-workbench-hook-pipeline-state-machine/`. Gates: orchestrator-owned acceptance tests 9/9 (Globe) + 5/5 (sessions), unit 20, Workbench suite 134, tsc + full `eslint src/` (0 err) + prettier clean. One phase-reviewer fix folded in (two-tier `selectPrimarySession` + ADR D4 correction); one orchestrator self-fix (Workbench.test.tsx provider mock).
+  - **`/review` verdict: FLAG (non-fatal).** Checks 1–3 clean, 4/5 N/A. **Check 6 mutation score = 31.72%** — below /review's 40% line but **above the project's `break: 21` gate (passed)**; survivors skew toward UI-render constructs (Regex/StringLiteral/Conditional in inline-style/JSX), not the wave's core logic. **PRE-MERGE TASK (before 2026-06-01 merge):** open `reports/mutation/mutation.html`, filter to the Wave-3 source files, and tighten tests for any survivor in the **adapter/derivation logic** (UI-style/JSX survivors are acceptable for a UI wave). See `wave-3-mechanical-review.md`.
+- **Next action:** **Wave 4 — Agent sidebar live** (re-layout `AgentMonitor` into the 5 canon panels + make the panel BODIES live: NOW / Context / Files Touched / Latest Hunk / Hook Timeline). Wave 3 deliberately left the 5 panel bodies on mock (ADR D5). Extend the **same** `useWorkbenchAgentData` adapter (D3 — don't add a competing adapter) with the panel data. Two known hard sub-problems carried forward: **Files Touched** has no live backing (derive by scanning `AgentSession.toolCalls` for Edit/Write/Read), and **Latest Hunk** has no structured diff source (reconciliation Open Q2 — decide git-delta vs extended PostToolUse at Wave-4 plan time). Then 5 permissions, 6 themes+responsive, 7 cutover.
+- **Wave 3 NOT done / deferrals:** `/ui-smoke 3` live smoke deferred (Cole not using the app until the remake is done; per Wave 0/1/2 posture) — **next dev session:** enable Settings → Appearance → "Canon workbench", run a `claude` session in a terminal, confirm the Globe lights up with real model/tool + returns to idle, the inner rail lists running sessions with green/amber dots, and the title/status bars show the real project/branch/clock/tokens. New follow-up `roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md` (OPEN — git +adds/−dels + per-project dirty need a new main-process git op; deferred, not faked). `2026-05-21-wave-2-dead-terminal-line-mocks.md` **RESOLVED** by Phase 4's sweep (archived). `/promote-vendor-lessons 3` = no-op (no third-party SDK touched).
+
+---
+
+## 🔼 UPDATE 2026-05-21 — Workbench Wave 2 SHIPPED (live terminals + divider)
 
 Workbench overhaul: **Waves 0 + 1 + 2 all on `master`.**
 
