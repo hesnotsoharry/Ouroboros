@@ -55,6 +55,16 @@ vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: vi.fn(),
 }));
 
+vi.mock('../../../contexts/ToastContext', () => ({
+  useToastContext: () => ({
+    notifications: [],
+    unreadCount: 0,
+    markAllRead: vi.fn(),
+    removeNotification: vi.fn(),
+    clearAllNotifications: vi.fn(),
+  }),
+}));
+
 vi.mock('../../../contexts/ProjectContext', () => ({
   useProject: () => ({
     projectRoot: '/projects/test',

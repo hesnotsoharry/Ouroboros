@@ -78,6 +78,16 @@ vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: vi.fn(),
 }));
 
+vi.mock('../../../contexts/ToastContext', () => ({
+  useToastContext: () => ({
+    notifications: [],
+    unreadCount: 0,
+    markAllRead: vi.fn(),
+    removeNotification: vi.fn(),
+    clearAllNotifications: vi.fn(),
+  }),
+}));
+
 // Keep the Wave-4 diff subscription quiet so this test stays focused on approval.
 vi.mock('../../../hooks/useClaudeCliSettings', () => ({
   useClaudeCliSettings: vi.fn(() => ({ enableTerminalDiffReview: false })),

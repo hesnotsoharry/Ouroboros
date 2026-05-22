@@ -70,6 +70,16 @@ vi.mock('../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: vi.fn(),
 }));
 
+vi.mock('../../contexts/ToastContext', () => ({
+  useToastContext: () => ({
+    notifications: [],
+    unreadCount: 0,
+    markAllRead: vi.fn(),
+    removeNotification: vi.fn(),
+    clearAllNotifications: vi.fn(),
+  }),
+}));
+
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
 import { Workbench } from './Workbench';
