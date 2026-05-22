@@ -11,7 +11,9 @@
 
 import React from 'react';
 
+import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { Icon } from '../../shared/Icon';
+import { PermissionSidebarTakeover } from '../Permission/PermissionSidebarTakeover';
 import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
 import { ContextBlock } from './ContextBlock';
 import { FilesTouched } from './FilesTouched';
@@ -149,42 +151,83 @@ function PanelDivider(): React.ReactElement {
 
 // ── AgentSidebar root ─────────────────────────────────────────────────────────
 
+/** Panels 2–5: dimmed to 0.7 opacity while a permission request is pending. */
+function PanelStack({
+  agentData,
+  dim,
+}: {
+  agentData: ReturnType<typeof useWorkbenchAgentData>;
+  dim: boolean;
+}): React.ReactElement {
+  return (
+    <div style={{ opacity: dim ? 0.7 : 1 }}>
+      <PanelDivider />
+      <ContextBlock data={agentData.context} />
+      <PanelDivider />
+      <FilesTouched data={agentData.filesTouched} />
+      <PanelDivider />
+      <LatestHunk hunk={agentData.latestHunk} />
+      <PanelDivider />
+      <HookTimeline events={agentData.timeline} />
+    </div>
+  );
+}
+
+/**
+ * Reads approval state from context WITHOUT registering a keydown handler.
+ * useWorkbenchApproval() is intentionally NOT called here — it owns the single
+ * window keydown handler (ADR D3). Calling it again would register a duplicate.
+ * Returns pre-bound handler props ready to spread onto PermissionSidebarTakeover.
+ */
+function useSidebarApproval() {
+  const { pendingCount, requests, approve, reject, alwaysAllow } = useApprovalContext();
+  const current = requests.length > 0 ? requests[0] : null;
+  const takeoverProps = current
+    ? {
+        request: current,
+        queuedCount: Math.max(0, pendingCount - 1),
+        elapsedSec: Math.floor((Date.now() - current.timestamp) / 1000),
+        onApprove: () => approve(current.requestId),
+        onAlwaysAllow: () => alwaysAllow(current.requestId, current.sessionId, current.toolName),
+        onDeny: (reason?: string) => reject(current.requestId, reason),
+      }
+    : null;
+  return { current, isPending: current !== null, takeoverProps };
+}
+
+const SIDEBAR_SHELL_STYLE: React.CSSProperties = {
+  width: 348,
+  flexShrink: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  background: 'var(--glass-panel)',
+  border: '1px solid var(--stroke-inner)',
+  borderRadius: 'var(--r-md)',
+  overflow: 'hidden',
+  color: 'var(--ink)',
+};
+
+const SIDEBAR_SCROLL_STYLE: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  overflowY: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
+};
+
 export function AgentSidebar(): React.ReactElement {
   const agentData = useWorkbenchAgentData();
+  const { isPending, takeoverProps } = useSidebarApproval();
   return (
-    <div
-      data-testid="workbench-agentsidebar"
-      style={{
-        width: 348,
-        flexShrink: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--glass-panel)',
-        border: '1px solid var(--stroke-inner)',
-        borderRadius: 'var(--r-md)',
-        overflow: 'hidden',
-        color: 'var(--ink)',
-      }}
-    >
+    <div data-testid="workbench-agentsidebar" style={SIDEBAR_SHELL_STYLE}>
       <SidebarHeader />
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <NowBlock data={agentData.now} />
-        <PanelDivider />
-        <ContextBlock data={agentData.context} />
-        <PanelDivider />
-        <FilesTouched data={agentData.filesTouched} />
-        <PanelDivider />
-        <LatestHunk hunk={agentData.latestHunk} />
-        <PanelDivider />
-        <HookTimeline events={agentData.timeline} />
+      <div style={SIDEBAR_SCROLL_STYLE}>
+        {isPending && takeoverProps ? (
+          <PermissionSidebarTakeover {...takeoverProps} />
+        ) : (
+          <NowBlock data={agentData.now} />
+        )}
+        <PanelStack agentData={agentData} dim={isPending} />
       </div>
     </div>
   );

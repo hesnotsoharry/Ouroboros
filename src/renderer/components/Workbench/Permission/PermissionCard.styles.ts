@@ -152,3 +152,44 @@ export const CARD_BASE_STYLE: React.CSSProperties = {
   gap: 10,
   padding: '12px 14px',
 };
+
+// ── Sidebar variant (canon §13b) ──────────────────────────────────────────────
+
+/**
+ * Sidebar action layout: full-width Approve on its own row, then Always + Deny
+ * side-by-side on the row below. Tighter vertical stack than the overlay's
+ * three-in-a-row layout.
+ */
+export const SIDEBAR_ACTION_STACK_STYLE: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 5,
+};
+
+export const SIDEBAR_ACTION_ROW_STYLE: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+};
+
+export const SIDEBAR_APPROVE_BTN_STYLE: React.CSSProperties = {
+  ...BTN_BASE,
+  flex: 'unset',
+  width: '100%',
+  background: 'var(--accent)',
+  color: 'var(--ink-on-accent)',
+};
+
+export const SIDEBAR_ALWAYS_BTN_STYLE: React.CSSProperties = {
+  ...BTN_BASE,
+  background: 'transparent',
+  border: '1px solid var(--accent)',
+  color: 'var(--accent)',
+};
+
+export const SIDEBAR_DENY_BTN_STYLE: React.CSSProperties = {
+  ...BTN_BASE,
+  background: 'var(--warning-tint)',
+  border: '1px solid var(--warning)',
+  color: 'var(--warning)',
+};
