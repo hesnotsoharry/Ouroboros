@@ -267,9 +267,7 @@ function FilesSection(): React.ReactElement {
   return (
     <div style={{ flex: 1, padding: '10px 6px', overflowY: 'auto', minHeight: 0 }}>
       <FilesSectionHeader />
-      {projectRoot !== null && projectRoot !== '' && (
-        <WorkbenchFileTree rootPath={projectRoot} />
-      )}
+      {projectRoot !== null && projectRoot !== '' && <WorkbenchFileTree rootPath={projectRoot} />}
     </div>
   );
 }

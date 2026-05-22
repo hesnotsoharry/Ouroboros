@@ -46,8 +46,20 @@ vi.mock('monaco-editor', () => ({
     CompletionItemKind: {},
     CompletionItemInsertTextRule: { InsertAsSnippet: 4 },
   },
-  Range: class { constructor(public s: number, public sc: number, public e: number, public ec: number) {} },
-  Position: class { constructor(public l: number, public c: number) {} },
+  Range: class {
+    constructor(
+      public s: number,
+      public sc: number,
+      public e: number,
+      public ec: number,
+    ) {}
+  },
+  Position: class {
+    constructor(
+      public l: number,
+      public c: number,
+    ) {}
+  },
   Uri: { parse: (s: string) => s, file: (s: string) => s },
   KeyMod: {},
   KeyCode: {},
@@ -142,12 +154,7 @@ describe('WorkbenchFileViewerModal — null path', () => {
 
 describe('WorkbenchFileViewerModal — file content path', () => {
   it('mounts FileViewer with the correct filePath after readFile resolves', async () => {
-    render(
-      <WorkbenchFileViewerModal
-        openFilePath="/projects/test/README.md"
-        onClose={vi.fn()}
-      />,
-    );
+    render(<WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={vi.fn()} />);
 
     // React.lazy + Suspense: sentinel appears after the lazy chunk resolves.
     // waitFor polls until the lazy boundary clears and readFile resolves.
@@ -164,12 +171,7 @@ describe('WorkbenchFileViewerModal — file content path', () => {
   it('threads the error when readFile fails', async () => {
     mockReadFile.mockResolvedValue({ success: false, error: 'Permission denied' });
 
-    render(
-      <WorkbenchFileViewerModal
-        openFilePath="/projects/test/secret.txt"
-        onClose={vi.fn()}
-      />,
-    );
+    render(<WorkbenchFileViewerModal openFilePath="/projects/test/secret.txt" onClose={vi.fn()} />);
 
     await waitFor(() => {
       const sentinel = screen.getByTestId('file-viewer-sentinel');
@@ -183,12 +185,12 @@ describe('WorkbenchFileViewerModal — file content path', () => {
 describe('WorkbenchFileViewerModal — close button', () => {
   it('calls onClose when close button is clicked and file is not dirty', async () => {
     const onClose = vi.fn();
-    render(
-      <WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={onClose} />,
-    );
+    render(<WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('file-viewer-sentinel').getAttribute('data-content')).toBe('file content here');
+      expect(screen.getByTestId('file-viewer-sentinel').getAttribute('data-content')).toBe(
+        'file content here',
+      );
     });
 
     act(() => {
@@ -204,12 +206,12 @@ describe('WorkbenchFileViewerModal — close button', () => {
 describe('WorkbenchFileViewerModal — Escape key', () => {
   it('calls onClose when Escape is pressed and file is not dirty', async () => {
     const onClose = vi.fn();
-    render(
-      <WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={onClose} />,
-    );
+    render(<WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('file-viewer-sentinel').getAttribute('data-content')).toBe('file content here');
+      expect(screen.getByTestId('file-viewer-sentinel').getAttribute('data-content')).toBe(
+        'file content here',
+      );
     });
 
     act(() => {
@@ -227,12 +229,12 @@ describe('WorkbenchFileViewerModal — dirty guard', () => {
     const onClose = vi.fn();
     vi.spyOn(window, 'confirm').mockReturnValue(false);
 
-    render(
-      <WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={onClose} />,
-    );
+    render(<WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('file-viewer-sentinel').getAttribute('data-content')).toBe('file content here');
+      expect(screen.getByTestId('file-viewer-sentinel').getAttribute('data-content')).toBe(
+        'file content here',
+      );
     });
 
     // Simulate a content change via the sentinel's onClick (marks isDirty).
@@ -256,12 +258,12 @@ describe('WorkbenchFileViewerModal — dirty guard', () => {
     const onClose = vi.fn();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    render(
-      <WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={onClose} />,
-    );
+    render(<WorkbenchFileViewerModal openFilePath="/projects/test/README.md" onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('file-viewer-sentinel').getAttribute('data-content')).toBe('file content here');
+      expect(screen.getByTestId('file-viewer-sentinel').getAttribute('data-content')).toBe(
+        'file content here',
+      );
     });
 
     act(() => {

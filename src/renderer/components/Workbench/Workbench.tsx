@@ -153,10 +153,7 @@ export function Workbench(): React.ReactElement {
       <WorkbenchSettingsOverlay />
       <WorkbenchCommandPalette />
       <WorkbenchFilePicker onSelectFile={setOpenFilePath} />
-      <WorkbenchFileViewerModal
-        openFilePath={openFilePath}
-        onClose={() => setOpenFilePath(null)}
-      />
+      <WorkbenchFileViewerModal openFilePath={openFilePath} onClose={() => setOpenFilePath(null)} />
       {scanlines && (
         <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
       )}

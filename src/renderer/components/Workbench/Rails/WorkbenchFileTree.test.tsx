@@ -147,10 +147,7 @@ describe('WorkbenchFileTree — render against mocked files API', () => {
   it('renders directories before files regardless of readDir ordering', async () => {
     mockReadDir.mockResolvedValue({
       success: true,
-      items: [
-        makeEntry('zz-file.ts', false),
-        makeEntry('aa-dir', true),
-      ],
+      items: [makeEntry('zz-file.ts', false), makeEntry('aa-dir', true)],
     });
 
     render(<WorkbenchFileTree rootPath="/root" />);

@@ -33,14 +33,22 @@ vi.mock('../../CommandPalette/FilePicker', () => ({
       ? React.createElement(
           'div',
           { 'data-testid': 'file-picker-sentinel' },
-          React.createElement('button', {
-            'data-testid': 'fp-select',
-            onClick: () => onSelectFile('/projects/test/README.md'),
-          }, 'Select'),
-          React.createElement('button', {
-            'data-testid': 'fp-close',
-            onClick: onClose,
-          }, 'Close'),
+          React.createElement(
+            'button',
+            {
+              'data-testid': 'fp-select',
+              onClick: () => onSelectFile('/projects/test/README.md'),
+            },
+            'Select',
+          ),
+          React.createElement(
+            'button',
+            {
+              'data-testid': 'fp-close',
+              onClick: onClose,
+            },
+            'Close',
+          ),
         )
       : null,
 }));

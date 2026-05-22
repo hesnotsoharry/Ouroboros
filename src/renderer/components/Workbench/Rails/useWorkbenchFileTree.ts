@@ -101,11 +101,7 @@ function buildFlatTree(
     if (entry.type === 'dir' && expandedDirs[entry.path] !== undefined) {
       node.open = true;
       result.push(node);
-      const children = buildFlatTree(
-        expandedDirs[entry.path],
-        expandedDirs,
-        depth + 1,
-      );
+      const children = buildFlatTree(expandedDirs[entry.path], expandedDirs, depth + 1);
       for (const child of children) {
         result.push(child);
       }
