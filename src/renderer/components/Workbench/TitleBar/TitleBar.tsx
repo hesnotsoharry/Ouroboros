@@ -13,9 +13,10 @@
  *   - branch name: useGitBranch(projectRoot) — BranchChip hidden when null
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
+import { OPEN_SETTINGS_EVENT } from '../../../hooks/appEventNames';
 import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
 import { useWorkbenchProjects } from '../useWorkbenchProjects';
@@ -143,10 +144,16 @@ function BellButton(): React.ReactElement {
 
 // ── Settings button ───────────────────────────────────────────────────────────
 
-function SettingsButton(): React.ReactElement {
+interface SettingsButtonProps {
+  onClick: () => void;
+}
+
+function SettingsButton({ onClick }: SettingsButtonProps): React.ReactElement {
   return (
     <button
+      type="button"
       title="Settings"
+      onClick={onClick}
       style={
         {
           display: 'inline-flex',
@@ -178,6 +185,10 @@ export function TitleBar(): React.ReactElement {
 
   const activeProject = projects.find((p) => p.active) ?? projects[0];
 
+  const handleOpenSettings = useCallback((): void => {
+    window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT));
+  }, []);
+
   return (
     <div
       data-testid="workbench-titlebar"
@@ -205,7 +216,7 @@ export function TitleBar(): React.ReactElement {
       <Spacer />
       <CtrlKButton />
       <BellButton />
-      <SettingsButton />
+      <SettingsButton onClick={handleOpenSettings} />
       <WindowControls />
     </div>
   );

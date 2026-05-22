@@ -14,6 +14,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
+import { WorkbenchSettingsOverlay } from './Overlays/WorkbenchSettingsOverlay';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
 import { UnifiedRail } from './Rails/UnifiedRail';
@@ -135,6 +136,7 @@ export function Workbench(): React.ReactElement {
         onExpandToDual={handleExpandToDual}
       />
       <StatusBar />
+      <WorkbenchSettingsOverlay />
       {scanlines && (
         <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
       )}
