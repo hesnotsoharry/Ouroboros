@@ -14,6 +14,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { PermissionOverlay } from '../Permission/PermissionOverlay';
 import { TerminalShell } from './TerminalShell';
 import { useVerticalSplitResize } from './useVerticalSplitResize';
 import { useWorkbenchTerminals } from './useWorkbenchTerminals';
@@ -45,6 +46,7 @@ export async function writeSplitRatio(ratio: number): Promise<void> {
 }
 
 const OUTER_STYLE: React.CSSProperties = {
+  position: 'relative',
   flex: 1,
   minWidth: 0,
   display: 'flex',
@@ -108,6 +110,7 @@ export function CenterPane(): React.ReactElement {
         <div style={DIVIDER_INNER_STYLE} />
       </div>
       <TerminalShell kind="shell" flex={1 - ratio} sessionId={lowerSessionId} isActive />
+      <PermissionOverlay />
     </div>
   );
 }
