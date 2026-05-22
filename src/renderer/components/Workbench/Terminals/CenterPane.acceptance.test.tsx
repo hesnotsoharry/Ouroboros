@@ -167,3 +167,33 @@ describe('Wave 2 — workbench terminal mount (Phase 1 acceptance)', () => {
     expect(instanceMounts.some((m) => m.sessionId === spawnedId)).toBe(true);
   });
 });
+
+// Phase 2 extended the contract: BOTH frames are live, each with its own pty.
+describe('Wave 2 — both frames live (Phase 2 acceptance)', () => {
+  function spawnedIds(): string[] {
+    return ptySpawn().mock.calls.map((call) => call[0] as string);
+  }
+
+  it('spawns two distinct workbench ptys, one bound to each frame', async () => {
+    render(<CenterPane />);
+    await waitFor(() => expect(ptySpawn().mock.calls.length).toBeGreaterThanOrEqual(2));
+
+    const ids = spawnedIds();
+    expect(new Set(ids).size).toBe(2); // two distinct sessions
+
+    await waitFor(() => {
+      ids.forEach((id) => expect(instanceMounts.some((m) => m.sessionId === id)).toBe(true));
+    });
+  });
+
+  it('kills both workbench ptys on unmount (no leak on either frame)', async () => {
+    const { unmount } = render(<CenterPane />);
+    await waitFor(() => expect(ptySpawn().mock.calls.length).toBeGreaterThanOrEqual(2));
+    const ids = spawnedIds();
+
+    unmount();
+    await waitFor(() => {
+      ids.forEach((id) => expect(ptyKill()).toHaveBeenCalledWith(id));
+    });
+  });
+});

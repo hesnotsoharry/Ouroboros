@@ -1,7 +1,9 @@
 /**
- * TerminalShell — glass-wrapped terminal container (Wave 2 live upper / mock lower).
+ * TerminalShell — glass-wrapped terminal container (Wave 2 both frames live).
  * Canon §08: glass container · radius --r-md · tab bar · tinted-well body.
  * ADR Decision 5: no extra opacity wrapper — canvas opacity is the terminal's job.
+ * ADR Decision 6: one live plain-shell pty per frame; tab bar stays as single-tab
+ * affordance; multi-tab management and CC auto-launch deferred to Wave 3.
  */
 
 import React from 'react';
@@ -9,26 +11,10 @@ import React from 'react';
 import { Icon } from '../../shared/Icon';
 import { TerminalInstance } from '../../Terminal/TerminalInstance';
 import {
-  MOCK_CC_PROMPT_PLACEHOLDER,
-  MOCK_CC_STATUS_LINE,
-  MOCK_CC_TUI_LINES,
-  MOCK_SHELL_LINES,
   MOCK_TERM_TABS_LOWER,
   MOCK_TERM_TABS_UPPER,
-  MockTerminalLine,
   MockTerminalTab,
-  TermLineTone,
 } from '../workbenchMockData';
-
-const TONE_VAR: Record<TermLineTone, string> = {
-  primary: 'var(--ink)',
-  muted: 'var(--ink-3)',
-  success: 'var(--success)',
-  warning: 'var(--warning)',
-  accent: 'var(--accent)',
-  purple: 'var(--purple)',
-  info: 'var(--info)',
-};
 
 const iconBtnStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -39,19 +25,6 @@ const iconBtnStyle: React.CSSProperties = {
   color: 'var(--ink-3)',
   cursor: 'pointer',
 };
-
-const termLineStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-term, monospace)',
-  fontSize: 12,
-  lineHeight: 1.55,
-  whiteSpace: 'pre',
-  minHeight: '1.55em',
-};
-
-function TermLineRow({ line }: { line: MockTerminalLine }): React.ReactElement {
-  const color = line.tone ? TONE_VAR[line.tone] : 'var(--ink)';
-  return <div style={{ ...termLineStyle, color }}>{line.text}</div>;
-}
 
 function TabStatusDot({ status }: { status: MockTerminalTab['status'] }): React.ReactElement {
   return (
@@ -170,144 +143,29 @@ function TabBar({ tabs }: { tabs: MockTerminalTab[] }): React.ReactElement {
   );
 }
 
-function CcCursor(): React.ReactElement {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: 8,
-        height: 14,
-        background: 'var(--ink)',
-        opacity: 0.7,
-        verticalAlign: 'middle',
-      }}
-    />
-  );
-}
-
-/** CC prompt box — glass-soft bg, 1px --stroke-inner, radius --r-md (canon §08). */
-function CcPromptBox(): React.ReactElement {
-  return (
-    <div
-      data-testid="cc-prompt-box"
-      style={{
-        margin: 8,
-        padding: '8px 12px',
-        background: 'var(--term-prompt-bg)',
-        border: '1px solid var(--stroke-inner)',
-        borderRadius: 'var(--r-md)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        flexShrink: 0,
-      }}
-    >
-      <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 13 }}>{'>'}</span>
-      <span
-        style={{
-          color: 'var(--ink-3)',
-          fontFamily: 'var(--font-term, monospace)',
-          fontSize: 12,
-          flex: 1,
-        }}
-      >
-        {MOCK_CC_PROMPT_PLACEHOLDER}
-      </span>
-      <CcCursor />
-    </div>
-  );
-}
-
-/** CC status line — mono 11px --ink-3 (canon §08). */
-function CcStatusLine(): React.ReactElement {
-  return (
-    <div
-      data-testid="cc-status-line"
-      style={{
-        padding: '3px 16px 6px',
-        fontFamily: 'var(--font-mono, monospace)',
-        fontSize: 11,
-        color: 'var(--ink-3)',
-        flexShrink: 0,
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}
-    >
-      {MOCK_CC_STATUS_LINE}
-    </div>
-  );
-}
-
-/** Body for the upper (CC) terminal: mock TUI lines + prompt box + status. */
-function CcBody(): React.ReactElement {
-  return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 4px', minHeight: 0 }}>
-        {MOCK_CC_TUI_LINES.map((line, i) => (
-          <TermLineRow key={i} line={line} />
-        ))}
-      </div>
-      <CcPromptBox />
-      <CcStatusLine />
-    </div>
-  );
-}
-
-/** Body for the lower (shell) terminal: raw mock shell lines + $ cursor. */
-function ShellBody(): React.ReactElement {
-  return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 14px', minHeight: 0 }}>
-      {MOCK_SHELL_LINES.map((line, i) => (
-        <TermLineRow key={i} line={line} />
-      ))}
-      <div
-        data-testid="shell-prompt-line"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginTop: 6,
-          fontFamily: 'var(--font-term, monospace)',
-          fontSize: 12,
-          lineHeight: 1.55,
-          gap: 4,
-        }}
-      >
-        <span style={{ color: 'var(--success)' }}>$ </span>
-        <CcCursor />
-      </div>
-    </div>
-  );
-}
-
 export type TerminalKind = 'cc' | 'shell';
 
 interface TerminalShellProps {
   kind: TerminalKind;
   /** flex grow value — parent CenterPane controls the 62/38 split via this. */
   flex: number;
-  /** When provided, renders a live <TerminalInstance>; pty must be pre-spawned. */
-  sessionId?: string;
-  /** Forwarded to <TerminalInstance> visibility toggle. Defaults to true. */
-  isActive?: boolean;
+  /** Live pty session id. Must be pre-spawned before this component mounts. */
+  sessionId: string;
+  /** Forwarded to <TerminalInstance> visibility toggle. */
+  isActive: boolean;
 }
 
 /** Canon §08 tinted well: --term-bg panel + --term-inset shadow. */
 const WELL_STYLE: React.CSSProperties = {
-  flex: 1, minHeight: 0, position: 'relative',
-  display: 'flex', flexDirection: 'column',
-  background: 'var(--term-bg)', boxShadow: 'var(--term-inset)',
+  flex: 1,
+  minHeight: 0,
+  position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
+  background: 'var(--term-bg)',
+  boxShadow: 'var(--term-inset)',
   fontFamily: 'var(--font-term, monospace)',
 };
-
-/** Live xterm body. flex:1+minHeight:0 = non-zero height at mount (fit-timing). No opacity wrapper (ADR 5). */
-function LiveBody({ sessionId, isActive }: { sessionId: string; isActive: boolean }): React.ReactElement {
-  return (
-    <div style={{ flex: 1, minHeight: 0 }}>
-      <TerminalInstance sessionId={sessionId} isActive={isActive} />
-    </div>
-  );
-}
 
 const SHELL_OUTER: React.CSSProperties = {
   display: 'flex',
@@ -319,26 +177,33 @@ const SHELL_OUTER: React.CSSProperties = {
 };
 
 /**
- * TerminalShell — glass container + tab bar + tinted-well body.
+ * TerminalShell — glass container + tab bar + tinted-well live terminal body.
  *
- * kind="cc"    → upper terminal (Claude Code TUI)
+ * kind="cc"    → upper terminal (Claude Code TUI — plain shell this wave, Wave 3 auto-launch)
  * kind="shell" → lower terminal (raw shell)
  *
- * When sessionId is provided the live xterm mounts; otherwise the static mock
- * body renders (lower frame this phase — ADR Decision 6).
+ * sessionId is required — both frames are live as of Wave 2 Phase 2.
+ * No extra opacity wrapper around <TerminalInstance> (ADR Decision 5).
  */
-export function TerminalShell({ kind, flex, sessionId, isActive }: TerminalShellProps): React.ReactElement {
+export function TerminalShell({
+  kind,
+  flex,
+  sessionId,
+  isActive,
+}: TerminalShellProps): React.ReactElement {
   const tabs = kind === 'cc' ? MOCK_TERM_TABS_UPPER : MOCK_TERM_TABS_LOWER;
-  const body = sessionId !== undefined
-    ? <LiveBody sessionId={sessionId} isActive={isActive ?? true} />
-    : kind === 'cc' ? <CcBody /> : <ShellBody />;
   return (
     <div
       data-testid={kind === 'cc' ? 'terminal-shell-upper' : 'terminal-shell-lower'}
       style={{ ...SHELL_OUTER, flex }}
     >
       <TabBar tabs={tabs} />
-      <div style={WELL_STYLE}>{body}</div>
+      <div style={WELL_STYLE}>
+        {/* flex:1+minHeight:0 = non-zero height at mount (fit-timing). No opacity wrapper (ADR 5). */}
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <TerminalInstance sessionId={sessionId} isActive={isActive} />
+        </div>
+      </div>
     </div>
   );
 }

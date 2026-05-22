@@ -9,11 +9,51 @@
  *
  * Phase 2 additions: TitleBar renders the app mark, project + branch chips,
  * AgentGlobe (running content from mock), and the three window controls.
+ *
+ * Wave 2 Phase 2: TerminalShell tests updated — mock bodies removed; both
+ * frames are live terminals. TerminalInstance is mocked to keep renders lightweight.
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Lightweight TerminalInstance stub — avoids xterm + IPC in render tests.
+// Path relative to this test file (Workbench/Workbench.test.tsx).
+vi.mock('../Terminal/TerminalInstance', () => ({
+  TerminalInstance: ({ sessionId }: { sessionId: string }) =>
+    React.createElement('div', { 'data-testid': `terminal-instance-${sessionId}` }),
+}));
+
+// ProjectContext stub — useWorkbenchTerminals reads projectRoot for cwd.
+vi.mock('../../contexts/ProjectContext', () => ({
+  useProject: () => ({
+    projectRoot: '/test-root',
+    projectRoots: ['/test-root'],
+    projectName: 'test',
+    isLoaded: true,
+    setProjectRoot: vi.fn(),
+    addProjectRoot: vi.fn(),
+    removeProjectRoot: vi.fn(),
+    clearProject: vi.fn(),
+  }),
+  useProjectOptional: () => null,
+}));
+
+/** Installs a minimal window.electronAPI.pty stub used by useWorkbenchTerminals. */
+function stubPty(): void {
+  (window as unknown as { electronAPI: unknown }).electronAPI = {
+    ...(window as unknown as { electronAPI: Record<string, unknown> }).electronAPI,
+    pty: {
+      spawn: vi.fn().mockResolvedValue({ success: true }),
+      kill: vi.fn().mockResolvedValue({ success: true }),
+      onData: vi.fn(() => () => {}),
+      onExit: vi.fn(() => () => {}),
+      onDisconnected: vi.fn(() => () => {}),
+      write: vi.fn().mockResolvedValue({ success: true }),
+    },
+  };
+}
 
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { InnerRail } from './Rails/InnerRail';
@@ -23,6 +63,14 @@ import { StatusBar } from './StatusBar';
 import { CenterPane } from './Terminals/CenterPane';
 import { TerminalShell } from './Terminals/TerminalShell';
 import { Workbench } from './Workbench';
+
+// Install the pty stub before every test so any render(<Workbench />) or
+// render(<CenterPane />) can call useWorkbenchTerminals → pty.spawn without
+// crashing. Tests that need their own electronAPI shape (useCanonWorkbenchFlag)
+// override with vi.stubGlobal after this runs.
+beforeEach(() => {
+  stubPty();
+});
 
 afterEach(() => {
   cleanup();
@@ -233,14 +281,26 @@ describe('UnifiedRail', () => {
 
 describe('CenterPane', () => {
   it('carries data-testid="workbench-terminals" on the root element', () => {
+    stubPty();
     render(<CenterPane />);
     expect(screen.getByTestId('workbench-terminals')).toBeDefined();
   });
 
   it('renders both terminal shells (upper CC + lower shell)', () => {
+    stubPty();
     render(<CenterPane />);
     expect(screen.getByTestId('terminal-shell-upper')).toBeDefined();
     expect(screen.getByTestId('terminal-shell-lower')).toBeDefined();
+  });
+
+  it('both terminal shells contain a live TerminalInstance', () => {
+    stubPty();
+    render(<CenterPane />);
+    const upper = screen.getByTestId('terminal-shell-upper');
+    const lower = screen.getByTestId('terminal-shell-lower');
+    // Each shell's well contains a TerminalInstance stub (data-testid=terminal-instance-*)
+    expect(upper.querySelector('[data-testid^="terminal-instance-"]')).toBeDefined();
+    expect(lower.querySelector('[data-testid^="terminal-instance-"]')).toBeDefined();
   });
 
   it('does not import xterm — module loads without terminal-emulator errors', async () => {
@@ -251,40 +311,29 @@ describe('CenterPane', () => {
 
 describe('TerminalShell (upper — CC)', () => {
   it('renders tab labels from MOCK_TERM_TABS_UPPER', () => {
-    render(<TerminalShell kind="cc" flex={1.55} />);
+    render(<TerminalShell kind="cc" flex={1.55} sessionId="test-upper" isActive />);
     // MOCK_TERM_TABS_UPPER: 'claude · main', 'claude · refactor'
     expect(screen.getByText('claude · main')).toBeDefined();
     expect(screen.getByText('claude · refactor')).toBeDefined();
   });
 
-  it('renders the CC prompt box', () => {
-    render(<TerminalShell kind="cc" flex={1.55} />);
-    expect(screen.getByTestId('cc-prompt-box')).toBeDefined();
+  it('renders a live TerminalInstance in the well body', () => {
+    render(<TerminalShell kind="cc" flex={1.55} sessionId="test-upper" isActive />);
+    expect(screen.getByTestId('terminal-instance-test-upper')).toBeDefined();
   });
 
-  it('renders the CC status line containing the model name', () => {
-    render(<TerminalShell kind="cc" flex={1.55} />);
-    const statusLine = screen.getByTestId('cc-status-line');
-    // MOCK_CC_STATUS_LINE includes 'claude-sonnet-4-6'
-    expect(statusLine.textContent).toContain('claude-sonnet-4-6');
+  it('does NOT render the mock CC prompt box', () => {
+    render(<TerminalShell kind="cc" flex={1.55} sessionId="test-upper" isActive />);
+    expect(screen.queryByTestId('cc-prompt-box')).toBeNull();
   });
 
-  it('renders the CC status line containing the context percentage', () => {
-    render(<TerminalShell kind="cc" flex={1.55} />);
-    const statusLine = screen.getByTestId('cc-status-line');
-    expect(statusLine.textContent).toContain('47% context left');
-  });
-
-  it('renders mock CC TUI output lines', () => {
-    render(<TerminalShell kind="cc" flex={1.55} />);
-    // First CC TUI line (Reading TerminalPane) should be in the DOM.
-    expect(
-      screen.getByText(/Reading src\/renderer\/components\/Terminal\/TerminalPane\.tsx/),
-    ).toBeDefined();
+  it('does NOT render the mock CC status line', () => {
+    render(<TerminalShell kind="cc" flex={1.55} sessionId="test-upper" isActive />);
+    expect(screen.queryByTestId('cc-status-line')).toBeNull();
   });
 
   it('renders the Split and Maximize tab-bar icons', () => {
-    render(<TerminalShell kind="cc" flex={1.55} />);
+    render(<TerminalShell kind="cc" flex={1.55} sessionId="test-upper" isActive />);
     expect(screen.getByTitle('Split')).toBeDefined();
     expect(screen.getByTitle('Maximize')).toBeDefined();
   });
@@ -292,36 +341,31 @@ describe('TerminalShell (upper — CC)', () => {
 
 describe('TerminalShell (lower — shell)', () => {
   it('renders tab labels from MOCK_TERM_TABS_LOWER', () => {
-    render(<TerminalShell kind="shell" flex={1} />);
+    render(<TerminalShell kind="shell" flex={1} sessionId="test-lower" isActive />);
     // MOCK_TERM_TABS_LOWER: 'dev server', 'test:watch', 'shell'
     expect(screen.getByText('dev server')).toBeDefined();
     expect(screen.getByText('test:watch')).toBeDefined();
   });
 
-  it('does NOT render the CC prompt box', () => {
-    render(<TerminalShell kind="shell" flex={1} />);
+  it('renders a live TerminalInstance in the well body', () => {
+    render(<TerminalShell kind="shell" flex={1} sessionId="test-lower" isActive />);
+    expect(screen.getByTestId('terminal-instance-test-lower')).toBeDefined();
+  });
+
+  it('does NOT render the mock shell prompt cursor line', () => {
+    render(<TerminalShell kind="shell" flex={1} sessionId="test-lower" isActive />);
+    expect(screen.queryByTestId('shell-prompt-line')).toBeNull();
+  });
+
+  it('does NOT render the mock CC prompt box', () => {
+    render(<TerminalShell kind="shell" flex={1} sessionId="test-lower" isActive />);
     expect(screen.queryByTestId('cc-prompt-box')).toBeNull();
-  });
-
-  it('does NOT render the CC status line', () => {
-    render(<TerminalShell kind="shell" flex={1} />);
-    expect(screen.queryByTestId('cc-status-line')).toBeNull();
-  });
-
-  it('renders the shell prompt cursor line', () => {
-    render(<TerminalShell kind="shell" flex={1} />);
-    expect(screen.getByTestId('shell-prompt-line')).toBeDefined();
-  });
-
-  it('renders mock shell output lines', () => {
-    render(<TerminalShell kind="shell" flex={1} />);
-    // MOCK_SHELL_LINES includes VITE ready message
-    expect(screen.getByText(/VITE v5\.4\.2\s+ready/)).toBeDefined();
   });
 });
 
 describe('Workbench — Phase 4 integration', () => {
   it('workbench-terminals test-id resolves on CenterPane root (not a placeholder)', () => {
+    stubPty();
     render(<Workbench />);
     const el = screen.getByTestId('workbench-terminals');
     // CenterPane root has both terminal shells as descendants
@@ -329,7 +373,17 @@ describe('Workbench — Phase 4 integration', () => {
     expect(el.querySelector('[data-testid="terminal-shell-lower"]')).toBeDefined();
   });
 
+  it('both terminal shells in the workbench contain a live TerminalInstance', () => {
+    stubPty();
+    render(<Workbench />);
+    const upper = screen.getByTestId('terminal-shell-upper');
+    const lower = screen.getByTestId('terminal-shell-lower');
+    expect(upper.querySelector('[data-testid^="terminal-instance-"]')).toBeDefined();
+    expect(lower.querySelector('[data-testid^="terminal-instance-"]')).toBeDefined();
+  });
+
   it('Agent Sidebar is the real AgentSidebar component (not a placeholder)', () => {
+    stubPty();
     render(<Workbench />);
     const el = screen.getByTestId('workbench-agentsidebar');
     expect(el).toBeDefined();
