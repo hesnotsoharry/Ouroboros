@@ -278,7 +278,9 @@ describe('TerminalShell (upper — CC)', () => {
   it('renders mock CC TUI output lines', () => {
     render(<TerminalShell kind="cc" flex={1.55} />);
     // First CC TUI line (Reading TerminalPane) should be in the DOM.
-    expect(screen.getByText(/Reading src\/renderer\/components\/Terminal\/TerminalPane\.tsx/)).toBeDefined();
+    expect(
+      screen.getByText(/Reading src\/renderer\/components\/Terminal\/TerminalPane\.tsx/),
+    ).toBeDefined();
   });
 
   it('renders the Split and Maximize tab-bar icons', () => {
@@ -334,7 +336,6 @@ describe('Workbench — Phase 4 integration', () => {
     // Real AgentSidebar contains the NOW block — placeholder text is gone
     expect(el.querySelector('[data-testid="now-block"]')).toBeDefined();
   });
-
 });
 
 // ── Phase 5: AgentSidebar + five panels ──────────────────────────────────────
@@ -536,9 +537,7 @@ describe('StatusBar', () => {
   it('renders the model name from MOCK_CONTEXT_STATS', () => {
     render(<StatusBar />);
     // MOCK_CONTEXT_STATS.model = 'claude-sonnet-4-6'
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain(
-      'claude-sonnet-4-6',
-    );
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('claude-sonnet-4-6');
   });
 
   it('renders the context used tokens formatted as compact string', () => {
@@ -556,9 +555,7 @@ describe('StatusBar', () => {
   it('renders the tests-passing pill with count from MOCK_STATUS_BAR', () => {
     render(<StatusBar />);
     // MOCK_STATUS_BAR.testsPassing = 24
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain(
-      '24 tests passing',
-    );
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('24 tests passing');
   });
 
   it('renders the cost formatted from MOCK_CONTEXT_STATS.costUsd', () => {
@@ -614,27 +611,21 @@ function mockConfig(canonWorkbench: boolean): void {
 describe('useCanonWorkbenchFlag', () => {
   it('returns false when config.layout.canonWorkbench is false', async () => {
     mockConfig(false);
-    const { readCanonWorkbenchFlag } = await import(
-      '../../hooks/useCanonWorkbenchFlag'
-    );
+    const { readCanonWorkbenchFlag } = await import('../../hooks/useCanonWorkbenchFlag');
     const result = await readCanonWorkbenchFlag();
     expect(result).toBe(false);
   });
 
   it('returns true when config.layout.canonWorkbench is true', async () => {
     mockConfig(true);
-    const { readCanonWorkbenchFlag } = await import(
-      '../../hooks/useCanonWorkbenchFlag'
-    );
+    const { readCanonWorkbenchFlag } = await import('../../hooks/useCanonWorkbenchFlag');
     const result = await readCanonWorkbenchFlag();
     expect(result).toBe(true);
   });
 
   it('returns false when electronAPI is absent (SSR / web stub)', async () => {
     vi.stubGlobal('window', {});
-    const { readCanonWorkbenchFlag } = await import(
-      '../../hooks/useCanonWorkbenchFlag'
-    );
+    const { readCanonWorkbenchFlag } = await import('../../hooks/useCanonWorkbenchFlag');
     const result = await readCanonWorkbenchFlag();
     expect(result).toBe(false);
   });
@@ -646,9 +637,7 @@ describe('useCanonWorkbenchFlag', () => {
         config: { getAll: vi.fn().mockRejectedValue(new Error('ipc error')) },
       },
     });
-    const { readCanonWorkbenchFlag } = await import(
-      '../../hooks/useCanonWorkbenchFlag'
-    );
+    const { readCanonWorkbenchFlag } = await import('../../hooks/useCanonWorkbenchFlag');
     const result = await readCanonWorkbenchFlag();
     expect(result).toBe(false);
   });

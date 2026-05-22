@@ -23,42 +23,88 @@ import { NowBlock } from './NowBlock';
 
 function StatusDot(): React.ReactElement {
   return (
-    <span style={{
-      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-      background: 'var(--accent)', boxShadow: '0 0 5px var(--accent)',
-    }} />
+    <span
+      style={{
+        width: 7,
+        height: 7,
+        borderRadius: '50%',
+        flexShrink: 0,
+        background: 'var(--accent)',
+        boxShadow: '0 0 5px var(--accent)',
+      }}
+    />
   );
 }
 
-interface SessionLabelsProps { label: string; sub: string }
+interface SessionLabelsProps {
+  label: string;
+  sub: string;
+}
 
 function SessionLabels({ label, sub }: SessionLabelsProps): React.ReactElement {
   return (
-    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <span style={{
-        fontSize: 12, fontWeight: 600, color: 'var(--ink)',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
+    <div
+      style={{
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--ink)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
         {label}
       </span>
-      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', color: 'var(--ink-3)' }}>
+      <span
+        style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', color: 'var(--ink-3)' }}
+      >
         {sub}
       </span>
     </div>
   );
 }
 
-interface IconButtonProps { title: string; danger?: boolean }
+interface IconButtonProps {
+  title: string;
+  danger?: boolean;
+}
 
-function IconButton({ title, danger = false, children }: React.PropsWithChildren<IconButtonProps>): React.ReactElement {
+function IconButton({
+  title,
+  danger = false,
+  children,
+}: React.PropsWithChildren<IconButtonProps>): React.ReactElement {
   return (
-    <button type="button" title={title} onClick={undefined} style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      width: 22, height: 22, borderRadius: 4, flexShrink: 0, cursor: 'default', padding: 0,
-      background: danger ? 'var(--error-tint)' : 'transparent',
-      border: danger ? '1px solid var(--error, rgba(248,113,113,0.4))' : '1px solid var(--stroke-inner)',
-      color: danger ? 'var(--error)' : 'var(--ink-3)',
-    }}>
+    <button
+      type="button"
+      title={title}
+      onClick={undefined}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 22,
+        height: 22,
+        borderRadius: 4,
+        flexShrink: 0,
+        cursor: 'default',
+        padding: 0,
+        background: danger ? 'var(--error-tint)' : 'transparent',
+        border: danger
+          ? '1px solid var(--error, rgba(248,113,113,0.4))'
+          : '1px solid var(--stroke-inner)',
+        color: danger ? 'var(--error)' : 'var(--ink-3)',
+      }}
+    >
       {children}
     </button>
   );
@@ -69,11 +115,17 @@ function IconButton({ title, danger = false, children }: React.PropsWithChildren
 function SidebarHeader(): React.ReactElement {
   const session = MOCK_SESSIONS.find((s) => s.active) ?? MOCK_SESSIONS[0];
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
-      padding: '0 10px', height: 36, flexShrink: 0,
-      borderBottom: '1px solid var(--stroke-faint)',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '0 10px',
+        height: 36,
+        flexShrink: 0,
+        borderBottom: '1px solid var(--stroke-faint)',
+      }}
+    >
       <StatusDot />
       <SessionLabels label={session.label} sub={session.sub} />
       <IconButton title="Stop" danger>
@@ -99,8 +151,10 @@ export function AgentSidebar(): React.ReactElement {
     <div
       data-testid="workbench-agentsidebar"
       style={{
-        width: 348, flexShrink: 0,
-        display: 'flex', flexDirection: 'column',
+        width: 348,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
         background: 'var(--glass-panel)',
         border: '1px solid var(--stroke-inner)',
         borderRadius: 'var(--r-md)',
@@ -109,7 +163,15 @@ export function AgentSidebar(): React.ReactElement {
       }}
     >
       <SidebarHeader />
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <NowBlock />
         <PanelDivider />
         <ContextBlock />

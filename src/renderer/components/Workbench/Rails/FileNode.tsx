@@ -48,9 +48,7 @@ export function FileNode({ node }: FileNodeProps): React.ReactElement {
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {node.name}
       </span>
-      {node.badge != null && node.badge !== '' && (
-        <NodeBadge badge={node.badge} />
-      )}
+      {node.badge != null && node.badge !== '' && <NodeBadge badge={node.badge} />}
     </div>
   );
 }
@@ -72,13 +70,7 @@ function NodeBadge({ badge }: { badge: string }): React.ReactElement {
   );
 }
 
-function ChevronSlot({
-  node,
-  isDir,
-}: {
-  node: MockFileNode;
-  isDir: boolean;
-}): React.ReactElement {
+function ChevronSlot({ node, isDir }: { node: MockFileNode; isDir: boolean }): React.ReactElement {
   if (!isDir) {
     return <span style={{ width: 11, flexShrink: 0 }} />;
   }

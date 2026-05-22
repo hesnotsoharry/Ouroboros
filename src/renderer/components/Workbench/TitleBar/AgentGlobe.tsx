@@ -110,10 +110,17 @@ interface RunningContentProps {
   duration: number;
 }
 
-function RunningContent({ model, toolName, target, duration }: RunningContentProps): React.ReactElement {
+function RunningContent({
+  model,
+  toolName,
+  target,
+  duration,
+}: RunningContentProps): React.ReactElement {
   return (
     <>
-      <span style={sparkleStyle}><Icon name="Sparkle" size={12} /></span>
+      <span style={sparkleStyle}>
+        <Icon name="Sparkle" size={12} />
+      </span>
       <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{model}</span>
       <GlobeDivider />
       <Icon name="Edit" size={11} style={{ color: 'var(--purple, #c084fc)' }} />
@@ -165,14 +172,16 @@ function buildGlobeStyle(isRunning: boolean): React.CSSProperties {
     gap: 8,
     height: 28,
     padding: '0 12px 0 10px',
-    background: 'linear-gradient(180deg, var(--accent-tint, rgba(129,140,248,0.14)), rgba(129,140,248,0.04))',
+    background:
+      'linear-gradient(180deg, var(--accent-tint, rgba(129,140,248,0.14)), rgba(129,140,248,0.04))',
     border: '1px solid var(--accent-edge, rgba(129,140,248,0.35))',
     borderRadius: 999,
     cursor: 'pointer',
     position: 'relative',
     overflow: 'hidden',
     opacity: isRunning ? 1 : 0.6,
-    boxShadow: '0 0 0 1px rgba(129,140,248,0.04), 0 4px 20px -8px rgba(129,140,248,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+    boxShadow:
+      '0 0 0 1px rgba(129,140,248,0.04), 0 4px 20px -8px rgba(129,140,248,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
     WebkitAppRegion: 'no-drag',
     flexShrink: 0,
   } as React.CSSProperties;
@@ -187,7 +196,11 @@ export function AgentGlobe({ state = 'running' }: AgentGlobeProps): React.ReactE
   const isRunning = state === 'running';
 
   return (
-    <button data-testid="agent-globe" title="Click to focus active session" style={buildGlobeStyle(isRunning)}>
+    <button
+      data-testid="agent-globe"
+      title="Click to focus active session"
+      style={buildGlobeStyle(isRunning)}
+    >
       {isRunning && <span aria-hidden style={shimmerStyle} />}
       {isRunning ? (
         <RunningContent model={model} toolName={toolName} target={target} duration={duration} />

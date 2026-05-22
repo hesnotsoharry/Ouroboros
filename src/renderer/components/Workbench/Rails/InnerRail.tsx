@@ -37,21 +37,13 @@ const RAIL_STYLE: React.CSSProperties = {
 };
 
 export function InnerRail(): React.ReactElement {
-  const activeProjectId =
-    MOCK_PROJECTS.find((p) => p.active)?.id ?? MOCK_PROJECTS[0].id;
-  const currentSessions = MOCK_SESSIONS.filter(
-    (s) => s.projectId === activeProjectId,
-  );
-  const otherSessions = MOCK_SESSIONS.filter(
-    (s) => s.projectId !== activeProjectId,
-  );
+  const activeProjectId = MOCK_PROJECTS.find((p) => p.active)?.id ?? MOCK_PROJECTS[0].id;
+  const currentSessions = MOCK_SESSIONS.filter((s) => s.projectId === activeProjectId);
+  const otherSessions = MOCK_SESSIONS.filter((s) => s.projectId !== activeProjectId);
 
   return (
     <div data-testid="workbench-innerrail" style={RAIL_STYLE}>
-      <RunningSection
-        currentSessions={currentSessions}
-        otherSessions={otherSessions}
-      />
+      <RunningSection currentSessions={currentSessions} otherSessions={otherSessions} />
       <div style={{ height: 1, background: 'var(--stroke-faint)', margin: '0 10px' }} />
       <FilesSection />
       <BranchFooter />
@@ -97,11 +89,7 @@ function RunningSectionHeader(): React.ReactElement {
         <StatusDot status="live" />
         <SectionLabel>Running</SectionLabel>
       </div>
-      <button
-        title="Collapse to unified rail"
-        onClick={() => undefined}
-        style={iconBtnStyle}
-      >
+      <button title="Collapse to unified rail" onClick={() => undefined} style={iconBtnStyle}>
         <Icon name="Chevron" size={11} style={{ transform: 'rotate(180deg)' }} />
       </button>
     </div>
@@ -115,8 +103,7 @@ function SessionRow({
   session: MockSession;
   isCurrent: boolean;
 }): React.ReactElement {
-  const activeProject =
-    MOCK_PROJECTS.find((p) => p.id === session.projectId) ?? MOCK_PROJECTS[0];
+  const activeProject = MOCK_PROJECTS.find((p) => p.id === session.projectId) ?? MOCK_PROJECTS[0];
 
   const rowStyle: React.CSSProperties = {
     display: 'flex',
@@ -280,7 +267,15 @@ function BranchFooter(): React.ReactElement {
       }}
     >
       <Icon name="Branch" size={12} />
-      <span style={{ color: 'var(--ink-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span
+        style={{
+          color: 'var(--ink-2)',
+          flex: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
         {MOCK_BRANCH.name}
       </span>
       <span style={{ color: 'var(--success)', flexShrink: 0 }}>+{MOCK_BRANCH.adds}</span>
@@ -322,8 +317,7 @@ function StatusDot({ status }: { status: string }): React.ReactElement {
         borderRadius: 999,
         background: STATUS_DOT_COLORS[status] ?? 'var(--ink-4)',
         flexShrink: 0,
-        boxShadow:
-          status === 'live' ? '0 0 6px var(--success)' : 'none',
+        boxShadow: status === 'live' ? '0 0 6px var(--success)' : 'none',
       }}
     />
   );

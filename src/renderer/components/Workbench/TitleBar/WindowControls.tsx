@@ -24,7 +24,15 @@ function MinimizeGlyph(): React.ReactElement {
 function MaximizeGlyph(): React.ReactElement {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
-      <rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1" fill="none" />
+      <rect
+        x="0.5"
+        y="0.5"
+        width="9"
+        height="9"
+        stroke="currentColor"
+        strokeWidth="1"
+        fill="none"
+      />
     </svg>
   );
 }
@@ -60,21 +68,23 @@ function WinBtn({ title, isClose = false, children }: WinBtnProps): React.ReactE
   return (
     <button
       title={title}
-      style={{
-        width: 46,
-        height: 40,
-        padding: 0,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: bg,
-        border: 'none',
-        cursor: 'pointer',
-        color,
-        transition: 'background 120ms, color 120ms',
-        WebkitAppRegion: 'no-drag',
-        flexShrink: 0,
-      } as React.CSSProperties}
+      style={
+        {
+          width: 46,
+          height: 40,
+          padding: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: bg,
+          border: 'none',
+          cursor: 'pointer',
+          color,
+          transition: 'background 120ms, color 120ms',
+          WebkitAppRegion: 'no-drag',
+          flexShrink: 0,
+        } as React.CSSProperties
+      }
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -89,13 +99,15 @@ export function WindowControls(): React.ReactElement {
   return (
     <div
       data-testid="window-controls"
-      style={{
-        display: 'flex',
-        height: '100%',
-        alignItems: 'stretch',
-        flexShrink: 0,
-        WebkitAppRegion: 'no-drag',
-      } as React.CSSProperties}
+      style={
+        {
+          display: 'flex',
+          height: '100%',
+          alignItems: 'stretch',
+          flexShrink: 0,
+          WebkitAppRegion: 'no-drag',
+        } as React.CSSProperties
+      }
     >
       <WinBtn title="Minimize">
         <MinimizeGlyph />

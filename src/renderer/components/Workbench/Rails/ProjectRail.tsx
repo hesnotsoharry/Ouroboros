@@ -104,9 +104,7 @@ function ProjectChip({
     fontSize: 14,
     cursor: 'pointer',
     transition: 'all 150ms',
-    boxShadow: isActive
-      ? `0 6px 18px -4px ${project.color}90, var(--inset-hi, none)`
-      : 'none',
+    boxShadow: isActive ? `0 6px 18px -4px ${project.color}90, var(--inset-hi, none)` : 'none',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

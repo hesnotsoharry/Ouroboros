@@ -133,6 +133,27 @@ function TabBarControls(): React.ReactElement {
   );
 }
 
+function TabNewButton(): React.ReactElement {
+  return (
+    <button
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '0 8px',
+        height: '100%',
+        background: 'transparent',
+        border: 'none',
+        color: 'var(--ink-4)',
+        cursor: 'pointer',
+        flexShrink: 0,
+      }}
+      title="New tab"
+    >
+      <Icon name="Plus" size={12} />
+    </button>
+  );
+}
+
 function TabBar({ tabs }: { tabs: MockTerminalTab[] }): React.ReactElement {
   return (
     <div
@@ -146,20 +167,32 @@ function TabBar({ tabs }: { tabs: MockTerminalTab[] }): React.ReactElement {
         position: 'relative',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'stretch', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        {tabs.map((tab) => <TabItem key={tab.id} tab={tab} />)}
-        <button
-          style={{ display: 'inline-flex', alignItems: 'center', padding: '0 8px',
-            height: '100%', background: 'transparent', border: 'none',
-            color: 'var(--ink-4)', cursor: 'pointer', flexShrink: 0 }}
-          title="New tab"
-        >
-          <Icon name="Plus" size={12} />
-        </button>
+      <div
+        style={{ display: 'flex', alignItems: 'stretch', flex: 1, minWidth: 0, overflow: 'hidden' }}
+      >
+        {tabs.map((tab) => (
+          <TabItem key={tab.id} tab={tab} />
+        ))}
+        <TabNewButton />
         <div style={{ flex: 1 }} />
       </div>
       <TabBarControls />
     </div>
+  );
+}
+
+function CcCursor(): React.ReactElement {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: 8,
+        height: 14,
+        background: 'var(--ink)',
+        opacity: 0.7,
+        verticalAlign: 'middle',
+      }}
+    />
   );
 }
 
@@ -169,19 +202,29 @@ function CcPromptBox(): React.ReactElement {
     <div
       data-testid="cc-prompt-box"
       style={{
-        margin: 8, padding: '8px 12px',
+        margin: 8,
+        padding: '8px 12px',
         background: 'var(--term-prompt-bg)',
         border: '1px solid var(--stroke-inner)',
         borderRadius: 'var(--r-md)',
-        display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexShrink: 0,
       }}
     >
       <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 13 }}>{'>'}</span>
-      <span style={{ color: 'var(--ink-3)', fontFamily: 'var(--font-term, monospace)', fontSize: 12, flex: 1 }}>
+      <span
+        style={{
+          color: 'var(--ink-3)',
+          fontFamily: 'var(--font-term, monospace)',
+          fontSize: 12,
+          flex: 1,
+        }}
+      >
         {MOCK_CC_PROMPT_PLACEHOLDER}
       </span>
-      {/* Blinking cursor block */}
-      <span style={{ display: 'inline-block', width: 8, height: 14, background: 'var(--ink)', opacity: 0.7, verticalAlign: 'middle' }} />
+      <CcCursor />
     </div>
   );
 }
@@ -231,11 +274,18 @@ function ShellBody(): React.ReactElement {
       ))}
       <div
         data-testid="shell-prompt-line"
-        style={{ display: 'flex', alignItems: 'center', marginTop: 6,
-          fontFamily: 'var(--font-term, monospace)', fontSize: 12, lineHeight: 1.55, gap: 4 }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          marginTop: 6,
+          fontFamily: 'var(--font-term, monospace)',
+          fontSize: 12,
+          lineHeight: 1.55,
+          gap: 4,
+        }}
       >
         <span style={{ color: 'var(--success)' }}>$ </span>
-        <span style={{ display: 'inline-block', width: 8, height: 14, background: 'var(--ink)', opacity: 0.7, verticalAlign: 'middle' }} />
+        <CcCursor />
       </div>
     </div>
   );
@@ -263,8 +313,11 @@ export function TerminalShell({ kind, flex }: TerminalShellProps): React.ReactEl
     <div
       data-testid={kind === 'cc' ? 'terminal-shell-upper' : 'terminal-shell-lower'}
       style={{
-        flex, display: 'flex', flexDirection: 'column',
-        minHeight: 0, overflow: 'hidden',
+        flex,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        overflow: 'hidden',
         borderRadius: 'var(--r-md)',
         border: '1px solid var(--stroke-inner)',
       }}
@@ -273,8 +326,11 @@ export function TerminalShell({ kind, flex }: TerminalShellProps): React.ReactEl
       {/* Tinted-well body (canon §08: --term-bg + --term-inset) */}
       <div
         style={{
-          flex: 1, minHeight: 0, position: 'relative',
-          display: 'flex', flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
           background: 'var(--term-bg)',
           boxShadow: 'var(--term-inset)',
           fontFamily: 'var(--font-term, monospace)',

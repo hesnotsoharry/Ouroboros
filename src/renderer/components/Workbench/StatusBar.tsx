@@ -12,11 +12,7 @@
 import React from 'react';
 
 import { Icon } from '../shared/Icon';
-import {
-  MOCK_BRANCH,
-  MOCK_CONTEXT_STATS,
-  MOCK_STATUS_BAR,
-} from './workbenchMockData';
+import { MOCK_BRANCH, MOCK_CONTEXT_STATS, MOCK_STATUS_BAR } from './workbenchMockData';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -87,9 +83,7 @@ function RightSlots(): React.ReactElement {
   return (
     <>
       {/* Slot 5 — cost */}
-      <span style={{ color: 'var(--ink-2)' }}>
-        {formatCost(MOCK_CONTEXT_STATS.costUsd)}
-      </span>
+      <span style={{ color: 'var(--ink-2)' }}>{formatCost(MOCK_CONTEXT_STATS.costUsd)}</span>
 
       {SEP}
 

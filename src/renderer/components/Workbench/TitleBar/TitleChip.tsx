@@ -25,23 +25,25 @@ function TitleChipBase({ children, onClick }: TitleChipBaseProps): React.ReactEl
   return (
     <button
       onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        height: 26,
-        padding: '0 8px',
-        background: hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
-        border: `1px solid ${hovered ? 'var(--stroke-inner)' : 'transparent'}`,
-        borderRadius: 7,
-        color: 'var(--ink-2)',
-        fontSize: 12,
-        fontFamily: 'var(--font-ui)',
-        cursor: 'pointer',
-        transition: 'background 120ms, border-color 120ms',
-        WebkitAppRegion: 'no-drag',
-        flexShrink: 0,
-      } as React.CSSProperties}
+      style={
+        {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          height: 26,
+          padding: '0 8px',
+          background: hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+          border: `1px solid ${hovered ? 'var(--stroke-inner)' : 'transparent'}`,
+          borderRadius: 7,
+          color: 'var(--ink-2)',
+          fontSize: 12,
+          fontFamily: 'var(--font-ui)',
+          cursor: 'pointer',
+          transition: 'background 120ms, border-color 120ms',
+          WebkitAppRegion: 'no-drag',
+          flexShrink: 0,
+        } as React.CSSProperties
+      }
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
