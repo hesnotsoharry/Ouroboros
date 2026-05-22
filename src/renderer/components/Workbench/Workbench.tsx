@@ -15,7 +15,7 @@
  *   Agent rail:  right, 348px
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { InnerRail } from './Rails/InnerRail';
@@ -35,6 +35,7 @@ const stageStyle: React.CSSProperties = {
   height: '100vh',
   background: 'var(--bg-wash)',
   overflow: 'hidden',
+  position: 'relative',
 };
 
 const middleRowStyle: React.CSSProperties = {
@@ -45,6 +46,47 @@ const middleRowStyle: React.CSSProperties = {
   gap: '2px',
   padding: '0 2px',
 };
+
+// Wave 6 Phase 2 — CRT scanline overlay (canon §15 Retro: "1 px stripes every 3 px
+// at rgba(57,255,90,0.03) overlay"). Rendered only when data-scanlines="true" is set
+// on :root by the theme bridge (Retro theme only). pointer-events:none so it never
+// intercepts clicks. z-index matches the canon mockup's .wb-stage::after (10000).
+const scanlineOverlayStyle: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  backgroundImage:
+    'repeating-linear-gradient(' +
+    '0deg,' +
+    ' rgba(57, 255, 90, 0.03) 0,' + // hardcoded: canon §15 CRT phosphor stripe — Retro-only effect color, not a themeable surface
+    ' rgba(57, 255, 90, 0.03) 1px,' + // hardcoded: canon §15 CRT phosphor stripe — Retro-only effect color, not a themeable surface
+    ' transparent 1px,' +
+    ' transparent 3px' +
+    ')',
+  pointerEvents: 'none',
+  zIndex: 10000,
+  mixBlendMode: 'overlay',
+};
+
+/**
+ * Reads the current data-scanlines attribute from :root and re-reads it
+ * whenever the theme bridge fires the 'agent-ide:theme-applied' event.
+ * Kept local to Workbench — scanlines are exclusively a Workbench concern.
+ */
+function useScanlines(): boolean {
+  const [active, setActive] = useState(
+    () => document.documentElement.dataset['scanlines'] === 'true',
+  );
+
+  useEffect(() => {
+    const handler = (): void => {
+      setActive(document.documentElement.dataset['scanlines'] === 'true');
+    };
+    window.addEventListener('agent-ide:theme-applied', handler);
+    return (): void => window.removeEventListener('agent-ide:theme-applied', handler);
+  }, []);
+
+  return active;
+}
 
 function MiddleRow(): React.ReactElement {
   return (
@@ -58,11 +100,15 @@ function MiddleRow(): React.ReactElement {
 }
 
 export function Workbench(): React.ReactElement {
+  const scanlines = useScanlines();
   return (
     <div data-testid="workbench-root" style={stageStyle}>
       <TitleBar />
       <MiddleRow />
       <StatusBar />
+      {scanlines && (
+        <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
+      )}
     </div>
   );
 }

@@ -29,7 +29,7 @@
  *   - InnerRail: branch footer from mocked useGitBranch; +126/−42 removed
  */
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -1027,6 +1027,54 @@ describe('StatusBar — Workbench integration', () => {
     expect(screen.getByTestId('workbench-terminals')).toBeDefined();
     expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
     expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
+  });
+});
+
+// ── Wave 6 Phase 2: Scanline overlay ─────────────────────────────────────────
+
+describe('Workbench — scanline overlay (Wave 6 Phase 2)', () => {
+  it('does NOT render the scanline overlay when data-scanlines is "false"', () => {
+    // Default: no Retro theme applied → data-scanlines is not "true"
+    document.documentElement.dataset['scanlines'] = 'false';
+    render(<Workbench />);
+    expect(screen.queryByTestId('workbench-scanlines')).toBeNull();
+  });
+
+  it('renders the scanline overlay when data-scanlines is "true"', () => {
+    document.documentElement.dataset['scanlines'] = 'true';
+    render(<Workbench />);
+    expect(screen.getByTestId('workbench-scanlines')).toBeDefined();
+  });
+
+  it('renders the overlay when the theme-applied event fires with scanlines enabled', () => {
+    // Start with scanlines off, then simulate a Retro theme switch.
+    document.documentElement.dataset['scanlines'] = 'false';
+    render(<Workbench />);
+    expect(screen.queryByTestId('workbench-scanlines')).toBeNull();
+
+    // Simulate the bridge writing data-scanlines="true" + dispatching the event.
+    // act() flushes the React state update triggered by the event handler.
+    act(() => {
+      document.documentElement.dataset['scanlines'] = 'true';
+      window.dispatchEvent(new Event('agent-ide:theme-applied'));
+    });
+
+    expect(screen.getByTestId('workbench-scanlines')).toBeDefined();
+  });
+
+  it('removes the overlay when the theme-applied event fires with scanlines disabled', () => {
+    // Start with Retro active.
+    document.documentElement.dataset['scanlines'] = 'true';
+    render(<Workbench />);
+    expect(screen.getByTestId('workbench-scanlines')).toBeDefined();
+
+    // Switch away from Retro.
+    act(() => {
+      document.documentElement.dataset['scanlines'] = 'false';
+      window.dispatchEvent(new Event('agent-ide:theme-applied'));
+    });
+
+    expect(screen.queryByTestId('workbench-scanlines')).toBeNull();
   });
 });
 

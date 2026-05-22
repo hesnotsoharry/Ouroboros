@@ -11,6 +11,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { cursorTheme } from '../themes/cursor';
 import { modernTheme } from '../themes/modern';
+import { retroTheme } from '../themes/retro';
+import { warpTheme } from '../themes/warp';
 import { applyComponentTokens, applyThemeToDom, applyWorkbenchTokenOverrides } from './useTheme.tokens';
 
 afterEach(() => {
@@ -181,5 +183,138 @@ describe('applyThemeToDom — workbenchTokens override path end-to-end', () => {
     const bgWash = document.documentElement.style.getPropertyValue('--bg-wash');
     expect(bgWash).toBeTruthy();
     expect(bgWash).toMatch(/radial-gradient/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wave 6 Phase 2 — per-theme canon value assertions
+// ---------------------------------------------------------------------------
+
+describe('Warp theme — warm-amber canon token overrides', () => {
+  it('--bg-wash contains a warm-amber override (not the indigo material default)', () => {
+    applyThemeToDom(warpTheme);
+
+    const bgWash = document.documentElement.style.getPropertyValue('--bg-wash');
+    // Must contain the canon §15 Warp wash-1 colour (#16100a) — not the indigo default.
+    expect(bgWash).toContain('#16100a');
+    // Must not be the material's indigo wash.
+    expect(bgWash).not.toContain('#0a0b14');
+  });
+
+  it('--terminal-canvas-opacity is 0.86 (D5 — Warp was missing canvas opacity)', () => {
+    applyThemeToDom(warpTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--terminal-canvas-opacity')).toBe(
+      '0.86',
+    );
+  });
+
+  it('--accent-edge is the amber-tuned value (derived from canon §15 #f97316)', () => {
+    applyThemeToDom(warpTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--accent-edge')).toBe(
+      'rgba(249, 115, 22, 0.4)',
+    );
+  });
+
+  it('--accent-glow is the amber-tuned glow shadow (canon §15 Warp accent)', () => {
+    applyThemeToDom(warpTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--accent-glow')).toBe(
+      '0 2px 14px -2px rgba(249, 115, 22, 0.55)',
+    );
+  });
+
+  it('--blur-strong is NOT none — Warp keeps glass blur', () => {
+    applyThemeToDom(warpTheme);
+
+    const blurStrong = document.documentElement.style.getPropertyValue('--blur-strong');
+    // Warp does not set --blur-strong in workbenchTokens; the stylesheet default
+    // (non-"none") is what the material pass does NOT override inline. In jsdom,
+    // inline style will be empty for this property (stylesheet not applied), so
+    // the contract is: the inline value is NOT "none".
+    expect(blurStrong).not.toBe('none');
+  });
+
+  it('data-scanlines is "false" for Warp — glass themes emit no scanline layer', () => {
+    applyThemeToDom(warpTheme);
+
+    expect(document.documentElement.dataset['scanlines']).toBe('false');
+  });
+});
+
+describe('Retro theme — matte green-phosphor canon token overrides', () => {
+  it('--blur-strong is "none" — Retro suppresses glass blur (D6)', () => {
+    applyThemeToDom(retroTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--blur-strong')).toBe('none');
+  });
+
+  it('--blur-soft is "none" — Retro suppresses all backdrop blur (D6)', () => {
+    applyThemeToDom(retroTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--blur-soft')).toBe('none');
+  });
+
+  it('--material-panel is the opaque green panel value (alpha 0.85 — canon §15 opaque 0.85–0.95)', () => {
+    applyThemeToDom(retroTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--material-panel')).toBe(
+      'rgba(8, 18, 12, 0.85)',
+    );
+  });
+
+  it('--material-panel-raised is the opaque raised panel value (alpha 0.92)', () => {
+    applyThemeToDom(retroTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--material-panel-raised')).toBe(
+      'rgba(14, 26, 18, 0.92)',
+    );
+  });
+
+  it('--bg-wash contains the green phosphor wash (canon §15 wash-1 #050a07)', () => {
+    applyThemeToDom(retroTheme);
+
+    const bgWash = document.documentElement.style.getPropertyValue('--bg-wash');
+    expect(bgWash).toContain('#050a07');
+  });
+
+  it('--accent-edge is the phosphor-green value (canon §15 accent #39ff5a)', () => {
+    applyThemeToDom(retroTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--accent-edge')).toBe(
+      'rgba(57, 255, 90, 0.4)',
+    );
+  });
+
+  it('--accent-glow is the phosphor-green glow shadow (canon §15)', () => {
+    applyThemeToDom(retroTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--accent-glow')).toBe(
+      '0 0 14px rgba(57, 255, 90, 0.5)',
+    );
+  });
+
+  it('data-scanlines is "true" for Retro — CRT scanline layer enabled', () => {
+    applyThemeToDom(retroTheme);
+
+    expect(document.documentElement.dataset['scanlines']).toBe('true');
+  });
+});
+
+describe('Modern theme — glass preservation (no --blur-strong override)', () => {
+  it('--blur-strong is NOT none — Modern keeps glass blur', () => {
+    applyThemeToDom(modernTheme);
+
+    const blurStrong = document.documentElement.style.getPropertyValue('--blur-strong');
+    // Modern has no workbenchTokens, so no inline --blur-strong is written.
+    // The contract is it is not set to "none" inline (the stylesheet default applies).
+    expect(blurStrong).not.toBe('none');
+  });
+
+  it('data-scanlines is "false" for Modern — no scanline layer', () => {
+    applyThemeToDom(modernTheme);
+
+    expect(document.documentElement.dataset['scanlines']).toBe('false');
   });
 });
