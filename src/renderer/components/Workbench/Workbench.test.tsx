@@ -15,6 +15,9 @@ import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { InnerRail } from './Rails/InnerRail';
+import { ProjectRail } from './Rails/ProjectRail';
+import { UnifiedRail } from './Rails/UnifiedRail';
 import { Workbench } from './Workbench';
 
 afterEach(() => {
@@ -36,12 +39,11 @@ describe('Workbench', () => {
     expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
   });
 
-  it('renders the five remaining placeholder region labels', () => {
+  it('renders the three remaining placeholder region labels', () => {
     render(<Workbench />);
 
-    // Title Bar placeholder is now replaced by real TitleBar component — no placeholder text.
-    expect(screen.getByText('Project Rail')).toBeDefined();
-    expect(screen.getByText('Inner Rail')).toBeDefined();
+    // Title Bar, Project Rail, and Inner Rail placeholders are now replaced by
+    // real components — only the three not yet implemented show placeholder text.
     expect(screen.getByText('Terminals')).toBeDefined();
     expect(screen.getByText('Agent Sidebar')).toBeDefined();
     expect(screen.getByText('Status Bar')).toBeDefined();
@@ -74,7 +76,9 @@ describe('TitleBar', () => {
   it('renders the active project branch name from mock data', () => {
     render(<Workbench />);
     // MOCK_PROJECTS[0].branch = 'wave/1-workbench-static-shell'
-    expect(screen.getByText('wave/1-workbench-static-shell')).toBeDefined();
+    // Use getAllByText because InnerRail footer also shows the branch name.
+    const matches = screen.getAllByText('wave/1-workbench-static-shell');
+    expect(matches.length).toBeGreaterThan(0);
   });
 
   it('renders the AgentGlobe with running model name from mock data', () => {
@@ -103,6 +107,128 @@ describe('TitleBar', () => {
     expect(el).toBeDefined();
     // Should contain the window controls container
     expect(el.querySelector('[data-testid="window-controls"]')).toBeDefined();
+  });
+});
+
+// ── Phase 3: ProjectRail ──────────────────────────────────────────────────────
+
+describe('ProjectRail', () => {
+  it('renders the workbench-projectrail test-id on its root element', () => {
+    render(<ProjectRail />);
+    expect(screen.getByTestId('workbench-projectrail')).toBeDefined();
+  });
+
+  it('renders one chip per mock project (3 chips)', () => {
+    render(<ProjectRail />);
+    const rail = screen.getByTestId('workbench-projectrail');
+    // Each project chip is a button with the project name as title attribute.
+    expect(rail.querySelector('[title="agent-ide"]')).toBeDefined();
+    expect(rail.querySelector('[title="pinpoint"]')).toBeDefined();
+    expect(rail.querySelector('[title="lumen-cli"]')).toBeDefined();
+  });
+
+  it('renders the active project initial letter (A) in the active chip', () => {
+    render(<ProjectRail />);
+    // The active project is agent-ide (initial "A"), active: true in mock.
+    const chip = screen.getByTitle('agent-ide');
+    expect(chip.textContent).toContain('A');
+  });
+
+  it('renders a dirty-count badge on inactive projects with dirty > 0', () => {
+    render(<ProjectRail />);
+    // lumen-cli has dirty: 2 and is not active — badge should appear.
+    const chip = screen.getByTitle('lumen-cli');
+    expect(chip.textContent).toContain('2');
+  });
+
+  it('does not render a dirty badge on the active project', () => {
+    render(<ProjectRail />);
+    // agent-ide is active (dirty: 4 but badge is suppressed per canon).
+    const chip = screen.getByTitle('agent-ide');
+    // The chip text should be just the initial "A", no "4".
+    expect(chip.textContent).not.toContain('4');
+  });
+
+  it('renders the add-project button', () => {
+    render(<ProjectRail />);
+    expect(screen.getByTitle('Add project')).toBeDefined();
+  });
+
+  it('renders the collapse handle', () => {
+    render(<ProjectRail />);
+    expect(screen.getByTitle('Collapse to unified rail')).toBeDefined();
+  });
+});
+
+// ── Phase 3: InnerRail ────────────────────────────────────────────────────────
+
+describe('InnerRail', () => {
+  it('renders the workbench-innerrail test-id on its root element', () => {
+    render(<InnerRail />);
+    expect(screen.getByTestId('workbench-innerrail')).toBeDefined();
+  });
+
+  it('renders Running section with mock session labels', () => {
+    render(<InnerRail />);
+    // From MOCK_SESSIONS: 'claude · main' is in agent-ide (current project).
+    expect(screen.getByText('claude · main')).toBeDefined();
+    expect(screen.getByText('claude · refactor')).toBeDefined();
+  });
+
+  it('renders the other-project session (lumen-cli)', () => {
+    render(<InnerRail />);
+    expect(screen.getByText('claude · streaming')).toBeDefined();
+  });
+
+  it('renders the files section with mock file tree entries', () => {
+    render(<InnerRail />);
+    // MOCK_FILE_TREE includes 'src' at depth 0 and 'tokens.css'.
+    expect(screen.getByText('src')).toBeDefined();
+    expect(screen.getByText('tokens.css')).toBeDefined();
+  });
+
+  it('renders the branch footer with branch name and diff stats', () => {
+    render(<InnerRail />);
+    // MOCK_BRANCH.name = 'wave/1-workbench-static-shell'
+    expect(screen.getByText('wave/1-workbench-static-shell')).toBeDefined();
+    expect(screen.getByText('+126')).toBeDefined();
+    expect(screen.getByText('−42')).toBeDefined();
+  });
+});
+
+// ── Phase 3: UnifiedRail (built but not mounted in Workbench this wave) ───────
+
+describe('UnifiedRail', () => {
+  it('renders the workbench-unifiedrail test-id on its root element', () => {
+    render(<UnifiedRail />);
+    expect(screen.getByTestId('workbench-unifiedrail')).toBeDefined();
+  });
+
+  it('renders one accordion per mock project', () => {
+    render(<UnifiedRail />);
+    // Each project name appears in the accordion header.
+    expect(screen.getByText('agent-ide')).toBeDefined();
+    expect(screen.getByText('pinpoint')).toBeDefined();
+    expect(screen.getByText('lumen-cli')).toBeDefined();
+  });
+
+  it('expands the active project accordion body (RUNNING + FILES labels)', () => {
+    render(<UnifiedRail />);
+    // The active project (agent-ide) is expanded — body labels visible.
+    const items = screen.getAllByText(/running/i);
+    expect(items.length).toBeGreaterThan(0);
+    const fileItems = screen.getAllByText(/files/i);
+    expect(fileItems.length).toBeGreaterThan(0);
+  });
+
+  it('renders the branch footer', () => {
+    render(<UnifiedRail />);
+    expect(screen.getByText('wave/1-workbench-static-shell')).toBeDefined();
+  });
+
+  it('is NOT rendered inside Workbench (dual is default)', () => {
+    render(<Workbench />);
+    expect(screen.queryByTestId('workbench-unifiedrail')).toBeNull();
   });
 });
 

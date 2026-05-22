@@ -17,6 +17,8 @@
 
 import React from 'react';
 
+import { InnerRail } from './Rails/InnerRail';
+import { ProjectRail } from './Rails/ProjectRail';
 import { TitleBar } from './TitleBar/TitleBar';
 
 function PlaceholderRegion({
@@ -76,16 +78,8 @@ const middleRowStyle: React.CSSProperties = {
 function MiddleRow(): React.ReactElement {
   return (
     <div style={middleRowStyle}>
-      <PlaceholderRegion
-        label="Project Rail"
-        testId="workbench-projectrail"
-        style={{ width: '56px', flexShrink: 0 }}
-      />
-      <PlaceholderRegion
-        label="Inner Rail"
-        testId="workbench-innerrail"
-        style={{ width: '256px', flexShrink: 0 }}
-      />
+      <ProjectRail />
+      <InnerRail />
       <PlaceholderRegion
         label="Terminals"
         testId="workbench-terminals"
