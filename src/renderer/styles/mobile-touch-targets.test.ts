@@ -21,6 +21,15 @@ import { describe, expect, it } from 'vitest';
 // provably unreachable from a mobile-active surface.
 const ALLOWLIST: ReadonlySet<string> = new Set<string>([]);
 
+// Directory prefixes (repo-relative, forward-slash) that are provably
+// desktop-only surfaces — unreachable from the mobile/web (capacitor) surface,
+// which renders ChatOnlyShell, not these. The canon workbench is a desktop
+// Electron shell whose chrome is sub-32px BY DESIGN (canon §17: 40px title bar,
+// 24px status bar — a 32px touch target physically cannot fit). Exempting the
+// whole subtree (rather than per-line opt-outs) is deliberate: the scanner's
+// 8-line walk-back is leaky, so per-line comments would be whack-a-mole.
+const ALLOWLIST_PREFIXES: ReadonlyArray<string> = ['src/renderer/components/Workbench/'];
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /** Collect all .tsx files under a directory, recursively. */
@@ -115,6 +124,7 @@ function isButtonContext(lines: string[], lineIdx: number): boolean {
 function scanFile(absPath: string, repoRoot: string): Offender[] {
   const rel = toRelative(absPath, repoRoot);
   if (ALLOWLIST.has(rel)) return [];
+  if (ALLOWLIST_PREFIXES.some((prefix) => rel.startsWith(prefix))) return [];
 
   const source = fs.readFileSync(absPath, 'utf-8');
   const lines = source.split('\n');
