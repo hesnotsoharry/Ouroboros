@@ -105,7 +105,7 @@ function useBellState(unreadCount: number, markAllRead: () => void): BellState {
 
 // ── Bell button ───────────────────────────────────────────────────────────────
 
-const bellButtonStyle: React.CSSProperties = {
+const bellButtonStyle = {
   position: 'relative',
   display: 'inline-flex',
   alignItems: 'center',
@@ -118,7 +118,7 @@ const bellButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
   WebkitAppRegion: 'no-drag',
   flexShrink: 0,
-};
+} as React.CSSProperties;
 
 function BellButton({
   buttonRef,

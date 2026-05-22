@@ -135,7 +135,7 @@ function SettingsButton({ onClick }: SettingsButtonProps): React.ReactElement {
 
 // ── TitleBar ─────────────────────────────────────────────────────────────────
 
-const titleBarStyle: React.CSSProperties = {
+const titleBarStyle = {
   height: 40,
   flexShrink: 0,
   display: 'flex',
@@ -146,8 +146,8 @@ const titleBarStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--stroke-inner)',
   position: 'relative',
   zIndex: 5,
-  WebkitAppRegion: 'drag' as React.CSSProperties['WebkitAppRegion'],
-};
+  WebkitAppRegion: 'drag',
+} as React.CSSProperties;
 
 export function TitleBar(): React.ReactElement {
   const { projectRoot } = useProject();
