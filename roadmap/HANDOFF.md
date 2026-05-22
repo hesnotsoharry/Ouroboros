@@ -1,10 +1,59 @@
-# Session Handoff — 2026-05-22 (Workbench Wave 6 SHIPPED; themes + responsive; tag v2.27.0 pushed)
+# Session Handoff — 2026-05-22 (Workbench Wave 7 SHIPPED — parity completion; teardown re-sequenced to Wave 8)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-22 (latest) — Workbench Wave 6 SHIPPED + PUSHED (themes + responsive collapse)
+## 🔼 UPDATE 2026-05-22 (latest) — Workbench Wave 7 SHIPPED: parity completion (the planned teardown was DEFERRED)
+
+**Read this first — the wave sequence changed.** Wave 7 was planned as "cutover & teardown." It is now
+**parity completion**; teardown is **Wave 8**. Why: a pre-flight parity audit found the canon Workbench
+was **not at functional parity** with the legacy shell — Settings was unreachable (dead cog), Command
+Palette + Bell were stubs, FileTree is mock. Deleting the legacy shell now would have shipped a silent
+regression. The full audit + the (unchanged, fully-mapped) teardown deletion scope live in
+`roadmap/wave-7-workbench-parity-completion/wave-7-parity-audit.md`.
+
+- **Wave 7 — parity completion: SHIPPED** (commits `e0c4b9d2` P1, `e81c5c5d` P2, `553c9fb7` P3; planning
+  `c576f7d1`; tag **`v2.28.0`** local). Behind the **same default-off `layout.canonWorkbench` flag**, the
+  canon §06 TitleBar **right cluster is now live**, all renderer-only, all reusing existing components:
+  - **Settings cog** → shared `SettingsModal` via new `Workbench/Overlays/WorkbenchSettingsOverlay.tsx`
+    (listens `OPEN_SETTINGS_EVENT`). *This closed the hard cutover blocker — Settings was unreachable.*
+  - **Ctrl-K pill** → existing command palette via new `Workbench/Overlays/WorkbenchCommandPalette.tsx`
+    (`useCommandPalette` + `useCommandRegistry`; button dispatches `agent-ide:command-palette`).
+  - **Bell** → shared `NotificationCenter` via new `Workbench/TitleBar/WorkbenchBell.tsx` (badge = canon
+    §06 warning dot from real unread toast count; replaced the hardcoded `MOCK_PENDING_COUNT`).
+  - **Gates:** tsc clean, `eslint src/` **0 errors**, prettier clean, 23 new tests (7+7+9). Full suite
+    **11710 passed / 8 skipped / 0 failed**. Plan/ADR/audit/result in `roadmap/wave-7-workbench-parity-completion/`.
+    NOTE: the first full-suite run caught a 37-test regression — `WorkbenchBell` (Phase 3) calls
+    `useToastContext()` which throws in isolation-rendered tests without `<ToastProvider>` (production is
+    fine — provider is above the shell branch). Fixed by adding the established `vi.mock('.../ToastContext')`
+    pattern to 5 test files (commit `962bf006`, test-harness only). Lesson: re-run the WHOLE shell test dir
+    after mounting a context-consumer into a shared region — narrow per-file scopes miss it.
+- **Next action: close the remaining parity gaps, THEN Wave 8 (cutover & teardown).** Before Wave 8 can
+  delete the legacy shell, two things must resolve (follow-ups filed):
+  1. **Live FileTree** (HIGH, blocks cutover) — `InnerRail` still renders `MOCK_FILE_TREE`.
+     `roadmap/follow-ups/2026-05-22-workbench-live-filetree.md`.
+  2. **Three product decisions FOR COLE** — FilePicker / SymbolSearch / session-restore: canon is silent;
+     include-in-canon-shell or drop-with-legacy? `roadmap/follow-ups/2026-05-22-workbench-canon-product-decisions.md`
+     (technical-lead lean noted there: keep session-restore, fold FilePicker into the palette, drop SymbolSearch).
+  Then **Wave 8** deletes `AppLayout`/`InnerAppLayout`, `ChatOnlyShell/`, `Dispatch/`, the "Explain error"
+  scrollback action, and the orphaned `AgentMonitor/ApprovalDialog`. Open Q3 RESOLVED in the audit
+  (mobileAccess does NOT depend on Dispatch — safe to delete). Two Wave-8 prep discoveries beyond the
+  reconciliation doc: `AgentChat/` goes runtime-dead after cutover (sever the one `ChatStatusChipRow`
+  compile dep; retire AgentChat in its own later wave) + the `?mode=chat` pop-out machinery orphans —
+  `roadmap/follow-ups/2026-05-22-wave8-teardown-prep-discoveries.md`.
+- **Wave 7 NOT done / deferrals:** `/ui-smoke 7` deferred (per Wave 0–6 posture; all behind the off-by-default
+  flag). **Next dev session:** enable Settings → Appearance → "Canon workbench", click the cog (Settings
+  opens), the Ctrl-K pill (palette opens), the bell (notification center opens; dot = real unread). Two LOW
+  palette deferrals (`roadmap/follow-ups/2026-05-22-workbench-command-palette-canon-polish.md`): keybind is
+  still Ctrl+Shift+P not canon Ctrl+K; some builtin commands no-op in the canon shell. `/promote-vendor-lessons 7`
+  = no-op. Check-6 mutation joins the batched pre-merge task (now also covers the Wave-7 overlay hosts).
+- **Versioning note:** like WB-0..WB-6, this wave **tags without bumping `package.json`** (stays at 2.20.0)
+  — matching the established workbench-wave convention. Tag `v2.28.0`.
+
+---
+
+## 🔼 UPDATE 2026-05-22 — Workbench Wave 6 SHIPPED + PUSHED (themes + responsive collapse)
 
 Workbench overhaul: **Waves 0 + 1 + 2 + 3 + 4 + 5 + 6 all on `master`** — Wave 6 pushed to `origin/master` (`7c842dbc`, tag **`v2.27.0`** on origin). CI did not run (GH Actions minutes exhausted until 2026-06-01 — expected per bulletin; the wave-stack *merge* into a protected branch still waits for the minute restore).
 
