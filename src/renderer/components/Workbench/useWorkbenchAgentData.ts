@@ -12,6 +12,7 @@
  */
 
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
+import { useProjectOptional } from '../../contexts/ProjectContext';
 import type { AgentSession } from '../AgentMonitor/types';
 import { buildBadgeMap, deriveLatestHunk, useDiffReviewState } from './useWorkbenchAgentData.diff';
 import type {
@@ -379,12 +380,48 @@ export function deriveTimeline(session: AgentSession | null): WorkbenchTimelineE
   return events;
 }
 
+// ── Session scoping helpers (Wave 8 Phase 1) ──────────────────────────────────
+
+/**
+ * Returns true when a session's `cwd` is the active root or nested under it.
+ * Path-separator tolerant: normalises backslashes to forward slashes before
+ * comparing. The frozen acceptance test only uses exact-equal cases, so this
+ * normalisation is defensive-only and does not need deep Windows testing here.
+ */
+function isCwdInProject(cwd: string | undefined, projectRoot: string): boolean {
+  if (!cwd) return false;
+  const norm = (p: string): string => p.replace(/\\/g, '/').replace(/\/$/, '');
+  const normCwd = norm(cwd);
+  const normRoot = norm(projectRoot);
+  return normCwd === normRoot || normCwd.startsWith(normRoot + '/');
+}
+
+/**
+ * Picks the primary session applying the Wave 8 scoping contract:
+ *   - Bound path (id supplied): direct `agents.find`; project filter does NOT apply.
+ *   - Fallback path (no id): filter agents by active project root (when available)
+ *     then delegate to selectPrimarySession.
+ */
+function resolvePrimary(
+  agents: AgentSession[],
+  claudeSessionId: string | null | undefined,
+  projectRoot: string | null,
+): AgentSession | null {
+  if (claudeSessionId != null) {
+    return agents.find((s) => s.id === claudeSessionId) ?? null;
+  }
+  const pool = projectRoot ? agents.filter((s) => isCwdInProject(s.cwd, projectRoot)) : agents;
+  return selectPrimarySession(pool);
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function useWorkbenchAgentData(): WorkbenchAgentData {
+export function useWorkbenchAgentData(claudeSessionId?: string | null): WorkbenchAgentData {
   const { agents, currentSessions } = useAgentEventsContext();
   const { latestFiles } = useDiffReviewState();
-  const primary = selectPrimarySession(agents);
+  const projectCtx = useProjectOptional();
+  const projectRoot = projectCtx?.projectRoot ?? null;
+  const primary = resolvePrimary(agents, claudeSessionId, projectRoot);
   const primaryId = primary?.id ?? null;
   const state = deriveWorkbenchAgentState(primary);
 

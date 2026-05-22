@@ -93,6 +93,8 @@ interface MiddleRowProps {
   breakpointMode: 'full' | 'compact' | 'unified';
   onCollapseToUnified: () => void;
   onExpandToDual: () => void;
+  claudeSessionId: string | null;
+  onClaudeSessionId: (id: string | null) => void;
 }
 
 function MiddleRow({
@@ -100,6 +102,8 @@ function MiddleRow({
   breakpointMode,
   onCollapseToUnified,
   onExpandToDual,
+  claudeSessionId,
+  onClaudeSessionId,
 }: MiddleRowProps): React.ReactElement {
   return (
     <div style={middleRowStyle}>
@@ -111,8 +115,8 @@ function MiddleRow({
           <InnerRail onCollapse={onCollapseToUnified} />
         </>
       )}
-      <CenterPane />
-      <AgentSidebar breakpointMode={breakpointMode} />
+      <CenterPane onClaudeSessionId={onClaudeSessionId} />
+      <AgentSidebar breakpointMode={breakpointMode} claudeSessionId={claudeSessionId} />
     </div>
   );
 }
@@ -121,6 +125,9 @@ export function Workbench(): React.ReactElement {
   const scanlines = useScanlines();
   const breakpointMode = useWorkbenchBreakpoint();
   const [forceUnified, setForceUnified] = useState(false);
+  // Wave 8 Phase 1: capture the Claude session bound to the upper terminal and
+  // thread it down to AgentSidebar so it scopes to this terminal's session only.
+  const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
 
   const isUnified = forceUnified || breakpointMode === 'unified';
 
@@ -135,6 +142,8 @@ export function Workbench(): React.ReactElement {
         breakpointMode={breakpointMode}
         onCollapseToUnified={handleCollapseToUnified}
         onExpandToDual={handleExpandToDual}
+        claudeSessionId={claudeSessionId}
+        onClaudeSessionId={setClaudeSessionId}
       />
       <StatusBar />
       <WorkbenchSettingsOverlay />

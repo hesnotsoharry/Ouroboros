@@ -72,13 +72,23 @@ const DIVIDER_INNER_STYLE: React.CSSProperties = {
   background: 'var(--stroke-faint)',
 };
 
+interface CenterPaneProps {
+  onClaudeSessionId?: (id: string | null) => void;
+}
+
 /**
  * CenterPane — the centre column of the workbench.
  *
  * Carries `data-testid="workbench-terminals"` so tests resolve on the root.
+ * Wave 8 Phase 1: calls `onClaudeSessionId` whenever the bound Claude session
+ * changes so Workbench.tsx can thread the id to the AgentSidebar.
  */
-export function CenterPane(): React.ReactElement {
-  const { upperSessionId, lowerSessionId } = useWorkbenchTerminals();
+export function CenterPane({ onClaudeSessionId }: CenterPaneProps): React.ReactElement {
+  const { upperSessionId, lowerSessionId, claudeSessionId } = useWorkbenchTerminals();
+
+  useEffect(() => {
+    onClaudeSessionId?.(claudeSessionId);
+  }, [claudeSessionId, onClaudeSessionId]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [initialRatio, setInitialRatio] = useState(DEFAULT_RATIO);
 

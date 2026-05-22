@@ -117,8 +117,12 @@ function IconButton({
 
 const HEADER_FALLBACK = { label: '—', sub: '' };
 
-function SidebarHeader(): React.ReactElement {
-  const { sessions } = useWorkbenchAgentData();
+interface SidebarHeaderProps {
+  claudeSessionId?: string | null;
+}
+
+function SidebarHeader({ claudeSessionId }: SidebarHeaderProps): React.ReactElement {
+  const { sessions } = useWorkbenchAgentData(claudeSessionId);
   const primary = sessions.find((s) => s.active) ?? HEADER_FALLBACK;
   return (
     <div
@@ -261,17 +265,22 @@ const SIDEBAR_SCROLL_STYLE: React.CSSProperties = {
 
 interface AgentSidebarProps {
   breakpointMode?: WorkbenchBreakpointMode;
+  /** Wave 8 Phase 1: the Claude session bound to the active upper terminal. */
+  claudeSessionId?: string | null;
 }
 
-export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): React.ReactElement {
-  const agentData = useWorkbenchAgentData();
+export function AgentSidebar({
+  breakpointMode = 'full',
+  claudeSessionId,
+}: AgentSidebarProps): React.ReactElement {
+  const agentData = useWorkbenchAgentData(claudeSessionId);
   const { isPending, takeoverProps } = useSidebarApproval();
   const isFull = breakpointMode === 'full';
   const sidebarStyle: React.CSSProperties = { ...SIDEBAR_BASE_STYLE, width: isFull ? 348 : 300 };
 
   return (
     <div data-testid="workbench-agentsidebar" style={sidebarStyle}>
-      <SidebarHeader />
+      <SidebarHeader claudeSessionId={claudeSessionId} />
       <div style={SIDEBAR_SCROLL_STYLE}>
         {isPending && takeoverProps ? (
           <PermissionSidebarTakeover {...takeoverProps} />
