@@ -10,11 +10,7 @@ import React from 'react';
 
 import { Icon } from '../../shared/Icon';
 import { TerminalInstance } from '../../Terminal/TerminalInstance';
-import {
-  MOCK_TERM_TABS_LOWER,
-  MOCK_TERM_TABS_UPPER,
-  MockTerminalTab,
-} from '../workbenchMockData';
+import { MOCK_TERM_TABS_LOWER, MOCK_TERM_TABS_UPPER, MockTerminalTab } from '../workbenchMockData';
 
 const iconBtnStyle: React.CSSProperties = {
   display: 'inline-flex',

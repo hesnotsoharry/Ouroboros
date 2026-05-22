@@ -4,7 +4,17 @@
 
 ---
 
-## 🔼 UPDATE 2026-05-21 (latest) — Workbench Wave 1 SHIPPED (static shell); terminal glass fixed
+## 🔼 UPDATE 2026-05-21 (latest) — Workbench Wave 2 SHIPPED (live terminals + divider)
+
+Workbench overhaul: **Waves 0 + 1 + 2 all on `master`.**
+
+- **Wave 2 — terminal integration: SHIPPED** (local tag `v2.23.0`). Behind the same default-off `layout.canonWorkbench` flag, the canon workbench's two terminal frames are now **real live xterm terminals** bound to workbench-owned ptys (behind the tinted-well glass), and the divider between them is **draggable + persisted** (`layout.workbenchTerminalSplit`, default 0.62). New `Terminals/useWorkbenchTerminals.ts` (thin spawn/kill hook, StrictMode-safe) + `useVerticalSplitResize.ts`; `TerminalShell` now mounts the existing `<TerminalInstance>`; static mock bodies removed. Renderer-only + one config key. Plan/ADR/recon/result in `roadmap/wave-2-workbench-terminal-integration/`. Gates: acceptance 6/6, Workbench 102, `test:main` 6444, tsc + full lint + prettier clean. Two orchestrator review-fixes folded in (StrictMode net-kill; async restore never reaching the UI — both with regression tests).
+- **Next action:** **Wave 3 — hook pipeline mapping + state machine** (map canon's idealized hook schema → the real `useAgentEvents`/`AgentEventsContext` wire; extend `AgentStatus` with `thinking/awaiting/errored/done/fresh`; drive the Agent Globe; swap `workbenchMockData` → live data for TitleBar/Rails/AgentSidebar/StatusBar). Then 4 sidebar live, 5 permissions, 6 themes+responsive, 7 cutover. Sequence in `roadmap/discovery/workbench-overhaul-reconciliation.md`.
+- **Wave 2 NOT done / deferrals:** `/ui-smoke 2` live smoke deferred (Cole not using the app until the remake is done; the Phase-1 runtime FLAG — zero-height-well initial column wrap, mitigated by xterm's `isReadyRef` + ResizeObserver — is unconfirmed in a live IDE; confirm next dev session: enable the flag, type in both frames, drag divider, reload). Follow-up `roadmap/follow-ups/2026-05-21-wave-2-dead-terminal-line-mocks.md` (dead mock constants for Wave 3 to sweep). Tab `+`/split/maximize buttons remain non-functional; Claude auto-launch + multi-tab → Wave 3.
+
+---
+
+## 🔼 UPDATE 2026-05-21 — Workbench Wave 1 SHIPPED (static shell); terminal glass fixed
 
 Workbench overhaul progress: **Wave 0 + Wave 1 + the terminal-glass fix all on `master`.**
 

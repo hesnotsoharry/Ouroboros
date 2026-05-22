@@ -82,13 +82,19 @@ export function CenterPane(): React.ReactElement {
 
   useEffect(() => {
     let cancelled = false;
-    readSplitRatio().then((r) => {
-      if (!cancelled) setInitialRatio(r);
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    readSplitRatio()
+      .then((r) => {
+        if (!cancelled) setInitialRatio(r);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const onCommit = useCallback((r: number) => { void writeSplitRatio(r); }, []);
+  const onCommit = useCallback((r: number) => {
+    void writeSplitRatio(r);
+  }, []);
   const { ratio, handlePointerDown } = useVerticalSplitResize({
     initialRatio,
     onCommit,

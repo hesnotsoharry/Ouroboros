@@ -32,8 +32,10 @@ Workbench/
 │   ├── UnifiedRail.tsx         — Phase 3 (built but dual is default, Decision 3)
 │   └── FileNode.tsx            — Phase 3
 ├── Terminals/
-│   ├── CenterPane.tsx          — Phase 4
-│   └── TerminalShell.tsx       — Phase 4 (static tinted-well, NO xterm — Decision 6)
+│   ├── CenterPane.tsx          — owns sessions + divider; flex driven by persisted ratio (Wave 2)
+│   ├── TerminalShell.tsx       — LIVE xterm via <TerminalInstance> in the tinted well (Wave 2)
+│   ├── useWorkbenchTerminals.ts — spawns/kills the two workbench-owned ptys (Wave 2)
+│   └── useVerticalSplitResize.ts — vertical row-resize for the divider (Wave 2)
 ├── AgentSidebar/
 │   ├── AgentSidebar.tsx        — Phase 5
 │   ├── NowBlock.tsx            — Phase 5
@@ -44,14 +46,23 @@ Workbench/
 └── StatusBar.tsx               — Phase 6
 ```
 
-## Static-mock constraint
+## Static-mock constraint (relaxing per wave)
 
-Wave 1 is **static only**. No component in this tree may import:
-- `useAgentEvents` or any hook that calls IPC for live data
-- `xterm` or any terminal emulator
-- Permission/approval components
+Wave 1 shipped static-only. The constraint is being lifted region by region:
 
-All data comes from `workbenchMockData.ts`. Wave 3 replaces the mock with live hook data.
+- **Terminals — LIVE as of Wave 2.** `Terminals/**` mounts the real `<TerminalInstance>`
+  (xterm) bound to workbench-owned ptys via `useWorkbenchTerminals`, and reads/writes the
+  `layout.workbenchTerminalSplit` config key. The terminal-line mock data
+  (`MOCK_CC_TUI_LINES`, `MOCK_SHELL_LINES`, etc.) is now dead — see
+  `roadmap/follow-ups/2026-05-21-wave-2-dead-terminal-line-mocks.md`.
+- **Still static (Wave 1):** TitleBar, Rails, AgentSidebar, StatusBar read from
+  `workbenchMockData.ts`. These must NOT import `useAgentEvents`, any live-data IPC hook,
+  or permission/approval components until their wave (Wave 3 / Wave 5).
+
+Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.tsx` mount
+(only `ProjectContext` is needed — already above the Workbench branch). Do NOT pull in
+`DockSlot`/`ProjectTerminalsContext` or build multi-tab management (ADR Wave-2 Decisions
+1–3, 6). One plain shell pty per frame; Claude auto-launch is Wave 3.
 
 ## Token rules
 
@@ -65,8 +76,8 @@ All data comes from `workbenchMockData.ts`. Wave 3 replaces the mock with live h
 ## Wave sequence
 
 - Wave 1: walking skeleton (this file + Workbench.tsx + mockData + Icon + flag + Settings toggle)
-- Wave 2: xterm mount inside TerminalShell
-- Wave 3: live hook data replaces workbenchMockData
+- Wave 2: ✅ live xterm in both terminal frames + draggable/persisted divider
+- Wave 3: live hook data replaces workbenchMockData (TitleBar/Rails/Sidebar/StatusBar)
 - Wave 5: permission overlay
 - Wave 6: responsive collapse, themes
 - Wave 7: cutover (remove old shells)

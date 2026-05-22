@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.23.0] - 2026-05-21
+
+### Added
+- **Wave 2 — Workbench terminal integration.** The canon workbench's two terminal frames are now real, live terminals (behind the same default-off **Settings → Appearance → "Canon workbench (experimental)"** flag). Full story in `roadmap/wave-2-workbench-terminal-integration/wave-2-result.md`.
+  - Both the upper and lower frames mount the existing `<TerminalInstance>` (xterm) bound to workbench-owned ptys, behind the translucent tinted-well glass — type a command, see real output. Sessions are spawned/killed by a thin `useWorkbenchTerminals` hook (StrictMode-safe deferred teardown) and are independent of the existing shells' terminals.
+  - The divider between the frames is now a **draggable vertical splitter**; the split ratio persists across reloads via a new `layout.workbenchTerminalSplit` config key (default `0.62`).
+  - The static mock terminal bodies were removed; the tab bar stays as a single-tab affordance.
+
+### Notes
+- One plain shell per frame this wave — auto-launching `claude` in the upper frame, multi-tab management, and live agent data are later waves. Live UI smoke deferred (the shell is experimental and off by default).
+
 ## [2.22.0] - 2026-05-21
 
 ### Added

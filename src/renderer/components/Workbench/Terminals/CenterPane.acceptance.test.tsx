@@ -89,7 +89,10 @@ beforeEach(() => {
       onExit: vi.fn(() => () => {}),
       onDisconnected: vi.fn(() => () => {}),
     },
-    config: { get: vi.fn().mockResolvedValue(undefined), set: vi.fn().mockResolvedValue({ success: true }) },
+    config: {
+      get: vi.fn().mockResolvedValue(undefined),
+      set: vi.fn().mockResolvedValue({ success: true }),
+    },
     window: {
       getProjectRoots: vi.fn().mockResolvedValue({ roots: [] }),
       setProjectRoots: vi.fn().mockResolvedValue({ success: true }),
@@ -120,9 +123,7 @@ describe('Wave 2 — workbench terminal mount (Phase 1 acceptance)', () => {
     expect(typeof spawnedId).toBe('string');
     expect(spawnedId.length).toBeGreaterThan(0);
 
-    await waitFor(() =>
-      expect(instanceMounts.some((m) => m.sessionId === spawnedId)).toBe(true),
-    );
+    await waitFor(() => expect(instanceMounts.some((m) => m.sessionId === spawnedId)).toBe(true));
   });
 
   it('streams pty data to the terminal bound to the spawned id', async () => {

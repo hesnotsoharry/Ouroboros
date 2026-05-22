@@ -74,7 +74,9 @@ describe('computeSplitRatio', () => {
 // ── Integration: persist on drag-end / restore on remount ───────────────────
 
 describe('readSplitRatio', () => {
-  afterEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('returns the persisted ratio when config contains a number', async () => {
     (window as unknown as { electronAPI: unknown }).electronAPI = {
@@ -119,12 +121,15 @@ describe('writeSplitRatio', () => {
       },
     };
   });
-  afterEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('calls config.set("layout", ...) with the new ratio merged into existing layout', async () => {
     await writeSplitRatio(0.35);
-    const configMock = (window as unknown as { electronAPI: { config: { set: ReturnType<typeof vi.fn> } } })
-      .electronAPI.config.set;
+    const configMock = (
+      window as unknown as { electronAPI: { config: { set: ReturnType<typeof vi.fn> } } }
+    ).electronAPI.config.set;
     expect(configMock).toHaveBeenCalledWith(
       'layout',
       expect.objectContaining({ workbenchTerminalSplit: 0.35, canonWorkbench: true }),
@@ -139,8 +144,9 @@ describe('writeSplitRatio', () => {
       },
     };
     await expect(writeSplitRatio(0.5)).resolves.toBeUndefined();
-    const configMock = (window as unknown as { electronAPI: { config: { set: ReturnType<typeof vi.fn> } } })
-      .electronAPI.config.set;
+    const configMock = (
+      window as unknown as { electronAPI: { config: { set: ReturnType<typeof vi.fn> } } }
+    ).electronAPI.config.set;
     expect(configMock).not.toHaveBeenCalled();
   });
 });
@@ -148,11 +154,14 @@ describe('writeSplitRatio', () => {
 // ── Integration: useVerticalSplitResize hook — persist fires on drag-end only ─
 
 describe('useVerticalSplitResize — persist on drag-end, not per move', () => {
-  afterEach(() => { vi.restoreAllMocks(); });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('invokes onCommit once on pointerup with the final ratio, never on pointermove', () => {
-    const containerRef = { current: { getBoundingClientRect: () => makeRect(0, 400) } } as unknown as
-      React.RefObject<HTMLDivElement>;
+    const containerRef = {
+      current: { getBoundingClientRect: () => makeRect(0, 400) },
+    } as unknown as React.RefObject<HTMLDivElement>;
     const onCommit = vi.fn();
 
     const { result } = renderHook(() =>
