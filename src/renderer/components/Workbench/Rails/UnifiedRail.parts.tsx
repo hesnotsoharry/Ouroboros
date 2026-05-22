@@ -8,7 +8,6 @@ import React from 'react';
 import { Icon } from '../../shared/Icon';
 import {
   MOCK_FILE_TREE,
-  MOCK_SESSIONS,
   type MockProject,
   type MockSession,
 } from '../workbenchMockData';
@@ -285,10 +284,17 @@ export function AccordionBody({ project, sessions }: AccordionBodyProps): React.
 interface ProjectAccordionProps {
   project: MockProject;
   expanded: boolean;
+  /** Live sessions to filter for this project. Callers that wire live data pass
+   *  these; legacy/test renders that rely on mock data may omit them. */
+  sessions: MockSession[];
 }
 
-export function ProjectAccordion({ project, expanded }: ProjectAccordionProps): React.ReactElement {
-  const projectSessions = MOCK_SESSIONS.filter((s) => s.projectId === project.id);
+export function ProjectAccordion({
+  project,
+  expanded,
+  sessions,
+}: ProjectAccordionProps): React.ReactElement {
+  const projectSessions = sessions.filter((s) => s.projectId === project.id);
   const hasRunning = projectSessions.some((s) => s.status === 'live');
 
   return (

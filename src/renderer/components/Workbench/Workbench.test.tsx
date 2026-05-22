@@ -359,7 +359,9 @@ describe('InnerRail', () => {
   });
 });
 
-// ── Phase 3: UnifiedRail (built but not mounted in Workbench this wave) ───────
+// ── Phase 3: UnifiedRail (Wave 6: now live-data-wired) ───────────────────────
+// Data source changed: useWorkbenchProjects (live) + useGitBranch (live).
+// Tests updated from MOCK_PROJECTS/MOCK_BRANCH assertions to live-mock assertions.
 
 describe('UnifiedRail', () => {
   it('renders the workbench-unifiedrail test-id on its root element', () => {
@@ -367,12 +369,12 @@ describe('UnifiedRail', () => {
     expect(screen.getByTestId('workbench-unifiedrail')).toBeDefined();
   });
 
-  it('renders one accordion per mock project', () => {
+  it('renders one accordion per live project (from mocked useProject/useConfig)', () => {
     render(<UnifiedRail />);
-    // Each project name appears in the accordion header.
+    // Projects derive from mocked useProject (projectRoot='/projects/agent-ide') +
+    // useConfig (recentProjects includes '/projects/pinpoint').
     expect(screen.getByText('agent-ide')).toBeDefined();
     expect(screen.getByText('pinpoint')).toBeDefined();
-    expect(screen.getByText('lumen-cli')).toBeDefined();
   });
 
   it('expands the active project accordion body (RUNNING + FILES labels)', () => {
@@ -384,12 +386,15 @@ describe('UnifiedRail', () => {
     expect(fileItems.length).toBeGreaterThan(0);
   });
 
-  it('renders the branch footer', () => {
+  it('renders the live branch in the footer (from mocked useGitBranch)', () => {
     render(<UnifiedRail />);
-    expect(screen.getByText('wave/1-workbench-static-shell')).toBeDefined();
+    // useGitBranch is mocked to return { branch: 'feature/x' } — live data, not MOCK_BRANCH.
+    expect(screen.getByText('feature/x')).toBeDefined();
   });
 
-  it('is NOT rendered inside Workbench (dual is default)', () => {
+  it('is NOT rendered inside Workbench when viewport is default (full tier)', () => {
+    // Default jsdom matchMedia returns matches:false for every query → all-false
+    // → max-width queries resolve to full tier → UnifiedRail not mounted.
     render(<Workbench />);
     expect(screen.queryByTestId('workbench-unifiedrail')).toBeNull();
   });

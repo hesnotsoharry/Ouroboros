@@ -31,7 +31,11 @@ const RAIL_STYLE: React.CSSProperties = {
   borderRight: '1px solid var(--stroke-faint)',
 };
 
-export function InnerRail(): React.ReactElement {
+interface InnerRailProps {
+  onCollapse?: () => void;
+}
+
+export function InnerRail({ onCollapse }: InnerRailProps): React.ReactElement {
   const { projectRoot } = useProject();
   const { sessions } = useWorkbenchAgentData();
   // projectId is basename(cwd); match against basename of the current project root.
@@ -43,7 +47,11 @@ export function InnerRail(): React.ReactElement {
 
   return (
     <div data-testid="workbench-innerrail" style={RAIL_STYLE}>
-      <RunningSection currentSessions={currentSessions} otherSessions={otherSessions} />
+      <RunningSection
+        currentSessions={currentSessions}
+        otherSessions={otherSessions}
+        onCollapse={onCollapse}
+      />
       <div style={{ height: 1, background: 'var(--stroke-faint)', margin: '0 10px' }} />
       <FilesSection />
       <BranchFooter />
@@ -56,13 +64,15 @@ export function InnerRail(): React.ReactElement {
 function RunningSection({
   currentSessions,
   otherSessions,
+  onCollapse,
 }: {
   currentSessions: WorkbenchSession[];
   otherSessions: WorkbenchSession[];
+  onCollapse?: () => void;
 }): React.ReactElement {
   return (
     <div style={{ padding: '12px 10px 8px', flexShrink: 0 }}>
-      <RunningSectionHeader />
+      <RunningSectionHeader onCollapse={onCollapse} />
       {currentSessions.map((s) => (
         <SessionRow key={s.id} session={s} isCurrent />
       ))}
@@ -74,7 +84,7 @@ function RunningSection({
   );
 }
 
-function RunningSectionHeader(): React.ReactElement {
+function RunningSectionHeader({ onCollapse }: { onCollapse?: () => void }): React.ReactElement {
   return (
     <div
       style={{
@@ -89,7 +99,11 @@ function RunningSectionHeader(): React.ReactElement {
         <StatusDot status="live" />
         <SectionLabel>Running</SectionLabel>
       </div>
-      <button title="Collapse to unified rail" onClick={() => undefined} style={iconBtnStyle}>
+      <button
+        title="Collapse to unified rail"
+        onClick={onCollapse ?? (() => undefined)}
+        style={iconBtnStyle}
+      >
         <Icon name="Chevron" size={11} style={{ transform: 'rotate(180deg)' }} />
       </button>
     </div>

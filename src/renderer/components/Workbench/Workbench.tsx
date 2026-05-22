@@ -1,18 +1,14 @@
 /**
  * Workbench — six-region canon shell (Wave 1, walking skeleton).
  *
- * Renders the canon §02 layout grid with labeled glass placeholders in each
- * of the six regions. Phases 2–6 replace each placeholder with a real region
- * component. This file owns only the grid assembly; region internals live in
- * their own subdirectories.
+ * Wave 6 Phase 3: responsive layout driven by useWorkbenchBreakpoint().
  *
- * Dimensions (canon §02):
- *   Title bar:   top, full width, 40px
- *   Status bar:  bottom, full width, 24px
- *   Project rail: left, 56px
- *   Inner rail:  next, 256px
- *   Centre pane: flex 1
- *   Agent rail:  right, 348px
+ *   full    (≥1760) : ProjectRail + InnerRail; AgentSidebar 348px
+ *   compact (1440–1759) : ProjectRail + InnerRail; AgentSidebar 300px; LatestHunk collapsed
+ *   unified (<1440) : UnifiedRail only; AgentSidebar 300px
+ *
+ * forceUnified: manual collapse triggered by the rail collapse-handle buttons.
+ * Effective left-rail mode = unified when breakpoint is 'unified' OR forceUnified.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -20,9 +16,11 @@ import React, { useEffect, useState } from 'react';
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
+import { UnifiedRail } from './Rails/UnifiedRail';
 import { StatusBar } from './StatusBar';
 import { CenterPane } from './Terminals/CenterPane';
 import { TitleBar } from './TitleBar/TitleBar';
+import { useWorkbenchBreakpoint } from './useWorkbenchBreakpoint';
 
 const stageStyle: React.CSSProperties = {
   display: 'flex',
@@ -88,23 +86,54 @@ function useScanlines(): boolean {
   return active;
 }
 
-function MiddleRow(): React.ReactElement {
+interface MiddleRowProps {
+  isUnified: boolean;
+  breakpointMode: 'full' | 'compact' | 'unified';
+  onCollapseToUnified: () => void;
+  onExpandToDual: () => void;
+}
+
+function MiddleRow({
+  isUnified,
+  breakpointMode,
+  onCollapseToUnified,
+  onExpandToDual,
+}: MiddleRowProps): React.ReactElement {
   return (
     <div style={middleRowStyle}>
-      <ProjectRail />
-      <InnerRail />
+      {isUnified ? (
+        <UnifiedRail onExpand={onExpandToDual} />
+      ) : (
+        <>
+          <ProjectRail onCollapse={onCollapseToUnified} />
+          <InnerRail onCollapse={onCollapseToUnified} />
+        </>
+      )}
       <CenterPane />
-      <AgentSidebar />
+      <AgentSidebar breakpointMode={breakpointMode} />
     </div>
   );
 }
 
 export function Workbench(): React.ReactElement {
   const scanlines = useScanlines();
+  const breakpointMode = useWorkbenchBreakpoint();
+  const [forceUnified, setForceUnified] = useState(false);
+
+  const isUnified = forceUnified || breakpointMode === 'unified';
+
+  const handleCollapseToUnified = (): void => setForceUnified(true);
+  const handleExpandToDual = (): void => setForceUnified(false);
+
   return (
     <div data-testid="workbench-root" style={stageStyle}>
       <TitleBar />
-      <MiddleRow />
+      <MiddleRow
+        isUnified={isUnified}
+        breakpointMode={breakpointMode}
+        onCollapseToUnified={handleCollapseToUnified}
+        onExpandToDual={handleExpandToDual}
+      />
       <StatusBar />
       {scanlines && (
         <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />

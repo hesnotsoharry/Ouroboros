@@ -19,11 +19,11 @@ Decisions committed before code. D1 + D2 carry the best-practice spectrum (`~/.c
 - *Emerging best practice:* a JS `matchMedia`-driven React hook (`useWorkbenchBreakpoint`) returning a mode enum, with components conditionally rendering per mode. `matchMedia` + its `change` event is the lightest reactive primitive (no per-frame resize spam, unlike a raw `resize` listener), is trivially testable by mocking `matchMedia`, and supports conditional mounting.
 - *Experimental / cutting-edge:* CSS container queries (`@container`). Excellent for component-local responsiveness. **Wrong tool here:** we respond to *window/shell* width, not container width, and it's still pure CSS — same mount/unmount disqualifier as media queries.
 
-**Pick:** Emerging — `useWorkbenchBreakpoint` via `matchMedia` (queries at 1440 and 1180).
+**Pick:** Emerging — `useWorkbenchBreakpoint` via `matchMedia` (queries at **1760 and 1440**). Note: once the HUD is dropped (D3), the canon §16 1180 boundary is moot — everything below 1440 is uniformly Unified — so the 3-tier system needs only the 1760 (full↔compact) and 1440 (compact↔unified) boundaries.
 
 **Rationale:** Conditional component mounting is the hard requirement; only a JS-driven mode enum satisfies it. `matchMedia` over a raw `resize` listener avoids reflow thrash and is cleanly mockable for the acceptance test. Electron's modern Chromium supports `matchMedia` + `change` fully.
 
-**Consequences:** Adds one renderer-local hook + a mode-keyed conditional render in `Workbench.tsx`. Must be StrictMode-safe (listener cleanup). The `<1180` HUD tier is explicitly NOT built (see D3), so the enum is 3-valued (`full`/`compact`/`unified`), clamping below 1180 to `unified`.
+**Consequences:** Adds one renderer-local hook + a mode-keyed conditional render in `Workbench.tsx`. Must be StrictMode-safe (listener cleanup). The HUD tier is explicitly NOT built (see D3), so the enum is 3-valued (`full`/`compact`/`unified`); everything below 1440 (the canon 1180–1439 Unified band AND the <1180 HUD band) clamps to `unified`.
 
 ## Decision 2: Per-theme wash/glow/blur/accent mechanism
 

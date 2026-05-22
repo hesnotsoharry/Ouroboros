@@ -9,12 +9,13 @@
  * Bottom border: --stroke-faint (per canon §09)
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 
 import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { Icon } from '../../shared/Icon';
 import { PermissionSidebarTakeover } from '../Permission/PermissionSidebarTakeover';
 import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
+import type { WorkbenchBreakpointMode } from '../useWorkbenchBreakpoint';
 import { ContextBlock } from './ContextBlock';
 import { FilesTouched } from './FilesTouched';
 import { HookTimeline } from './HookTimeline';
@@ -151,14 +152,54 @@ function PanelDivider(): React.ReactElement {
 
 // ── AgentSidebar root ─────────────────────────────────────────────────────────
 
+// ── collapsed latest-hunk indicator ──────────────────────────────────────────
+
+function LatestHunkCollapsed({ onExpand }: { onExpand: () => void }): React.ReactElement {
+  return (
+    <button
+      data-testid="latest-hunk-collapsed"
+      type="button"
+      onClick={onExpand}
+      title="Show latest hunk"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        width: '100%',
+        padding: '5px 12px',
+        background: 'transparent',
+        border: 'none',
+        borderBottom: '1px solid var(--stroke-faint)',
+        color: 'var(--ink-3)',
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+    >
+      <Icon name="Eye" size={10} />
+      LATEST HUNK ▾
+    </button>
+  );
+}
+
+// ── panel stack ───────────────────────────────────────────────────────────────
+
 /** Panels 2–5: dimmed to 0.7 opacity while a permission request is pending. */
 function PanelStack({
   agentData,
   dim,
+  collapsed,
 }: {
   agentData: ReturnType<typeof useWorkbenchAgentData>;
   dim: boolean;
+  collapsed: boolean;
 }): React.ReactElement {
+  // Compact/unified collapse the Latest Hunk panel to a one-line indicator
+  // (canon §16); clicking it expands the full hunk in place ("Click expands").
+  const [hunkExpanded, setHunkExpanded] = useState(false);
   return (
     <div style={{ opacity: dim ? 0.7 : 1 }}>
       <PanelDivider />
@@ -166,7 +207,11 @@ function PanelStack({
       <PanelDivider />
       <FilesTouched data={agentData.filesTouched} />
       <PanelDivider />
-      <LatestHunk hunk={agentData.latestHunk} />
+      {collapsed && !hunkExpanded ? (
+        <LatestHunkCollapsed onExpand={() => setHunkExpanded(true)} />
+      ) : (
+        <LatestHunk hunk={agentData.latestHunk} />
+      )}
       <PanelDivider />
       <HookTimeline events={agentData.timeline} />
     </div>
@@ -195,8 +240,7 @@ function useSidebarApproval() {
   return { current, isPending: current !== null, takeoverProps };
 }
 
-const SIDEBAR_SHELL_STYLE: React.CSSProperties = {
-  width: 348,
+const SIDEBAR_BASE_STYLE: Omit<React.CSSProperties, 'width'> = {
   flexShrink: 0,
   display: 'flex',
   flexDirection: 'column',
@@ -215,11 +259,18 @@ const SIDEBAR_SCROLL_STYLE: React.CSSProperties = {
   flexDirection: 'column',
 };
 
-export function AgentSidebar(): React.ReactElement {
+interface AgentSidebarProps {
+  breakpointMode?: WorkbenchBreakpointMode;
+}
+
+export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): React.ReactElement {
   const agentData = useWorkbenchAgentData();
   const { isPending, takeoverProps } = useSidebarApproval();
+  const isFull = breakpointMode === 'full';
+  const sidebarStyle: React.CSSProperties = { ...SIDEBAR_BASE_STYLE, width: isFull ? 348 : 300 };
+
   return (
-    <div data-testid="workbench-agentsidebar" style={SIDEBAR_SHELL_STYLE}>
+    <div data-testid="workbench-agentsidebar" style={sidebarStyle}>
       <SidebarHeader />
       <div style={SIDEBAR_SCROLL_STYLE}>
         {isPending && takeoverProps ? (
@@ -227,7 +278,7 @@ export function AgentSidebar(): React.ReactElement {
         ) : (
           <NowBlock data={agentData.now} />
         )}
-        <PanelStack agentData={agentData} dim={isPending} />
+        <PanelStack agentData={agentData} dim={isPending} collapsed={!isFull} />
       </div>
     </div>
   );

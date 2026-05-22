@@ -1,21 +1,62 @@
 /**
  * UnifiedRail — 272 px wide unified-mode rail (canon §07).
  *
- * NOT mounted by Workbench.tsx this wave — dual mode is the default (Decision 3).
- * Built complete so the toggle can be wired in a later wave without rework.
+ * Wave 6 Phase 3: mounted when the breakpoint is 'unified' or forceUnified is
+ * true. Wired to live data (useWorkbenchProjects, useGitBranch, useWorkbenchAgentData)
+ * — NO MOCK_* in this surface (Risk #6).
  *
- * Header: Layers icon · "Projects" · plus button · chevron-to-dual.
- * Body: one ProjectAccordion per project (only the active one is expanded).
- * Footer: branch icon · name · +adds · -dels.
+ * The rail adapts WorkbenchProject/WorkbenchSession (live types) to the MockProject/
+ * MockSession shapes that UnifiedRail.parts.tsx consumes, bridging the data-source
+ * change without redesigning the part components.
  *
- * Accordion subcomponents live in UnifiedRail.parts.tsx.
+ * Header: Layers icon · "Projects" · plus button · expand-to-dual button.
+ * Body: one ProjectAccordion per project (active one is expanded).
+ * Footer: branch icon · name (live from useGitBranch).
  */
 
 import React from 'react';
 
+import { useProject } from '../../../contexts/ProjectContext';
+import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
-import { MOCK_BRANCH, MOCK_PROJECTS } from '../workbenchMockData';
+import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
+import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
+import type { MockProject, MockSession } from '../workbenchMockData';
 import { iconBtnStyle, ProjectAccordion } from './UnifiedRail.parts';
+
+// ── Live → Mock adapters ──────────────────────────────────────────────────────
+
+function adaptProject(p: WorkbenchProject): MockProject {
+  return {
+    id: p.path,
+    name: p.name,
+    color: p.color,
+    initial: p.initial,
+    branch: '',
+    dirty: 0,
+    active: p.active,
+  };
+}
+
+function adaptSession(s: {
+  id: string;
+  projectId: string;
+  kind: 'claude' | 'shell';
+  label: string;
+  sub: string;
+  status: 'live' | 'warn' | 'idle';
+  active: boolean;
+}): MockSession {
+  return {
+    id: s.id,
+    projectId: s.projectId,
+    kind: s.kind,
+    label: s.label,
+    sub: s.sub,
+    status: s.status,
+    active: s.active,
+  };
+}
 
 // ── Rail shell ────────────────────────────────────────────────────────────────
 
@@ -30,15 +71,29 @@ const RAIL_STYLE: React.CSSProperties = {
   borderRight: '1px solid var(--stroke-faint)',
 };
 
-export function UnifiedRail(): React.ReactElement {
-  const activeProject = MOCK_PROJECTS.find((p) => p.active) ?? MOCK_PROJECTS[0];
+interface UnifiedRailProps {
+  onExpand?: () => void;
+}
+
+export function UnifiedRail({ onExpand }: UnifiedRailProps): React.ReactElement {
+  const liveProjects = useWorkbenchProjects();
+  const { sessions: liveSessions } = useWorkbenchAgentData();
+
+  const projects = liveProjects.map(adaptProject);
+  const sessions = liveSessions.map(adaptSession);
+  const activeProject = projects.find((p) => p.active) ?? projects[0];
 
   return (
     <div data-testid="workbench-unifiedrail" style={RAIL_STYLE}>
-      <UnifiedHeader />
+      <UnifiedHeader onExpand={onExpand} />
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: 8 }}>
-        {MOCK_PROJECTS.map((p) => (
-          <ProjectAccordion key={p.id} project={p} expanded={p.id === activeProject.id} />
+        {projects.map((p) => (
+          <ProjectAccordion
+            key={p.id}
+            project={p}
+            expanded={activeProject ? p.id === activeProject.id : false}
+            sessions={sessions}
+          />
         ))}
       </div>
       <UnifiedFooter />
@@ -48,7 +103,7 @@ export function UnifiedRail(): React.ReactElement {
 
 // ── Header ────────────────────────────────────────────────────────────────────
 
-function UnifiedHeader(): React.ReactElement {
+function UnifiedHeader({ onExpand }: { onExpand?: () => void }): React.ReactElement {
   return (
     <div
       style={{
@@ -76,7 +131,11 @@ function UnifiedHeader(): React.ReactElement {
       <button title="Add project" onClick={() => undefined} style={iconBtnStyle}>
         <Icon name="Plus" size={12} />
       </button>
-      <button title="Expand to dual rail" onClick={() => undefined} style={iconBtnStyle}>
+      <button
+        title="Expand to dual rail"
+        onClick={onExpand ?? (() => undefined)}
+        style={iconBtnStyle}
+      >
         <Icon name="Chevron" size={11} />
       </button>
     </div>
@@ -97,6 +156,9 @@ const FOOTER_STYLE: React.CSSProperties = {
 };
 
 function UnifiedFooter(): React.ReactElement {
+  const { projectRoot } = useProject();
+  const { branch } = useGitBranch(projectRoot);
+
   return (
     <div style={FOOTER_STYLE}>
       <Icon name="Branch" size={12} />
@@ -109,10 +171,9 @@ function UnifiedFooter(): React.ReactElement {
           whiteSpace: 'nowrap',
         }}
       >
-        {MOCK_BRANCH.name}
+        {/* +adds/−dels deferred: roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md */}
+        {branch ?? '—'}
       </span>
-      <span style={{ color: 'var(--success)', flexShrink: 0 }}>+{MOCK_BRANCH.adds}</span>
-      <span style={{ color: 'var(--error)', flexShrink: 0 }}>−{MOCK_BRANCH.dels}</span>
     </div>
   );
 }

@@ -36,12 +36,16 @@ const RAIL_STYLE: React.CSSProperties = {
   borderRight: '1px solid var(--stroke-faint)',
 };
 
-export function ProjectRail(): React.ReactElement {
+interface ProjectRailProps {
+  onCollapse?: () => void;
+}
+
+export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElement {
   const projects = useWorkbenchProjects();
 
   return (
     <div data-testid="workbench-projectrail" style={RAIL_STYLE}>
-      <CollapseHandle />
+      <CollapseHandle onCollapse={onCollapse} />
 
       {projects.map((p) => (
         <ProjectChip key={p.path} project={p} />
@@ -61,11 +65,11 @@ export function ProjectRail(): React.ReactElement {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function CollapseHandle(): React.ReactElement {
+function CollapseHandle({ onCollapse }: { onCollapse?: () => void }): React.ReactElement {
   return (
     <button
       title="Collapse to unified rail"
-      onClick={() => undefined}
+      onClick={onCollapse ?? (() => undefined)}
       style={{
         width: 24,
         height: 18,
