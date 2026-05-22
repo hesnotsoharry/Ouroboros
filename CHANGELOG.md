@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.28.0] - 2026-05-22
+
+### Added
+- **Wave 7 — Workbench parity completion (canon §06 TitleBar right cluster).** Behind the default-off **Settings → Appearance → "Canon workbench (experimental)"** flag, the canon workbench's three title-bar buttons are now live. Full story in `roadmap/wave-7-workbench-parity-completion/wave-7-result.md`.
+  - The **Settings cog** opens the Settings dialog (it was previously a dead button — Settings was unreachable from the canon shell).
+  - The **Ctrl-K pill** opens the command palette.
+  - The **Bell** opens the notification center, with a badge dot that reflects real unread notifications (no longer a hardcoded count).
+
+### Notes
+- Renderer-only; **no** main-process / IPC / config-schema change, no flag flip, no deletion — each affordance reuses the app's existing Settings modal / command palette / notification center, wired into new Workbench-local hosts. With the canon flag off, everything renders exactly as before.
+- **This wave was originally planned as "cutover & teardown."** A pre-flight parity audit found the canon shell was not yet at functional parity with the legacy shell (Settings unreachable; palette and bell were stubs; the file tree is still mock data) — so deleting the old shell now would have shipped a silent regression. Cutover & teardown is therefore deferred to **Wave 8**, gated on closing the remaining parity gaps (live file tree + three product decisions). See `roadmap/wave-7-workbench-parity-completion/wave-7-parity-audit.md`.
+- Known deferrals (follow-ups filed): the command palette's keyboard shortcut is still Ctrl+Shift+P (canon wants Ctrl+K); some palette commands target legacy-shell features that no-op in the canon shell; the bell marks notifications read on open (non-destructive). Live UI smoke deferred (the shell is experimental and off by default).
+
 ## [2.27.0] - 2026-05-22
 
 ### Added

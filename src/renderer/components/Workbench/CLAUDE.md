@@ -49,6 +49,10 @@ Workbench/
 │   ├── usePermissionRejectFlow.ts — two-stage optional reject-reason flow
 │   ├── PermissionOverlay.tsx   — terminal-pane glass overlay (canon §13a); owns the keydown via the hook
 │   └── PermissionSidebarTakeover.tsx — sidebar NOW-slot takeover (canon §13b); pure props, no hook
+├── Overlays/                   — Wave 7: canon §06 TitleBar right-cluster affordances (live)
+│   ├── WorkbenchSettingsOverlay.tsx — listens OPEN_SETTINGS_EVENT → shared SettingsModal (cog)
+│   └── WorkbenchCommandPalette.tsx — useCommandPalette + useCommandRegistry → CommandPalette (Ctrl-K pill)
+├── TitleBar/WorkbenchBell.tsx  — Wave 7: live notification bell → shared NotificationCenter (canon §06 dot)
 └── StatusBar.tsx               — Phase 6
 ```
 
@@ -180,4 +184,12 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
 - Wave 6: ✅ themes (Modern/Warp/Retro full canon §15 via per-theme `workbenchTokens`; matte Retro +
   scanlines) + responsive collapse (`useWorkbenchBreakpoint`, 3 tiers, canon §16 minus HUD — D3);
   `UnifiedRail` mounted + live-wired.
-- Wave 7: cutover (remove old shells)
+- Wave 7: ✅ parity completion — canon §06 TitleBar right cluster live (Settings cog → SettingsModal;
+  Ctrl-K pill → CommandPalette; Bell → NotificationCenter). All in `Overlays/` + `TitleBar/WorkbenchBell.tsx`,
+  reusing existing components, behind the flag. **NOTE: the original "Wave 7 = cutover" was deferred** — a
+  parity audit found the canon shell was not at functional parity (Settings was unreachable, palette/bell
+  stubbed, FileTree mock). Cutover & teardown is now **Wave 8** (gated on full parity). See
+  `roadmap/wave-7-workbench-parity-completion/`.
+- Wave 8: cutover & teardown (remove old shells) — blocked until parity gaps close: live FileTree
+  (`follow-ups/2026-05-22-workbench-live-filetree.md`) + 3 product decisions
+  (`follow-ups/2026-05-22-workbench-canon-product-decisions.md`).
