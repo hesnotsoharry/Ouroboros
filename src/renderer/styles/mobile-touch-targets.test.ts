@@ -121,10 +121,15 @@ function isButtonContext(lines: string[], lineIdx: number): boolean {
   return false;
 }
 
+/** True when a repo-relative path is exempt from the audit (exact file or desktop-only subtree). */
+function isExemptPath(rel: string): boolean {
+  if (ALLOWLIST.has(rel)) return true;
+  return ALLOWLIST_PREFIXES.some((prefix) => rel.startsWith(prefix));
+}
+
 function scanFile(absPath: string, repoRoot: string): Offender[] {
   const rel = toRelative(absPath, repoRoot);
-  if (ALLOWLIST.has(rel)) return [];
-  if (ALLOWLIST_PREFIXES.some((prefix) => rel.startsWith(prefix))) return [];
+  if (isExemptPath(rel)) return [];
 
   const source = fs.readFileSync(absPath, 'utf-8');
   const lines = source.split('\n');
