@@ -37,7 +37,8 @@ export type IconName =
   | 'Eye'
   | 'Bolt'
   | 'Split'
-  | 'Layers';
+  | 'Layers'
+  | 'Maximize';
 
 interface IconProps {
   name: IconName;
@@ -236,6 +237,16 @@ const PATHS: Record<IconName, (size: number) => React.ReactElement> = {
         <polygon points="12 2 2 7 12 12 22 7 12 2" />
         <polyline points="2 17 12 22 22 17" />
         <polyline points="2 12 12 17 22 12" />
+      </>,
+      s,
+    ),
+  Maximize: (s) =>
+    svg(
+      <>
+        <polyline points="15 3 21 3 21 9" />
+        <polyline points="9 21 3 21 3 15" />
+        <line x1="21" y1="3" x2="14" y2="10" />
+        <line x1="3" y1="21" x2="10" y2="14" />
       </>,
       s,
     ),

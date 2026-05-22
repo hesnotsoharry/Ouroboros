@@ -18,6 +18,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
 import { UnifiedRail } from './Rails/UnifiedRail';
+import { CenterPane } from './Terminals/CenterPane';
+import { TerminalShell } from './Terminals/TerminalShell';
 import { Workbench } from './Workbench';
 
 afterEach(() => {
@@ -39,12 +41,11 @@ describe('Workbench', () => {
     expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
   });
 
-  it('renders the three remaining placeholder region labels', () => {
+  it('renders the two remaining placeholder region labels', () => {
     render(<Workbench />);
 
-    // Title Bar, Project Rail, and Inner Rail placeholders are now replaced by
-    // real components — only the three not yet implemented show placeholder text.
-    expect(screen.getByText('Terminals')).toBeDefined();
+    // Title Bar, Project Rail, Inner Rail, and Terminals are now replaced by
+    // real components — only the two not yet implemented show placeholder text.
     expect(screen.getByText('Agent Sidebar')).toBeDefined();
     expect(screen.getByText('Status Bar')).toBeDefined();
   });
@@ -95,9 +96,12 @@ describe('TitleBar', () => {
 
   it('renders the three window control buttons', () => {
     render(<Workbench />);
-    expect(screen.getByTitle('Minimize')).toBeDefined();
-    expect(screen.getByTitle('Maximize')).toBeDefined();
-    expect(screen.getByTitle('Close')).toBeDefined();
+    // Scope to window-controls container — the terminal tab bars also have
+    // a "Maximize" button, so getByTitle would find multiple matches.
+    const controls = screen.getByTestId('window-controls');
+    expect(controls.querySelector('[title="Minimize"]')).toBeDefined();
+    expect(controls.querySelector('[title="Maximize"]')).toBeDefined();
+    expect(controls.querySelector('[title="Close"]')).toBeDefined();
   });
 
   it('workbench-titlebar test-id resolves on the TitleBar root element', () => {
@@ -229,6 +233,117 @@ describe('UnifiedRail', () => {
   it('is NOT rendered inside Workbench (dual is default)', () => {
     render(<Workbench />);
     expect(screen.queryByTestId('workbench-unifiedrail')).toBeNull();
+  });
+});
+
+// ── Phase 4: CenterPane + TerminalShell ──────────────────────────────────────
+
+describe('CenterPane', () => {
+  it('carries data-testid="workbench-terminals" on the root element', () => {
+    render(<CenterPane />);
+    expect(screen.getByTestId('workbench-terminals')).toBeDefined();
+  });
+
+  it('renders both terminal shells (upper CC + lower shell)', () => {
+    render(<CenterPane />);
+    expect(screen.getByTestId('terminal-shell-upper')).toBeDefined();
+    expect(screen.getByTestId('terminal-shell-lower')).toBeDefined();
+  });
+
+  it('does not import xterm — module loads without terminal-emulator errors', async () => {
+    const mod = await import('./Terminals/CenterPane');
+    expect(typeof mod.CenterPane).toBe('function');
+  });
+});
+
+describe('TerminalShell (upper — CC)', () => {
+  it('renders tab labels from MOCK_TERM_TABS_UPPER', () => {
+    render(<TerminalShell kind="cc" flex={1.55} />);
+    // MOCK_TERM_TABS_UPPER: 'claude · main', 'claude · refactor'
+    expect(screen.getByText('claude · main')).toBeDefined();
+    expect(screen.getByText('claude · refactor')).toBeDefined();
+  });
+
+  it('renders the CC prompt box', () => {
+    render(<TerminalShell kind="cc" flex={1.55} />);
+    expect(screen.getByTestId('cc-prompt-box')).toBeDefined();
+  });
+
+  it('renders the CC status line containing the model name', () => {
+    render(<TerminalShell kind="cc" flex={1.55} />);
+    const statusLine = screen.getByTestId('cc-status-line');
+    // MOCK_CC_STATUS_LINE includes 'claude-sonnet-4-6'
+    expect(statusLine.textContent).toContain('claude-sonnet-4-6');
+  });
+
+  it('renders the CC status line containing the context percentage', () => {
+    render(<TerminalShell kind="cc" flex={1.55} />);
+    const statusLine = screen.getByTestId('cc-status-line');
+    expect(statusLine.textContent).toContain('47% context left');
+  });
+
+  it('renders mock CC TUI output lines', () => {
+    render(<TerminalShell kind="cc" flex={1.55} />);
+    // First CC TUI line (Reading TerminalPane) should be in the DOM.
+    expect(screen.getByText(/Reading src\/renderer\/components\/Terminal\/TerminalPane\.tsx/)).toBeDefined();
+  });
+
+  it('renders the Split and Maximize tab-bar icons', () => {
+    render(<TerminalShell kind="cc" flex={1.55} />);
+    expect(screen.getByTitle('Split')).toBeDefined();
+    expect(screen.getByTitle('Maximize')).toBeDefined();
+  });
+});
+
+describe('TerminalShell (lower — shell)', () => {
+  it('renders tab labels from MOCK_TERM_TABS_LOWER', () => {
+    render(<TerminalShell kind="shell" flex={1} />);
+    // MOCK_TERM_TABS_LOWER: 'dev server', 'test:watch', 'shell'
+    expect(screen.getByText('dev server')).toBeDefined();
+    expect(screen.getByText('test:watch')).toBeDefined();
+  });
+
+  it('does NOT render the CC prompt box', () => {
+    render(<TerminalShell kind="shell" flex={1} />);
+    expect(screen.queryByTestId('cc-prompt-box')).toBeNull();
+  });
+
+  it('does NOT render the CC status line', () => {
+    render(<TerminalShell kind="shell" flex={1} />);
+    expect(screen.queryByTestId('cc-status-line')).toBeNull();
+  });
+
+  it('renders the shell prompt cursor line', () => {
+    render(<TerminalShell kind="shell" flex={1} />);
+    expect(screen.getByTestId('shell-prompt-line')).toBeDefined();
+  });
+
+  it('renders mock shell output lines', () => {
+    render(<TerminalShell kind="shell" flex={1} />);
+    // MOCK_SHELL_LINES includes VITE ready message
+    expect(screen.getByText(/VITE v5\.4\.2\s+ready/)).toBeDefined();
+  });
+});
+
+describe('Workbench — Phase 4 integration', () => {
+  it('workbench-terminals test-id resolves on CenterPane root (not a placeholder)', () => {
+    render(<Workbench />);
+    const el = screen.getByTestId('workbench-terminals');
+    // CenterPane root has both terminal shells as descendants
+    expect(el.querySelector('[data-testid="terminal-shell-upper"]')).toBeDefined();
+    expect(el.querySelector('[data-testid="terminal-shell-lower"]')).toBeDefined();
+  });
+
+  it('Agent Sidebar placeholder is still a placeholder (untouched)', () => {
+    render(<Workbench />);
+    expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
+    expect(screen.getByText('Agent Sidebar')).toBeDefined();
+  });
+
+  it('Status Bar placeholder is still a placeholder (untouched)', () => {
+    render(<Workbench />);
+    expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
+    expect(screen.getByText('Status Bar')).toBeDefined();
   });
 });
 

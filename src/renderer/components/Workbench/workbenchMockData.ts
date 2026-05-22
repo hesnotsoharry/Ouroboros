@@ -219,6 +219,66 @@ export const MOCK_DIFF_HUNK: MockDiffLine[] = [
   { type: 'ctx', n: 89, text: '  }, [term])' },
 ];
 
+// ── Terminal mock content (Phase 4) ─────────────────────────────────────────
+
+/**
+ * Tone maps to a CSS custom property for color.
+ *   'primary'  → --ink        (body text)
+ *   'muted'    → --ink-3      (dim/secondary)
+ *   'success'  → --success    (ok output)
+ *   'warning'  → --warning    (warn output)
+ *   'accent'   → --accent     (highlighted / active)
+ *   'purple'   → --purple     (tool name badges)
+ *   'info'     → --info       (path / info text)
+ */
+export type TermLineTone = 'primary' | 'muted' | 'success' | 'warning' | 'accent' | 'purple' | 'info';
+
+export interface MockTerminalLine {
+  text: string;
+  tone?: TermLineTone;
+}
+
+/** CC status line text — mirrors real CC TUI output (static mock). */
+export const MOCK_CC_STATUS_LINE =
+  '✻ claude-sonnet-4-6 · ⏵⏵ auto-accept on · 47% context left · esc to interrupt';
+
+/** Placeholder prompt text shown in the CC prompt box. */
+export const MOCK_CC_PROMPT_PLACEHOLDER =
+  'Try "add a snapshot test for the hook subscription"';
+
+/** Upper terminal (Claude Code) — mock TUI output lines. */
+export const MOCK_CC_TUI_LINES: MockTerminalLine[] = [
+  { text: '⎿ Reading src/renderer/components/Terminal/TerminalPane.tsx', tone: 'muted' },
+  { text: '  412 lines · done', tone: 'muted' },
+  { text: '' },
+  { text: '⎿ Searching for hookEvent', tone: 'muted' },
+  { text: '  12 files · 38 matches', tone: 'muted' },
+  { text: '' },
+  { text: '● Thinking…', tone: 'accent' },
+  { text: '  The TerminalPane currently parses xterm scrollback.', tone: 'muted' },
+  { text: '  With hooks I can replace this with PostToolUse subscription.', tone: 'muted' },
+  { text: '' },
+  { text: '⎿ Edit(src/renderer/components/Terminal/TerminalPane.tsx)', tone: 'purple' },
+  { text: '  +28 −12 lines applied', tone: 'success' },
+  { text: '' },
+  { text: '⎿ Bash(npx tsc --noEmit)', tone: 'purple' },
+  { text: '  exit 0 · 1.34s', tone: 'success' },
+  { text: '' },
+  { text: '⎿ Edit(src/renderer/hooks/useHookSubscription.ts)', tone: 'purple' },
+  { text: '  Applying edit…', tone: 'warning' },
+];
+
+/** Lower terminal (shell) — mock shell output lines. */
+export const MOCK_SHELL_LINES: MockTerminalLine[] = [
+  { text: '  VITE v5.4.2  ready in 312 ms', tone: 'muted' },
+  { text: '' },
+  { text: '  ➜  Local:   http://localhost:5173/', tone: 'success' },
+  { text: '  ➜  Network: use --host to expose', tone: 'muted' },
+  { text: '' },
+  { text: '  ✓ 24 tests passing  (4.2s)', tone: 'success' },
+  { text: '  ⚠  2 snapshots updated', tone: 'warning' },
+];
+
 export const MOCK_CONTEXT_STATS: MockContextStats = {
   usedTokens: 42_800,
   maxTokens: 200_000,
