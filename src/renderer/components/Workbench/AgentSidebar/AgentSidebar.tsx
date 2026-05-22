@@ -150,6 +150,7 @@ function PanelDivider(): React.ReactElement {
 // ── AgentSidebar root ─────────────────────────────────────────────────────────
 
 export function AgentSidebar(): React.ReactElement {
+  const agentData = useWorkbenchAgentData();
   return (
     <div
       data-testid="workbench-agentsidebar"
@@ -175,9 +176,9 @@ export function AgentSidebar(): React.ReactElement {
           flexDirection: 'column',
         }}
       >
-        <NowBlock />
+        <NowBlock data={agentData.now} />
         <PanelDivider />
-        <ContextBlock />
+        <ContextBlock data={agentData.context} />
         <PanelDivider />
         <FilesTouched />
         <PanelDivider />

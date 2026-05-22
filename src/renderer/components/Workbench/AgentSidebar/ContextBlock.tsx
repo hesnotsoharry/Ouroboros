@@ -8,7 +8,7 @@
 
 import React from 'react';
 
-import { MOCK_CONTEXT_STATS, MockContextStats } from '../workbenchMockData';
+import type { MockContextStats } from '../workbenchMockData';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -143,10 +143,10 @@ function StatsColumn({ data }: StatsColumnProps): React.ReactElement {
 // ── main component ────────────────────────────────────────────────────────────
 
 interface ContextBlockProps {
-  data?: MockContextStats;
+  data: MockContextStats;
 }
 
-export function ContextBlock({ data = MOCK_CONTEXT_STATS }: ContextBlockProps): React.ReactElement {
+export function ContextBlock({ data }: ContextBlockProps): React.ReactElement {
   return (
     <div
       data-testid="context-block"

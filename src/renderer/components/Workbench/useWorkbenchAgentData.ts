@@ -13,6 +13,7 @@
 
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
+import type { MockContextStats, MockNowToolCall } from './workbenchMockData';
 
 // ── Presentation state ────────────────────────────────────────────────────────
 
@@ -51,6 +52,8 @@ export interface WorkbenchAgentData {
     costUsd: number;
     model: string;
   };
+  now: MockNowToolCall;
+  context: MockContextStats;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -206,6 +209,38 @@ function deriveContextStats(primary: AgentSession | null): WorkbenchAgentData['c
   };
 }
 
+// ── NOW + Context panel derivation ───────────────────────────────────────────
+
+/**
+ * Derives the MockNowToolCall shape from the primary session's live fields.
+ * `progress` is always undefined — there is no live progress signal (D1/§5).
+ * `description` is the target path or '' when no active tool.
+ */
+function deriveNow(
+  activeTool: string,
+  target: string,
+  elapsedSec: number,
+): MockNowToolCall {
+  return {
+    tool: activeTool,
+    target,
+    description: target,
+    elapsedSec,
+    progress: undefined,
+  };
+}
+
+/**
+ * Derives the MockContextStats shape by merging contextStats + elapsedSec.
+ * MockContextStats requires elapsedSec inside the object (§5).
+ */
+function deriveContext(
+  stats: WorkbenchAgentData['contextStats'],
+  elapsedSec: number,
+): MockContextStats {
+  return { ...stats, elapsedSec };
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useWorkbenchAgentData(): WorkbenchAgentData {
@@ -215,14 +250,20 @@ export function useWorkbenchAgentData(): WorkbenchAgentData {
   const state = deriveWorkbenchAgentState(primary);
 
   const sessions = currentSessions.map((s) => mapToRailSession(s, primaryId));
+  const activeTool = deriveActiveTool(primary);
+  const target = deriveTarget(primary);
+  const elapsedSec = deriveElapsedSec(primary);
+  const contextStats = deriveContextStats(primary);
 
   return {
     state,
     model: deriveModel(primary),
-    activeTool: deriveActiveTool(primary),
-    target: deriveTarget(primary),
-    elapsedSec: deriveElapsedSec(primary),
+    activeTool,
+    target,
+    elapsedSec,
     sessions,
-    contextStats: deriveContextStats(primary),
+    contextStats,
+    now: deriveNow(activeTool, target, elapsedSec),
+    context: deriveContext(contextStats, elapsedSec),
   };
 }

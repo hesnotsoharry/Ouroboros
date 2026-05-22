@@ -9,7 +9,7 @@
 import React from 'react';
 
 import { Icon, IconName } from '../../shared/Icon';
-import { MOCK_NOW_TOOL_CALL, MockNowToolCall } from '../workbenchMockData';
+import type { MockNowToolCall } from '../workbenchMockData';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -152,10 +152,10 @@ function NowBlockHeader({ elapsedSec }: NowBlockHeaderProps): React.ReactElement
 }
 
 interface NowBlockProps {
-  data?: MockNowToolCall;
+  data: MockNowToolCall;
 }
 
-export function NowBlock({ data = MOCK_NOW_TOOL_CALL }: NowBlockProps): React.ReactElement {
+export function NowBlock({ data }: NowBlockProps): React.ReactElement {
   return (
     <div
       data-testid="now-block"
