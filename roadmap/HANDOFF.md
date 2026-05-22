@@ -1,10 +1,21 @@
-# Session Handoff — 2026-05-22 (Workbench Wave 4 SHIPPED + pushed; tag v2.25.0 on origin)
+# Session Handoff — 2026-05-22 (Workbench Wave 5 SHIPPED; permission UI; tag v2.26.0)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-22 (latest) — Workbench Wave 4 SHIPPED (agent sidebar 5 panel bodies live)
+## 🔼 UPDATE 2026-05-22 (latest) — Workbench Wave 5 SHIPPED (canon §13 permission UI)
+
+Workbench overhaul: **Waves 0 + 1 + 2 + 3 + 4 + 5 all on `master`** (5 committed + tagged `v2.26.0` local; push per the bulletin — merge of the wave-stack waits for the 2026-06-01 CI-minute restore).
+
+- **Wave 5 — permission UI re-skin: SHIPPED** (commits `6dc5ffa2` P1, `e67c7341` P2, `4d3cf3c1` wrap; tag `v2.26.0`; CHANGELOG `[2.26.0]`). Behind the same default-off `layout.canonWorkbench` flag, the canon workbench now renders the **canon §13 dual-presentation approval UI over the EXISTING file-poll approval pipeline** — no new protocol, no main-process/IPC/config change (ADR D1). When a `claude` session hits a tool needing approval: a glass amber **terminal overlay** slides up over the terminal pane (`Permission/PermissionOverlay.tsx`, mounted in `Terminals/CenterPane`), AND **simultaneously** the agent sidebar's **NOW panel becomes the same permission card** with panels 2–5 dimmed to 0.7 (`Permission/PermissionSidebarTakeover.tsx`, swapped in `AgentSidebar`). Both render the shared `PermissionCard` and resolve through `useApprovalContext()` (Approve / Always-for-tool / Deny — the three existing resolvers; "Always for project" is canon v2, out of scope D5). **The Y/A/N/Esc shortcut is a SINGLE window keydown owner** (`useWorkbenchApproval`, called only by the overlay; the sidebar reads `useApprovalContext()` directly to avoid a 2nd handler — D3). All under `src/renderer/components/Workbench/Permission/`. Plan/ADR/result/mechanical-review/smoke in `roadmap/wave-5-workbench-permission-overlay/`. **Gates:** orchestrator-owned acceptance test 8/8 (frozen; each action → correct resolver once + single-keypress-resolves-once with both surfaces mounted), Phase-2 render tests 7/7, **full suite 11637 passed / 8 skipped / 0 failed**, tsc clean, `eslint src/` 0 errors, prettier clean. Phases 1+2 each got a `sonnet-phase-reviewer` pass (P1 FLAG resolved inline — elapsedSec rendered; P2 PASS + 1 cosmetic FLAG → follow-up). `/review` mechanical = **FLAG non-fatal** (checks 1–5 clean; Check 6 mutation deferred to the pre-merge task).
+- **Next action:** **Wave 6 — themes + responsive collapse** (full glass treatment for Modern/Warp/Retro; opportunistic port of cursor/kiro/light/high-contrast; responsive collapse of the dual permission surfaces + rails per canon §16). Then **Wave 7 — cutover & teardown** (make the canon workbench the sole shell; delete `AppLayout`/`InnerAppLayout`, the Wave-89 variant + `ChatOnlyShell` remnants, `Dispatch/`, the "Explain error" scrollback action, AND the orphaned `AgentMonitor/ApprovalDialog`). Sequence: `roadmap/discovery/workbench-overhaul-reconciliation.md`.
+- **Wave 5 NOT done / deferrals:** `/ui-smoke 5` live smoke deferred (Cole not using the app until the remake is done — per Wave 0–4 posture; checklist written + queued at `wave-5-smoke-report.md`). **Next dev session:** enable Settings → Appearance → "Canon workbench", run a `claude` session, trigger a gated tool, confirm the overlay + dimmed-sidebar takeover render simultaneously and Y/A/N resolve once. Two new follow-ups: `2026-05-22-orphaned-agentmonitor-approvaldialog.md` (MED — the legacy dialog is mounted nowhere; → Wave 7 deletion) + `2026-05-22-permission-card-elapsed-no-ticker.md` (LOW — cosmetic, no live ticker). `/promote-vendor-lessons 5` = no-op (no vendor SDK). `/audit-followups wave-5` pending (the 2 new follow-ups are intentionally OPEN/deferred).
+- **Carried-forward:** the **Check-6 mutation pre-merge task** (tighten tests for any Wave-3/4 *adapter/derivation* mutation survivor before the 2026-06-01 merge) now also covers Wave 5's `Permission/**` adapter logic — run `npm run mutation:test`, tighten adapter/derivation survivors (UI-style/JSX acceptable). See `wave-5-mechanical-review.md` Check 6.
+
+---
+
+## 🔼 UPDATE 2026-05-22 — Workbench Wave 4 SHIPPED (agent sidebar 5 panel bodies live)
 
 Workbench overhaul: **Waves 0 + 1 + 2 + 3 + 4 all on `master`.**
 
