@@ -18,6 +18,7 @@ import { useWorkbenchAgentData, type WorkbenchSession } from '../useWorkbenchAge
 import { useWorkbenchProjects } from '../useWorkbenchProjects';
 import { MOCK_FILE_TREE } from '../workbenchMockData';
 import { FileNode } from './FileNode';
+import { iconBtnStyle, SectionLabel, StatusDot } from './InnerRail.parts';
 
 const RAIL_STYLE: React.CSSProperties = {
   width: 256,
@@ -290,54 +291,3 @@ function BranchFooter(): React.ReactElement {
     </div>
   );
 }
-
-// ── Shared micro-components ───────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }): React.ReactElement {
-  return (
-    <span
-      style={{
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '0.08em',
-        color: 'var(--ink-4)',
-        textTransform: 'uppercase',
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
-const STATUS_DOT_COLORS: Record<string, string> = {
-  live: 'var(--success)',
-  warn: 'var(--warning)',
-  idle: 'var(--ink-4)',
-};
-
-function StatusDot({ status }: { status: string }): React.ReactElement {
-  return (
-    <span
-      style={{
-        width: 6,
-        height: 6,
-        borderRadius: 999,
-        background: STATUS_DOT_COLORS[status] ?? 'var(--ink-4)',
-        flexShrink: 0,
-        boxShadow: status === 'live' ? '0 0 6px var(--success)' : 'none',
-      }}
-    />
-  );
-}
-
-const iconBtnStyle: React.CSSProperties = {
-  padding: 2,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'transparent',
-  border: 'none',
-  color: 'var(--ink-4)',
-  cursor: 'pointer',
-  borderRadius: 4,
-};
