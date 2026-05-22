@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.25.0] - 2026-05-22
+
+### Added
+- **Wave 4 — Workbench agent sidebar live (five panel bodies).** Flipping **Settings → Appearance → "Canon workbench (experimental)"** on now renders an agent sidebar whose five panels show **real runtime data** instead of mock constants. Full story in `roadmap/wave-4-workbench-agent-sidebar-live/wave-4-result.md`.
+  - **NOW** names the tool the active session is running (with a ticking elapsed timer); **Context** shows the session's live token count, cost, and model — both go quiet when nothing runs. (Wired from the existing Wave-3 adapter fields; no new data.)
+  - **Files Touched** lists the files the active session has edited/read with the correct status dot (editing / done / read), derived from `AgentSession.toolCalls` with ellipsis-tolerant dedup. **Hook Timeline** shows the merged tool-call + prompt event stream in timestamp order (no synthetic "thinking" rows — the wire carries no thinking signal).
+  - **Latest Hunk** shows the structured diff (green/red lines) of the most recent Edit, and each Files Touched row shows its real **+N/−N** change counts — both sourced from the existing Wave-94 diff pipeline (`diff_review_ready` → `git:diffReview` → parsed hunks), consumed via a panel-local subscription with the diff held as ephemeral hook state (no domain-model or SQLite change).
+
+### Notes
+- Renderer-only; no main-process, IPC-contract, or config-schema change. The diff-backed surfaces (Latest Hunk + badges) **piggyback the existing `enableTerminalDiffReview` setting** and degrade gracefully when it is off (empty Latest Hunk placeholder, badge-free list — the list still renders from tool calls). With the canon flag off, every existing shell renders byte-identically to before, and the canonical `AgentStatus` / `AgentSession` shapes are untouched.
+- The orphaned sidebar `MOCK_*` data constants were swept (only `MOCK_STATUS_BAR` + the `Mock*` types — the adapter's typed output contract — remain). Two LOW follow-ups filed: ellipsis-tolerant `+N/−N` badge matching for >80-char paths, and a latest-ref refinement of the diff-event subscription. Live UI smoke deferred (the shell is experimental and off by default).
+
 ## [2.24.0] - 2026-05-21
 
 ### Added

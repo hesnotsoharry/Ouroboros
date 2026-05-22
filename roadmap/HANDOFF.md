@@ -1,10 +1,21 @@
-# Session Handoff — 2026-05-20 (Wave 99 shipped local; v2.20.0 tag pending push)
+# Session Handoff — 2026-05-22 (Workbench Wave 4 shipped local; tag v2.25.0 pending push)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-21 (latest) — Workbench Wave 3 SHIPPED (live agent state + hook pipeline)
+## 🔼 UPDATE 2026-05-22 (latest) — Workbench Wave 4 SHIPPED (agent sidebar 5 panel bodies live)
+
+Workbench overhaul: **Waves 0 + 1 + 2 + 3 + 4 all on `master`.**
+
+- **Wave 4 — agent sidebar live: SHIPPED** (local tag `v2.25.0`, CHANGELOG `[2.25.0]`). Behind the same default-off `layout.canonWorkbench` flag, the five agent-sidebar **panel bodies** now render real runtime data via the **same** `useWorkbenchAgentData` adapter (no competing adapter — D1): **NOW** (active tool/target/elapsed) + **Context** (live tokens/cost/model) wired from existing Wave-3 fields; **Files Touched** (list from `AgentSession.toolCalls`, ellipsis-tolerant dedup) + **Hook Timeline** (merged `toolCalls`+`conversationTurns`, `think` dropped — D6) as pure derivations; **Latest Hunk** + **`+N/−N` badges** from the Wave-94 diff pipeline (`diff_review_ready` → `git:diffReview` → `FileDiff → MockDiffHunk`) via a panel-local subscription in new `useWorkbenchAgentData.diff.ts`, diff held as **ephemeral hook state** (no `AgentSession`/reducer/SQLite change — D3). Diff surfaces piggyback `enableTerminalDiffReview` + degrade to empty/badge-free when off (D5). Renderer-only; `AgentMonitor/types.ts` untouched. Sidebar `MOCK_*` data swept (only `MOCK_STATUS_BAR` + `Mock*` types remain — D8). Plan/ADR/recon/result/smoke in `roadmap/wave-4-workbench-agent-sidebar-live/`. **Gates:** Workbench suite **175/175** (incl. the Phase-3 orchestrator-owned acceptance test + 2 derivation unit-test files), full renderer suite green, tsc clean, `eslint src/` 0 errors, prettier clean. Phases 2 + 3 each got a `sonnet-phase-reviewer` pass (Phase 2: 3 FLAG fixes folded in; Phase 3: PASS + one non-blocking FLAG accepted for codebase consistency → follow-up).
+- **Next action:** **Wave 5 — permission overlay / sidebar takeover** (the canon permission-prompt UI inside the workbench; the approval pipeline already exists — `approvalManager`/`ApprovalContext`/`ApprovalDialog`, file-poll protocol). Then 6 (themes + responsive collapse), 7 (cutover — remove legacy shells).
+- **Wave 4 NOT done / deferrals:** `/ui-smoke 4` live smoke deferred (Cole not using the app until the remake is done — per Wave 0–3 posture; written + queued at `wave-4-smoke-report.md`). **Next dev session:** enable Settings → Appearance → "Canon workbench", run a `claude` session, confirm NOW/Context/Files Touched/Hook Timeline reflect the live session and (with `enableTerminalDiffReview` on) Latest Hunk + badges show the real diff; toggle the diff setting off → graceful degrade. Two new LOW follow-ups: `2026-05-22-workbench-diff-subscription-latest-ref.md` (subscribe-once latest-ref refinement, both hooks) + `2026-05-22-workbench-files-touched-truncated-path-badges.md` (ellipsis-tolerant badge match for >80-char paths). `/promote-vendor-lessons 4` = no-op (no vendor SDK). `/audit-followups wave-4` pending (run next).
+- **Carried-forward from Wave 3:** the **Check-6 mutation pre-merge task** (tighten tests for any Wave-3 *adapter/derivation* mutation survivor before the 2026-06-01 merge — UI-style/JSX survivors acceptable; see `wave-3-mechanical-review.md`) is still open and now joined by Wave 4's adapter logic.
+
+---
+
+## 🔼 UPDATE 2026-05-21 — Workbench Wave 3 SHIPPED (live agent state + hook pipeline)
 
 Workbench overhaul: **Waves 0 + 1 + 2 + 3 all on `master`.**
 

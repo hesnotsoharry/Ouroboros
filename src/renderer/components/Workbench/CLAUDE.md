@@ -58,8 +58,17 @@ Wave 1 shipped static-only. The constraint is being lifted region by region:
   stats — LIVE (Wave 3).** Driven by `useWorkbenchAgentData` (the agent presentation-state
   machine + adapter over `AgentEventsContext`), `useWorkbenchProjects` (project chips),
   `useGitBranch` (branch name), and a local live clock. See the Gotchas section.
-- **Still static (→ later waves):** the five AgentSidebar **panel bodies**
-  (NowBlock/ContextBlock/FilesTouched/LatestHunk/HookTimeline) → Wave 4; `UnifiedRail` (built,
+- **The five AgentSidebar panel bodies — LIVE (Wave 4).** NowBlock/ContextBlock/FilesTouched/
+  LatestHunk/HookTimeline now render live data through the **same** `useWorkbenchAgentData` adapter
+  (no competing adapter — ADR D1). NOW/Context = adapter `now`/`context` (existing fields). Files
+  Touched + Hook Timeline = pure derivations over `AgentSession.toolCalls` + `conversationTurns`
+  (`deriveTouchedFiles`/`deriveTimeline`; `think` dropped — no wire source, D6). Latest Hunk +
+  `+N/−N` badges = the Wave-94 diff pipeline: a panel-local effect (`useWorkbenchAgentData.diff.ts`)
+  subscribes to the `diff_review_ready` agent event, fetches `git:diffReview`, and maps
+  `FileDiff → MockDiffHunk`. Diff surfaces piggyback `enableTerminalDiffReview` and degrade to
+  empty/badge-free when off (D5). The sidebar `MOCK_*` data constants were swept (only
+  `MOCK_STATUS_BAR` + the `Mock*` types remain — D8).
+- **Still static (→ later waves):** `UnifiedRail` (built,
   not mounted — still uses `MOCK_PROJECTS`/`MOCK_SESSIONS`/`MOCK_BRANCH`); the terminal tab-bar
   labels (`MOCK_TERM_TABS_*`, single-tab affordance); `StatusBar` testsPassing; git +adds/−dels
   + per-project dirty (`roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md`).
@@ -93,14 +102,32 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
   derived from the canonical 4-value `AgentStatus` (`AgentMonitor/types.ts`). Do NOT extend
   `AgentStatus` to add canon states — it has ~48 consumers (ADR Wave-3 D1). `thinking` is a
   best-effort heuristic (running with no pending tool call); the wire has no thinking signal.
+- **Latest Hunk is ephemeral hook state, NOT on `AgentSession` (Wave 4 D3).** The fetched
+  `FileDiff[]` lives in `useState` inside `useWorkbenchAgentData.diff.ts` — lost on reload (correct
+  for a "current activity" panel). Do NOT add a `latestHunk` field to `AgentSession`, touch the
+  `useAgentEvents.helpers.ts` reducer, or add a SQLite migration for it (would ripple to ~48
+  `AgentMonitor` consumers — D1).
+- **`ToolCallEvent.input` is an 80-char-truncated path (Wave 4).** Files-Touched dedup keys on an
+  ellipsis-tolerant suffix, not raw-string equality (`useAgentEvents.payload.ts:301` truncates the
+  `file_path`). The `+N/−N` badge match currently uses **exact** `relativePath` equality, so a
+  >80-char path renders badge-free (accepted degrade — `follow-ups/2026-05-22-workbench-files-touched-truncated-path-badges.md`).
+  Do NOT add IPC to forward the full path — match defensively in the renderer.
+- **`diff_review_ready` subscription gating (Wave 4 D5).** Subscribe to
+  `window.electronAPI.hooks.onAgentEvent` unconditionally; guard on `enableTerminalDiffReview`
+  *inside* the callback (mirrors `src/renderer/hooks/useDiffReviewTrigger.ts`). Flag off → no event
+  fires (main-side gated) → Latest Hunk shows the `latest-hunk-empty` placeholder, rows drop badges.
+  A missing/empty diff (60s stash-TTL eviction) is a normal empty state, not an error. The effect
+  re-registers on flag toggle (matches the reference; refinement tracked in
+  `follow-ups/2026-05-22-workbench-diff-subscription-latest-ref.md`).
 
 ## Wave sequence
 
 - Wave 1: walking skeleton (this file + Workbench.tsx + mockData + Icon + flag + Settings toggle)
 - Wave 2: ✅ live xterm in both terminal frames + draggable/persisted divider
-- Wave 3: ⏳ live hook data replaces workbenchMockData — Phase 1 ✅ (Agent Globe + state machine);
-  Phase 2 (project chips/branch/clock), Phase 3 (sessions list/sidebar header/context stats) next.
-  Sidebar's 5 panel bodies stay mock → Wave 4 (ADR D5); Claude auto-launch decoupled → later (D6).
+- Wave 3: ✅ live hook data replaces workbenchMockData — Agent Globe + state machine, project chips/
+  branch/clock, sessions list/sidebar header/context stats. Sidebar's 5 panel bodies left mock → Wave 4.
+- Wave 4: ✅ the five AgentSidebar panel bodies live (NOW/Context/Files Touched/Latest Hunk/Hook
+  Timeline) via the same adapter + the Wave-94 diff pipeline; sidebar `MOCK_*` data swept (types kept).
 - Wave 5: permission overlay
 - Wave 6: responsive collapse, themes
 - Wave 7: cutover (remove old shells)

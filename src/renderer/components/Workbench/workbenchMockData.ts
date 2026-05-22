@@ -44,12 +44,4 @@ export type {
   MockThinkEvent,
   MockToolEvent,
 } from './workbenchMockData.sidebar';
-export {
-  MOCK_CONTEXT_STATS,
-  MOCK_DIFF_HUNK,
-  MOCK_DIFF_HUNK_META,
-  MOCK_FILES_TOUCHED,
-  MOCK_HOOK_EVENTS,
-  MOCK_NOW_TOOL_CALL,
-  MOCK_STATUS_BAR,
-} from './workbenchMockData.sidebar';
+export { MOCK_STATUS_BAR } from './workbenchMockData.sidebar';
