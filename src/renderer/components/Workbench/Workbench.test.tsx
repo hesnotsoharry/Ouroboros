@@ -19,6 +19,7 @@ import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
 import { UnifiedRail } from './Rails/UnifiedRail';
+import { StatusBar } from './StatusBar';
 import { CenterPane } from './Terminals/CenterPane';
 import { TerminalShell } from './Terminals/TerminalShell';
 import { Workbench } from './Workbench';
@@ -40,14 +41,6 @@ describe('Workbench', () => {
     expect(screen.getByTestId('workbench-terminals')).toBeDefined();
     expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
     expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
-  });
-
-  it('renders the one remaining placeholder region label (Status Bar)', () => {
-    render(<Workbench />);
-
-    // Title Bar, Project Rail, Inner Rail, Terminals, and Agent Sidebar are
-    // now replaced by real components — only Status Bar still shows placeholder text.
-    expect(screen.getByText('Status Bar')).toBeDefined();
   });
 
   it('does not import xterm, useAgentEvents, or permission components', async () => {
@@ -342,11 +335,6 @@ describe('Workbench — Phase 4 integration', () => {
     expect(el.querySelector('[data-testid="now-block"]')).toBeDefined();
   });
 
-  it('Status Bar placeholder is still a placeholder (untouched)', () => {
-    render(<Workbench />);
-    expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
-    expect(screen.getByText('Status Bar')).toBeDefined();
-  });
 });
 
 // ── Phase 5: AgentSidebar + five panels ──────────────────────────────────────
@@ -511,15 +499,103 @@ describe('AgentSidebar — Workbench integration', () => {
     expect(el.querySelector('[data-testid="now-block"]')).toBeDefined();
   });
 
-  it('Status Bar placeholder is still a placeholder (untouched by Phase 5)', () => {
-    render(<Workbench />);
-    expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
-    expect(screen.getByText('Status Bar')).toBeDefined();
-  });
-
   it('does not import xterm, useAgentEvents, or permission components', async () => {
     const mod = await import('./AgentSidebar/AgentSidebar');
     expect(typeof mod.AgentSidebar).toBe('function');
+  });
+});
+
+// ── Phase 6: StatusBar ────────────────────────────────────────────────────────
+
+describe('StatusBar', () => {
+  it('carries data-testid="workbench-statusbar" on its root element', () => {
+    render(<StatusBar />);
+    expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
+  });
+
+  it('renders the branch name from MOCK_BRANCH', () => {
+    render(<StatusBar />);
+    // MOCK_BRANCH.name = 'wave/1-workbench-static-shell'
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain(
+      'wave/1-workbench-static-shell',
+    );
+  });
+
+  it('renders branch adds in success color text', () => {
+    render(<StatusBar />);
+    // MOCK_BRANCH.adds = 126
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('+126');
+  });
+
+  it('renders branch dels in error color text', () => {
+    render(<StatusBar />);
+    // MOCK_BRANCH.dels = 42
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('−42');
+  });
+
+  it('renders the model name from MOCK_CONTEXT_STATS', () => {
+    render(<StatusBar />);
+    // MOCK_CONTEXT_STATS.model = 'claude-sonnet-4-6'
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain(
+      'claude-sonnet-4-6',
+    );
+  });
+
+  it('renders the context used tokens formatted as compact string', () => {
+    render(<StatusBar />);
+    // MOCK_CONTEXT_STATS.usedTokens = 42800 → '42.8k'
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('42.8k');
+  });
+
+  it('renders the context max tokens formatted as compact string', () => {
+    render(<StatusBar />);
+    // MOCK_CONTEXT_STATS.maxTokens = 200000 → '200.0k ctx'
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('200.0k');
+  });
+
+  it('renders the tests-passing pill with count from MOCK_STATUS_BAR', () => {
+    render(<StatusBar />);
+    // MOCK_STATUS_BAR.testsPassing = 24
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain(
+      '24 tests passing',
+    );
+  });
+
+  it('renders the cost formatted from MOCK_CONTEXT_STATS.costUsd', () => {
+    render(<StatusBar />);
+    // MOCK_CONTEXT_STATS.costUsd = 0.087 → '$0.09'
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('$0.09');
+  });
+
+  it('renders the static clock string from MOCK_STATUS_BAR', () => {
+    render(<StatusBar />);
+    // MOCK_STATUS_BAR.clock = '14:32:34'
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('14:32:34');
+  });
+
+  it('renders the "connected" label', () => {
+    render(<StatusBar />);
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('connected');
+  });
+});
+
+describe('StatusBar — Workbench integration', () => {
+  it('workbench-statusbar test-id resolves on the StatusBar root (not a placeholder)', () => {
+    render(<Workbench />);
+    const el = screen.getByTestId('workbench-statusbar');
+    // Real StatusBar shows branch name — placeholder showed "Status Bar" text
+    expect(el.textContent).toContain('wave/1-workbench-static-shell');
+    expect(el.textContent).not.toContain('Status Bar');
+  });
+
+  it('all six region test-ids resolve on real components (no placeholders remain)', () => {
+    render(<Workbench />);
+    expect(screen.getByTestId('workbench-titlebar')).toBeDefined();
+    expect(screen.getByTestId('workbench-projectrail')).toBeDefined();
+    expect(screen.getByTestId('workbench-innerrail')).toBeDefined();
+    expect(screen.getByTestId('workbench-terminals')).toBeDefined();
+    expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
+    expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
   });
 });
 

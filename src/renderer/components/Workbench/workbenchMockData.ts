@@ -323,3 +323,20 @@ export const MOCK_CONTEXT_STATS: MockContextStats = {
   model: 'claude-sonnet-4-6',
   elapsedSec: 312,
 };
+
+// ── Status bar — Phase 6 ─────────────────────────────────────────────────────
+
+export interface MockStatusBar {
+  /** Number of tests currently passing (shown in the pill). */
+  testsPassing: number;
+  /**
+   * Static clock string in 24h HH:MM:SS format.
+   * Wave 3 replaces this with a live hook; Wave 1 uses a static string.
+   */
+  clock: string;
+}
+
+export const MOCK_STATUS_BAR: MockStatusBar = {
+  testsPassing: 24,
+  clock: '14:32:34',
+};

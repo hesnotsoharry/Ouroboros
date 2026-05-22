@@ -20,40 +20,9 @@ import React from 'react';
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
+import { StatusBar } from './StatusBar';
 import { CenterPane } from './Terminals/CenterPane';
 import { TitleBar } from './TitleBar/TitleBar';
-
-function PlaceholderRegion({
-  label,
-  testId,
-  style,
-}: {
-  label: string;
-  testId: string;
-  style?: React.CSSProperties;
-}): React.ReactElement {
-  return (
-    <div
-      data-testid={testId}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--glass-panel)',
-        border: '1px solid var(--stroke-inner)',
-        borderRadius: 'var(--r-md)',
-        color: 'var(--ink-3)',
-        fontSize: '11px',
-        fontFamily: 'var(--font-mono, monospace)',
-        letterSpacing: '0.06em',
-        overflow: 'hidden',
-        ...style,
-      }}
-    >
-      {label}
-    </div>
-  );
-}
 
 const stageStyle: React.CSSProperties = {
   display: 'flex',
@@ -93,11 +62,7 @@ export function Workbench(): React.ReactElement {
     <div data-testid="workbench-root" style={stageStyle}>
       <TitleBar />
       <MiddleRow />
-      <PlaceholderRegion
-        label="Status Bar"
-        testId="workbench-statusbar"
-        style={{ height: '24px', flexShrink: 0, borderRadius: 0, border: 'none', borderTop: '1px solid var(--stroke-inner)' }}
-      />
+      <StatusBar />
     </div>
   );
 }
