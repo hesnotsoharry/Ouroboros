@@ -1,18 +1,13 @@
 /**
- * TerminalShell — glass-wrapped terminal container (Wave 1, static mock).
- *
- * Contains a tab bar (30 px) + a tinted-well body. The `kind` prop selects
- * between the CC TUI variant (upper) and the raw shell variant (lower).
- *
- * NO xterm / @xterm/* imports. The body is a styled <div> with mock line
- * spans. xterm mounts in Wave 2.
- *
+ * TerminalShell — glass-wrapped terminal container (Wave 2 live upper / mock lower).
  * Canon §08: glass container · radius --r-md · tab bar · tinted-well body.
+ * ADR Decision 5: no extra opacity wrapper — canvas opacity is the terminal's job.
  */
 
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
+import { TerminalInstance } from '../../Terminal/TerminalInstance';
 import {
   MOCK_CC_PROMPT_PLACEHOLDER,
   MOCK_CC_STATUS_LINE,
@@ -25,8 +20,6 @@ import {
   TermLineTone,
 } from '../workbenchMockData';
 
-// ── Tone → CSS variable map ──────────────────────────────────────────────────
-
 const TONE_VAR: Record<TermLineTone, string> = {
   primary: 'var(--ink)',
   muted: 'var(--ink-3)',
@@ -36,8 +29,6 @@ const TONE_VAR: Record<TermLineTone, string> = {
   purple: 'var(--purple)',
   info: 'var(--info)',
 };
-
-// ── Style constants ──────────────────────────────────────────────────────────
 
 const iconBtnStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -56,8 +47,6 @@ const termLineStyle: React.CSSProperties = {
   whiteSpace: 'pre',
   minHeight: '1.55em',
 };
-
-// ── Subcomponents ────────────────────────────────────────────────────────────
 
 function TermLineRow({ line }: { line: MockTerminalLine }): React.ReactElement {
   const color = line.tone ? TONE_VAR[line.tone] : 'var(--ink)';
@@ -291,53 +280,65 @@ function ShellBody(): React.ReactElement {
   );
 }
 
-// ── Public component ─────────────────────────────────────────────────────────
-
 export type TerminalKind = 'cc' | 'shell';
 
 interface TerminalShellProps {
   kind: TerminalKind;
   /** flex grow value — parent CenterPane controls the 62/38 split via this. */
   flex: number;
+  /** When provided, renders a live <TerminalInstance>; pty must be pre-spawned. */
+  sessionId?: string;
+  /** Forwarded to <TerminalInstance> visibility toggle. Defaults to true. */
+  isActive?: boolean;
 }
+
+/** Canon §08 tinted well: --term-bg panel + --term-inset shadow. */
+const WELL_STYLE: React.CSSProperties = {
+  flex: 1, minHeight: 0, position: 'relative',
+  display: 'flex', flexDirection: 'column',
+  background: 'var(--term-bg)', boxShadow: 'var(--term-inset)',
+  fontFamily: 'var(--font-term, monospace)',
+};
+
+/** Live xterm body. flex:1+minHeight:0 = non-zero height at mount (fit-timing). No opacity wrapper (ADR 5). */
+function LiveBody({ sessionId, isActive }: { sessionId: string; isActive: boolean }): React.ReactElement {
+  return (
+    <div style={{ flex: 1, minHeight: 0 }}>
+      <TerminalInstance sessionId={sessionId} isActive={isActive} />
+    </div>
+  );
+}
+
+const SHELL_OUTER: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0,
+  overflow: 'hidden',
+  borderRadius: 'var(--r-md)',
+  border: '1px solid var(--stroke-inner)',
+};
 
 /**
  * TerminalShell — glass container + tab bar + tinted-well body.
  *
- * kind="cc"    → upper terminal (Claude Code): CC TUI mock + prompt + status
- * kind="shell" → lower terminal: raw shell output + $ cursor
+ * kind="cc"    → upper terminal (Claude Code TUI)
+ * kind="shell" → lower terminal (raw shell)
+ *
+ * When sessionId is provided the live xterm mounts; otherwise the static mock
+ * body renders (lower frame this phase — ADR Decision 6).
  */
-export function TerminalShell({ kind, flex }: TerminalShellProps): React.ReactElement {
+export function TerminalShell({ kind, flex, sessionId, isActive }: TerminalShellProps): React.ReactElement {
   const tabs = kind === 'cc' ? MOCK_TERM_TABS_UPPER : MOCK_TERM_TABS_LOWER;
+  const body = sessionId !== undefined
+    ? <LiveBody sessionId={sessionId} isActive={isActive ?? true} />
+    : kind === 'cc' ? <CcBody /> : <ShellBody />;
   return (
     <div
       data-testid={kind === 'cc' ? 'terminal-shell-upper' : 'terminal-shell-lower'}
-      style={{
-        flex,
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0,
-        overflow: 'hidden',
-        borderRadius: 'var(--r-md)',
-        border: '1px solid var(--stroke-inner)',
-      }}
+      style={{ ...SHELL_OUTER, flex }}
     >
       <TabBar tabs={tabs} />
-      {/* Tinted-well body (canon §08: --term-bg + --term-inset) */}
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'var(--term-bg)',
-          boxShadow: 'var(--term-inset)',
-          fontFamily: 'var(--font-term, monospace)',
-        }}
-      >
-        {kind === 'cc' ? <CcBody /> : <ShellBody />}
-      </div>
+      <div style={WELL_STYLE}>{body}</div>
     </div>
   );
 }
