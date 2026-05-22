@@ -9,7 +9,7 @@
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import { MOCK_DIFF_HUNK_META, MockDiffHunk, MockDiffLine } from '../workbenchMockData';
+import type { MockDiffHunk, MockDiffLine } from '../workbenchMockData';
 
 // ── diff row ──────────────────────────────────────────────────────────────────
 
@@ -151,7 +151,39 @@ interface LatestHunkProps {
   hunk?: MockDiffHunk;
 }
 
-export function LatestHunk({ hunk = MOCK_DIFF_HUNK_META }: LatestHunkProps): React.ReactElement {
+function EmptyHunkPlaceholder(): React.ReactElement {
+  return (
+    <div
+      data-testid="latest-hunk-empty"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '6px 12px 4px',
+      }}
+    >
+      <span
+        style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink-3)' }}
+      >
+        LATEST HUNK
+      </span>
+      <span
+        style={{
+          fontSize: 11,
+          color: 'var(--ink-4)',
+          fontFamily: 'var(--font-mono, monospace)',
+          marginTop: 6,
+        }}
+      >
+        No recent diff
+      </span>
+    </div>
+  );
+}
+
+export function LatestHunk({ hunk }: LatestHunkProps): React.ReactElement {
+  if (!hunk) {
+    return <EmptyHunkPlaceholder />;
+  }
   return (
     <div data-testid="latest-hunk" style={{ display: 'flex', flexDirection: 'column' }}>
       <HunkHeader file={hunk.file} startLine={hunk.startLine} />

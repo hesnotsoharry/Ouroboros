@@ -13,8 +13,10 @@
 
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
+import { buildBadgeMap, deriveLatestHunk, useDiffReviewState } from './useWorkbenchAgentData.diff';
 import type {
   MockContextStats,
+  MockDiffHunk,
   MockFileTouched,
   MockNowToolCall,
   MockPromptEvent,
@@ -71,6 +73,7 @@ export interface WorkbenchAgentData {
   context: MockContextStats;
   filesTouched: MockFileTouched[];
   timeline: WorkbenchTimelineEvent[];
+  latestHunk?: MockDiffHunk;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -301,11 +304,14 @@ function touchStatus(acc: FileTouchAccumulator): MockFileTouched['status'] {
  *   - Only Edit/Write/Read/MultiEdit participate; Bash/Grep/Glob are excluded.
  *   - Dedup key = ToolCallEvent.input (truncated path — recon §3).
  *   - Status precedence: pending Edit/Write → 'editing'; completed → 'edited'; Read → 'read'.
- *   - adds/dels = 0 in Phase 2 (Phase 3 enriches from ParsedFileDiff).
+ *   - adds/dels enriched from badgeMap when available (Phase 3); 0 otherwise.
  *   - Rows ordered by each path's first-appearance timestamp ascending.
  *   - null session → [].
  */
-export function deriveFilesTouched(session: AgentSession | null): MockFileTouched[] {
+export function deriveFilesTouched(
+  session: AgentSession | null,
+  badgeMap?: Map<string, { adds: number; dels: number }>,
+): MockFileTouched[] {
   if (!session) return [];
   const map = new Map<string, FileTouchAccumulator>();
   for (const call of session.toolCalls) {
@@ -316,12 +322,15 @@ export function deriveFilesTouched(session: AgentSession | null): MockFileTouche
       isPending: call.status === 'pending',
     });
   }
-  const rows: MockFileTouched[] = Array.from(map.entries()).map(([path, acc]) => ({
-    path,
-    adds: 0,
-    dels: 0,
-    status: touchStatus(acc),
-  }));
+  const rows: MockFileTouched[] = Array.from(map.entries()).map(([path, acc]) => {
+    const badge = badgeMap?.get(path);
+    return {
+      path,
+      adds: badge?.adds ?? 0,
+      dels: badge?.dels ?? 0,
+      status: touchStatus(acc),
+    };
+  });
   rows.sort((a, b) => (map.get(a.path)?.firstTs ?? 0) - (map.get(b.path)?.firstTs ?? 0));
   return rows;
 }
@@ -374,6 +383,7 @@ export function deriveTimeline(session: AgentSession | null): WorkbenchTimelineE
 
 export function useWorkbenchAgentData(): WorkbenchAgentData {
   const { agents, currentSessions } = useAgentEventsContext();
+  const { latestFiles } = useDiffReviewState();
   const primary = selectPrimarySession(agents);
   const primaryId = primary?.id ?? null;
   const state = deriveWorkbenchAgentState(primary);
@@ -383,6 +393,7 @@ export function useWorkbenchAgentData(): WorkbenchAgentData {
   const target = deriveTarget(primary);
   const elapsedSec = deriveElapsedSec(primary);
   const contextStats = deriveContextStats(primary);
+  const badgeMap = latestFiles.length > 0 ? buildBadgeMap(latestFiles) : undefined;
 
   return {
     state,
@@ -394,7 +405,8 @@ export function useWorkbenchAgentData(): WorkbenchAgentData {
     contextStats,
     now: deriveNow(activeTool, target, elapsedSec),
     context: deriveContext(contextStats, elapsedSec),
-    filesTouched: deriveFilesTouched(primary),
+    filesTouched: deriveFilesTouched(primary, badgeMap),
     timeline: deriveTimeline(primary),
+    latestHunk: deriveLatestHunk(latestFiles),
   };
 }

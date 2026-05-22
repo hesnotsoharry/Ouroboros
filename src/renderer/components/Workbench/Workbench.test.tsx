@@ -548,12 +548,13 @@ describe('AgentSidebar', () => {
     expect(screen.getByTitle('Maximize sidebar')).toBeDefined();
   });
 
-  it('renders all five panel test-ids', () => {
+  it('renders all five panel regions', () => {
     render(<AgentSidebar />);
     expect(screen.getByTestId('now-block')).toBeDefined();
     expect(screen.getByTestId('context-block')).toBeDefined();
     expect(screen.getByTestId('files-touched')).toBeDefined();
-    expect(screen.getByTestId('latest-hunk')).toBeDefined();
+    // No diff_review_ready event → empty placeholder renders (not the live hunk).
+    expect(screen.getByTestId('latest-hunk-empty')).toBeDefined();
     expect(screen.getByTestId('hook-timeline')).toBeDefined();
   });
 });
@@ -799,25 +800,33 @@ describe('AgentSidebar — FilesTouched', () => {
 });
 
 describe('AgentSidebar — LatestHunk', () => {
-  it('renders the LATEST HUNK label', () => {
+  it('renders the LATEST HUNK label in the empty placeholder when no diff is available', () => {
+    // No diff_review_ready event fired → latestHunk is undefined → EmptyHunkPlaceholder renders.
     render(<AgentSidebar />);
-    const block = screen.getByTestId('latest-hunk');
-    expect(block.textContent).toContain('LATEST HUNK');
+    const placeholder = screen.getByTestId('latest-hunk-empty');
+    expect(placeholder.textContent).toContain('LATEST HUNK');
   });
 
-  it('renders a diff row for each mock diff line', () => {
+  it('renders the empty placeholder when no live diff exists (no static mock fallback)', () => {
+    // Phase 3: static MOCK_DIFF_HUNK_META default has been removed.
+    // Without a real diff_review_ready event, the placeholder must render.
     render(<AgentSidebar />);
-    // MOCK_DIFF_HUNK has 8 lines
-    const block = screen.getByTestId('latest-hunk');
-    // Each DiffRow renders inline — check for a known add line text
-    expect(block.textContent).toContain("hooks.on('PostToolUse'");
+    expect(screen.getByTestId('latest-hunk-empty')).toBeDefined();
+    expect(screen.queryByTestId('latest-hunk')).toBeNull();
   });
 
-  it('renders Accept, Reject, and Open stub buttons', () => {
+  it('does not render Accept/Reject/Open buttons when no live diff is present', () => {
     render(<AgentSidebar />);
-    expect(screen.getByText('Accept')).toBeDefined();
-    expect(screen.getByText('Reject')).toBeDefined();
-    expect(screen.getByText('Open')).toBeDefined();
+    // Stub buttons only appear inside the live-hunk view; placeholder has none.
+    expect(screen.queryByText('Accept')).toBeNull();
+    expect(screen.queryByText('Reject')).toBeNull();
+  });
+
+  it('renders the panel divider structure even with an empty placeholder', () => {
+    render(<AgentSidebar />);
+    // The AgentSidebar renders all five panels regardless of diff state.
+    expect(screen.getByTestId('now-block')).toBeDefined();
+    expect(screen.getByTestId('hook-timeline')).toBeDefined();
   });
 });
 

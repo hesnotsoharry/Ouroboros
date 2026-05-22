@@ -182,7 +182,7 @@ export function AgentSidebar(): React.ReactElement {
         <PanelDivider />
         <FilesTouched data={agentData.filesTouched} />
         <PanelDivider />
-        <LatestHunk />
+        <LatestHunk hunk={agentData.latestHunk} />
         <PanelDivider />
         <HookTimeline events={agentData.timeline} />
       </div>
