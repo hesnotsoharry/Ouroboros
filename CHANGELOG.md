@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.0] - 2026-05-21
+
+### Added
+- **Wave 1 — Workbench static shell.** The canon workbench shell, built as a complete static layout with mock data, behind a default-off **Settings → Appearance → "Canon workbench (experimental)"** toggle (additive — the existing shells are untouched; cutover is a later wave). Full story in `roadmap/wave-1-workbench-static-shell/wave-1-result.md`.
+  - Six regions at canon dimensions: a 40px title bar (app mark, project/branch chips, centre **Agent Globe** pill, Windows controls), a 56px project rail + 256px inner rail (cross-project running sessions + files tree), a centre terminal frame (vertical 62/38 split, tinted-well bodies — no live terminal yet), a 348px agent sidebar (NOW / Context donut / Files Touched / Latest Hunk / Hook Timeline), and a 24px status bar.
+  - New `shared/Icon.tsx` inline-SVG primitive; `workbenchMockData` typed to the hook schemas so live data swaps in later.
+
+### Notes
+- Static only this wave: no live agent data, no real xterm in the frame, no permission flow — those arrive in later waves. The shell is experimental and off by default.
+
+## [2.21.1] - 2026-05-21
+
+### Fixed
+- **Terminal tinted-well now actually renders.** The Wave-0 tinted well was invisible because xterm's WebGL renderer composites the canvas opaque regardless of `allowTransparency` (xterm #1004). Switched all terminals to xterm's DOM renderer (single renderer; honors transparency) and drove the canvas + container background from `--term-canvas-bg` — themes that declare a `terminalWell` (Modern/Warp/Retro) render a translucent glass well; the others keep their opaque background unchanged. WebGL addon load removed (full dependency cleanup tracked as a follow-up).
+
 ## [2.21.0] - 2026-05-21
 
 ### Added

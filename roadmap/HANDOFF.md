@@ -4,7 +4,18 @@
 
 ---
 
-## 🔼 UPDATE 2026-05-21 (latest) — Workbench overhaul kicked off; Wave 0 SHIPPED to master
+## 🔼 UPDATE 2026-05-21 (latest) — Workbench Wave 1 SHIPPED (static shell); terminal glass fixed
+
+Workbench overhaul progress: **Wave 0 + Wave 1 + the terminal-glass fix all on `master`.**
+
+- **Wave 1 — static workbench shell: SHIPPED** (tag `v2.22.0`). Behind the default-off `layout.canonWorkbench` flag (**Settings → Appearance → "Canon workbench (experimental)"**), a third `InnerApp` branch renders the full canon shell as a static layout with mock data: title bar (app mark, project/branch chips, Agent Globe, Windows controls), project + inner rails (UnifiedRail built but not mounted), centre terminal frame (62/38, tinted-well, **no xterm yet**), agent sidebar (5 panels), status bar. All under `src/renderer/components/Workbench/` (canon §17 tree) + `shared/Icon.tsx` + `workbenchMockData.*`. 82 tests; tsc + full lint clean. Plan/ADR/result in `roadmap/wave-1-workbench-static-shell/`. Cole reviewed the shape live (approved; height + flag-reachability bugs caught and fixed mid-build).
+- **Terminal glass fix — SHIPPED** (tag `v2.21.1`). Wave 0's tinted well wasn't rendering (xterm WebGL composites opaque, #1004) → switched all terminals to the **DOM renderer**, drove canvas bg from `--term-canvas-bg` (well themes tint, others unchanged), Modern well alpha tuned to 0.35. WebGL dependency-removal follow-up: `roadmap/follow-ups/2026-05-21-remove-xterm-webgl-dependency.md`.
+- **Next action:** **Wave 2 — terminal integration** (mount real xterm into `Terminals/TerminalShell.tsx`, replacing the static mock body; wire the divider resize). Then Wave 3 (hook pipeline + live data swaps `workbenchMockData`), 4 (agent sidebar live), 5 (permissions), 6 (themes+responsive), 7 (cutover+teardown). Sequence in `roadmap/discovery/workbench-overhaul-reconciliation.md`.
+- **Wave 1 deferrals:** window-control IPC (no-op stubs — not in preload bridge), dual/unified toggle wiring, AgentGlobe awaiting/errored states (Wave 3), per-component animation keyframes (consolidate Wave 3). `/ui-smoke 1` + `/review` not run formally (Cole was live reviewer; per-phase gated + flag-isolated).
+
+---
+
+## 🔼 UPDATE 2026-05-21 — Workbench overhaul kicked off; Wave 0 SHIPPED to master
 
 The **workbench overhaul** is the new active initiative. Design canon lives in-repo at `design-system/` (`canon.html` = 18-section written spec; `workbench-tokens.css` = real token values; `workbench-*.jsx` = rendered mockup). Canon-vs-codebase reconciliation: `roadmap/discovery/workbench-overhaul-reconciliation.md` (decisions resolved: **replace everything** → single canon shell at end state; keep all 7 themes, full treatment Modern/Warp/Retro; delete DispatchScreen + "Explain error" at cutover). 8-wave sequence (0→7) in that doc.
 
