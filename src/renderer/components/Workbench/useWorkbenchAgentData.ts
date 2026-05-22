@@ -1,5 +1,5 @@
 /**
- * useWorkbenchAgentData — Workbench-local agent adapter (Wave 3, Phase 1).
+ * useWorkbenchAgentData — Workbench-local agent adapter (Wave 3, Phase 1–3).
  *
  * Consumes `useAgentEventsContext()` (the live pipeline shared with AgentMonitor)
  * and derives a workbench-local presentation state + canon-shaped display fields.
@@ -24,6 +24,18 @@ export type WorkbenchAgentState =
   | 'errored'
   | 'done';
 
+// ── Session rail shape ────────────────────────────────────────────────────────
+
+export interface WorkbenchSession {
+  id: string;
+  projectId: string;
+  kind: 'claude' | 'shell';
+  label: string;
+  sub: string;
+  status: 'live' | 'warn' | 'idle';
+  active: boolean;
+}
+
 // ── Adapter output ────────────────────────────────────────────────────────────
 
 export interface WorkbenchAgentData {
@@ -32,7 +44,22 @@ export interface WorkbenchAgentData {
   activeTool: string;
   target: string;
   elapsedSec: number;
+  sessions: WorkbenchSession[];
+  contextStats: {
+    usedTokens: number;
+    maxTokens: number;
+    costUsd: number;
+    model: string;
+  };
 }
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/**
+ * Default context-window size used for all models.
+ * No live per-model source is available — deferred (ADR D3 follow-up).
+ */
+const DEFAULT_MAX_TOKENS = 200_000;
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
@@ -115,17 +142,96 @@ function deriveElapsedSec(session: AgentSession | null): number {
   return Math.max(0, Math.floor((Date.now() - session.startedAt) / 1000));
 }
 
+// ── Session-rail helpers ──────────────────────────────────────────────────────
+
+/**
+ * Derives the rail status dot for a single live session.
+ *   running + latest permissionEvent is 'request' → 'warn'
+ *   running (otherwise)                            → 'live'
+ *   idle                                           → 'idle'
+ */
+export function deriveSessionStatus(
+  session: AgentSession,
+): 'live' | 'warn' | 'idle' {
+  if (session.status === 'idle') return 'idle';
+  const perms = session.permissionEvents ?? [];
+  if (perms.length > 0 && perms[perms.length - 1].type === 'request') {
+    return 'warn';
+  }
+  return 'live';
+}
+
+function sessionBasename(filePath: string): string {
+  return filePath.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? filePath;
+}
+
+/** Derives a stable project-id key from a session's cwd. */
+function deriveProjectId(session: AgentSession): string {
+  return session.cwd ? sessionBasename(session.cwd) : 'unknown';
+}
+
+/** Derives the sub-label text for a session row. */
+function deriveSub(session: AgentSession): string {
+  const perms = session.permissionEvents ?? [];
+  if (perms.length > 0 && perms[perms.length - 1].type === 'request') {
+    return 'awaiting permission';
+  }
+  const pendingTool = session.toolCalls.find((tc) => tc.status === 'pending');
+  if (pendingTool) {
+    const input = pendingTool.input?.trim() ?? '';
+    return input ? `${pendingTool.toolName} ${input}`.slice(0, 40) : pendingTool.toolName;
+  }
+  if (session.cwd) return sessionBasename(session.cwd);
+  return session.status === 'running' ? 'running' : 'idle';
+}
+
+/** Maps a live AgentSession to a WorkbenchSession rail shape. */
+function mapToRailSession(
+  session: AgentSession,
+  primaryId: string | null,
+): WorkbenchSession {
+  return {
+    id: session.id,
+    projectId: deriveProjectId(session),
+    kind: session.kind === 'terminal' ? 'shell' : 'claude',
+    label: session.taskLabel,
+    sub: deriveSub(session),
+    status: deriveSessionStatus(session),
+    active: session.id === primaryId,
+  };
+}
+
+// ── Context-stats derivation ──────────────────────────────────────────────────
+
+function deriveContextStats(primary: AgentSession | null): WorkbenchAgentData['contextStats'] {
+  if (!primary) {
+    return { usedTokens: 0, maxTokens: DEFAULT_MAX_TOKENS, costUsd: 0, model: FALLBACK_MODEL };
+  }
+  return {
+    usedTokens: primary.inputTokens + primary.outputTokens,
+    maxTokens: DEFAULT_MAX_TOKENS,
+    costUsd: primary.costUsd ?? 0,
+    model: primary.model ?? FALLBACK_MODEL,
+  };
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useWorkbenchAgentData(): WorkbenchAgentData {
-  const { agents } = useAgentEventsContext();
+  const { agents, currentSessions } = useAgentEventsContext();
   const primary = selectPrimarySession(agents);
+  const primaryId = primary?.id ?? null;
   const state = deriveWorkbenchAgentState(primary);
+
+  const sessions = currentSessions.map((s) => mapToRailSession(s, primaryId));
+
   return {
     state,
     model: deriveModel(primary),
     activeTool: deriveActiveTool(primary),
     target: deriveTarget(primary),
     elapsedSec: deriveElapsedSec(primary),
+    sessions,
+    contextStats: deriveContextStats(primary),
   };
 }

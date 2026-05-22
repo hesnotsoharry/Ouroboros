@@ -287,14 +287,53 @@ describe('InnerRail', () => {
     expect(screen.getByTestId('workbench-innerrail')).toBeDefined();
   });
 
-  it('renders Running section with mock session labels', () => {
+  it('renders Running section with live session labels (current project)', () => {
+    // projectRoot mock = '/projects/agent-ide' → basename 'agent-ide'
+    // Sessions with cwd '/projects/agent-ide' → projectId 'agent-ide' → current
+    mockedAgentCtx.mockReturnValue(
+      agentCtx([
+        {
+          id: 's1',
+          taskLabel: 'claude · main',
+          status: 'running',
+          startedAt: 1000,
+          inputTokens: 0,
+          outputTokens: 0,
+          cwd: '/projects/agent-ide',
+          toolCalls: [],
+        },
+        {
+          id: 's2',
+          taskLabel: 'claude · refactor',
+          status: 'running',
+          startedAt: 900,
+          inputTokens: 0,
+          outputTokens: 0,
+          cwd: '/projects/agent-ide',
+          toolCalls: [],
+        },
+      ]),
+    );
     render(<InnerRail />);
-    // From MOCK_SESSIONS: 'claude · main' is in agent-ide (current project).
     expect(screen.getByText('claude · main')).toBeDefined();
     expect(screen.getByText('claude · refactor')).toBeDefined();
   });
 
-  it('renders the other-project session (lumen-cli)', () => {
+  it('renders a session from another project (other-project group)', () => {
+    mockedAgentCtx.mockReturnValue(
+      agentCtx([
+        {
+          id: 's-other',
+          taskLabel: 'claude · streaming',
+          status: 'running',
+          startedAt: 800,
+          inputTokens: 0,
+          outputTokens: 0,
+          cwd: '/projects/lumen-cli',
+          toolCalls: [],
+        },
+      ]),
+    );
     render(<InnerRail />);
     expect(screen.getByText('claude · streaming')).toBeDefined();
   });
@@ -479,9 +518,22 @@ describe('AgentSidebar', () => {
     expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
   });
 
-  it('renders the header with active session label from mock data', () => {
+  it('renders the header with the primary session label from live adapter', () => {
+    // Provide a running session — it becomes the primary (active) session.
+    mockedAgentCtx.mockReturnValue(
+      agentCtx([
+        {
+          id: 'p1',
+          taskLabel: 'claude · main',
+          status: 'running',
+          startedAt: 1000,
+          inputTokens: 0,
+          outputTokens: 0,
+          toolCalls: [],
+        },
+      ]),
+    );
     render(<AgentSidebar />);
-    // MOCK_SESSIONS[0] is active: label 'claude · main'
     const sidebar = screen.getByTestId('workbench-agentsidebar');
     expect(sidebar.textContent).toContain('claude · main');
   });
@@ -660,21 +712,47 @@ describe('StatusBar', () => {
     expect(sb.textContent).not.toContain('−42');
   });
 
-  it('renders the model name from MOCK_CONTEXT_STATS', () => {
+  it('renders the model name from the live primary session', () => {
+    mockedAgentCtx.mockReturnValue(
+      agentCtx([
+        {
+          id: 'p1',
+          taskLabel: 'task',
+          status: 'running',
+          startedAt: 1000,
+          inputTokens: 0,
+          outputTokens: 0,
+          model: 'claude-sonnet-4-6',
+          toolCalls: [],
+        },
+      ]),
+    );
     render(<StatusBar />);
-    // MOCK_CONTEXT_STATS.model = 'claude-sonnet-4-6'
     expect(screen.getByTestId('workbench-statusbar').textContent).toContain('claude-sonnet-4-6');
   });
 
-  it('renders the context used tokens formatted as compact string', () => {
+  it('renders context used tokens as compact string from live primary session', () => {
+    // inputTokens(40000) + outputTokens(2800) = 42800 → '42.8k'
+    mockedAgentCtx.mockReturnValue(
+      agentCtx([
+        {
+          id: 'p1',
+          taskLabel: 'task',
+          status: 'running',
+          startedAt: 1000,
+          inputTokens: 40000,
+          outputTokens: 2800,
+          toolCalls: [],
+        },
+      ]),
+    );
     render(<StatusBar />);
-    // MOCK_CONTEXT_STATS.usedTokens = 42800 → '42.8k'
     expect(screen.getByTestId('workbench-statusbar').textContent).toContain('42.8k');
   });
 
-  it('renders the context max tokens formatted as compact string', () => {
+  it('renders the context max tokens from the DEFAULT_MAX_TOKENS constant (200k)', () => {
     render(<StatusBar />);
-    // MOCK_CONTEXT_STATS.maxTokens = 200000 → '200.0k ctx'
+    // DEFAULT_MAX_TOKENS = 200_000 → '200.0k'; no session needed.
     expect(screen.getByTestId('workbench-statusbar').textContent).toContain('200.0k');
   });
 
@@ -684,9 +762,23 @@ describe('StatusBar', () => {
     expect(screen.getByTestId('workbench-statusbar').textContent).toContain('24 tests passing');
   });
 
-  it('renders the cost formatted from MOCK_CONTEXT_STATS.costUsd', () => {
+  it('renders the cost formatted from the live primary session costUsd', () => {
+    mockedAgentCtx.mockReturnValue(
+      agentCtx([
+        {
+          id: 'p1',
+          taskLabel: 'task',
+          status: 'running',
+          startedAt: 1000,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0.087,
+          toolCalls: [],
+        },
+      ]),
+    );
     render(<StatusBar />);
-    // MOCK_CONTEXT_STATS.costUsd = 0.087 → '$0.09'
+    // costUsd 0.087 → '$0.09'
     expect(screen.getByTestId('workbench-statusbar').textContent).toContain('$0.09');
   });
 

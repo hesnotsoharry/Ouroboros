@@ -18,7 +18,8 @@ import React, { useEffect, useState } from 'react';
 import { useProject } from '../../contexts/ProjectContext';
 import { useGitBranch } from '../../hooks/useGitBranch';
 import { Icon } from '../shared/Icon';
-import { MOCK_CONTEXT_STATS, MOCK_STATUS_BAR } from './workbenchMockData';
+import { useWorkbenchAgentData } from './useWorkbenchAgentData';
+import { MOCK_STATUS_BAR } from './workbenchMockData';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -73,8 +74,9 @@ function BranchSlot({ branch }: { branch: string | null }): React.ReactElement |
 }
 
 function LeftSlots({ branch }: { branch: string | null }): React.ReactElement {
-  const usedStr = formatTokens(MOCK_CONTEXT_STATS.usedTokens);
-  const maxStr = formatTokens(MOCK_CONTEXT_STATS.maxTokens);
+  const { contextStats } = useWorkbenchAgentData();
+  const usedStr = formatTokens(contextStats.usedTokens);
+  const maxStr = formatTokens(contextStats.maxTokens);
 
   return (
     <>
@@ -83,15 +85,15 @@ function LeftSlots({ branch }: { branch: string | null }): React.ReactElement {
 
       {branch && SEP}
 
-      {/* Slot 2 — model (mock until Phase 3) */}
+      {/* Slot 2 — model (live Phase 3) */}
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         <Icon name="Sparkle" size={11} style={{ color: 'var(--accent)' }} />
-        <span style={{ color: 'var(--ink-2)' }}>{MOCK_CONTEXT_STATS.model}</span>
+        <span style={{ color: 'var(--ink-2)' }}>{contextStats.model}</span>
       </span>
 
       {SEP}
 
-      {/* Slot 3 — context (mock until Phase 3) */}
+      {/* Slot 3 — context (live Phase 3) */}
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         <span style={{ color: 'var(--ink-2)' }}>{usedStr}</span>
         <span>/ {maxStr} ctx</span>
@@ -99,7 +101,7 @@ function LeftSlots({ branch }: { branch: string | null }): React.ReactElement {
 
       {SEP}
 
-      {/* Slot 4 — tests-passing pill (mock) */}
+      {/* Slot 4 — tests-passing pill (mock — no live source yet) */}
       <span style={{ color: 'var(--success)' }}>
         ● {MOCK_STATUS_BAR.testsPassing} tests passing
       </span>
@@ -111,10 +113,11 @@ function LeftSlots({ branch }: { branch: string | null }): React.ReactElement {
 
 function RightSlots(): React.ReactElement {
   const clock = useLiveClock();
+  const { contextStats } = useWorkbenchAgentData();
   return (
     <>
-      {/* Slot 5 — cost (mock until Phase 3) */}
-      <span style={{ color: 'var(--ink-2)' }}>{formatCost(MOCK_CONTEXT_STATS.costUsd)}</span>
+      {/* Slot 5 — cost (live Phase 3) */}
+      <span style={{ color: 'var(--ink-2)' }}>{formatCost(contextStats.costUsd)}</span>
 
       {SEP}
 

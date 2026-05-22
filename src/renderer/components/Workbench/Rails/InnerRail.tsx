@@ -2,15 +2,11 @@
  * InnerRail — 256 px wide inner rail (canon §07, dual mode).
  *
  * Two sections divided by a 1px --stroke-faint line:
- *   1. Running (top): all active sessions across projects.
- *      Current project first, 6 px spacer, then others.
- *      Active session: --accent-tint bg + 1px --accent-edge border.
- *   2. Files (scrollable, flex 1): indented file tree via FileNode.
- *      Header label "FILES".
+ *   1. Running (top): live sessions from useWorkbenchAgentData. Current
+ *      project first, 6 px spacer, then others.
+ *   2. Files (scrollable, flex 1): mock file tree via FileNode (Wave 4).
  *
- * Footer (full width): branch icon · name · spacer · +adds · -dels.
- *
- * Static only — data from workbenchMockData. No interactions this wave.
+ * Footer: branch icon · name (live from useGitBranch). No interactions.
  */
 
 import React from 'react';
@@ -18,12 +14,9 @@ import React from 'react';
 import { useProject } from '../../../contexts/ProjectContext';
 import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
-import {
-  MOCK_FILE_TREE,
-  MOCK_PROJECTS,
-  MOCK_SESSIONS,
-  type MockSession,
-} from '../workbenchMockData';
+import { useWorkbenchAgentData, type WorkbenchSession } from '../useWorkbenchAgentData';
+import { useWorkbenchProjects } from '../useWorkbenchProjects';
+import { MOCK_FILE_TREE } from '../workbenchMockData';
 import { FileNode } from './FileNode';
 
 const RAIL_STYLE: React.CSSProperties = {
@@ -38,9 +31,14 @@ const RAIL_STYLE: React.CSSProperties = {
 };
 
 export function InnerRail(): React.ReactElement {
-  const activeProjectId = MOCK_PROJECTS.find((p) => p.active)?.id ?? MOCK_PROJECTS[0].id;
-  const currentSessions = MOCK_SESSIONS.filter((s) => s.projectId === activeProjectId);
-  const otherSessions = MOCK_SESSIONS.filter((s) => s.projectId !== activeProjectId);
+  const { projectRoot } = useProject();
+  const { sessions } = useWorkbenchAgentData();
+  // projectId is basename(cwd); match against basename of the current project root.
+  const currentProjectId = projectRoot
+    ? projectRoot.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? ''
+    : '';
+  const currentSessions = sessions.filter((s) => s.projectId === currentProjectId);
+  const otherSessions = sessions.filter((s) => s.projectId !== currentProjectId);
 
   return (
     <div data-testid="workbench-innerrail" style={RAIL_STYLE}>
@@ -58,8 +56,8 @@ function RunningSection({
   currentSessions,
   otherSessions,
 }: {
-  currentSessions: MockSession[];
-  otherSessions: MockSession[];
+  currentSessions: WorkbenchSession[];
+  otherSessions: WorkbenchSession[];
 }): React.ReactElement {
   return (
     <div style={{ padding: '12px 10px 8px', flexShrink: 0 }}>
@@ -101,10 +99,16 @@ function SessionRow({
   session,
   isCurrent,
 }: {
-  session: MockSession;
+  session: WorkbenchSession;
   isCurrent: boolean;
 }): React.ReactElement {
-  const activeProject = MOCK_PROJECTS.find((p) => p.id === session.projectId) ?? MOCK_PROJECTS[0];
+  const projects = useWorkbenchProjects();
+  // Match by basename of project path vs session.projectId (both are basenames).
+  const project = projects.find((p) =>
+    p.path.replace(/\\/g, '/').split('/').filter(Boolean).pop() === session.projectId,
+  );
+  const chipColor = project?.color ?? 'var(--ink-4)';
+  const chipInitial = project?.initial ?? session.projectId[0]?.toUpperCase() ?? '?';
 
   const rowStyle: React.CSSProperties = {
     display: 'flex',
@@ -121,7 +125,7 @@ function SessionRow({
 
   return (
     <div style={rowStyle}>
-      <ProjectMiniChip color={activeProject.color} initial={activeProject.initial} />
+      <ProjectMiniChip color={chipColor} initial={chipInitial} />
       <KindIcon kind={session.kind} active={session.active} />
       <SessionLabel label={session.label} sub={session.sub} active={session.active} />
       <StatusDot status={session.status} />
@@ -305,11 +309,7 @@ function SectionLabel({ children }: { children: React.ReactNode }): React.ReactE
   );
 }
 
-const STATUS_DOT_COLORS: Record<string, string> = {
-  live: 'var(--success)',
-  warn: 'var(--warning)',
-  idle: 'var(--ink-4)',
-};
+const STATUS_DOT_COLORS: Record<string, string> = { live: 'var(--success)', warn: 'var(--warning)', idle: 'var(--ink-4)' };
 
 function StatusDot({ status }: { status: string }): React.ReactElement {
   return (

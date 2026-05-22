@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AgentSession, PermissionEvent, ToolCallEvent } from '../AgentMonitor/types';
 import {
+  deriveSessionStatus,
   deriveWorkbenchAgentState,
   selectPrimarySession,
 } from './useWorkbenchAgentData';
@@ -159,5 +160,37 @@ describe('selectPrimarySession', () => {
       toolCalls: [makeTool({ toolName: 'Bash', status: 'pending', timestamp: 5000 })],
     });
     expect(selectPrimarySession([finished, live])?.id).toBe('live');
+  });
+});
+
+// ── deriveSessionStatus ───────────────────────────────────────────────────────
+
+describe('deriveSessionStatus', () => {
+  it('returns live for a running session with no permission events', () => {
+    const s = makeSession({ status: 'running', toolCalls: [] });
+    expect(deriveSessionStatus(s)).toBe('live');
+  });
+
+  it('returns warn when the latest permissionEvent is a request', () => {
+    const s = makeSession({
+      status: 'running',
+      toolCalls: [],
+      permissionEvents: [requestPerm],
+    });
+    expect(deriveSessionStatus(s)).toBe('warn');
+  });
+
+  it('returns live when the latest permissionEvent is denied (not a pending request)', () => {
+    const s = makeSession({
+      status: 'running',
+      toolCalls: [],
+      permissionEvents: [deniedPerm],
+    });
+    expect(deriveSessionStatus(s)).toBe('live');
+  });
+
+  it('returns idle for an idle session regardless of permission events', () => {
+    const s = makeSession({ status: 'idle', toolCalls: [], permissionEvents: [requestPerm] });
+    expect(deriveSessionStatus(s)).toBe('idle');
   });
 });

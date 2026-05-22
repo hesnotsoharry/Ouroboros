@@ -12,7 +12,7 @@
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import { MOCK_SESSIONS } from '../workbenchMockData';
+import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
 import { ContextBlock } from './ContextBlock';
 import { FilesTouched } from './FilesTouched';
 import { HookTimeline } from './HookTimeline';
@@ -112,8 +112,11 @@ function IconButton({
 
 // ── header ────────────────────────────────────────────────────────────────────
 
+const HEADER_FALLBACK = { label: '—', sub: '' };
+
 function SidebarHeader(): React.ReactElement {
-  const session = MOCK_SESSIONS.find((s) => s.active) ?? MOCK_SESSIONS[0];
+  const { sessions } = useWorkbenchAgentData();
+  const primary = sessions.find((s) => s.active) ?? HEADER_FALLBACK;
   return (
     <div
       style={{
@@ -127,7 +130,7 @@ function SidebarHeader(): React.ReactElement {
       }}
     >
       <StatusDot />
-      <SessionLabels label={session.label} sub={session.sub} />
+      <SessionLabels label={primary.label} sub={primary.sub} />
       <IconButton title="Stop" danger>
         <Icon name="Stop" size={11} />
       </IconButton>
