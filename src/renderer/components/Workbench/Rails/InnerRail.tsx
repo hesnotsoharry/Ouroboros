@@ -15,9 +15,10 @@
 
 import React from 'react';
 
+import { useProject } from '../../../contexts/ProjectContext';
+import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
 import {
-  MOCK_BRANCH,
   MOCK_FILE_TREE,
   MOCK_PROJECTS,
   MOCK_SESSIONS,
@@ -253,6 +254,9 @@ function FilesSection(): React.ReactElement {
 // ── Git footer ────────────────────────────────────────────────────────────────
 
 function BranchFooter(): React.ReactElement {
+  const { projectRoot } = useProject();
+  const { branch } = useGitBranch(projectRoot);
+
   return (
     <div
       style={{
@@ -276,10 +280,9 @@ function BranchFooter(): React.ReactElement {
           whiteSpace: 'nowrap',
         }}
       >
-        {MOCK_BRANCH.name}
+        {/* +adds/−dels deferred: roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md */}
+        {branch ?? '—'}
       </span>
-      <span style={{ color: 'var(--success)', flexShrink: 0 }}>+{MOCK_BRANCH.adds}</span>
-      <span style={{ color: 'var(--error)', flexShrink: 0 }}>−{MOCK_BRANCH.dels}</span>
     </div>
   );
 }

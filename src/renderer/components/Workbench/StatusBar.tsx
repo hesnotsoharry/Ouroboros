@@ -2,17 +2,23 @@
  * StatusBar — 24px bottom bar (canon §10).
  *
  * Left → right:
- *   [Branch + adds/dels] · [Sparkle + model] · [context used/max] ·
+ *   [Branch name] · [Sparkle + model] · [context used/max] ·
  *   [tests-passing pill]  ── flex spacer ──
  *   [cost] · [clock] · [connection dot]
  *
- * All data from workbenchMockData — static Wave 1. Wave 3 wires live data.
+ * Phase 2 live sources:
+ *   - branch name: useGitBranch(projectRoot) — +adds/−dels deferred to follow-up
+ *   - clock: local useState + setInterval(1 s) cleared on unmount
+ *
+ * Remaining mock (Phase 3): model, tokens, cost.
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
+import { useProject } from '../../contexts/ProjectContext';
+import { useGitBranch } from '../../hooks/useGitBranch';
 import { Icon } from '../shared/Icon';
-import { MOCK_BRANCH, MOCK_CONTEXT_STATS, MOCK_STATUS_BAR } from './workbenchMockData';
+import { MOCK_CONTEXT_STATS, MOCK_STATUS_BAR } from './workbenchMockData';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -27,6 +33,12 @@ function formatCost(usd: number): string {
   return `$${usd.toFixed(2)}`;
 }
 
+/** Format a Date as HH:MM:SS using local time. */
+function formatClock(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 // ── slot separator ────────────────────────────────────────────────────────────
 
 const SEP = (
@@ -35,25 +47,43 @@ const SEP = (
   </span>
 );
 
+// ── live clock ────────────────────────────────────────────────────────────────
+
+function useLiveClock(): string {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return formatClock(now);
+}
+
 // ── left group (branch / model / context / tests) ────────────────────────────
 
-function LeftSlots(): React.ReactElement {
+function BranchSlot({ branch }: { branch: string | null }): React.ReactElement | null {
+  if (!branch) return null;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <Icon name="Branch" size={11} style={{ color: 'var(--ink-3)' }} />
+      <span style={{ color: 'var(--ink-2)' }}>{branch}</span>
+    </span>
+  );
+}
+
+function LeftSlots({ branch }: { branch: string | null }): React.ReactElement {
   const usedStr = formatTokens(MOCK_CONTEXT_STATS.usedTokens);
   const maxStr = formatTokens(MOCK_CONTEXT_STATS.maxTokens);
 
   return (
     <>
-      {/* Slot 1 — branch */}
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-        <Icon name="Branch" size={11} style={{ color: 'var(--ink-3)' }} />
-        <span style={{ color: 'var(--ink-2)' }}>{MOCK_BRANCH.name}</span>
-        <span style={{ color: 'var(--success)' }}>+{MOCK_BRANCH.adds}</span>
-        <span style={{ color: 'var(--error)' }}>−{MOCK_BRANCH.dels}</span>
-      </span>
+      {/* Slot 1 — branch name (live); hidden when not a git repo */}
+      <BranchSlot branch={branch} />
 
-      {SEP}
+      {branch && SEP}
 
-      {/* Slot 2 — model */}
+      {/* Slot 2 — model (mock until Phase 3) */}
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         <Icon name="Sparkle" size={11} style={{ color: 'var(--accent)' }} />
         <span style={{ color: 'var(--ink-2)' }}>{MOCK_CONTEXT_STATS.model}</span>
@@ -61,7 +91,7 @@ function LeftSlots(): React.ReactElement {
 
       {SEP}
 
-      {/* Slot 3 — context */}
+      {/* Slot 3 — context (mock until Phase 3) */}
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         <span style={{ color: 'var(--ink-2)' }}>{usedStr}</span>
         <span>/ {maxStr} ctx</span>
@@ -69,7 +99,7 @@ function LeftSlots(): React.ReactElement {
 
       {SEP}
 
-      {/* Slot 4 — tests-passing pill */}
+      {/* Slot 4 — tests-passing pill (mock) */}
       <span style={{ color: 'var(--success)' }}>
         ● {MOCK_STATUS_BAR.testsPassing} tests passing
       </span>
@@ -80,15 +110,16 @@ function LeftSlots(): React.ReactElement {
 // ── right group (cost / clock / connection) ───────────────────────────────────
 
 function RightSlots(): React.ReactElement {
+  const clock = useLiveClock();
   return (
     <>
-      {/* Slot 5 — cost */}
+      {/* Slot 5 — cost (mock until Phase 3) */}
       <span style={{ color: 'var(--ink-2)' }}>{formatCost(MOCK_CONTEXT_STATS.costUsd)}</span>
 
       {SEP}
 
-      {/* Slot 6 — clock (static mock string this wave) */}
-      <span>{MOCK_STATUS_BAR.clock}</span>
+      {/* Slot 6 — clock (live) */}
+      <span>{clock}</span>
 
       {SEP}
 
@@ -127,9 +158,12 @@ const rootStyle: React.CSSProperties = {
 };
 
 export function StatusBar(): React.ReactElement {
+  const { projectRoot } = useProject();
+  const { branch } = useGitBranch(projectRoot);
+
   return (
     <div data-testid="workbench-statusbar" style={rootStyle}>
-      <LeftSlots />
+      <LeftSlots branch={branch} />
       <span style={{ flex: 1 }} />
       <RightSlots />
     </div>

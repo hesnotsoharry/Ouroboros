@@ -8,13 +8,17 @@
  * -webkit-app-region: drag on the bar background; no-drag on every interactive
  * child so clicks reach them.
  *
- * All data from workbenchMockData — no live IPC this wave.
+ * Phase 2 live sources:
+ *   - active project: useWorkbenchProjects() — deterministic HSL chip color
+ *   - branch name: useGitBranch(projectRoot) — BranchChip hidden when null
  */
 
 import React from 'react';
 
+import { useProject } from '../../../contexts/ProjectContext';
+import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
-import { MOCK_PROJECTS } from '../workbenchMockData';
+import { useWorkbenchProjects } from '../useWorkbenchProjects';
 import { AgentGlobe } from './AgentGlobe';
 import { BranchChip, ProjectChip } from './TitleChip';
 import { WindowControls } from './WindowControls';
@@ -168,7 +172,11 @@ function SettingsButton(): React.ReactElement {
 // ── TitleBar ─────────────────────────────────────────────────────────────────
 
 export function TitleBar(): React.ReactElement {
-  const activeProject = MOCK_PROJECTS.find((p) => p.active) ?? MOCK_PROJECTS[0];
+  const { projectRoot } = useProject();
+  const projects = useWorkbenchProjects();
+  const { branch } = useGitBranch(projectRoot);
+
+  const activeProject = projects.find((p) => p.active) ?? projects[0];
 
   return (
     <div
@@ -190,8 +198,8 @@ export function TitleBar(): React.ReactElement {
       }
     >
       <AppMark />
-      <ProjectChip project={activeProject} />
-      <BranchChip branch={activeProject.branch} />
+      {activeProject && <ProjectChip project={activeProject} />}
+      {branch && <BranchChip branch={branch} />}
       <Spacer />
       <AgentGlobe />
       <Spacer />

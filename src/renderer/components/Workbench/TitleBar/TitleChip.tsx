@@ -10,7 +10,6 @@
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import type { MockProject } from '../workbenchMockData';
 
 // ── Shared chip wrapper ──────────────────────────────────────────────────────
 
@@ -54,8 +53,16 @@ function TitleChipBase({ children, onClick }: TitleChipBaseProps): React.ReactEl
 
 // ── Project chip ─────────────────────────────────────────────────────────────
 
+/** Minimal shape ProjectChip needs — compatible with WorkbenchProject. */
+interface ProjectChipProject {
+  name: string;
+  initial: string;
+  /** Deterministic HSL color — data-derived project identity, not a hardcoded hex. */
+  color: string;
+}
+
 interface ProjectChipProps {
-  project: MockProject;
+  project: ProjectChipProject;
   onClick?: () => void;
 }
 
@@ -70,7 +77,7 @@ export function ProjectChip({ project, onClick }: ProjectChipProps): React.React
           width: 18,
           height: 18,
           borderRadius: 5,
-          // project.color is a sanctioned user-assigned project identity color from mock data
+          // project.color is data-derived (deterministic HSL from path) — sanctioned exception.
           background: `linear-gradient(135deg, ${project.color}, ${project.color}80)`,
           color: '#0a0b14',
           fontSize: 10,

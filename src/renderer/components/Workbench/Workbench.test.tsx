@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  *
- * Workbench.test.tsx — Phase 1 + Phase 2 tests.
+ * Workbench.test.tsx — Phase 1–3 tests (Wave 3 Phase 2 updated).
  *
  * Phase 1 trophy: the flag branch + frame render is the seam.
  * (a) flag on → Workbench mounts and all six region test-ids are present
@@ -17,6 +17,16 @@
  * useWorkbenchAgentData), not mock data. useAgentEventsContext is mocked below
  * (default: empty → "fresh"); the Globe test asserts the derived data-state +
  * live model rather than the retired mock model string.
+ *
+ * Wave 3 Phase 2:
+ *   - useGitBranch mocked → returning { branch: 'feature/x' }
+ *   - useConfig mocked → returning config with recentProjects
+ *   - ProjectContext mock extended → projectRoots: ['/projects/agent-ide']
+ *   - StatusBar: branch name from mock; +adds/−dels removed (deferred);
+ *     clock asserts HH:MM:SS shape (regex), not static string
+ *   - ProjectRail: chips from mocked roots; dirty-badge assertions removed
+ *   - TitleBar: active chip name + branch from mocked live sources
+ *   - InnerRail: branch footer from mocked useGitBranch; +126/−42 removed
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
@@ -30,12 +40,13 @@ vi.mock('../Terminal/TerminalInstance', () => ({
     React.createElement('div', { 'data-testid': `terminal-instance-${sessionId}` }),
 }));
 
-// ProjectContext stub — useWorkbenchTerminals reads projectRoot for cwd.
+// ProjectContext stub — projectRoot + projectRoots used by useWorkbenchProjects,
+// useWorkbenchTerminals, useGitBranch, etc.
 vi.mock('../../contexts/ProjectContext', () => ({
   useProject: () => ({
-    projectRoot: '/test-root',
-    projectRoots: ['/test-root'],
-    projectName: 'test',
+    projectRoot: '/projects/agent-ide',
+    projectRoots: ['/projects/agent-ide'],
+    projectName: 'agent-ide',
     isLoaded: true,
     setProjectRoot: vi.fn(),
     addProjectRoot: vi.fn(),
@@ -43,6 +54,24 @@ vi.mock('../../contexts/ProjectContext', () => ({
     clearProject: vi.fn(),
   }),
   useProjectOptional: () => null,
+}));
+
+// useConfig stub — provides recentProjects for useWorkbenchProjects.
+vi.mock('../../hooks/useConfig', () => ({
+  useConfig: () => ({
+    config: {
+      recentProjects: ['/projects/agent-ide', '/projects/pinpoint'],
+    },
+    isLoading: false,
+    error: null,
+    set: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
+// useGitBranch stub — returns a known branch for all components.
+vi.mock('../../hooks/useGitBranch', () => ({
+  useGitBranch: () => ({ branch: 'feature/x' }),
 }));
 
 // AgentEventsContext stub — AgentGlobe (Wave 3) reads useWorkbenchAgentData →
@@ -141,17 +170,17 @@ describe('TitleBar', () => {
     expect(titleBar.textContent).toContain('A');
   });
 
-  it('renders the active project name from mock data', () => {
+  it('renders the active project name from live useWorkbenchProjects', () => {
     render(<Workbench />);
-    // MOCK_PROJECTS[0] is agent-ide with active: true
+    // projectRoots = ['/projects/agent-ide'] → basename = 'agent-ide'
     expect(screen.getByText('agent-ide')).toBeDefined();
   });
 
-  it('renders the active project branch name from mock data', () => {
+  it('renders the active project branch name from live useGitBranch', () => {
     render(<Workbench />);
-    // MOCK_PROJECTS[0].branch = 'wave/1-workbench-static-shell'
-    // Use getAllByText because InnerRail footer also shows the branch name.
-    const matches = screen.getAllByText('wave/1-workbench-static-shell');
+    // useGitBranch mock returns 'feature/x'
+    // getAllByText because InnerRail footer also shows the branch name.
+    const matches = screen.getAllByText('feature/x');
     expect(matches.length).toBeGreaterThan(0);
   });
 
@@ -215,35 +244,28 @@ describe('ProjectRail', () => {
     expect(screen.getByTestId('workbench-projectrail')).toBeDefined();
   });
 
-  it('renders one chip per mock project (3 chips)', () => {
+  it('renders one chip per live project root (2 chips from mocked roots)', () => {
     render(<ProjectRail />);
     const rail = screen.getByTestId('workbench-projectrail');
-    // Each project chip is a button with the project name as title attribute.
+    // projectRoots = ['/projects/agent-ide'] + recentProjects = ['/projects/pinpoint']
     expect(rail.querySelector('[title="agent-ide"]')).toBeDefined();
     expect(rail.querySelector('[title="pinpoint"]')).toBeDefined();
-    expect(rail.querySelector('[title="lumen-cli"]')).toBeDefined();
   });
 
   it('renders the active project initial letter (A) in the active chip', () => {
     render(<ProjectRail />);
-    // The active project is agent-ide (initial "A"), active: true in mock.
+    // projectRoot = '/projects/agent-ide' → initial 'A'
     const chip = screen.getByTitle('agent-ide');
     expect(chip.textContent).toContain('A');
   });
 
-  it('renders a dirty-count badge on inactive projects with dirty > 0', () => {
+  it('does not render a dirty badge — dirty count deferred to follow-up', () => {
     render(<ProjectRail />);
-    // lumen-cli has dirty: 2 and is not active — badge should appear.
-    const chip = screen.getByTitle('lumen-cli');
-    expect(chip.textContent).toContain('2');
-  });
-
-  it('does not render a dirty badge on the active project', () => {
-    render(<ProjectRail />);
-    // agent-ide is active (dirty: 4 but badge is suppressed per canon).
-    const chip = screen.getByTitle('agent-ide');
-    // The chip text should be just the initial "A", no "4".
-    expect(chip.textContent).not.toContain('4');
+    // No dirty badges expected; none of the chip titles should show a numeric badge.
+    const rail = screen.getByTestId('workbench-projectrail');
+    // No badge spans with count text should be present.
+    const badges = rail.querySelectorAll('[aria-label="dirty"]');
+    expect(badges.length).toBe(0);
   });
 
   it('renders the add-project button', () => {
@@ -284,12 +306,17 @@ describe('InnerRail', () => {
     expect(screen.getByText('tokens.css')).toBeDefined();
   });
 
-  it('renders the branch footer with branch name and diff stats', () => {
+  it('renders the branch footer with live branch name from useGitBranch', () => {
     render(<InnerRail />);
-    // MOCK_BRANCH.name = 'wave/1-workbench-static-shell'
-    expect(screen.getByText('wave/1-workbench-static-shell')).toBeDefined();
-    expect(screen.getByText('+126')).toBeDefined();
-    expect(screen.getByText('−42')).toBeDefined();
+    // useGitBranch mock returns 'feature/x'
+    expect(screen.getByText('feature/x')).toBeDefined();
+  });
+
+  it('does not render +adds or −dels in the footer — diff stats deferred', () => {
+    render(<InnerRail />);
+    // +126 and −42 must not appear — those were mock diff stats, now deferred.
+    expect(screen.queryByText('+126')).toBeNull();
+    expect(screen.queryByText('−42')).toBeNull();
   });
 });
 
@@ -620,24 +647,17 @@ describe('StatusBar', () => {
     expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
   });
 
-  it('renders the branch name from MOCK_BRANCH', () => {
+  it('renders the live branch name from useGitBranch', () => {
     render(<StatusBar />);
-    // MOCK_BRANCH.name = 'wave/1-workbench-static-shell'
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain(
-      'wave/1-workbench-static-shell',
-    );
+    // useGitBranch mock returns 'feature/x'
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('feature/x');
   });
 
-  it('renders branch adds in success color text', () => {
+  it('does not render +adds or −dels — diff stats deferred to follow-up', () => {
     render(<StatusBar />);
-    // MOCK_BRANCH.adds = 126
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('+126');
-  });
-
-  it('renders branch dels in error color text', () => {
-    render(<StatusBar />);
-    // MOCK_BRANCH.dels = 42
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('−42');
+    const sb = screen.getByTestId('workbench-statusbar');
+    expect(sb.textContent).not.toContain('+126');
+    expect(sb.textContent).not.toContain('−42');
   });
 
   it('renders the model name from MOCK_CONTEXT_STATS', () => {
@@ -670,10 +690,12 @@ describe('StatusBar', () => {
     expect(screen.getByTestId('workbench-statusbar').textContent).toContain('$0.09');
   });
 
-  it('renders the static clock string from MOCK_STATUS_BAR', () => {
+  it('renders a live HH:MM:SS clock string (not the static mock value)', () => {
     render(<StatusBar />);
-    // MOCK_STATUS_BAR.clock = '14:32:34'
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('14:32:34');
+    const text = screen.getByTestId('workbench-statusbar').textContent ?? '';
+    // The static mock value '14:32:34' must not appear; a live HH:MM:SS must be present.
+    expect(text).not.toContain('14:32:34');
+    expect(text).toMatch(/\d{2}:\d{2}:\d{2}/);
   });
 
   it('renders the "connected" label', () => {
@@ -686,8 +708,8 @@ describe('StatusBar — Workbench integration', () => {
   it('workbench-statusbar test-id resolves on the StatusBar root (not a placeholder)', () => {
     render(<Workbench />);
     const el = screen.getByTestId('workbench-statusbar');
-    // Real StatusBar shows branch name — placeholder showed "Status Bar" text
-    expect(el.textContent).toContain('wave/1-workbench-static-shell');
+    // Real StatusBar shows live branch name (mocked to 'feature/x')
+    expect(el.textContent).toContain('feature/x');
     expect(el.textContent).not.toContain('Status Bar');
   });
 
