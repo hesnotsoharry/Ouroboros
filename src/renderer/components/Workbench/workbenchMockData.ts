@@ -219,6 +219,43 @@ export const MOCK_DIFF_HUNK: MockDiffLine[] = [
   { type: 'ctx', n: 89, text: '  }, [term])' },
 ];
 
+// ── Agent sidebar — Phase 5 ──────────────────────────────────────────────────
+
+/** The currently executing tool call shown in the NOW block. */
+export interface MockNowToolCall {
+  tool: string;
+  /** Display-friendly path or target shown after the arrow. */
+  target: string;
+  /** One-line description of the tool input (what it is doing). */
+  description: string;
+  /** Elapsed seconds — rendered as a live duration pill in the UI. */
+  elapsedSec: number;
+  /** Progress 0–1. Undefined = indeterminate bar. */
+  progress?: number;
+}
+
+export const MOCK_NOW_TOOL_CALL: MockNowToolCall = {
+  tool: 'Edit',
+  target: 'src/renderer/components/Terminal/TerminalPane.tsx',
+  description: 'Replace parseXtermBuffer with PostToolUse subscription',
+  elapsedSec: 12,
+  progress: undefined, // indeterminate while running
+};
+
+/** Extended diff hunk with file + line anchor metadata. */
+export interface MockDiffHunk {
+  file: string;
+  /** Starting line number of the hunk. */
+  startLine: number;
+  lines: MockDiffLine[];
+}
+
+export const MOCK_DIFF_HUNK_META: MockDiffHunk = {
+  file: 'src/renderer/components/Terminal/TerminalPane.tsx',
+  startLine: 84,
+  lines: MOCK_DIFF_HUNK,
+};
+
 // ── Terminal mock content (Phase 4) ─────────────────────────────────────────
 
 /**

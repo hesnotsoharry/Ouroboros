@@ -17,6 +17,7 @@
 
 import React from 'react';
 
+import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
 import { CenterPane } from './Terminals/CenterPane';
@@ -82,11 +83,7 @@ function MiddleRow(): React.ReactElement {
       <ProjectRail />
       <InnerRail />
       <CenterPane />
-      <PlaceholderRegion
-        label="Agent Sidebar"
-        testId="workbench-agentsidebar"
-        style={{ width: '348px', flexShrink: 0 }}
-      />
+      <AgentSidebar />
     </div>
   );
 }

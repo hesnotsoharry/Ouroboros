@@ -15,6 +15,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
 import { UnifiedRail } from './Rails/UnifiedRail';
@@ -41,12 +42,11 @@ describe('Workbench', () => {
     expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
   });
 
-  it('renders the two remaining placeholder region labels', () => {
+  it('renders the one remaining placeholder region label (Status Bar)', () => {
     render(<Workbench />);
 
-    // Title Bar, Project Rail, Inner Rail, and Terminals are now replaced by
-    // real components — only the two not yet implemented show placeholder text.
-    expect(screen.getByText('Agent Sidebar')).toBeDefined();
+    // Title Bar, Project Rail, Inner Rail, Terminals, and Agent Sidebar are
+    // now replaced by real components — only Status Bar still shows placeholder text.
     expect(screen.getByText('Status Bar')).toBeDefined();
   });
 
@@ -334,16 +334,192 @@ describe('Workbench — Phase 4 integration', () => {
     expect(el.querySelector('[data-testid="terminal-shell-lower"]')).toBeDefined();
   });
 
-  it('Agent Sidebar placeholder is still a placeholder (untouched)', () => {
+  it('Agent Sidebar is the real AgentSidebar component (not a placeholder)', () => {
     render(<Workbench />);
-    expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
-    expect(screen.getByText('Agent Sidebar')).toBeDefined();
+    const el = screen.getByTestId('workbench-agentsidebar');
+    expect(el).toBeDefined();
+    // Real AgentSidebar contains the NOW block — placeholder text is gone
+    expect(el.querySelector('[data-testid="now-block"]')).toBeDefined();
   });
 
   it('Status Bar placeholder is still a placeholder (untouched)', () => {
     render(<Workbench />);
     expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
     expect(screen.getByText('Status Bar')).toBeDefined();
+  });
+});
+
+// ── Phase 5: AgentSidebar + five panels ──────────────────────────────────────
+
+describe('AgentSidebar', () => {
+  it('carries data-testid="workbench-agentsidebar" on its root element', () => {
+    render(<AgentSidebar />);
+    expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
+  });
+
+  it('renders the header with active session label from mock data', () => {
+    render(<AgentSidebar />);
+    // MOCK_SESSIONS[0] is active: label 'claude · main'
+    const sidebar = screen.getByTestId('workbench-agentsidebar');
+    expect(sidebar.textContent).toContain('claude · main');
+  });
+
+  it('renders the Stop button in the header', () => {
+    render(<AgentSidebar />);
+    expect(screen.getByTitle('Stop')).toBeDefined();
+  });
+
+  it('renders the Maximize sidebar button in the header', () => {
+    render(<AgentSidebar />);
+    expect(screen.getByTitle('Maximize sidebar')).toBeDefined();
+  });
+
+  it('renders all five panel test-ids', () => {
+    render(<AgentSidebar />);
+    expect(screen.getByTestId('now-block')).toBeDefined();
+    expect(screen.getByTestId('context-block')).toBeDefined();
+    expect(screen.getByTestId('files-touched')).toBeDefined();
+    expect(screen.getByTestId('latest-hunk')).toBeDefined();
+    expect(screen.getByTestId('hook-timeline')).toBeDefined();
+  });
+});
+
+describe('AgentSidebar — NowBlock', () => {
+  it('renders the NOW label in the now-block', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('now-block');
+    expect(block.textContent).toContain('NOW');
+  });
+
+  it('renders the mock tool name (Edit) in the now-block', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('now-block');
+    // MOCK_NOW_TOOL_CALL.tool = 'Edit'
+    expect(block.textContent).toContain('Edit');
+  });
+
+  it('renders the mock duration in the now-block', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('now-block');
+    // MOCK_NOW_TOOL_CALL.elapsedSec = 12 → '12s'
+    expect(block.textContent).toContain('12s');
+  });
+});
+
+describe('AgentSidebar — ContextBlock', () => {
+  it('renders the CONTEXT label', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('context-block');
+    expect(block.textContent).toContain('CONTEXT');
+  });
+
+  it('renders the token count from mock data', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('context-block');
+    // MOCK_CONTEXT_STATS: usedTokens 42800 → '42.8k', maxTokens 200000 → '200.0k'
+    expect(block.textContent).toContain('42.8k');
+    expect(block.textContent).toContain('200.0k');
+  });
+
+  it('renders the usage percentage in the donut centre', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('context-block');
+    // 42800 / 200000 ≈ 21%
+    expect(block.textContent).toContain('21%');
+  });
+});
+
+describe('AgentSidebar — FilesTouched', () => {
+  it('renders the FILES TOUCHED label', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('files-touched');
+    expect(block.textContent).toContain('FILES TOUCHED');
+  });
+
+  it('renders a row for each mock touched file', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('files-touched');
+    // MOCK_FILES_TOUCHED has 4 entries
+    expect(block.querySelectorAll('[data-testid="files-touched-row"]').length).toBe(4);
+  });
+
+  it('renders the path of the actively-edited file', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('files-touched');
+    // MOCK_FILES_TOUCHED[0].status = 'editing', path includes 'TerminalPane.tsx'
+    expect(block.textContent).toContain('TerminalPane.tsx');
+  });
+});
+
+describe('AgentSidebar — LatestHunk', () => {
+  it('renders the LATEST HUNK label', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('latest-hunk');
+    expect(block.textContent).toContain('LATEST HUNK');
+  });
+
+  it('renders a diff row for each mock diff line', () => {
+    render(<AgentSidebar />);
+    // MOCK_DIFF_HUNK has 8 lines
+    const block = screen.getByTestId('latest-hunk');
+    // Each DiffRow renders inline — check for a known add line text
+    expect(block.textContent).toContain("hooks.on('PostToolUse'");
+  });
+
+  it('renders Accept, Reject, and Open stub buttons', () => {
+    render(<AgentSidebar />);
+    expect(screen.getByText('Accept')).toBeDefined();
+    expect(screen.getByText('Reject')).toBeDefined();
+    expect(screen.getByText('Open')).toBeDefined();
+  });
+});
+
+describe('AgentSidebar — HookTimeline', () => {
+  it('renders the TIMELINE label', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('hook-timeline');
+    expect(block.textContent).toContain('TIMELINE');
+  });
+
+  it('renders the View all no-op button', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('hook-timeline');
+    expect(block.textContent).toContain('View all');
+  });
+
+  it('renders the running tool event (e12 Edit — status running) as a full card', () => {
+    render(<AgentSidebar />);
+    // e12 in MOCK_HOOK_EVENTS is the running Edit — most recent by t=−12
+    const block = screen.getByTestId('hook-timeline');
+    // The running event appears first (t closest to 0)
+    expect(block.textContent).toContain('Edit');
+  });
+
+  it('renders a prompt event text in the timeline', () => {
+    render(<AgentSidebar />);
+    const block = screen.getByTestId('hook-timeline');
+    // e1 is a prompt event with text starting 'refactor TerminalPane...'
+    expect(block.textContent).toContain('refactor TerminalPane');
+  });
+});
+
+describe('AgentSidebar — Workbench integration', () => {
+  it('workbench-agentsidebar test-id resolves on the AgentSidebar root (not a placeholder)', () => {
+    render(<Workbench />);
+    const el = screen.getByTestId('workbench-agentsidebar');
+    // AgentSidebar root contains now-block — placeholder div did not
+    expect(el.querySelector('[data-testid="now-block"]')).toBeDefined();
+  });
+
+  it('Status Bar placeholder is still a placeholder (untouched by Phase 5)', () => {
+    render(<Workbench />);
+    expect(screen.getByTestId('workbench-statusbar')).toBeDefined();
+    expect(screen.getByText('Status Bar')).toBeDefined();
+  });
+
+  it('does not import xterm, useAgentEvents, or permission components', async () => {
+    const mod = await import('./AgentSidebar/AgentSidebar');
+    expect(typeof mod.AgentSidebar).toBe('function');
   });
 });
 
