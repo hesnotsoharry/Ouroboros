@@ -6,6 +6,13 @@ Shipped date and squash commit are filled in at wave-end going forward. Historic
 
 | Wave | Topic | Shipped | Squash | Link |
 |---|---|---|---|---|
+| WB6 | Workbench overhaul — themes (Modern/Warp/Retro canon) + responsive collapse | 2026-05-22 | v2.27.0 `7c842dbc` | [wave-6-workbench-themes-responsive/](wave-6-workbench-themes-responsive/) |
+| WB5 | Workbench overhaul — canon §13 permission UI (overlay + sidebar takeover) | 2026-05-22 | v2.26.0 | [wave-5-workbench-permission-overlay/](wave-5-workbench-permission-overlay/) |
+| WB4 | Workbench overhaul — agent sidebar 5 panel bodies live | 2026-05-22 | v2.25.0 `3ede163f` | [wave-4-workbench-agent-sidebar-live/](wave-4-workbench-agent-sidebar-live/) |
+| WB3 | Workbench overhaul — hook pipeline + live agent state machine | 2026-05-21 | v2.24.0 | [wave-3-workbench-hook-pipeline-state-machine/](wave-3-workbench-hook-pipeline-state-machine/) |
+| WB2 | Workbench overhaul — live terminals + draggable divider | 2026-05-21 | v2.23.0 | [wave-2-workbench-terminal-integration/](wave-2-workbench-terminal-integration/) |
+| WB1 | Workbench overhaul — static canon shell (flagged) | 2026-05-21 | v2.22.0 | [wave-1-workbench-static-shell/](wave-1-workbench-static-shell/) |
+| WB0 | Workbench overhaul — token foundations (canon aliases + tinted well) | 2026-05-21 | v2.21.0 `c253cb2e` | [wave-0-workbench-token-foundations/](wave-0-workbench-token-foundations/) |
 | M5 | Documentation framework migration | 2026-05-13 | _pending_ | [wave-M5-doc-migration/](wave-M5-doc-migration/) |
 | W87 | Chat orchestration activation | in-progress | — | [wave-87-chat-orchestration-activation/](wave-87-chat-orchestration-activation/) |
 | W86 | Chat orchestration state-architecture overhaul | pending push | — | [wave-86-chat-orchestration-overhaul/](wave-86-chat-orchestration-overhaul/) |
