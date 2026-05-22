@@ -11,7 +11,7 @@
  * the user selects a file in the quick-open palette.
  */
 
-import React, { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 
 import { useProjectOptional } from '../../../contexts/ProjectContext';
 import {
@@ -19,8 +19,8 @@ import {
   isImageFile,
   isPdfFile,
   isVideoFile,
-  looksLikeBinary,
 } from '../../FileViewer/FileViewerManager.helpers';
+import { type FileLoadState, useWorkbenchFileLoad } from './useWorkbenchFileLoad';
 // Lazy-load FileViewer to keep Monaco/pdfjs out of the Workbench shell's static
 // import graph. The dynamic import() only fires when openFilePath is non-null
 // (the modal is open), so shell tests and the initial bundle stay Monaco-free.
@@ -28,108 +28,6 @@ import {
 const FileViewer = React.lazy(() =>
   import('../../FileViewer/FileViewer').then((m) => ({ default: m.FileViewer })),
 );
-
-// ── File-load state ───────────────────────────────────────────────────────────
-
-interface FileLoadState {
-  content: string | null;
-  binaryContent: Uint8Array | undefined;
-  isLoading: boolean;
-  error: string | null;
-  isDirty: boolean;
-}
-
-const INITIAL_STATE: FileLoadState = {
-  content: null,
-  binaryContent: undefined,
-  isLoading: false,
-  error: null,
-  isDirty: false,
-};
-
-// ── Binary-only file (image/pdf/audio/video) — no content to fetch ────────────
-
-function buildSpecialViewerState(): FileLoadState {
-  return { content: null, binaryContent: undefined, isLoading: false, error: null, isDirty: false };
-}
-
-// ── Text read → binary fallback ───────────────────────────────────────────────
-
-async function readAsTextOrBinary(path: string): Promise<Partial<FileLoadState>> {
-  const result = await window.electronAPI.files.readFile(path);
-  if (!result.success) {
-    return {
-      content: null,
-      binaryContent: undefined,
-      isLoading: false,
-      error: result.error ?? 'Failed to read file',
-    };
-  }
-  const text = result.content ?? '';
-  if (looksLikeBinary(text)) {
-    const binResult = await window.electronAPI.files.readBinaryFile(path);
-    const bytes =
-      binResult.success && binResult.content ? new Uint8Array(binResult.content) : undefined;
-    return { content: null, binaryContent: bytes, isLoading: false, error: null };
-  }
-  return { content: text, binaryContent: undefined, isLoading: false, error: null };
-}
-
-// ── File-load hook ────────────────────────────────────────────────────────────
-
-function useWorkbenchFileLoad(filePath: string | null): FileLoadState & {
-  reload: () => void;
-  handleContentChange: (c: string) => void;
-  handleSave: (c: string) => Promise<void>;
-} {
-  const [state, setState] = useState<FileLoadState>(INITIAL_STATE);
-  const loadCount = useRef(0);
-
-  const load = useCallback((path: string): void => {
-    const token = ++loadCount.current;
-    setState({ ...INITIAL_STATE, isLoading: true });
-
-    const isSpecial =
-      isImageFile(path) || isPdfFile(path) || isAudioFile(path) || isVideoFile(path);
-    if (isSpecial) {
-      if (token !== loadCount.current) return;
-      setState(buildSpecialViewerState());
-      return;
-    }
-
-    void readAsTextOrBinary(path).then((partial) => {
-      if (token !== loadCount.current) return;
-      setState((prev) => ({ ...prev, isDirty: false, ...partial }));
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!filePath) {
-      setState(INITIAL_STATE);
-      return;
-    }
-    load(filePath);
-  }, [filePath, load]);
-
-  const reload = useCallback((): void => {
-    if (filePath) load(filePath);
-  }, [filePath, load]);
-
-  const handleContentChange = useCallback((c: string): void => {
-    setState((prev) => ({ ...prev, content: c, isDirty: true }));
-  }, []);
-
-  const handleSave = useCallback(
-    async (c: string): Promise<void> => {
-      if (!filePath) return;
-      const result = await window.electronAPI.files.saveFile(filePath, c);
-      if (result.success) setState((prev) => ({ ...prev, content: c, isDirty: false }));
-    },
-    [filePath],
-  );
-
-  return { ...state, reload, handleContentChange, handleSave };
-}
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -282,6 +180,59 @@ function ViewerSlot({
 /**
  * Inner panel — rendered only when filePath is non-null.
  */
+interface ModalHandlers {
+  handleClose: () => void;
+  handleSaveCallback: (c: string) => void;
+  handleBackdropClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+}
+
+function useModalHandlers(
+  isDirty: boolean,
+  onClose: () => void,
+  handleSave: (c: string) => Promise<void>,
+): ModalHandlers {
+  const handleClose = useCallback((): void => guardClose(isDirty, onClose), [isDirty, onClose]);
+  const handleSaveCallback = useCallback(
+    (c: string): void => {
+      void handleSave(c);
+    },
+    [handleSave],
+  );
+  const handleBackdropClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>): void => {
+      if (e.target === e.currentTarget) handleClose();
+    },
+    [handleClose],
+  );
+  return { handleClose, handleSaveCallback, handleBackdropClick };
+}
+
+function ModalFrame({
+  onBackdropClick,
+  onClose,
+  children,
+}: {
+  onBackdropClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onClose: () => void;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div aria-modal="true" role="dialog" style={backdropStyle} onClick={onBackdropClick}>
+      <div style={panelStyle}>
+        <button
+          aria-label="Close file viewer"
+          style={closeBtnStyle}
+          title="Close"
+          onClick={onClose}
+        >
+          ×
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function ModalPanel({
   filePath,
   onClose,
@@ -298,43 +249,24 @@ function ModalPanel({
   const viewerRef = useMonacoLayoutFix(filePath);
   useModalKeyboard(isDirty, onClose);
 
-  const handleClose = useCallback((): void => guardClose(isDirty, onClose), [isDirty, onClose]);
-  const handleSaveCallback = useCallback(
-    (c: string): void => {
-      void handleSave(c);
-    },
-    [handleSave],
-  );
-
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>): void => {
-      if (e.target === e.currentTarget) handleClose();
-    },
-    [handleClose],
+  const { handleClose, handleSaveCallback, handleBackdropClick } = useModalHandlers(
+    isDirty,
+    onClose,
+    handleSave,
   );
 
   return (
-    <div aria-modal="true" role="dialog" style={backdropStyle} onClick={handleBackdropClick}>
-      <div style={panelStyle}>
-        <button
-          aria-label="Close file viewer"
-          style={closeBtnStyle}
-          title="Close"
-          onClick={handleClose}
-        >
-          ×
-        </button>
-        <ViewerSlot
-          filePath={filePath}
-          loadState={loadState}
-          projectRoot={projectRoot}
-          viewerRef={viewerRef}
-          onContentChange={handleContentChange}
-          onReload={reload}
-          onSave={handleSaveCallback}
-        />
-      </div>
-    </div>
+    <ModalFrame onBackdropClick={handleBackdropClick} onClose={handleClose}>
+      <ViewerSlot
+        filePath={filePath}
+        loadState={loadState}
+        projectRoot={projectRoot}
+        viewerRef={viewerRef}
+        onContentChange={handleContentChange}
+        onReload={reload}
+        onSave={handleSaveCallback}
+      />
+    </ModalFrame>
   );
 }
 
