@@ -50,14 +50,20 @@ Workbench/
 
 Wave 1 shipped static-only. The constraint is being lifted region by region:
 
-- **Terminals — LIVE as of Wave 2.** `Terminals/**` mounts the real `<TerminalInstance>`
-  (xterm) bound to workbench-owned ptys via `useWorkbenchTerminals`, and reads/writes the
+- **Terminals — LIVE (Wave 2).** `Terminals/**` mounts the real `<TerminalInstance>`
+  (xterm) bound to workbench-owned ptys via `useWorkbenchTerminals` + the
   `layout.workbenchTerminalSplit` config key. The terminal-line mock data
-  (`MOCK_CC_TUI_LINES`, `MOCK_SHELL_LINES`, etc.) is now dead — see
-  `roadmap/follow-ups/2026-05-21-wave-2-dead-terminal-line-mocks.md`.
-- **Still static (Wave 1):** TitleBar, Rails, AgentSidebar, StatusBar read from
-  `workbenchMockData.ts`. These must NOT import `useAgentEvents`, any live-data IPC hook,
-  or permission/approval components until their wave (Wave 3 / Wave 5).
+  (`MOCK_CC_TUI_LINES`/`MOCK_SHELL_LINES`/…) was **deleted** in Wave 3's dead-mock sweep.
+- **Agent Globe + project chips + branch + clock + sessions list + sidebar header + context
+  stats — LIVE (Wave 3).** Driven by `useWorkbenchAgentData` (the agent presentation-state
+  machine + adapter over `AgentEventsContext`), `useWorkbenchProjects` (project chips),
+  `useGitBranch` (branch name), and a local live clock. See the Gotchas section.
+- **Still static (→ later waves):** the five AgentSidebar **panel bodies**
+  (NowBlock/ContextBlock/FilesTouched/LatestHunk/HookTimeline) → Wave 4; `UnifiedRail` (built,
+  not mounted — still uses `MOCK_PROJECTS`/`MOCK_SESSIONS`/`MOCK_BRANCH`); the terminal tab-bar
+  labels (`MOCK_TERM_TABS_*`, single-tab affordance); `StatusBar` testsPassing; git +adds/−dels
+  + per-project dirty (`roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md`).
+  Permission overlay → Wave 5. These must NOT import permission/approval components until Wave 5.
 
 Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.tsx` mount
 (only `ProjectContext` is needed — already above the Workbench branch). Do NOT pull in

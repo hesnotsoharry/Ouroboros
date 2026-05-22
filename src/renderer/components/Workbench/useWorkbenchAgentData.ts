@@ -82,9 +82,7 @@ export function selectPrimarySession(sessions: AgentSession[]): AgentSession | n
   if (sessions.length === 0) return null;
   const running = sessions.filter((s) => s.status === 'running');
   const pool = running.length > 0 ? running : sessions;
-  return pool.reduce((best, s) =>
-    lastActivityOf(s) > lastActivityOf(best) ? s : best,
-  );
+  return pool.reduce((best, s) => (lastActivityOf(s) > lastActivityOf(best) ? s : best));
 }
 
 /**
@@ -98,9 +96,7 @@ export function selectPrimarySession(sessions: AgentSession[]): AgentSession | n
  *   'running' + a pending toolCall                        → 'running'
  *   'running' (no pending toolCall)                       → 'thinking'
  */
-export function deriveWorkbenchAgentState(
-  session: AgentSession | null,
-): WorkbenchAgentState {
+export function deriveWorkbenchAgentState(session: AgentSession | null): WorkbenchAgentState {
   if (!session || session.status === 'idle') return 'fresh';
   if (session.status === 'error') return 'errored';
   if (session.status === 'complete') return 'done';
@@ -150,9 +146,7 @@ function deriveElapsedSec(session: AgentSession | null): number {
  *   running (otherwise)                            → 'live'
  *   idle                                           → 'idle'
  */
-export function deriveSessionStatus(
-  session: AgentSession,
-): 'live' | 'warn' | 'idle' {
+export function deriveSessionStatus(session: AgentSession): 'live' | 'warn' | 'idle' {
   if (session.status === 'idle') return 'idle';
   const perms = session.permissionEvents ?? [];
   if (perms.length > 0 && perms[perms.length - 1].type === 'request') {
@@ -186,10 +180,7 @@ function deriveSub(session: AgentSession): string {
 }
 
 /** Maps a live AgentSession to a WorkbenchSession rail shape. */
-function mapToRailSession(
-  session: AgentSession,
-  primaryId: string | null,
-): WorkbenchSession {
+function mapToRailSession(session: AgentSession, primaryId: string | null): WorkbenchSession {
   return {
     id: session.id,
     projectId: deriveProjectId(session),

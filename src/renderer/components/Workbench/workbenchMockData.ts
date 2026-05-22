@@ -41,21 +41,15 @@ export type {
   MockNowToolCall,
   MockPromptEvent,
   MockStatusBar,
-  MockTerminalLine,
   MockThinkEvent,
   MockToolEvent,
-  TermLineTone,
 } from './workbenchMockData.sidebar';
 export {
-  MOCK_CC_PROMPT_PLACEHOLDER,
-  MOCK_CC_STATUS_LINE,
-  MOCK_CC_TUI_LINES,
   MOCK_CONTEXT_STATS,
   MOCK_DIFF_HUNK,
   MOCK_DIFF_HUNK_META,
   MOCK_FILES_TOUCHED,
   MOCK_HOOK_EVENTS,
   MOCK_NOW_TOOL_CALL,
-  MOCK_SHELL_LINES,
   MOCK_STATUS_BAR,
 } from './workbenchMockData.sidebar';

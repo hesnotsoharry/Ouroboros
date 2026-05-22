@@ -36,7 +36,12 @@ import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AgentSession, AgentStatus, PermissionEvent, ToolCallEvent } from '../../AgentMonitor/types';
+import type {
+  AgentSession,
+  AgentStatus,
+  PermissionEvent,
+  ToolCallEvent,
+} from '../../AgentMonitor/types';
 
 // Control the agent-events source. The real `useWorkbenchAgentData` (to be built) consumes
 // this; mocking the SOURCE keeps the derivation + Globe render path REAL (the boundary under test).
@@ -51,7 +56,9 @@ const mockedCtx = vi.mocked(useAgentEventsContext);
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
-function makeToolCall(partial: Partial<ToolCallEvent> & Pick<ToolCallEvent, 'toolName'>): ToolCallEvent {
+function makeToolCall(
+  partial: Partial<ToolCallEvent> & Pick<ToolCallEvent, 'toolName'>,
+): ToolCallEvent {
   return {
     id: `tc-${Math.random().toString(36).slice(2)}`,
     toolName: partial.toolName,
@@ -124,7 +131,9 @@ describe('Wave 3 Phase 1 — Agent Globe live state (orchestrator-owned)', () =>
       makeSession({
         status: 'running',
         model: 'claude-opus-4-7',
-        toolCalls: [makeToolCall({ toolName: 'Bash', input: 'npm test', status: 'pending', timestamp: 1500 })],
+        toolCalls: [
+          makeToolCall({ toolName: 'Bash', input: 'npm test', status: 'pending', timestamp: 1500 }),
+        ],
       }),
     ]);
     expect(globe.getAttribute('data-state')).toBe('running');

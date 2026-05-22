@@ -31,7 +31,12 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AgentSession, AgentStatus, PermissionEvent, ToolCallEvent } from '../AgentMonitor/types';
+import type {
+  AgentSession,
+  AgentStatus,
+  PermissionEvent,
+  ToolCallEvent,
+} from '../AgentMonitor/types';
 
 vi.mock('../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: vi.fn(),
@@ -97,7 +102,12 @@ describe('Wave 3 Phase 3 — session mapping + context stats (orchestrator-owned
   it('maps running/awaiting/idle to live/warn/idle status dots', () => {
     const data = dataFor([
       makeSession({ id: 'r1', status: 'running', startedAt: 1000 }),
-      makeSession({ id: 'r2', status: 'running', startedAt: 1100, permissionEvents: [requestPerm] }),
+      makeSession({
+        id: 'r2',
+        status: 'running',
+        startedAt: 1100,
+        permissionEvents: [requestPerm],
+      }),
       makeSession({ id: 'i1', status: 'idle', startedAt: 900 }),
     ]);
     const byId = Object.fromEntries(data.sessions.map((s) => [s.id, s]));

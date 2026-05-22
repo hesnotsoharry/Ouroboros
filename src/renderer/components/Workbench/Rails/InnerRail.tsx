@@ -35,7 +35,7 @@ export function InnerRail(): React.ReactElement {
   const { sessions } = useWorkbenchAgentData();
   // projectId is basename(cwd); match against basename of the current project root.
   const currentProjectId = projectRoot
-    ? projectRoot.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? ''
+    ? (projectRoot.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? '')
     : '';
   const currentSessions = sessions.filter((s) => s.projectId === currentProjectId);
   const otherSessions = sessions.filter((s) => s.projectId !== currentProjectId);
@@ -104,8 +104,8 @@ function SessionRow({
 }): React.ReactElement {
   const projects = useWorkbenchProjects();
   // Match by basename of project path vs session.projectId (both are basenames).
-  const project = projects.find((p) =>
-    p.path.replace(/\\/g, '/').split('/').filter(Boolean).pop() === session.projectId,
+  const project = projects.find(
+    (p) => p.path.replace(/\\/g, '/').split('/').filter(Boolean).pop() === session.projectId,
   );
   const chipColor = project?.color ?? 'var(--ink-4)';
   const chipInitial = project?.initial ?? session.projectId[0]?.toUpperCase() ?? '?';
@@ -309,7 +309,11 @@ function SectionLabel({ children }: { children: React.ReactNode }): React.ReactE
   );
 }
 
-const STATUS_DOT_COLORS: Record<string, string> = { live: 'var(--success)', warn: 'var(--warning)', idle: 'var(--ink-4)' };
+const STATUS_DOT_COLORS: Record<string, string> = {
+  live: 'var(--success)',
+  warn: 'var(--warning)',
+  idle: 'var(--ink-4)',
+};
 
 function StatusDot({ status }: { status: string }): React.ReactElement {
   return (

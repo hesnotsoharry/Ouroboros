@@ -20,7 +20,7 @@
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import { useWorkbenchProjects,type WorkbenchProject } from '../useWorkbenchProjects';
+import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
 
 const RAIL_STYLE: React.CSSProperties = {
   width: 56,
@@ -96,9 +96,7 @@ function ProjectChip({ project }: { project: WorkbenchProject }): React.ReactEle
     height: 38,
     borderRadius: 11,
     // color is data-derived HSL — sanctioned exception per renderer color rule.
-    background: active
-      ? `linear-gradient(135deg, ${color}, ${color}cc)`
-      : 'rgba(255,255,255,0.04)',
+    background: active ? `linear-gradient(135deg, ${color}, ${color}cc)` : 'rgba(255,255,255,0.04)',
     border: active ? '1px solid var(--stroke-strong)' : '1px solid var(--stroke-faint)',
     color: active ? '#0a0b14' : 'var(--ink-2)',
     fontFamily: 'var(--font-ui)',
