@@ -73,11 +73,28 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
   - Project chip colors in `workbenchMockData.ts`: these are user-assigned project identity
     colors imported from mock data, not authored inline
 
+## Gotchas
+
+- **AgentGlobe consumes `useAgentEventsContext` (Wave 3+).** `TitleBar/AgentGlobe.tsx` reads
+  `useWorkbenchAgentData()` → `useAgentEventsContext()`, which **throws** outside an
+  `AgentEventsProvider`. Any test that renders `<Workbench />` (or `<TitleBar />`) must mock
+  `../../contexts/AgentEventsContext` (`vi.mock(... useAgentEventsContext: vi.fn())` + a
+  default `mockReturnValue` in `beforeEach`) or wrap in the real provider. See
+  `Workbench.test.tsx` for the pattern. Reason: the Globe became a live, context-driven widget
+  in Wave 3 — it is no longer a pure prop-driven component.
+- **Workbench agent state is a workbench-local presentation type, NOT the domain enum.**
+  `useWorkbenchAgentData.ts` defines `WorkbenchAgentState` (`fresh|thinking|running|awaiting|errored|done`)
+  derived from the canonical 4-value `AgentStatus` (`AgentMonitor/types.ts`). Do NOT extend
+  `AgentStatus` to add canon states — it has ~48 consumers (ADR Wave-3 D1). `thinking` is a
+  best-effort heuristic (running with no pending tool call); the wire has no thinking signal.
+
 ## Wave sequence
 
 - Wave 1: walking skeleton (this file + Workbench.tsx + mockData + Icon + flag + Settings toggle)
 - Wave 2: ✅ live xterm in both terminal frames + draggable/persisted divider
-- Wave 3: live hook data replaces workbenchMockData (TitleBar/Rails/Sidebar/StatusBar)
+- Wave 3: ⏳ live hook data replaces workbenchMockData — Phase 1 ✅ (Agent Globe + state machine);
+  Phase 2 (project chips/branch/clock), Phase 3 (sessions list/sidebar header/context stats) next.
+  Sidebar's 5 panel bodies stay mock → Wave 4 (ADR D5); Claude auto-launch decoupled → later (D6).
 - Wave 5: permission overlay
 - Wave 6: responsive collapse, themes
 - Wave 7: cutover (remove old shells)

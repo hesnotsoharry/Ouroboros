@@ -193,7 +193,7 @@ export function TitleBar(): React.ReactElement {
       <ProjectChip project={activeProject} />
       <BranchChip branch={activeProject.branch} />
       <Spacer />
-      <AgentGlobe state="running" />
+      <AgentGlobe />
       <Spacer />
       <CtrlKButton />
       <BellButton />

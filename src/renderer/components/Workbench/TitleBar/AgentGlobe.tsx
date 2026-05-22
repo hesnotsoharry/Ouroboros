@@ -1,19 +1,23 @@
 /**
  * AgentGlobe — centred live-agent pill in the title bar (canon §06).
  *
+ * Wave 3: self-driving — calls useWorkbenchAgentData() and exposes the
+ * derived WorkbenchAgentState via `data-state` on the root button.
+ * No `state` prop; no mock data imports.
+ *
  * Running state: gradient bg, accent-edge border, 3s shimmer sweep.
- * Idle state: 0.6 opacity, no shimmer.
+ * Other active states: adapted tone (awaiting=warning, errored=error).
+ * Idle/fresh/done states: 0.6 opacity, no shimmer.
  *
  * Shimmer keyframe injected once into <head> via the shared/CLAUDE.md pattern
  * (id-guarded createElement — avoids React <style> tags and duplicate injection).
- *
- * All data from workbenchMockData — no live IPC this wave.
  */
 
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import { MOCK_CONTEXT_STATS, MOCK_HOOK_EVENTS } from '../workbenchMockData';
+import type { WorkbenchAgentState } from '../useWorkbenchAgentData';
+import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
 
 // ── Inject shimmer keyframe once ─────────────────────────────────────────────
 
@@ -35,18 +39,22 @@ function injectShimmer(): void {
 
 injectShimmer();
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Re-export so callers can reference the type ───────────────────────────────
+
+export type { WorkbenchAgentState as GlobeState };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDuration(sec: number): string {
   if (sec < 60) return `${sec}s`;
   return `${Math.floor(sec / 60)}m${sec % 60}s`;
 }
 
-function getActiveToolEvent() {
-  return MOCK_HOOK_EVENTS.filter((e) => e.kind === 'tool').at(-1);
+function isActiveState(state: WorkbenchAgentState): boolean {
+  return state === 'running' || state === 'thinking' || state === 'awaiting' || state === 'errored';
 }
 
-// ── Divider ──────────────────────────────────────────────────────────────────
+// ── Shared sub-components ─────────────────────────────────────────────────────
 
 function GlobeDivider(): React.ReactElement {
   return (
@@ -60,8 +68,6 @@ function GlobeDivider(): React.ReactElement {
     />
   );
 }
-
-// ── Live dot ─────────────────────────────────────────────────────────────────
 
 function LiveDot(): React.ReactElement {
   return (
@@ -78,7 +84,7 @@ function LiveDot(): React.ReactElement {
   );
 }
 
-// ── Running content ──────────────────────────────────────────────────────────
+// ── State-specific content ────────────────────────────────────────────────────
 
 const sparkleStyle: React.CSSProperties = {
   color: 'var(--accent-hi, #a5b4fc)',
@@ -135,27 +141,70 @@ function RunningContent({
   );
 }
 
-// ── Idle content ─────────────────────────────────────────────────────────────
+function ThinkingContent({ model }: { model: string }): React.ReactElement {
+  return (
+    <>
+      <span style={sparkleStyle}>
+        <Icon name="Sparkle" size={12} />
+      </span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{model}</span>
+      <GlobeDivider />
+      <span style={{ fontSize: 11, color: 'var(--ink-2)', fontStyle: 'italic' }}>thinking…</span>
+      <LiveDot />
+    </>
+  );
+}
 
-function IdleContent({ model }: { model: string }): React.ReactElement {
+function AwaitingContent({ model }: { model: string }): React.ReactElement {
+  return (
+    <>
+      <span style={{ color: 'var(--warning, #fbbf24)', display: 'inline-flex' }}>
+        <Icon name="Sparkle" size={12} />
+      </span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{model}</span>
+      <GlobeDivider />
+      <span style={{ fontSize: 11, color: 'var(--warning, #fbbf24)' }}>awaiting permission</span>
+    </>
+  );
+}
+
+function ErroredContent({ model }: { model: string }): React.ReactElement {
+  return (
+    <>
+      <span style={{ color: 'var(--error, #f87171)', display: 'inline-flex' }}>
+        <Icon name="Sparkle" size={12} />
+      </span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{model}</span>
+      <GlobeDivider />
+      <span style={{ fontSize: 11, color: 'var(--error, #f87171)' }}>error</span>
+    </>
+  );
+}
+
+function DoneContent({ model }: { model: string }): React.ReactElement {
   return (
     <>
       <span style={{ color: 'var(--accent-hi, #a5b4fc)', display: 'inline-flex' }}>
         <Icon name="Sparkle" size={12} />
       </span>
       <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{model}</span>
+      <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>· done</span>
+    </>
+  );
+}
+
+function FreshContent(): React.ReactElement {
+  return (
+    <>
+      <span style={{ color: 'var(--accent-hi, #a5b4fc)', display: 'inline-flex' }}>
+        <Icon name="Sparkle" size={12} />
+      </span>
       <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>· idle</span>
     </>
   );
 }
 
-// ── AgentGlobe ───────────────────────────────────────────────────────────────
-
-export type GlobeState = 'running' | 'idle';
-
-interface AgentGlobeProps {
-  state?: GlobeState;
-}
+// ── Globe container ───────────────────────────────────────────────────────────
 
 const shimmerStyle: React.CSSProperties = {
   position: 'absolute',
@@ -165,7 +214,7 @@ const shimmerStyle: React.CSSProperties = {
   pointerEvents: 'none',
 };
 
-function buildGlobeStyle(isRunning: boolean): React.CSSProperties {
+function buildGlobeStyle(active: boolean): React.CSSProperties {
   return {
     display: 'inline-flex',
     alignItems: 'center',
@@ -179,7 +228,7 @@ function buildGlobeStyle(isRunning: boolean): React.CSSProperties {
     cursor: 'pointer',
     position: 'relative',
     overflow: 'hidden',
-    opacity: isRunning ? 1 : 0.6,
+    opacity: active ? 1 : 0.6,
     boxShadow:
       '0 0 0 1px rgba(129,140,248,0.04), 0 4px 20px -8px rgba(129,140,248,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
     WebkitAppRegion: 'no-drag',
@@ -187,26 +236,54 @@ function buildGlobeStyle(isRunning: boolean): React.CSSProperties {
   } as React.CSSProperties;
 }
 
-export function AgentGlobe({ state = 'running' }: AgentGlobeProps): React.ReactElement {
-  const model = MOCK_CONTEXT_STATS.model;
-  const lastTool = getActiveToolEvent();
-  const toolName = lastTool?.kind === 'tool' ? lastTool.tool : 'Edit';
-  const target = lastTool?.kind === 'tool' ? lastTool.target : '';
-  const duration = MOCK_CONTEXT_STATS.elapsedSec;
-  const isRunning = state === 'running';
+function GlobeContent(props: {
+  state: WorkbenchAgentState;
+  model: string;
+  activeTool: string;
+  target: string;
+  elapsedSec: number;
+}): React.ReactElement {
+  const { state, model, activeTool, target, elapsedSec } = props;
+  switch (state) {
+    case 'running':
+      return (
+        <RunningContent model={model} toolName={activeTool} target={target} duration={elapsedSec} />
+      );
+    case 'thinking':
+      return <ThinkingContent model={model} />;
+    case 'awaiting':
+      return <AwaitingContent model={model} />;
+    case 'errored':
+      return <ErroredContent model={model} />;
+    case 'done':
+      return <DoneContent model={model} />;
+    case 'fresh':
+    default:
+      return <FreshContent />;
+  }
+}
+
+// ── AgentGlobe ────────────────────────────────────────────────────────────────
+
+export function AgentGlobe(): React.ReactElement {
+  const { state, model, activeTool, target, elapsedSec } = useWorkbenchAgentData();
+  const active = isActiveState(state);
 
   return (
     <button
       data-testid="agent-globe"
+      data-state={state}
       title="Click to focus active session"
-      style={buildGlobeStyle(isRunning)}
+      style={buildGlobeStyle(active)}
     >
-      {isRunning && <span aria-hidden style={shimmerStyle} />}
-      {isRunning ? (
-        <RunningContent model={model} toolName={toolName} target={target} duration={duration} />
-      ) : (
-        <IdleContent model={model} />
-      )}
+      {active && <span aria-hidden style={shimmerStyle} />}
+      <GlobeContent
+        state={state}
+        model={model}
+        activeTool={activeTool}
+        target={target}
+        elapsedSec={elapsedSec}
+      />
     </button>
   );
 }

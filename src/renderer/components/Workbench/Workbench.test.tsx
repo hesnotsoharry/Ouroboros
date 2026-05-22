@@ -8,10 +8,15 @@
  * (b) flag off → the prior InnerApp shell branch is unchanged (Workbench not rendered)
  *
  * Phase 2 additions: TitleBar renders the app mark, project + branch chips,
- * AgentGlobe (running content from mock), and the three window controls.
+ * AgentGlobe, and the three window controls.
  *
  * Wave 2 Phase 2: TerminalShell tests updated — mock bodies removed; both
  * frames are live terminals. TerminalInstance is mocked to keep renders lightweight.
+ *
+ * Wave 3 Phase 1: AgentGlobe is now driven by live AgentEventsContext (via
+ * useWorkbenchAgentData), not mock data. useAgentEventsContext is mocked below
+ * (default: empty → "fresh"); the Globe test asserts the derived data-state +
+ * live model rather than the retired mock model string.
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
@@ -40,6 +45,13 @@ vi.mock('../../contexts/ProjectContext', () => ({
   useProjectOptional: () => null,
 }));
 
+// AgentEventsContext stub — AgentGlobe (Wave 3) reads useWorkbenchAgentData →
+// useAgentEventsContext, which throws outside a provider. Default return set in
+// beforeEach (empty → "fresh"); individual tests override via mockReturnValue.
+vi.mock('../../contexts/AgentEventsContext', () => ({
+  useAgentEventsContext: vi.fn(),
+}));
+
 /** Installs a minimal window.electronAPI.pty stub used by useWorkbenchTerminals. */
 function stubPty(): void {
   (window as unknown as { electronAPI: unknown }).electronAPI = {
@@ -55,6 +67,8 @@ function stubPty(): void {
   };
 }
 
+import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
+import type { AgentSession } from '../AgentMonitor/types';
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
@@ -64,12 +78,30 @@ import { CenterPane } from './Terminals/CenterPane';
 import { TerminalShell } from './Terminals/TerminalShell';
 import { Workbench } from './Workbench';
 
+const mockedAgentCtx = vi.mocked(useAgentEventsContext);
+
+/** Build a faithful AgentEventsContext value from a flat session list. */
+function agentCtx(sessions: AgentSession[]) {
+  const isLive = (s: AgentSession) => s.status === 'running' || s.status === 'idle';
+  return {
+    agents: sessions,
+    activeCount: sessions.filter((s) => s.status === 'running').length,
+    currentSessions: sessions.filter(isLive),
+    historicalSessions: sessions.filter((s) => s.status === 'complete' || s.status === 'error'),
+    clearCompleted: vi.fn(),
+    dismiss: vi.fn(),
+    updateNotes: vi.fn(),
+    registerChatSession: vi.fn(),
+  } as unknown as ReturnType<typeof useAgentEventsContext>;
+}
+
 // Install the pty stub before every test so any render(<Workbench />) or
 // render(<CenterPane />) can call useWorkbenchTerminals → pty.spawn without
 // crashing. Tests that need their own electronAPI shape (useCanonWorkbenchFlag)
 // override with vi.stubGlobal after this runs.
 beforeEach(() => {
   stubPty();
+  mockedAgentCtx.mockReturnValue(agentCtx([])); // default: no sessions → Globe "fresh"
 });
 
 afterEach(() => {
@@ -123,11 +155,31 @@ describe('TitleBar', () => {
     expect(matches.length).toBeGreaterThan(0);
   });
 
-  it('renders the AgentGlobe with running model name from mock data', () => {
+  it('renders the AgentGlobe driven by live agent state (Wave 3)', () => {
+    // A live running session with a pending tool → Globe derives "running" and
+    // shows the session's live model + tool, not the retired mock model string.
+    mockedAgentCtx.mockReturnValue(
+      agentCtx([
+        {
+          id: 's1',
+          taskLabel: 'task',
+          status: 'running',
+          startedAt: 1000,
+          inputTokens: 0,
+          outputTokens: 0,
+          model: 'claude-opus-4-7',
+          toolCalls: [
+            { id: 'tc1', toolName: 'Bash', input: 'npm test', timestamp: 1500, status: 'pending' },
+          ],
+        },
+      ]),
+    );
     render(<Workbench />);
     const globe = screen.getByTestId('agent-globe');
-    // MOCK_CONTEXT_STATS.model = 'claude-sonnet-4-6'
-    expect(globe.textContent).toContain('claude-sonnet-4-6');
+    expect(globe.getAttribute('data-state')).toBe('running');
+    expect(globe.textContent).toContain('claude-opus-4-7');
+    // The retired mock model must not appear inside the Globe.
+    expect(globe.textContent).not.toContain('claude-sonnet-4-6');
   });
 
   it('renders the Ctrl K command palette affordance (Windows shortcut, not ⌘K)', () => {
