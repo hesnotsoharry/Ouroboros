@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.24.0] - 2026-05-21
+
+### Added
+- **Wave 3 — Workbench live agent state (hook pipeline + state machine).** The canon workbench's non-terminal regions now react to **real agent activity** instead of static mock data (behind the same default-off **Settings → Appearance → "Canon workbench (experimental)"** flag). Full story in `roadmap/wave-3-workbench-hook-pipeline-state-machine/wave-3-result.md`.
+  - New `useWorkbenchAgentData` adapter derives a six-state agent presentation status (`fresh / thinking / running / awaiting / errored / done`) from the live `AgentEventsContext`, without mutating the canonical 4-value `AgentStatus`. The centre **Agent Globe** is now driven by it — idle when nothing runs, lighting up with the real model + active tool when a `claude` session is active, returning to idle when it ends.
+  - The inner-rail **session list** shows real running sessions with status dots (green = live, amber = awaiting a permission prompt, dim = idle); the **agent-sidebar header** names the active session; the **status bar** shows real token/cost.
+  - **Title bar + project rail** show the live open project(s) with a deterministic per-path color; the **status bar + rail footer** show the live git branch name and a ticking clock.
+
+### Notes
+- Renderer-only; no IPC or config-schema change. The five agent-sidebar **panel bodies** (NOW / Context / Files Touched / Latest Hunk / Hook Timeline) stay on mock data until Wave 4. Git **+adds/−dels** counts and per-project **dirty** badges are deferred (no renderer-only source — a new main-process git op; tracked in `roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md`). Claude auto-launch in the upper terminal frame is decoupled/deferred. Live UI smoke deferred (the shell is experimental and off by default).
+
 ## [2.23.0] - 2026-05-21
 
 ### Added
