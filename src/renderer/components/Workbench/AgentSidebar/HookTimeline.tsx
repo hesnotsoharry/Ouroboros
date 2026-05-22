@@ -7,14 +7,16 @@
  *   older        → collapsed one-liner at 0.7 opacity, expands on hover
  *
  * Vertical 1px rail (gradient accent → stroke-faint) on the left.
- * Static mock data only — Wave 3 wires live hook data.
+ * Wave 4 Phase 2: wired to live adapter data via `events` prop (required).
+ * `think` events are absent from the live type (ADR D6 — no wire source).
  *
  * Card subcomponents live in HookTimeline.parts.tsx.
  */
 
 import React from 'react';
 
-import { MOCK_HOOK_EVENTS, MockHookEvent, MockToolEvent } from '../workbenchMockData';
+import type { WorkbenchTimelineEvent } from '../useWorkbenchAgentData';
+import type { MockToolEvent } from '../workbenchMockData';
 import { EventRow } from './HookTimeline.parts';
 
 // ── CSS injection ─────────────────────────────────────────────────────────────
@@ -67,7 +69,7 @@ function TimelineHeader(): React.ReactElement {
 // ── timeline rail (event list + vertical rule) ────────────────────────────────
 
 interface TimelineRailProps {
-  sorted: MockHookEvent[];
+  sorted: WorkbenchTimelineEvent[];
 }
 
 function TimelineRail({ sorted }: TimelineRailProps): React.ReactElement {
@@ -107,10 +109,10 @@ function TimelineRail({ sorted }: TimelineRailProps): React.ReactElement {
 // ── main component ────────────────────────────────────────────────────────────
 
 interface HookTimelineProps {
-  events?: MockHookEvent[];
+  events: WorkbenchTimelineEvent[];
 }
 
-export function HookTimeline({ events = MOCK_HOOK_EVENTS }: HookTimelineProps): React.ReactElement {
+export function HookTimeline({ events }: HookTimelineProps): React.ReactElement {
   const sorted = [...events].sort((a, b) => b.t - a.t);
   return (
     <div data-testid="hook-timeline" style={{ display: 'flex', flexDirection: 'column' }}>

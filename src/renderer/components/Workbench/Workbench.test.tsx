@@ -752,17 +752,48 @@ describe('AgentSidebar — FilesTouched', () => {
     expect(block.textContent).toContain('FILES TOUCHED');
   });
 
-  it('renders a row for each mock touched file', () => {
+  it('renders a row for each distinct file touched by the active session', () => {
+    const s: AgentSession = {
+      id: 's1',
+      taskLabel: 'test',
+      status: 'running',
+      startedAt: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      toolCalls: [
+        { id: 'a', toolName: 'Edit', input: 'src/a.ts', timestamp: 1, status: 'success' },
+        { id: 'b', toolName: 'Write', input: 'src/b.ts', timestamp: 2, status: 'success' },
+        { id: 'c', toolName: 'Read', input: 'src/c.ts', timestamp: 3, status: 'success' },
+        { id: 'd', toolName: 'Read', input: 'src/d.ts', timestamp: 4, status: 'success' },
+      ],
+    };
+    mockedAgentCtx.mockReturnValue(agentCtx([s]));
     render(<AgentSidebar />);
     const block = screen.getByTestId('files-touched');
-    // MOCK_FILES_TOUCHED has 4 entries
     expect(block.querySelectorAll('[data-testid="files-touched-row"]').length).toBe(4);
   });
 
   it('renders the path of the actively-edited file', () => {
+    const s: AgentSession = {
+      id: 's1',
+      taskLabel: 'test',
+      status: 'running',
+      startedAt: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      toolCalls: [
+        {
+          id: 'e',
+          toolName: 'Edit',
+          input: 'src/TerminalPane.tsx',
+          timestamp: 1,
+          status: 'pending',
+        },
+      ],
+    };
+    mockedAgentCtx.mockReturnValue(agentCtx([s]));
     render(<AgentSidebar />);
     const block = screen.getByTestId('files-touched');
-    // MOCK_FILES_TOUCHED[0].status = 'editing', path includes 'TerminalPane.tsx'
     expect(block.textContent).toContain('TerminalPane.tsx');
   });
 });
@@ -803,18 +834,50 @@ describe('AgentSidebar — HookTimeline', () => {
     expect(block.textContent).toContain('View all');
   });
 
-  it('renders the running tool event (e12 Edit — status running) as a full card', () => {
+  it('renders a running tool event from the active session', () => {
+    const s: AgentSession = {
+      id: 's1',
+      taskLabel: 'test',
+      status: 'running',
+      startedAt: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      toolCalls: [
+        {
+          id: 'f',
+          toolName: 'Edit',
+          input: 'src/TerminalPane.tsx',
+          timestamp: Date.now() - 12_000,
+          status: 'pending',
+        },
+      ],
+    };
+    mockedAgentCtx.mockReturnValue(agentCtx([s]));
     render(<AgentSidebar />);
-    // e12 in MOCK_HOOK_EVENTS is the running Edit — most recent by t=−12
     const block = screen.getByTestId('hook-timeline');
-    // The running event appears first (t closest to 0)
     expect(block.textContent).toContain('Edit');
   });
 
   it('renders a prompt event text in the timeline', () => {
+    const s: AgentSession = {
+      id: 's1',
+      taskLabel: 'test',
+      status: 'running',
+      startedAt: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      toolCalls: [],
+      conversationTurns: [
+        {
+          type: 'prompt',
+          content: 'refactor TerminalPane to use the new hook event API',
+          timestamp: Date.now() - 300_000,
+        },
+      ],
+    };
+    mockedAgentCtx.mockReturnValue(agentCtx([s]));
     render(<AgentSidebar />);
     const block = screen.getByTestId('hook-timeline');
-    // e1 is a prompt event with text starting 'refactor TerminalPane...'
     expect(block.textContent).toContain('refactor TerminalPane');
   });
 });

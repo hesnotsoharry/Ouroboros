@@ -3,13 +3,14 @@
  *
  * One row per file: icon + RTL-ellipsized path + +N/−N diff stats + live dot.
  * Active row (status === 'editing') gets accent-edge border.
- * Static mock data only — Wave 3 wires live hook data.
+ * Wave 4 Phase 2: wired to live adapter data via `data` prop (required).
+ * adds/dels badges show 0 until Phase 3 enriches them from ParsedFileDiff.
  */
 
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import { MOCK_FILES_TOUCHED, MockFileTouched } from '../workbenchMockData';
+import type { MockFileTouched } from '../workbenchMockData';
 
 // ── diff badges ───────────────────────────────────────────────────────────────
 
@@ -115,12 +116,11 @@ function FileRow({ file }: FileRowProps): React.ReactElement {
 // ── main component ────────────────────────────────────────────────────────────
 
 interface FilesTouchedProps {
-  files?: MockFileTouched[];
+  data: MockFileTouched[];
 }
 
-export function FilesTouched({
-  files = MOCK_FILES_TOUCHED,
-}: FilesTouchedProps): React.ReactElement {
+export function FilesTouched({ data }: FilesTouchedProps): React.ReactElement {
+  const files = data;
   return (
     <div data-testid="files-touched" style={{ paddingTop: 6, paddingBottom: 6 }}>
       <div

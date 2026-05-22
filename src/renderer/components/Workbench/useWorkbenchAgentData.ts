@@ -13,7 +13,22 @@
 
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
-import type { MockContextStats, MockNowToolCall } from './workbenchMockData';
+import type {
+  MockContextStats,
+  MockFileTouched,
+  MockNowToolCall,
+  MockPromptEvent,
+  MockToolEvent,
+} from './workbenchMockData';
+
+// ── Live timeline event type (D6 — `think` dropped; no wire source) ──────────
+
+/**
+ * The union of live timeline events emitted by the adapter.
+ * `MockThinkEvent` is intentionally excluded — the named-pipe wire carries no
+ * thinking signal (Wave 4 ADR D6).
+ */
+export type WorkbenchTimelineEvent = MockPromptEvent | MockToolEvent;
 
 // ── Presentation state ────────────────────────────────────────────────────────
 
@@ -54,6 +69,8 @@ export interface WorkbenchAgentData {
   };
   now: MockNowToolCall;
   context: MockContextStats;
+  filesTouched: MockFileTouched[];
+  timeline: WorkbenchTimelineEvent[];
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -216,11 +233,7 @@ function deriveContextStats(primary: AgentSession | null): WorkbenchAgentData['c
  * `progress` is always undefined — there is no live progress signal (D1/§5).
  * `description` is the target path or '' when no active tool.
  */
-function deriveNow(
-  activeTool: string,
-  target: string,
-  elapsedSec: number,
-): MockNowToolCall {
+function deriveNow(activeTool: string, target: string, elapsedSec: number): MockNowToolCall {
   return {
     tool: activeTool,
     target,
@@ -239,6 +252,122 @@ function deriveContext(
   elapsedSec: number,
 ): MockContextStats {
   return { ...stats, elapsedSec };
+}
+
+// ── Files Touched derivation ─────────────────────────────────────────────────
+
+/** Tool names that represent file-touch operations we track. */
+const FILE_TOOL_NAMES = new Set(['Edit', 'Write', 'Read', 'MultiEdit']);
+const EDIT_WRITE_NAMES = new Set(['Edit', 'Write', 'MultiEdit']);
+
+type FileTouchAccumulator = {
+  firstTs: number;
+  hasEditWrite: boolean;
+  hasPendingEditWrite: boolean;
+};
+
+type TouchSignal = { firstTs: number; isEditWrite: boolean; isPending: boolean };
+
+/** Accumulates per-path touch state from a single ToolCallEvent. */
+function accumulateTouch(
+  map: Map<string, FileTouchAccumulator>,
+  key: string,
+  sig: TouchSignal,
+): void {
+  const existing = map.get(key);
+  if (!existing) {
+    map.set(key, {
+      firstTs: sig.firstTs,
+      hasEditWrite: sig.isEditWrite,
+      hasPendingEditWrite: sig.isEditWrite && sig.isPending,
+    });
+    return;
+  }
+  if (sig.isEditWrite) existing.hasEditWrite = true;
+  if (sig.isEditWrite && sig.isPending) existing.hasPendingEditWrite = true;
+}
+
+/** Derives a MockFileTouched status from the accumulated touch state. */
+function touchStatus(acc: FileTouchAccumulator): MockFileTouched['status'] {
+  if (acc.hasPendingEditWrite) return 'editing';
+  if (acc.hasEditWrite) return 'edited';
+  return 'read';
+}
+
+/**
+ * Derives the Files Touched list from a session's tool calls.
+ *
+ * Contract (pinned by the orchestrator-owned test):
+ *   - Only Edit/Write/Read/MultiEdit participate; Bash/Grep/Glob are excluded.
+ *   - Dedup key = ToolCallEvent.input (truncated path — recon §3).
+ *   - Status precedence: pending Edit/Write → 'editing'; completed → 'edited'; Read → 'read'.
+ *   - adds/dels = 0 in Phase 2 (Phase 3 enriches from ParsedFileDiff).
+ *   - Rows ordered by each path's first-appearance timestamp ascending.
+ *   - null session → [].
+ */
+export function deriveFilesTouched(session: AgentSession | null): MockFileTouched[] {
+  if (!session) return [];
+  const map = new Map<string, FileTouchAccumulator>();
+  for (const call of session.toolCalls) {
+    if (!FILE_TOOL_NAMES.has(call.toolName)) continue;
+    accumulateTouch(map, call.input, {
+      firstTs: call.timestamp,
+      isEditWrite: EDIT_WRITE_NAMES.has(call.toolName),
+      isPending: call.status === 'pending',
+    });
+  }
+  const rows: MockFileTouched[] = Array.from(map.entries()).map(([path, acc]) => ({
+    path,
+    adds: 0,
+    dels: 0,
+    status: touchStatus(acc),
+  }));
+  rows.sort((a, b) => (map.get(a.path)?.firstTs ?? 0) - (map.get(b.path)?.firstTs ?? 0));
+  return rows;
+}
+
+// ── Hook Timeline derivation ─────────────────────────────────────────────────
+
+/**
+ * Derives the Hook Timeline event stream from a session's tool calls and
+ * conversation turns. `think` events are intentionally absent (D6 — no wire
+ * source). Events are sorted by source timestamp ascending (oldest first).
+ * Pure: same session in → structurally identical out (no module-level state).
+ * null session → [].
+ */
+export function deriveTimeline(session: AgentSession | null): WorkbenchTimelineEvent[] {
+  if (!session) return [];
+
+  const now = Date.now();
+  const events: WorkbenchTimelineEvent[] = [];
+
+  for (const tc of session.toolCalls) {
+    const toolEvent: MockToolEvent = {
+      id: tc.id,
+      t: (tc.timestamp - now) / 1000,
+      kind: 'tool',
+      tool: tc.toolName,
+      target: tc.input,
+      duration: tc.duration ?? 0,
+      status: tc.status === 'pending' ? 'running' : tc.status === 'error' ? 'warn' : 'ok',
+    };
+    events.push(toolEvent);
+  }
+
+  (session.conversationTurns ?? []).forEach((turn, idx) => {
+    if (turn.type !== 'prompt' && turn.type !== 'elicitation') return;
+    const promptEvent: MockPromptEvent = {
+      id: `prompt-${turn.timestamp}-${idx}`,
+      t: (turn.timestamp - now) / 1000,
+      kind: 'prompt',
+      text: turn.content,
+      tokens: 0,
+    };
+    events.push(promptEvent);
+  });
+
+  events.sort((a, b) => a.t - b.t);
+  return events;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -265,5 +394,7 @@ export function useWorkbenchAgentData(): WorkbenchAgentData {
     contextStats,
     now: deriveNow(activeTool, target, elapsedSec),
     context: deriveContext(contextStats, elapsedSec),
+    filesTouched: deriveFilesTouched(primary),
+    timeline: deriveTimeline(primary),
   };
 }

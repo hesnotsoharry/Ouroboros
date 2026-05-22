@@ -180,11 +180,11 @@ export function AgentSidebar(): React.ReactElement {
         <PanelDivider />
         <ContextBlock data={agentData.context} />
         <PanelDivider />
-        <FilesTouched />
+        <FilesTouched data={agentData.filesTouched} />
         <PanelDivider />
         <LatestHunk />
         <PanelDivider />
-        <HookTimeline />
+        <HookTimeline events={agentData.timeline} />
       </div>
     </div>
   );

@@ -7,7 +7,8 @@
 import React, { useState } from 'react';
 
 import { Icon, IconName } from '../../shared/Icon';
-import { MockHookEvent, MockToolEvent } from '../workbenchMockData';
+import type { WorkbenchTimelineEvent } from '../useWorkbenchAgentData';
+import type { MockToolEvent } from '../workbenchMockData';
 
 // ── helpers (shared with HookTimeline) ───────────────────────────────────────
 
@@ -23,9 +24,8 @@ export function toolIcon(tool: string): IconName {
   return map[tool] ?? 'Bolt';
 }
 
-export function nodeColor(e: MockHookEvent): string {
+export function nodeColor(e: WorkbenchTimelineEvent): string {
   if (e.kind === 'prompt') return 'var(--accent)';
-  if (e.kind === 'think') return 'var(--purple)';
   const t = e as MockToolEvent;
   if (t.status === 'running') return 'var(--accent)';
   if (t.status === 'warn') return 'var(--warning)';
@@ -36,12 +36,11 @@ export function formatMs(ms: number): string {
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
-export function summaryText(e: MockHookEvent): string {
+export function summaryText(e: WorkbenchTimelineEvent): string {
   if (e.kind === 'prompt') {
     const t = e.text;
     return `"${t.slice(0, 60)}${t.length > 60 ? '…' : ''}"`;
   }
-  if (e.kind === 'think') return `thinking · ${formatMs(e.dur)}`;
   const t = e as MockToolEvent;
   return `${t.tool} → ${t.target.split('/').at(-1) ?? t.target}`;
 }
@@ -81,26 +80,6 @@ export function PromptCard({ text }: PromptCardProps): React.ReactElement {
   );
 }
 
-// ── think card ────────────────────────────────────────────────────────────────
-
-interface ThinkCardProps {
-  dur: number;
-}
-
-export function ThinkCard({ dur }: ThinkCardProps): React.ReactElement {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <Icon name="Bolt" size={11} style={{ color: 'var(--purple)' }} />
-      <span style={{ fontSize: 11, color: 'var(--ink-2)' }}>Thinking</span>
-      <span
-        style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', color: 'var(--ink-4)' }}
-      >
-        {formatMs(dur)}
-      </span>
-    </div>
-  );
-}
-
 // ── tool card running progress ────────────────────────────────────────────────
 
 function ToolCardProgress(): React.ReactElement {
@@ -131,7 +110,9 @@ function ToolCardHeader({ tool, duration }: ToolCardHeaderProps): React.ReactEle
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <Icon name={toolIcon(tool)} size={11} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
-      <span style={{ fontSize: 11, color: 'var(--ink-2)', fontFamily: 'var(--font-mono, monospace)' }}>
+      <span
+        style={{ fontSize: 11, color: 'var(--ink-2)', fontFamily: 'var(--font-mono, monospace)' }}
+      >
         {tool}
       </span>
       {duration > 0 && (
@@ -183,19 +164,18 @@ export function ToolCard({ event }: ToolCardProps): React.ReactElement {
 // ── full card dispatcher ──────────────────────────────────────────────────────
 
 interface FullCardProps {
-  event: MockHookEvent;
+  event: WorkbenchTimelineEvent;
 }
 
 export function FullCard({ event }: FullCardProps): React.ReactElement {
   if (event.kind === 'prompt') return <PromptCard text={event.text} />;
-  if (event.kind === 'think') return <ThinkCard dur={event.dur} />;
   return <ToolCard event={event as MockToolEvent} />;
 }
 
 // ── card body wrapper ─────────────────────────────────────────────────────────
 
 interface CardBodyProps {
-  event: MockHookEvent;
+  event: WorkbenchTimelineEvent;
   elevated: boolean;
   showFull: boolean;
 }
@@ -236,7 +216,7 @@ export function CardBody({ event, elevated, showFull }: CardBodyProps): React.Re
 // ── single event row ──────────────────────────────────────────────────────────
 
 interface EventRowProps {
-  event: MockHookEvent;
+  event: WorkbenchTimelineEvent;
   isRunning: boolean;
   isMostRecent: boolean;
 }
