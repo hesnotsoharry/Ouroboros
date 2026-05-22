@@ -1,6 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-22
+updated: 2026-05-22
+resolved: 2026-05-22
 severity: MED
 area: Workbench
 needs: Cole's product decision
@@ -8,6 +10,18 @@ blocks: wave-8-cutover
 ---
 
 # Canon Workbench — three product decisions before cutover (canon is silent)
+
+## RESOLUTION (Cole, 2026-05-22 — live Wave 7 smoke session)
+
+1. **FilePicker → FOLD INTO Ctrl-K palette.** No standalone overlay. Wire the rail
+   "Search files" button + the Wave-7 command palette to do file quick-open.
+2. **SymbolSearch → DROP with legacy.** Terminal-first canon has no editor surface to
+   navigate symbols in. Deleted at cutover/teardown; not wired into the canon shell.
+3. **Session-restore → KEEP, wire `RestoreSessionsGate` into the canon Workbench.**
+   Terminal-first users rely on session survival across restarts.
+
+Items 1 and 3 are build work in the canon parity wave; item 2 is a teardown no-op
+(simply not ported). All three feed the parity-wave plan.
 
 The Wave 7 parity audit (`wave-7-parity-audit.md`) classified three legacy-shell features as **AMBIGUOUS**:
 the canon design (`design-system/canon.html`) neither includes nor excludes them. These need **Cole's

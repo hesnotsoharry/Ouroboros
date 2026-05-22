@@ -1,10 +1,55 @@
-# Session Handoff — 2026-05-22 (Workbench Wave 7 SHIPPED — parity completion; teardown re-sequenced to Wave 8)
+# Session Handoff — 2026-05-22 (Wave 7 SHIPPED+smoked; terminal-well bug fixed; Wave 8 parity-2 PLANNED)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-22 (latest) — Workbench Wave 7 SHIPPED: parity completion (the planned teardown was DEFERRED)
+## 🔼 UPDATE 2026-05-22 (latest) — Wave 7 live-smoked; terminal-well bug fixed; Wave 8 (canon parity round 2) PLANNED
+
+**Next action: execute Wave 8 — `roadmap/wave-8-workbench-canon-parity-2/waveplan-8.md` (DRAFT). Start Phase 1
+(agent sidebar session scoping).** This session shipped a fix + planned the next wave; execution was
+deliberately deferred to a fresh session for a clean Stage-4 implementation context.
+
+**What happened this session (Wave 7 already SHIPPED+PUSHED — confirmed `HEAD == origin/master` @ `52a4ed45`,
+tag `v2.28.0` on origin).** Ran a live canon-workbench smoke with Cole (Modern theme, `layout.canonWorkbench`
+enabled, fresh `npm run dev`). Results:
+- **False alarms (work as designed):** the Wave 7 TitleBar cluster — Settings cog, Ctrl-K pill, Bell — all
+  respond. Terminals auto-spawn live (two real ptys). The "not clickable" report was mostly the
+  expected-incomplete shell (see below).
+- **Expected-incomplete (Wave 8/9 gaps, not bugs):** inner-rail session rows, outer-rail project chips, and
+  the terminal tab `+`/split buttons have no handlers (display-only scaffolding); file tree is mock.
+- **Bug found + FIXED this session:** canon-workbench terminals rendered opaque black instead of the Modern
+  tinted well. Root cause (sonnet-diagnostician): `useThemeSync` only listened for FUTURE
+  `agent-ide:theme-applied` events; the workbench auto-spawns terminals during the async theme-hydration
+  window, so xterm initialised with the `#0d0d0d` fallback and the correction event fired before the listener
+  attached. Fix: `useThemeSync` now syncs once on mount (`TerminalInstanceUiState.ts`). Modern well also tuned
+  `0.62 → rgba(6,8,16,0.1)` per Cole. **Commit `57b750b1` — LOCAL ONLY; push HELD to bundle with the Wave 8
+  wrap.** Regression test + gotcha recorded; tsc/eslint/prettier/touched-tests green.
+- **Bug found + FILED (HIGH, → Wave 8 Phase 1):** the agent sidebar is not session-scoped —
+  `useWorkbenchAgentData` selects from the global session pool, so it shows ANY `claude` session machine-wide
+  (incl. external + IDE-runs-in-itself) and Context stays `0/200k`. Full diagnosis:
+  `roadmap/follow-ups/2026-05-22-workbench-sidebar-session-scoping.md`.
+- **#6 responsive collapse:** works (both breakpoints). **#5 permission overlay:** deferred (its
+  sidebar-takeover reads the same unscoped data — re-smoke at Wave 8 wrap once scoping is fixed).
+
+**Product decisions RESOLVED (Cole, this session — `…workbench-canon-product-decisions.md` now RESOLVED):**
+FilePicker → fold into the Ctrl-K palette; SymbolSearch → drop with legacy (teardown no-op); session-restore
+→ keep, wire into the canon Workbench (with the two-frame-model caveat — see Wave 8 ADR D4 PENDING).
+
+**Wave 8 — Canon Workbench Parity Round 2 (PLANNED, DRAFT).** `roadmap/wave-8-workbench-canon-parity-2/`
+(`waveplan-8.md` + `wave-8-decisions.md`). Four renderer-only phases behind the flag: (1) sidebar session
+scoping [orchestrator-owned acceptance test pre-authored], (2) live canon FileTree over the shared data layer,
+(3) FilePicker→palette command, (4) session-restore adapted to the two-frame model [opens with a
+`sonnet-architect` validation pass; **may split to its own wave** if `RestoreSessionsGate` doesn't fit].
+**Wave 9 = cutover & teardown** (the legacy-shell deletion, formerly "Wave 8"). All three pre-existing
+parity follow-ups (sidebar-scoping, live-filetree, product-decisions) feed Wave 8.
+
+**Held push (bundle at Wave 8 wrap):** commit `57b750b1` (terminal-well mount-sync fix). Per the bulletin,
+pushing is fine; protected-branch merges still wait for the 2026-06-01 CI-minute restore.
+
+---
+
+## 🔼 UPDATE 2026-05-22 — Workbench Wave 7 SHIPPED: parity completion (the planned teardown was DEFERRED)
 
 **Read this first — the wave sequence changed.** Wave 7 was planned as "cutover & teardown." It is now
 **parity completion**; teardown is **Wave 8**. Why: a pre-flight parity audit found the canon Workbench
