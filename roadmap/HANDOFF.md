@@ -45,10 +45,14 @@ next session.**
    overlay** smoke (its sidebar-takeover reads the now-scoped data); confirm the live FileTree renders real
    files; confirm Ctrl-K / "Search files" → FileViewer modal opens a real file with Monaco at full height.
 
-**Push posture:** all Wave 8 commits + the held `57b750b1` are LOCAL. Per the bulletin, pushing is fine
-(CI minutes exhausted until 2026-06-01 → workflows just don't run; protected-branch *merge* still waits for
-the restore). **Bundle-push + tag (`v2.29.0`, no `package.json` bump per the workbench-wave convention) is the
-remaining wrap step** — see whether it's already done at the bottom of this entry.
+**Push posture: DONE.** Pushed to `origin/master` @ **`f1c6f052`**, tag **`v2.29.0`** on origin (no
+`package.json` bump per the workbench-wave convention). Bundle included the held `57b750b1`. CI did not run
+(minutes exhausted until 2026-06-01 → workflows skip; protected-branch *merge* still waits for the restore).
+Note one extra commit beyond the phase set: `f1c6f052` — the pre-push gate (`tsc -p tsconfig.web.json` +
+project eslint) caught two issues the per-phase scoped checks missed (a real binary-read API bug:
+`ReadBinaryFileResult.data` not `.content`; + prettier-reflow pushing two modal functions over the line cap →
+extracted `Overlays/useWorkbenchFileLoad.ts` + a `ModalFrame`). **Lesson: re-run eslint AFTER the prettier
+pass** (reflow changes line counts) — same class as WB-6's prettier-at-wrap friction.
 
 **Follow-ups:** 3 parity follow-ups closed + archived this wave (`wave-8-followup-audit.md`). New OPEN: the
 binding-precision HIGH above. The `/review` Check-3 over-exports (`compareEntries`/`useRootDir`/
