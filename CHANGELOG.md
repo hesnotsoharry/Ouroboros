@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.26.0] - 2026-05-22
+
+### Added
+- **Wave 5 — Workbench permission UI (canon §13 dual presentation).** When a running `claude` session hits a tool that needs approval, the canon workbench (behind the default-off **Settings → Appearance → "Canon workbench (experimental)"** flag) now shows the canon §13 permission UI. Full story in `roadmap/wave-5-workbench-permission-overlay/wave-5-result.md`.
+  - A glass, amber-bordered **terminal overlay** slides up over the terminal pane naming the tool + the command it wants to run, with **Approve** (Y) / **Always `<tool>`** (A) / **Deny** (N) — Deny opens an optional reason field.
+  - *Simultaneously*, the agent sidebar's **NOW panel becomes the same permission card** and panels 2–5 dim, so the pending decision is visible whether you're looking at the terminal or the sidebar.
+  - Both surfaces are driven by the **existing** approval pipeline (the file-poll protocol + `useApprovalContext`) — pressing Y/A/N once resolves the request and the agent continues; "Always" whitelists the tool for the session.
+
+### Notes
+- Renderer-only; **no** new approval protocol, no main-process / IPC / config-schema change — this is a re-skin of the existing flow into the canon shell. The Y/A/N/Esc shortcut is a single keyboard handler shared by both surfaces (no double-fire). "Always for project" (canon v2) is out of scope — v1 ships the three actions that map to the existing resolvers. With the canon flag off, the existing approval surfaces are untouched. Live UI smoke deferred (the shell is experimental and off by default). Two follow-ups filed: the orphaned legacy `AgentMonitor/ApprovalDialog` (mounted nowhere; slated for Wave 7 deletion) and a cosmetic live-ticker for the elapsed-time pill.
+
 ## [2.25.0] - 2026-05-22
 
 ### Added

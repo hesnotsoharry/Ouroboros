@@ -12,7 +12,7 @@ React contexts that lift shared state above the component tree so it survives pa
 | File                     | Role                                                                                                                                                                 |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ProjectContext.tsx`     | Multi-root project state — persists roots per-window via `window.setProjectRoots()`. Provides `projectRoot`, `addProjectRoot`, `removeProjectRoot`.         |
-| `ApprovalContext.tsx`    | Pre-execution approval queue — listens for `approval:request` IPC events, renders `ApprovalDialog` overlay, plays an 880 Hz tone on new requests.                    |
+| `ApprovalContext.tsx`    | Pre-execution approval queue — listens for `approval:request` IPC events, exposes the queue + `approve`/`reject`/`alwaysAllow` resolvers via `useApprovalContext()`, plays an 880 Hz tone on new requests. Renders no UI itself; consumers render the surface. |
 | `FocusContext.tsx`       | Keyboard focus tracker — `Ctrl+1–4` switches between `sidebar`, `editor`, `terminal`, `agentMonitor`. Panels update focus via click handlers.                        |
 | `ToastContext.tsx`       | Toast/notification system — wraps `useToast` hook, renders `ToastContainer`. Also exposes progress tracking (`startProgress`, `updateProgress`, `completeProgress`). |
 | `AgentEventsContext.tsx` | Agent session state — wraps `useAgentEvents` hook at the App level so IPC listeners stay active even when AgentMonitorPane is collapsed/unmounted.                   |
@@ -27,7 +27,7 @@ React contexts that lift shared state above the component tree so it survives pa
 ## Gotchas
 
 - **AgentEventsContext exists because of unmounting** — if the agent monitor panel is collapsed, its children unmount. Without this context, IPC events arriving while collapsed are silently dropped. Don't move `useAgentEvents` back into the panel component.
-- **ApprovalContext renders UI** — unlike other contexts, it renders `<ApprovalDialog>` directly inside the provider. This is intentional so the approval overlay appears regardless of which panel is focused.
+- **ApprovalContext renders NO UI** — it only maintains the queue and exposes `approve`/`reject`/`alwaysAllow` via `useApprovalContext()`; consumers render the surface. (The legacy `AgentMonitor/ApprovalDialog.tsx` is currently mounted nowhere — orphaned, see `roadmap/follow-ups/`. The canon workbench renders its own surfaces under `Workbench/Permission/` — Wave 5.) Earlier docs claimed the provider rendered `<ApprovalDialog>` directly; that was never true of the current code.
 - **ProjectContext persists on every mutation** — `addProjectRoot`, `removeProjectRoot`, `setProjectRoot` all call `persistRoots()` which writes to electron-store synchronously. Don't batch rapid mutations without debouncing.
 
 ## Dependencies
