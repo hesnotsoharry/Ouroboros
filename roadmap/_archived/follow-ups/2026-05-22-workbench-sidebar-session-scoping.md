@@ -1,7 +1,9 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-22
 updated: 2026-05-22
+resolved: 2026-05-22
+resolved-during: wave-8-workbench-canon-parity-2
 severity: HIGH
 blocks: wave-8-cutover
 ---
@@ -98,3 +100,16 @@ live-FileTree gap (`2026-05-22-workbench-live-filetree.md`) and the three produc
 correct before deleting the legacy shell" items.
 
 _Diagnosis: sonnet-diagnostician, live Wave 7 smoke session 2026-05-22._
+
+## Resolution (wave-8-workbench-canon-parity-2)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-22.
+
+**Evidence:** Phase 1 shipped the complete session-scoping contract:
+- `useWorkbenchAgentData(claudeSessionId?: string | null)` now takes an optional session id parameter (line 419)
+- `resolvePrimary()` (lines 405-415) implements the two-tier logic: bound path (direct find by id, no project filter) and fallback path (project-filtered selectPrimarySession)
+- The id is threaded from `useWorkbenchTerminals` → `CenterPane` → `Workbench` → `AgentSidebar` (verified in source paths cited in the follow-up)
+- Project-cwd filtering is applied: `isCwdInProject()` (lines 391-397) filters agents by active project root in the fallback case
+- Both `AgentSidebar` call sites pass the same `claudeSessionId` to prevent divergence (per the recommendation in the follow-up)
+
+The wave resolved the HIGH-priority session-scoping gap that was blocking Wave 8 cutover. The remaining limitation (weak heuristic binding when external/IDE-in-itself sessions emit events) was accepted per the Wave 8 plan and filed separately as `2026-05-22-workbench-claudeSessionId-binding-precision.md` (ACTIVE, deferred).

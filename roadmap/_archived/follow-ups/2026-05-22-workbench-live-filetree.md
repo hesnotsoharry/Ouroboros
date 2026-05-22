@@ -1,6 +1,9 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-22
+updated: 2026-05-22
+resolved: 2026-05-22
+resolved-during: wave-8-workbench-canon-parity-2
 severity: HIGH
 area: Workbench / Rails
 blocks: wave-8-cutover
@@ -26,3 +29,16 @@ comes from `ProjectContext` (already above the shell branch).
 
 **Sequencing.** Should land before Wave 8 (cutover & teardown). Candidate for "Wave 7b" or fold into
 the Wave 8 plan as a prerequisite phase.
+
+## Resolution (wave-8-workbench-canon-parity-2)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-22.
+
+**Evidence:** Phase 2 shipped the live FileTree implementation:
+- `InnerRail.tsx` (line 55) now renders `<FilesSection />` which mounts `<WorkbenchFileTree rootPath={projectRoot} />`
+- `WorkbenchFileTree.tsx` (new file, verified in wave diff) implements the live canon §07 file tree with lazy directory expansion
+- `useWorkbenchFileTree.ts` (new file) wires to `useFileWatcher` + `window.electronAPI.files.readDir` for live directory data
+- The component uses `FileNode` for row rendering with canon token styling (indent depth×12px+6 base, dir icon `--accent-hi`, file `--ink-3`)
+- M/A git-status badges deferred to follow-up (`2026-05-21-workbench-live-git-diff-stats.md`), consistent with the planning scope
+
+Resolves the HIGH-priority FileTree parity gap that was blocking Wave 8 cutover — the InnerRail "Files" section is now live and functional.

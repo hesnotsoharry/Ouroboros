@@ -3,6 +3,7 @@ status: RESOLVED
 created: 2026-05-22
 updated: 2026-05-22
 resolved: 2026-05-22
+resolved-during: wave-8-workbench-canon-parity-2
 severity: MED
 area: Workbench
 needs: Cole's product decision
@@ -47,3 +48,14 @@ cutover silently drops the feature.
 rely on it); fold FilePicker into the Ctrl-K command palette surface rather than a separate overlay
 (canon already gives us the palette); drop standalone SymbolSearch as an IDE-editor feature inconsistent
 with the terminal-first canon (no editor to navigate symbols in).
+
+## Resolution (wave-8-workbench-canon-parity-2)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-22.
+
+**Evidence:** All three decisions were shipped in Wave 8 per Cole's resolution:
+1. **FilePicker** — Phase 3 implemented file quick-open: `Overlays/WorkbenchFilePicker.tsx` + `Overlays/WorkbenchFileViewerModal.tsx` wire the rail "Search files" button + the `file:open-file` command (Ctrl-K) to open the shared FilePicker → lazy-loaded FileViewer modal (verified in wave diff).
+2. **SymbolSearch** — Dropped with legacy shell at Wave 8 teardown (no-op, not wired into canon). Verified in `2026-05-22-wave8-teardown-prep-discoveries.md` (OPEN) which confirms the removal is in scope.
+3. **Session-restore** — Deferred to `roadmap/deferred/2026-05-22-canon-workbench-session-restore.md` (verified in wave diff) — Phase 4 split out and scheduled separately, not resolved this wave but captured for future work.
+
+Cole's decision was captured and acted on; two of three items (FilePicker, SymbolSearch) are shipped; the third (session-restore) is properly deferred and tracked.

@@ -1,10 +1,15 @@
 ---
-status: DRAFT
+status: SHIPPED
 created: 2026-05-22
 updated: 2026-05-22
 ---
 
 # Wave 8 — Canon Workbench Parity Round 2 (cutover prerequisites)
+
+> **SHIPPED 2026-05-22 — 3 of 4 phases.** Phases 1 (sidebar scoping), 2 (live FileTree),
+> 3 (file quick-open + FileViewer modal) shipped. Phase 4 (session-restore) SPLIT to its own
+> wave (ADR D4 + `roadmap/deferred/2026-05-22-canon-workbench-session-restore.md`). See
+> `wave-8-result.md`, `wave-8-mechanical-review.md`, `wave-8-followup-audit.md`.
 
 ## Context
 

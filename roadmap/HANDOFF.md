@@ -1,10 +1,62 @@
-# Session Handoff — 2026-05-22 (Wave 7 SHIPPED+smoked; terminal-well bug fixed; Wave 8 parity-2 PLANNED)
+# Session Handoff — 2026-05-22 (Wave 8 SHIPPED — canon parity round 2; Phase 4 split out; Wave 9 cutover next)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-22 (latest) — Wave 7 live-smoked; terminal-well bug fixed; Wave 8 (canon parity round 2) PLANNED
+## 🔼 UPDATE 2026-05-22 (latest) — Wave 8 SHIPPED (canon parity round 2; 3 of 4 phases; Phase 4 split out)
+
+**Next action: decide the Wave 9 sequencing.** The original plan is **Wave 9 = cutover & teardown**
+(delete the legacy shell: `AppLayout`/`InnerAppLayout`, `ChatOnlyShell/`, `Dispatch/`, the "Explain
+error" scrollback action, orphaned `AgentMonitor/ApprovalDialog`, legacy `SymbolSearch`/`FilePickerConnected`).
+Wave 8 closed the three parity gaps that blocked cutover (sidebar scoping, live FileTree, FilePicker→modal),
+**BUT session-restore was split out and is NOT yet wired into the canon shell** — so before Wave 9 deletes
+the legacy `RestoreSessionsGate`, either (a) run the split **session-restore wave** first
+(`roadmap/deferred/2026-05-22-canon-workbench-session-restore.md` — full architect integration plan inside),
+or (b) cutover with restore as a Cole-acknowledged parity gap. **This is a planning/Cole decision for the
+next session.**
+
+**Wave 8 — SHIPPED (local; bundled push pending — see below).** Renderer-only, behind the default-off
+`layout.canonWorkbench` flag. Commits `5707f0aa` (P1), `6e9cf3ec` (P2), `acfeba98` (P3), `05cbaec1` (format)
++ bundled held `57b750b1` (terminal-well mount-sync fix). Artifacts in `roadmap/wave-8-workbench-canon-parity-2/`
+(`waveplan-8.md`, `wave-8-decisions.md`, `wave-8-result.md`, `wave-8-mechanical-review.md`, `wave-8-followup-audit.md`).
+- **P1 — agent sidebar session scoping:** `useWorkbenchAgentData(claudeSessionId?)` scopes to the active
+  terminal's bound claude session (project-cwd fallback via non-throwing `useProjectOptional`). Frozen
+  orchestrator-owned acceptance test (`useWorkbenchAgentData.scoping.acceptance.test.ts`, RED→green).
+  phase-reviewer PASS.
+- **P2 — live canon FileTree:** `Rails/WorkbenchFileTree.tsx` + `useWorkbenchFileTree.ts` over `useFileWatcher`
+  + `window.electronAPI.files`; replaced `MOCK_FILE_TREE` in InnerRail. (M/A badges still deferred.)
+- **P3 — file quick-open + FileViewer modal:** Ctrl-K / "Search files" → `Overlays/WorkbenchFilePicker` →
+  `Overlays/WorkbenchFileViewerModal` (reuses the existing `FileViewer/` Monaco subsystem, **lazy-loaded** —
+  do NOT make it a static import; see `Workbench/CLAUDE.md` gotcha). Per Cole's pivot (editor-as-modal).
+- **P4 — session-restore: SPLIT** to its own wave (architect FITS verdict but needs a main-process IPC change
+  + auto-`--resume` UX → out of renderer-only scope; ADR D4).
+- **Gates:** full suite **11742/0** (1124 files); tsc + `eslint src/` (0 err) + prettier clean. `/review`
+  mechanical **FLAG (non-fatal)** — 3 over-exports + the Check-5 commit-ordering proxy (substantive
+  orchestrator-owned-test constraint held); Check-6 mutation deferred to the batched pre-merge task.
+
+**⚠️ TWO things the next session MUST carry:**
+1. **Phase 1 binding-precision (HIGH, OPEN): `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md`.**
+   The `claudeSessionId` binding is a timing heuristic; an external / **IDE-runs-in-itself** session can hijack
+   it (and the bound path bypasses the project filter, so the fallback doesn't catch it). That's Cole's common
+   dev pattern. Proper fix = forward the real `CLAUDE_SESSION_ID` from the pty spawn (main-process work).
+2. **`/ui-smoke 8` is DEFERRED** (per the Wave 0–7 posture). When run it MUST: confirm the sidebar tracks the
+   selected terminal's session **including the IDE-in-itself hijack test**; re-run the deferred **#5 permission
+   overlay** smoke (its sidebar-takeover reads the now-scoped data); confirm the live FileTree renders real
+   files; confirm Ctrl-K / "Search files" → FileViewer modal opens a real file with Monaco at full height.
+
+**Push posture:** all Wave 8 commits + the held `57b750b1` are LOCAL. Per the bulletin, pushing is fine
+(CI minutes exhausted until 2026-06-01 → workflows just don't run; protected-branch *merge* still waits for
+the restore). **Bundle-push + tag (`v2.29.0`, no `package.json` bump per the workbench-wave convention) is the
+remaining wrap step** — see whether it's already done at the bottom of this entry.
+
+**Follow-ups:** 3 parity follow-ups closed + archived this wave (`wave-8-followup-audit.md`). New OPEN: the
+binding-precision HIGH above. The `/review` Check-3 over-exports (`compareEntries`/`useRootDir`/
+`OPEN_FILE_PICKER_EVENT` drift) are noted in `wave-8-mechanical-review.md` — minor, optional cleanup.
+
+---
+
+## 🔼 UPDATE 2026-05-22 — Wave 7 live-smoked; terminal-well bug fixed; Wave 8 (canon parity round 2) PLANNED
 
 **Next action: execute Wave 8 — `roadmap/wave-8-workbench-canon-parity-2/waveplan-8.md` (DRAFT). Start Phase 1
 (agent sidebar session scoping).** This session shipped a fix + planned the next wave; execution was
