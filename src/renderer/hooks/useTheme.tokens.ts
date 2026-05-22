@@ -3,7 +3,7 @@
  * Split from useTheme.ts to stay under the max-lines limit.
  */
 
-import type { Theme } from '../themes';
+import type { CanonWorkbenchToken, Theme } from '../themes';
 import { registerExtensionTheme, themes, unregisterExtensionTheme } from '../themes';
 import {
   DEFAULT_MATERIAL_VARIANT,
@@ -129,6 +129,23 @@ export function applyDerivedTokens(root: HTMLElement, colors: Theme['colors']): 
   root.style.setProperty('--git-untracked', colors.textMuted);
 }
 
+/**
+ * Wave 6 — write per-theme canon token overrides onto the root element.
+ * Called AFTER applyComponentTokens so theme values win over material defaults.
+ * When `tokens` is absent (undefined) or empty, this is a no-op — the four
+ * untouched themes never gain workbenchTokens, so they produce zero new
+ * setProperty calls and their bridge output stays byte-identical.
+ */
+export function applyWorkbenchTokenOverrides(
+  root: HTMLElement,
+  tokens?: Partial<Record<CanonWorkbenchToken, string>>,
+): void {
+  if (!tokens) return;
+  for (const [name, value] of Object.entries(tokens)) {
+    if (value !== undefined) root.style.setProperty(name, value);
+  }
+}
+
 export function updateTitleBarOverlay(theme: Theme | null): void {
   try {
     const api = window.electronAPI;
@@ -228,19 +245,32 @@ interface EffectiveTheme {
   id: string;
   terminalWell: string | undefined;
   terminalCanvasOpacity: number | undefined;
+  workbenchTokens: Theme['workbenchTokens'];
+}
+
+/** Extract the theme-optional fields into a flat shape for EffectiveTheme. */
+function resolveThemeFields(theme: Theme | null): Pick<
+  EffectiveTheme,
+  'effects' | 'id' | 'terminalWell' | 'terminalCanvasOpacity' | 'workbenchTokens'
+> {
+  return {
+    effects: theme?.effects,
+    id: theme?.id ?? 'none',
+    terminalWell: theme?.terminalWell,
+    terminalCanvasOpacity: theme?.terminalCanvasOpacity,
+    workbenchTokens: theme?.workbenchTokens,
+  };
 }
 
 function resolveEffectiveTheme(
   theme: Theme | null,
   materialVariant: MaterialVariant | string,
 ): EffectiveTheme {
+  const mat = getMaterialVariant(materialVariant);
   return {
-    colors: theme?.colors ?? getMaterialVariant(materialVariant).palette,
+    colors: theme?.colors ?? mat.palette,
     fontFamily: theme?.fontFamily ?? FALLBACK_FONTS,
-    effects: theme?.effects,
-    id: theme?.id ?? 'none',
-    terminalWell: theme?.terminalWell,
-    terminalCanvasOpacity: theme?.terminalCanvasOpacity,
+    ...resolveThemeFields(theme),
   };
 }
 
@@ -266,6 +296,7 @@ export function applyThemeToDom(
     well: eff.terminalWell,
     canvasOpacity: eff.terminalCanvasOpacity,
   });
+  applyWorkbenchTokenOverrides(root, eff.workbenchTokens);
   applyDerivedTokens(root, eff.colors);
   root.style.setProperty('--glass-dim', buildGlassDim(showBgGradient, glassOpacity));
   root.style.setProperty('--font-mono', eff.fontFamily.mono);

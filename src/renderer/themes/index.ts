@@ -4,10 +4,10 @@ import { kiroTheme } from './kiro';
 import { lightTheme } from './light';
 import { modernTheme } from './modern';
 import { retroTheme } from './retro';
-import type { Theme } from './types';
+import type { CanonWorkbenchToken, Theme } from './types';
 import { warpTheme } from './warp';
 
-export type { Theme };
+export type { CanonWorkbenchToken, Theme };
 export {
   cursorTheme,
   highContrastTheme,

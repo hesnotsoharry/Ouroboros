@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { cursorTheme } from '../themes/cursor';
 import { modernTheme } from '../themes/modern';
-import { applyComponentTokens, applyThemeToDom } from './useTheme.tokens';
+import { applyComponentTokens, applyThemeToDom, applyWorkbenchTokenOverrides } from './useTheme.tokens';
 
 afterEach(() => {
   // Clean up inline styles written to :root between tests.
@@ -112,5 +112,74 @@ describe('applyThemeToDom — tinted well end-to-end', () => {
 
     expect(document.documentElement.style.getPropertyValue('--term-bg')).toBe('rgba(0,0,0,0)');
     expect(document.documentElement.style.getPropertyValue('--terminal-canvas-opacity')).toBe('1');
+  });
+
+  it("applies Modern's well as rgba(6, 8, 16, 0.62) after the D5 fix — the canon §03 value", () => {
+    applyThemeToDom(modernTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--term-bg')).toBe(
+      'rgba(6, 8, 16, 0.62)',
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyWorkbenchTokenOverrides — unit tests (Wave 6 per-theme override path)
+// ---------------------------------------------------------------------------
+
+describe('applyWorkbenchTokenOverrides — conditional write discipline', () => {
+  it('writes each present key to its CSS custom property with the supplied value', () => {
+    applyWorkbenchTokenOverrides(document.documentElement, {
+      '--bg-wash': 'radial-gradient(red)',
+      '--blur-strong': 'none',
+    });
+
+    expect(document.documentElement.style.getPropertyValue('--bg-wash')).toBe(
+      'radial-gradient(red)',
+    );
+    expect(document.documentElement.style.getPropertyValue('--blur-strong')).toBe('none');
+  });
+
+  it('is a no-op when tokens argument is undefined — root cssText unchanged', () => {
+    const before = document.documentElement.style.cssText;
+    applyWorkbenchTokenOverrides(document.documentElement, undefined);
+
+    expect(document.documentElement.style.cssText).toBe(before);
+  });
+
+  it('is a no-op when tokens argument is an empty object — root cssText unchanged', () => {
+    const before = document.documentElement.style.cssText;
+    applyWorkbenchTokenOverrides(document.documentElement, {});
+
+    expect(document.documentElement.style.cssText).toBe(before);
+  });
+});
+
+describe('applyThemeToDom — workbenchTokens override path end-to-end', () => {
+  it('a theme with a --bg-wash workbenchTokens entry emits that value, overriding the material default', () => {
+    // Construct a minimal inline theme that carries a workbenchTokens override.
+    // Using modernTheme as the base for colors/fonts; the key assertion is that
+    // --bg-wash ends up with the theme's override value, not the material default.
+    const testTheme = {
+      ...modernTheme,
+      workbenchTokens: { '--bg-wash': 'radial-gradient(ellipse, rgba(22,16,10,0.9), transparent)' },
+    };
+
+    applyThemeToDom(testTheme);
+
+    expect(document.documentElement.style.getPropertyValue('--bg-wash')).toBe(
+      'radial-gradient(ellipse, rgba(22,16,10,0.9), transparent)',
+    );
+  });
+
+  it('a theme with no workbenchTokens does not disturb --bg-wash set by the material pass', () => {
+    // cursorTheme has no workbenchTokens — the material pass writes --bg-wash;
+    // applyWorkbenchTokenOverrides must not clobber or remove it.
+    applyThemeToDom(cursorTheme);
+
+    // The material default writes a non-empty radial-gradient to --bg-wash.
+    const bgWash = document.documentElement.style.getPropertyValue('--bg-wash');
+    expect(bgWash).toBeTruthy();
+    expect(bgWash).toMatch(/radial-gradient/);
   });
 });
