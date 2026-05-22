@@ -23,6 +23,7 @@ import { useWorkbenchProjects } from '../useWorkbenchProjects';
 import { AgentGlobe } from './AgentGlobe';
 import { BranchChip, ProjectChip } from './TitleChip';
 import { WindowControls } from './WindowControls';
+import { WorkbenchBell } from './WorkbenchBell';
 
 // ── App mark ─────────────────────────────────────────────────────────────────
 
@@ -94,56 +95,6 @@ function CtrlKButton({ onClick }: CtrlKButtonProps): React.ReactElement {
       >
         Ctrl K
       </span>
-    </button>
-  );
-}
-
-// ── Bell button ───────────────────────────────────────────────────────────────
-
-const MOCK_PENDING_COUNT = 3; // 3 pending permissions in mock data
-
-function BellBadge(): React.ReactElement {
-  return (
-    <span
-      aria-label="pending permissions"
-      style={{
-        position: 'absolute',
-        top: 3,
-        right: 3,
-        width: 8,
-        height: 8,
-        borderRadius: 999,
-        background: 'var(--warning, #fbbf24)',
-        boxShadow: '0 0 6px var(--warning, #fbbf24), 0 0 0 2px var(--bg-wash, #0a0b14)',
-      }}
-    />
-  );
-}
-
-function BellButton(): React.ReactElement {
-  const hasPending = MOCK_PENDING_COUNT > 0;
-  return (
-    <button
-      title={hasPending ? `${MOCK_PENDING_COUNT} pending permissions` : 'Notifications'}
-      style={
-        {
-          position: 'relative',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 6,
-          background: 'transparent',
-          border: 'none',
-          borderRadius: 6,
-          color: 'var(--ink-3)',
-          cursor: 'pointer',
-          WebkitAppRegion: 'no-drag',
-          flexShrink: 0,
-        } as React.CSSProperties
-      }
-    >
-      <Icon name="Bell" size={14} />
-      {hasPending && <BellBadge />}
     </button>
   );
 }
@@ -222,7 +173,7 @@ export function TitleBar(): React.ReactElement {
       <AgentGlobe />
       <Spacer />
       <CtrlKButton onClick={handleOpenPalette} />
-      <BellButton />
+      <WorkbenchBell />
       <SettingsButton onClick={handleOpenSettings} />
       <WindowControls />
     </div>
