@@ -58,10 +58,16 @@ function Spacer(): React.ReactElement {
 
 // ── Ctrl-K affordance ─────────────────────────────────────────────────────────
 
-function CtrlKButton(): React.ReactElement {
+interface CtrlKButtonProps {
+  onClick: () => void;
+}
+
+function CtrlKButton({ onClick }: CtrlKButtonProps): React.ReactElement {
   return (
     <button
+      type="button"
       title="Command palette"
+      onClick={onClick}
       style={
         {
           display: 'inline-flex',
@@ -178,6 +184,20 @@ function SettingsButton({ onClick }: SettingsButtonProps): React.ReactElement {
 
 // ── TitleBar ─────────────────────────────────────────────────────────────────
 
+const titleBarStyle: React.CSSProperties = {
+  height: 40,
+  flexShrink: 0,
+  display: 'flex',
+  alignItems: 'center',
+  padding: '0 0 0 12px',
+  gap: 8,
+  background: 'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.005))',
+  borderBottom: '1px solid var(--stroke-inner)',
+  position: 'relative',
+  zIndex: 5,
+  WebkitAppRegion: 'drag' as React.CSSProperties['WebkitAppRegion'],
+};
+
 export function TitleBar(): React.ReactElement {
   const { projectRoot } = useProject();
   const projects = useWorkbenchProjects();
@@ -189,32 +209,19 @@ export function TitleBar(): React.ReactElement {
     window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT));
   }, []);
 
+  const handleOpenPalette = useCallback((): void => {
+    window.dispatchEvent(new CustomEvent('agent-ide:command-palette'));
+  }, []);
+
   return (
-    <div
-      data-testid="workbench-titlebar"
-      style={
-        {
-          height: 40,
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 0 0 12px',
-          gap: 8,
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.005))',
-          borderBottom: '1px solid var(--stroke-inner)',
-          position: 'relative',
-          zIndex: 5,
-          WebkitAppRegion: 'drag',
-        } as React.CSSProperties
-      }
-    >
+    <div data-testid="workbench-titlebar" style={titleBarStyle}>
       <AppMark />
       {activeProject && <ProjectChip project={activeProject} />}
       {branch && <BranchChip branch={branch} />}
       <Spacer />
       <AgentGlobe />
       <Spacer />
-      <CtrlKButton />
+      <CtrlKButton onClick={handleOpenPalette} />
       <BellButton />
       <SettingsButton onClick={handleOpenSettings} />
       <WindowControls />

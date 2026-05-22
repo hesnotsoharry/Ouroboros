@@ -14,6 +14,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
+import { WorkbenchCommandPalette } from './Overlays/WorkbenchCommandPalette';
 import { WorkbenchSettingsOverlay } from './Overlays/WorkbenchSettingsOverlay';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
@@ -137,6 +138,7 @@ export function Workbench(): React.ReactElement {
       />
       <StatusBar />
       <WorkbenchSettingsOverlay />
+      <WorkbenchCommandPalette />
       {scanlines && (
         <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
       )}
