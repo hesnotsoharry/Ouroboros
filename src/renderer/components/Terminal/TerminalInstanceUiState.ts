@@ -49,6 +49,14 @@ export function useThemeSync(syncTheme: () => void): void {
   }, [syncTheme]);
 
   useEffect(() => {
+    // Sync once on mount: covers terminals that mounted during the async window
+    // between config load and theme hydration (e.g. the canon workbench's
+    // auto-spawned terminals). In that race, xterm initialises with the opaque
+    // `#0d0d0d` fallback because `--term-canvas-bg` isn't set yet, and the
+    // `agent-ide:theme-applied` event fires before this listener attaches — so
+    // without an immediate sync the tinted well never paints. Idempotent for
+    // terminals created after hydration; no-op for non-well themes.
+    requestAnimationFrame(syncTheme);
     const handler = () => requestAnimationFrame(syncTheme);
     window.addEventListener('agent-ide:theme-applied', handler);
     return () => window.removeEventListener('agent-ide:theme-applied', handler);

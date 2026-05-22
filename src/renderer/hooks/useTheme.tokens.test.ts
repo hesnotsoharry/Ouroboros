@@ -120,11 +120,11 @@ describe('applyThemeToDom — tinted well end-to-end', () => {
     expect(document.documentElement.style.getPropertyValue('--terminal-canvas-opacity')).toBe('1');
   });
 
-  it("applies Modern's well as rgba(6, 8, 16, 0.62) after the D5 fix — the canon §03 value", () => {
+  it("pins Modern's tuned well value on --term-bg — intentional divergence from canon §03's 0.62", () => {
     applyThemeToDom(modernTheme);
 
     expect(document.documentElement.style.getPropertyValue('--term-bg')).toBe(
-      'rgba(6, 8, 16, 0.62)',
+      'rgba(6, 8, 16, 0.1)', // hardcoded: pins Modern's tuned terminal-well value
     );
   });
 });
