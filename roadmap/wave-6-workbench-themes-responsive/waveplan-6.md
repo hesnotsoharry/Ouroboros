@@ -1,5 +1,5 @@
 ---
-status: IN-PROGRESS
+status: SHIPPED
 created: 2026-05-22
 updated: 2026-05-22
 wave: 6

@@ -1,10 +1,24 @@
-# Session Handoff — 2026-05-22 (Workbench Wave 5 SHIPPED; permission UI; tag v2.26.0)
+# Session Handoff — 2026-05-22 (Workbench Wave 6 SHIPPED; themes + responsive; tag v2.27.0 pushed)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-22 (latest) — Workbench Wave 5 SHIPPED (canon §13 permission UI)
+## 🔼 UPDATE 2026-05-22 (latest) — Workbench Wave 6 SHIPPED + PUSHED (themes + responsive collapse)
+
+Workbench overhaul: **Waves 0 + 1 + 2 + 3 + 4 + 5 + 6 all on `master`** — Wave 6 pushed to `origin/master` (`7c842dbc`, tag **`v2.27.0`** on origin). CI did not run (GH Actions minutes exhausted until 2026-06-01 — expected per bulletin; the wave-stack *merge* into a protected branch still waits for the minute restore).
+
+- **Wave 6 — themes + responsive collapse: SHIPPED** (commits `398e41fc` P0+P1, `a74adae6` P2, `ec8d0a2d` P3, `7c842dbc` P4 wrap; tag `v2.27.0`; CHANGELOG `[2.27.0]`). Behind the same default-off `layout.canonWorkbench` flag. **Two tracks, renderer-only:**
+  - **Per-theme canon treatment (Modern/Warp/Retro).** New per-theme path: `Theme.workbenchTokens?: Partial<Record<CanonWorkbenchToken, string>>` (types.ts) whose entries `applyComponentTokens` writes inline AFTER the material pass (theme overrides beat material wash/glows; absent → fallback stands — completes the deferred `tokens.css:254` promise, ADR D2). **Warp** = warm-amber wash/glows/accent + `terminalCanvasOpacity 0.86`; **Retro** = matte (`--blur-*: 'none'`, opaque `--material-panel` 0.85/0.92, green phosphor) + a CRT scanline overlay in `Workbench.tsx` (`useScanlines` reads `data-scanlines`); **Modern** = no override (canon-matched) BUT terminal well corrected **0.35→0.62** (D5, live-since-Wave-0 bug). cursor/kiro/light/high-contrast untreated (D4).
+  - **Responsive collapse (canon §16, 3 tiers — HUD dropped per D3).** New `useWorkbenchBreakpoint` (max-width matchMedia at **1760** and **1440** — NOT 1440/1180; below 1440 is uniformly unified once HUD is dropped). full (≥1760): dual rails, sidebar 348. compact (1440–1759): dual rails, sidebar 300, Latest Hunk → one-line indicator (click expands). unified (<1440): `UnifiedRail` mounts (dual rails unmount), sidebar 300. `UnifiedRail` is now **mounted + live-wired** (`useWorkbenchProjects`/`useGitBranch`/`useWorkbenchAgentData`). Collapse-handle stubs wired to `forceUnified` (left-rail-only).
+  - **Gates:** two frozen orchestrator-owned guards (`useTheme.tokens.preservation.test.ts` 2/2 byte-identity of the 4 untreated themes; `Workbench.responsive.acceptance.test.tsx` 5/5 tier contract — both authored before impl, untouched). `useWorkbenchBreakpoint.test.ts` 14/14. **Full suite 11684 passed / 8 skipped / 0 failed.** tsc clean, `eslint src/` 0 errors, prettier clean. 3 `sonnet-phase-reviewer` passes (P2: scanline `// hardcoded:` suppression fixed inline; P3: inert collapse toggle → now expands the real hunk). `/review` mechanical **PASS** (Checks 1–3 clean, 4/5 N/A, 6 deferred to pre-merge mutation task). Plan/ADR/result/mechanical-review/smoke/followup-audit in `roadmap/wave-6-workbench-themes-responsive/`.
+- **Next action:** **Wave 7 — cutover & teardown** (make the canon workbench the sole shell; delete `AppLayout`/`InnerAppLayout`, the Wave-89 variant + `ChatOnlyShell` remnants, `Dispatch/`, the "Explain error" scrollback action, AND the orphaned `AgentMonitor/ApprovalDialog`). Sequence: `roadmap/discovery/workbench-overhaul-reconciliation.md`. **Wave 7 is the final workbench wave.**
+- **Wave 6 NOT done / deferrals:** `/ui-smoke 6` live smoke deferred (Cole not using the app until the remake is done — per Wave 0–5 posture; checklist written + queued at `wave-6-smoke-report.md`). **Next dev session:** enable the flag, switch Modern/Warp/Retro (deeper indigo well; warm amber wash; matte green + scanlines + no blur), and drag-resize across ~1760/~1440 to watch the agent rail narrow + Latest Hunk collapse, then the rails merge into the unified rail. One new LOW follow-up: `2026-05-22-workbench-forceunified-no-autoclear.md` (manual collapse doesn't auto-clear on widen). `/promote-vendor-lessons 6` = no-op (no vendor SDK). `/audit-followups wave-6` = 24 OPEN, 0 closed (none touch this wave's surface — inbox is growing, worth a `/triage-sweep` soon).
+- **Carried-forward:** the **Check-6 mutation pre-merge task** (run `npm run mutation:test`, tighten adapter/derivation survivors before the 2026-06-01 merge) now also covers Wave 6's `workbenchTokens`/`useWorkbenchBreakpoint`/UnifiedRail-adapter logic — joins the Wave-3/4/5 batch. The `UnifiedRail.parts`/`InnerRail` file-tree body is still `MOCK_FILE_TREE`; git +adds/−dels still deferred (existing follow-up).
+
+---
+
+## 🔼 UPDATE 2026-05-22 — Workbench Wave 5 SHIPPED (canon §13 permission UI)
 
 Workbench overhaul: **Waves 0 + 1 + 2 + 3 + 4 + 5 all on `master`** (5 committed + tagged `v2.26.0` local; push per the bulletin — merge of the wave-stack waits for the 2026-06-01 CI-minute restore).
 
