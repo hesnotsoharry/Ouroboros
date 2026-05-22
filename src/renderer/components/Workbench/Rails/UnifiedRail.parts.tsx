@@ -6,11 +6,7 @@
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import {
-  MOCK_FILE_TREE,
-  type MockProject,
-  type MockSession,
-} from '../workbenchMockData';
+import { MOCK_FILE_TREE, type MockProject, type MockSession } from '../workbenchMockData';
 import { FileNode } from './FileNode';
 
 // ── shared ─────────────────────────────────────────────────────────────────────

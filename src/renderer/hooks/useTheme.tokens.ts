@@ -249,7 +249,9 @@ interface EffectiveTheme {
 }
 
 /** Extract the theme-optional fields into a flat shape for EffectiveTheme. */
-function resolveThemeFields(theme: Theme | null): Pick<
+function resolveThemeFields(
+  theme: Theme | null,
+): Pick<
   EffectiveTheme,
   'effects' | 'id' | 'terminalWell' | 'terminalCanvasOpacity' | 'workbenchTokens'
 > {

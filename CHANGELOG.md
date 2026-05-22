@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.27.0] - 2026-05-22
+
+### Added
+- **Wave 6 — Workbench themes + responsive collapse (canon §15 + §16).** Behind the default-off **Settings → Appearance → "Canon workbench (experimental)"** flag, the canon workbench now gives its three headline themes their full canon look and collapses gracefully as the window narrows. Full story in `roadmap/wave-6-workbench-themes-responsive/wave-6-result.md`.
+  - **Themes:** switching to **Warp** washes the whole workbench warm amber (ambient wash + glows); **Retro** goes opaque matte green with CRT scanlines and no glassy blur (green phosphor glow kept on accents); **Modern** shows a deeper, properly-tinted indigo terminal well (a wrong value live since Wave 0, now corrected to the canon `0.62`). cursor / kiro / light / high-contrast keep working unchanged.
+  - **Responsive:** dragging the window narrower past ~1760px narrows the agent sidebar and collapses the Latest Hunk panel to a one-line indicator (click to expand); past ~1440px the project rail and inner rail merge into a single unified rail (now showing live project + branch data). Widening back restores the full layout. The rail collapse handles also force the unified rail manually.
+
+### Notes
+- Renderer-only; **no** main-process / IPC / config-schema / material-variant change. Per-theme appearance is driven by a new optional `Theme.workbenchTokens` map applied through the theme bridge (theme overrides beat the material defaults; themes that omit it are byte-identical to before — a frozen guard enforces this for the four untreated themes). Responsive tiers are driven by a `matchMedia` hook at the 1760/1440 boundaries (the floating HUD below 1180 is out of scope this wave — below 1440 is uniformly the unified layout). With the canon flag off, all seven themes and the legacy shells render exactly as before. Live UI smoke deferred (the shell is experimental and off by default). One LOW follow-up: the manual rail-collapse doesn't auto-clear when the window is widened back.
+
 ## [2.26.0] - 2026-05-22
 
 ### Added

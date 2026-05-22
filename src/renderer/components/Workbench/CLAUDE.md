@@ -80,10 +80,17 @@ Wave 1 shipped static-only. The constraint is being lifted region by region:
   takeover (`PermissionSidebarTakeover`, swapped into `AgentSidebar`'s NOW slot when a request is
   pending; panels 2–5 dim to 0.7). Both render `<PermissionCard>` simultaneously. v1 actions =
   Approve / Always-for-tool / Deny (project-scope is canon v2, out of scope — D5).
-- **Still static (→ later waves):** `UnifiedRail` (built,
-  not mounted — still uses `MOCK_PROJECTS`/`MOCK_SESSIONS`/`MOCK_BRANCH`); the terminal tab-bar
-  labels (`MOCK_TERM_TABS_*`, single-tab affordance); `StatusBar` testsPassing; git +adds/−dels
-  + per-project dirty (`roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md`).
+- **Themes + responsive collapse — LIVE (Wave 6).** Modern/Warp/Retro get full canon §15 treatment
+  via per-theme `Theme.workbenchTokens` maps driven through `applyComponentTokens` (warm-amber Warp
+  wash/glows; matte Retro — opaque panels, `--blur-*: none`, green phosphor + CRT scanline overlay).
+  cursor/kiro/light/high-contrast stay functional with no per-theme tuning (ADR D4). The shell
+  collapses across three tiers via `useWorkbenchBreakpoint` (canon §16, HUD dropped — D3): full
+  (≥1760) / compact (1440–1759, agent rail 348→300 + Latest Hunk one-line) / unified (<1440,
+  `UnifiedRail` mounts, dual rails unmount). `UnifiedRail` is now **mounted + live-wired**
+  (`useWorkbenchProjects`/`useGitBranch`/`useWorkbenchAgentData`).
+- **Still static (→ later waves):** `UnifiedRail.parts` + `InnerRail` file-tree body (`MOCK_FILE_TREE`);
+  the terminal tab-bar labels (`MOCK_TERM_TABS_*`, single-tab affordance); `StatusBar` testsPassing;
+  git +adds/−dels + per-project dirty (`roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md`).
 
 Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.tsx` mount
 (only `ProjectContext` is needed — already above the Workbench branch). Do NOT pull in
@@ -94,10 +101,15 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
 
 - Author against canon token aliases: `--ink`, `--ink-2`, `--ink-3`, `--glass-panel`,
   `--stroke-inner`, `--r-md`, `--interactive-accent`, `--term-bg`, etc.
+- Per-theme canon appearance goes in the theme's `Theme.workbenchTokens` map (Wave 6) — NOT inline in
+  components. `applyComponentTokens` writes each present entry to its `--` var AFTER the material pass
+  (theme overrides win); absent → fallback stands (preserves the four untreated themes).
 - No hardcoded hex except sanctioned exceptions:
   - Windows close button hover: `#e81123` (platform color — Phase 2)
   - Project chip colors in `workbenchMockData.ts`: these are user-assigned project identity
     colors imported from mock data, not authored inline
+  - CRT scanline stripe `rgba(57,255,90,0.03)` in `Workbench.tsx` (Wave 6) — canon §15 Retro-only
+    effect color, carries the `// hardcoded:` pre-commit suppression
 
 ## Gotchas
 
@@ -140,6 +152,20 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
   A missing/empty diff (60s stash-TTL eviction) is a normal empty state, not an error. The effect
   re-registers on flag toggle (matches the reference; refinement tracked in
   `follow-ups/2026-05-22-workbench-diff-subscription-latest-ref.md`).
+- **`useWorkbenchBreakpoint` MUST use max-width queries (Wave 6).** The hook reads
+  `matchMedia('(max-width: 1439px)')` (unified) and `'(max-width: 1759px)'` (compact) — max-width, NOT
+  min-width. Reason: tests render `<Workbench/>` without a viewport, getting the jsdom default
+  `matchMedia` that returns `matches:false` for everything; max-width phrasing makes all-false resolve
+  to `full`, preserving the existing suite. Switch to min-width and every no-viewport render flips to
+  `unified`, breaking ~93 Workbench tests. Two boundaries only (1760, 1440) — the canon §16 1180 line
+  is moot once the HUD is dropped (D3): below 1440 is uniformly unified.
+- **`forceUnified` is left-rail-only and does not auto-clear (Wave 6).** The rail collapse-handles set
+  a `forceUnified` flag in `Workbench.tsx` that forces the unified rail regardless of width; it affects
+  ONLY left-rail mounting, not the agent sidebar (which tracks window width directly). It clears only
+  via `UnifiedRail`'s expand button, NOT on window-widen (tracked: `follow-ups/2026-05-22-workbench-forceunified-no-autoclear.md`).
+- **Scanlines render via a Workbench-local overlay (Wave 6).** `useScanlines()` in `Workbench.tsx`
+  reads `document.documentElement.dataset.scanlines` (written by the theme bridge for Retro) and
+  re-reads on `agent-ide:theme-applied`; the overlay is a `pointer-events:none` absolute div. Retro-only.
 
 ## Wave sequence
 
@@ -151,5 +177,7 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
   Timeline) via the same adapter + the Wave-94 diff pipeline; sidebar `MOCK_*` data swept (types kept).
 - Wave 5: ✅ canon §13 dual-presentation permission UI (terminal overlay + sidebar NOW-takeover)
   over the existing approval context. Single keyboard owner (D3). `Permission/**`.
-- Wave 6: responsive collapse, themes
+- Wave 6: ✅ themes (Modern/Warp/Retro full canon §15 via per-theme `workbenchTokens`; matte Retro +
+  scanlines) + responsive collapse (`useWorkbenchBreakpoint`, 3 tiers, canon §16 minus HUD — D3);
+  `UnifiedRail` mounted + live-wired.
 - Wave 7: cutover (remove old shells)

@@ -13,7 +13,11 @@ import { cursorTheme } from '../themes/cursor';
 import { modernTheme } from '../themes/modern';
 import { retroTheme } from '../themes/retro';
 import { warpTheme } from '../themes/warp';
-import { applyComponentTokens, applyThemeToDom, applyWorkbenchTokenOverrides } from './useTheme.tokens';
+import {
+  applyComponentTokens,
+  applyThemeToDom,
+  applyWorkbenchTokenOverrides,
+} from './useTheme.tokens';
 
 afterEach(() => {
   // Clean up inline styles written to :root between tests.

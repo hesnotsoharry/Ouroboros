@@ -26,7 +26,10 @@ function hasMatchMedia(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function';
 }
 
-function computeMode(unifiedMql: MediaQueryList, compactMql: MediaQueryList): WorkbenchBreakpointMode {
+function computeMode(
+  unifiedMql: MediaQueryList,
+  compactMql: MediaQueryList,
+): WorkbenchBreakpointMode {
   if (unifiedMql.matches) return 'unified';
   if (compactMql.matches) return 'compact';
   return 'full';

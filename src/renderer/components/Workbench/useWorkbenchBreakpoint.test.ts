@@ -88,9 +88,7 @@ function setViewport(width: number): { unifiedMql: MockMQL; compactMql: MockMQL 
 
 beforeEach(() => {
   // Default: no-op matchMedia (returns matches:false → 'full').
-  window.matchMedia = vi.fn(() =>
-    makeMql(false, ''),
-  ) as unknown as typeof window.matchMedia;
+  window.matchMedia = vi.fn(() => makeMql(false, '')) as unknown as typeof window.matchMedia;
 });
 
 afterEach(() => {
@@ -203,14 +201,8 @@ describe('useWorkbenchBreakpoint — listener cleanup on unmount', () => {
 
     unmount();
 
-    expect(unifiedMql.removeEventListener).toHaveBeenCalledWith(
-      'change',
-      expect.any(Function),
-    );
-    expect(compactMql.removeEventListener).toHaveBeenCalledWith(
-      'change',
-      expect.any(Function),
-    );
+    expect(unifiedMql.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+    expect(compactMql.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function));
   });
 
   it('leaves no active listeners after unmount (StrictMode-safe)', () => {
