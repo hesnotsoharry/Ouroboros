@@ -16,9 +16,8 @@ import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
 import { useWorkbenchAgentData, type WorkbenchSession } from '../useWorkbenchAgentData';
 import { useWorkbenchProjects } from '../useWorkbenchProjects';
-import { MOCK_FILE_TREE } from '../workbenchMockData';
-import { FileNode } from './FileNode';
 import { iconBtnStyle, SectionLabel, StatusDot } from './InnerRail.parts';
+import { WorkbenchFileTree } from './WorkbenchFileTree';
 
 const RAIL_STYLE: React.CSSProperties = {
   width: 256,
@@ -260,12 +259,13 @@ function FilesSectionHeader(): React.ReactElement {
 }
 
 function FilesSection(): React.ReactElement {
+  const { projectRoot } = useProject();
   return (
     <div style={{ flex: 1, padding: '10px 6px', overflowY: 'auto', minHeight: 0 }}>
       <FilesSectionHeader />
-      {MOCK_FILE_TREE.map((node, i) => (
-        <FileNode key={`${node.name}-${String(i)}`} node={node} />
-      ))}
+      {projectRoot !== null && projectRoot !== '' && (
+        <WorkbenchFileTree rootPath={projectRoot} />
+      )}
     </div>
   );
 }

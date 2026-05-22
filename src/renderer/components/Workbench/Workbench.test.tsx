@@ -106,6 +106,16 @@ function stubPty(): void {
   };
 }
 
+/** Installs a minimal window.electronAPI.files stub used by WorkbenchFileTree. */
+function stubFiles(): void {
+  (window as unknown as { electronAPI: unknown }).electronAPI = {
+    ...(window as unknown as { electronAPI: Record<string, unknown> }).electronAPI,
+    files: {
+      readDir: vi.fn().mockResolvedValue({ success: true, items: [] }),
+    },
+  };
+}
+
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
@@ -140,6 +150,7 @@ function agentCtx(sessions: AgentSession[]) {
 // override with vi.stubGlobal after this runs.
 beforeEach(() => {
   stubPty();
+  stubFiles();
   mockedAgentCtx.mockReturnValue(agentCtx([])); // default: no sessions → Globe "fresh"
 });
 
@@ -348,11 +359,12 @@ describe('InnerRail', () => {
     expect(screen.getByText('claude · streaming')).toBeDefined();
   });
 
-  it('renders the files section with mock file tree entries', () => {
+  it('renders the files section with a live WorkbenchFileTree (not mock entries)', () => {
     render(<InnerRail />);
-    // MOCK_FILE_TREE includes 'src' at depth 0 and 'tokens.css'.
-    expect(screen.getByText('src')).toBeDefined();
-    expect(screen.getByText('tokens.css')).toBeDefined();
+    // Live tree mounts; default readDir stub returns empty → "Empty directory" shown.
+    // Crucially, mock file names from MOCK_FILE_TREE must not appear.
+    expect(screen.queryByText('tokens.css')).toBeNull();
+    expect(screen.queryByText('ChatOnlyShell.tsx')).toBeNull();
   });
 
   it('renders the branch footer with live branch name from useGitBranch', () => {

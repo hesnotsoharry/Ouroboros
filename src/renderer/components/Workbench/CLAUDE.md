@@ -92,7 +92,13 @@ Wave 1 shipped static-only. The constraint is being lifted region by region:
   (≥1760) / compact (1440–1759, agent rail 348→300 + Latest Hunk one-line) / unified (<1440,
   `UnifiedRail` mounts, dual rails unmount). `UnifiedRail` is now **mounted + live-wired**
   (`useWorkbenchProjects`/`useGitBranch`/`useWorkbenchAgentData`).
-- **Still static (→ later waves):** `UnifiedRail.parts` + `InnerRail` file-tree body (`MOCK_FILE_TREE`);
+- **InnerRail file tree — LIVE (Wave 8 Phase 2).** The dual-mode `InnerRail` "Files" section renders
+  `Rails/WorkbenchFileTree.tsx` (canon §07: indent depth×12px+6 base, dir icon `--accent-hi`, file
+  `--ink-3`) over `Rails/useWorkbenchFileTree.ts` → `useFileWatcher` + `window.electronAPI.files.readDir`
+  (lazy dir expansion on click; reuses `FileNode` for rows). M/A status badges still deferred
+  (`follow-ups/2026-05-21-workbench-live-git-diff-stats.md`). `MOCK_FILE_TREE` is NOT yet dead — the
+  `UnifiedRail.parts` collapsed-rail body still uses it.
+- **Still static (→ later waves):** `UnifiedRail.parts` file-tree body (`MOCK_FILE_TREE`);
   the terminal tab-bar labels (`MOCK_TERM_TABS_*`, single-tab affordance); `StatusBar` testsPassing;
   git +adds/−dels + per-project dirty (`roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md`).
 
