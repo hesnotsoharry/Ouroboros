@@ -243,6 +243,8 @@ export interface AppConfig {
     immersiveChat?: boolean;
     /** Wave 1 — canon workbench shell (experimental, default-off). */
     canonWorkbench?: boolean;
+    /** Wave 2 — persisted split ratio for the workbench terminal divider (0–1). Default 0.62. */
+    workbenchTerminalSplit?: number;
     chatSidebarMode?: 'pinned' | 'collapsed' | 'hidden';
   };
   /** Wave 22 Phase B/E — chat message density + desktop notification settings. Wave 22 Phase E adds desktopNotifications. */

@@ -253,6 +253,8 @@ export interface AppLayoutConfig {
   immersiveChat?: boolean;
   /** Wave 1 — canon workbench shell (experimental, default-off). */
   canonWorkbench?: boolean;
+  /** Wave 2 — persisted split ratio for the workbench terminal divider (0–1). Default 0.62. */
+  workbenchTerminalSplit?: number;
   /** Wave 59 Phase A — chatWorkbench retired. Retained as optional unknown to prevent
    * config-schema errors when loading pre-59 user configs containing this key. */
   chatWorkbench?: never;

@@ -27,6 +27,8 @@ export const tailSchemaExt = {
       immersiveChat: { type: 'boolean', default: false },
       /** Wave 1 — canon workbench shell (experimental). Default false. */
       canonWorkbench: { type: 'boolean', default: false },
+      /** Wave 2 — persisted split ratio for the workbench terminal divider (0–1). Default 0.62. */
+      workbenchTerminalSplit: { type: 'number', default: 0.62 },
       chatSidebarMode: {
         type: 'string',
         enum: ['pinned', 'collapsed', 'hidden'],
@@ -42,6 +44,7 @@ export const tailSchemaExt = {
       mobilePrimary: false,
       immersiveChat: false,
       canonWorkbench: false,
+      workbenchTerminalSplit: 0.62,
       chatSidebarMode: 'pinned',
     },
   },
