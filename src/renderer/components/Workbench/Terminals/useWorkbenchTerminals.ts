@@ -146,10 +146,10 @@ export function useWorkbenchTerminals(): WorkbenchTerminals {
   // flip (spawned=false, no kills to cancel — fall through to spawn).
   const hasSpawnedRef = useRef(false);
 
-  const { upperCwd, lowerCwd, resumeSessionId, isReady } = useWorkbenchRestore();
+  const { upperCwd, lowerCwd, resumeSessionId, isReady } = useWorkbenchRestore(projectRoot);
   const claudeSessionId = useWorkbenchClaudeCapture(upperSessionId);
 
-  useWorkbenchSessionPersist({ upperSessionId, lowerSessionId, claudeSessionId });
+  useWorkbenchSessionPersist({ projectRoot, upperSessionId, lowerSessionId, claudeSessionId });
 
   useEffect(() => {
     // Gate: do not spawn until the restore read completes.

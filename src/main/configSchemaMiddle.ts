@@ -101,36 +101,48 @@ export const middleSchema: Record<string, unknown> = {
       },
     ],
   },
-  /** Wave 9 — canon workbench session persistence (two-frame fixed shape). */
+  /**
+   * Wave 10 — per-project canon workbench session persistence.
+   * Keys are absolute project root paths; values are the two-frame slot or null.
+   * Wave 9's flat { upper, lower } shape is legacy-throwaway (ADR D1).
+   */
   canonWorkbenchSessions: {
     type: 'object',
-    additionalProperties: false,
-    properties: {
-      upper: {
-        oneOf: [
-          {
-            type: 'object',
-            properties: {
-              cwd: { type: 'string' },
-              claudeSessionId: { type: 'string' },
+    additionalProperties: {
+      oneOf: [
+        {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            upper: {
+              oneOf: [
+                {
+                  type: 'object',
+                  properties: {
+                    cwd: { type: 'string' },
+                    claudeSessionId: { type: 'string' },
+                  },
+                  required: ['cwd'],
+                },
+                { type: 'null' },
+              ],
             },
-            required: ['cwd'],
+            lower: {
+              oneOf: [
+                {
+                  type: 'object',
+                  properties: { cwd: { type: 'string' } },
+                  required: ['cwd'],
+                },
+                { type: 'null' },
+              ],
+            },
           },
-          { type: 'null' },
-        ],
-      },
-      lower: {
-        oneOf: [
-          {
-            type: 'object',
-            properties: { cwd: { type: 'string' } },
-            required: ['cwd'],
-          },
-          { type: 'null' },
-        ],
-      },
+        },
+        { type: 'null' },
+      ],
     },
-    default: { upper: null, lower: null },
+    default: {},
   },
   /** Wave 30 Phase G — research auto-firing global defaults.
    *  Wave 30 Phase I — threshold tuning knobs (all read at call time, no restart required). */

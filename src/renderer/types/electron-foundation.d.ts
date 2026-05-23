@@ -28,15 +28,19 @@ export interface CodexModelOption {
 }
 
 /**
- * Wave 9 — canon workbench two-frame session persistence.
- * Renderer-side mirror of `CanonWorkbenchSessions` in `src/main/configTypes.ts`;
- * keep both in sync. Defined here (not imported from main) per the Wave 96
- * pattern: `tsconfig.web.json` does not include `src/main/**`.
+ * Wave 10 — per-project canon workbench session persistence.
+ * Renderer-side mirrors of `CanonWorkbenchSessionSlot` and `CanonWorkbenchSessions`
+ * in `src/main/configTypes.ts`; keep both in sync. Defined here (not imported
+ * from main) per the Wave 96 / Wave 9 pattern: `tsconfig.web.json` does not
+ * include `src/main/**`. Wave 9's flat `{ upper, lower }` shape is legacy-throwaway
+ * (ADR D1) — `useWorkbenchRestore` type-guards on read.
  */
-export interface CanonWorkbenchSessions {
+export interface CanonWorkbenchSessionSlot {
   upper: { cwd: string; claudeSessionId?: string } | null;
   lower: { cwd: string } | null;
 }
+
+export type CanonWorkbenchSessions = Record<string, CanonWorkbenchSessionSlot | null>;
 
 export interface AgentTemplate {
   id: string;

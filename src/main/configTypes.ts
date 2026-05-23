@@ -96,19 +96,23 @@ export interface TerminalSessionSnapshot {
   codexThreadId?: string;
 }
 
-/**
- * Wave 9 — canon workbench session persistence (electron-store Store A).
- *
- * Two-frame fixed shape matching the canon shell's upper (claude) and lower (plain
- * shell) frames. Written by useWorkbenchSessionPersist; read by useWorkbenchRestore.
- * Kept separate from the legacy `terminalSessions` key to avoid flag-flip conflicts.
- */
-export interface CanonWorkbenchSessions {
+/** A single project's two-frame slot (Wave 10). */
+export interface CanonWorkbenchSessionSlot {
   /** Upper frame (claude terminal). Null when no prior session exists. */
   upper: { cwd: string; claudeSessionId?: string } | null;
   /** Lower frame (plain shell). Null when no prior session exists. */
   lower: { cwd: string } | null;
 }
+
+/**
+ * Wave 10 — per-project canon workbench session persistence (electron-store Store A).
+ *
+ * Keys are absolute project root paths; values are the two-frame slot for that
+ * project. Wave 9's flat `{ upper, lower }` shape is treated as legacy throwaway
+ * (cold-start, ADR D1) — `useWorkbenchRestore` type-guards on read.
+ * Mirror in `src/renderer/types/electron-foundation.d.ts`.
+ */
+export type CanonWorkbenchSessions = Record<string, CanonWorkbenchSessionSlot | null>;
 
 export type { ClaudeCliSettings, CodexCliSettings } from '@shared/types/configSlices';
 

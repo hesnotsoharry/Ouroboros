@@ -1,9 +1,9 @@
 /**
- * useWorkbenchRestore — unit tests (Wave 9 Phase 1).
+ * useWorkbenchRestore — unit tests (Wave 9 Phase 1, updated Wave 10 Phase 1).
  *
  * Contract: one-shot async read of `canonWorkbenchSessions` from electron-store on mount.
- * Returns `{ isReady: false }` until the read completes, then maps the persisted shape.
- * Short-circuits when `persistTerminalSessions` is false.
+ * Returns `{ isReady: false }` until the read completes, then maps the per-project slice.
+ * Short-circuits when `persistTerminalSessions` is false or `projectRoot` is null.
  *
  * @vitest-environment jsdom
  */
@@ -28,10 +28,13 @@ vi.mock('../../../hooks/useConfig', () => ({
 }));
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-function makeElectronAPI(canonValue: unknown) {
+const TEST_ROOT = '/home/user/project';
+
+/** Wraps the per-project slot under the test project root key. */
+function makeElectronAPI(slotValue: unknown) {
   return {
     config: {
-      get: vi.fn().mockResolvedValue(canonValue),
+      get: vi.fn().mockResolvedValue({ [TEST_ROOT]: slotValue }),
       set: vi.fn().mockResolvedValue({ success: true }),
     },
   };
@@ -57,7 +60,7 @@ describe('useWorkbenchRestore — isReady lifecycle', () => {
       config: { get: vi.fn().mockReturnValue(hang) },
     };
 
-    const { result } = renderHook(() => useWorkbenchRestore());
+    const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     // Synchronously: isReady must be false.
     expect(result.current.isReady).toBe(false);
@@ -72,7 +75,7 @@ describe('useWorkbenchRestore — isReady lifecycle', () => {
       lower: null,
     });
 
-    const { result } = renderHook(() => useWorkbenchRestore());
+    const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     await waitFor(() => {
       expect(result.current.isReady).toBe(true);
@@ -81,13 +84,13 @@ describe('useWorkbenchRestore — isReady lifecycle', () => {
 });
 
 describe('useWorkbenchRestore — empty store', () => {
-  it('returns isReady:true with all fields undefined when store has { upper:null, lower:null }', async () => {
+  it('returns isReady:true with all fields undefined when slot has { upper:null, lower:null }', async () => {
     (window as unknown as { electronAPI: unknown }).electronAPI = makeElectronAPI({
       upper: null,
       lower: null,
     });
 
-    const { result } = renderHook(() => useWorkbenchRestore());
+    const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
@@ -105,15 +108,15 @@ describe('useWorkbenchRestore — empty store', () => {
 describe('useWorkbenchRestore — claude-only upper frame', () => {
   it('returns upperCwd and resumeSessionId when upper has claudeSessionId, lower is null', async () => {
     (window as unknown as { electronAPI: unknown }).electronAPI = makeElectronAPI({
-      upper: { cwd: '/home/user/project', claudeSessionId: 'sess-abc123' },
+      upper: { cwd: TEST_ROOT, claudeSessionId: 'sess-abc123' },
       lower: null,
     });
 
-    const { result } = renderHook(() => useWorkbenchRestore());
+    const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
-    expect(result.current.upperCwd).toBe('/home/user/project');
+    expect(result.current.upperCwd).toBe(TEST_ROOT);
     expect(result.current.resumeSessionId).toBe('sess-abc123');
     expect(result.current.lowerCwd).toBeUndefined();
   });
@@ -122,15 +125,15 @@ describe('useWorkbenchRestore — claude-only upper frame', () => {
 describe('useWorkbenchRestore — full two-frame restore', () => {
   it('returns all three values when both frames are populated', async () => {
     (window as unknown as { electronAPI: unknown }).electronAPI = makeElectronAPI({
-      upper: { cwd: '/home/user/project', claudeSessionId: 'sess-xyz789' },
+      upper: { cwd: TEST_ROOT, claudeSessionId: 'sess-xyz789' },
       lower: { cwd: '/home/user/other' },
     });
 
-    const { result } = renderHook(() => useWorkbenchRestore());
+    const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
-    expect(result.current.upperCwd).toBe('/home/user/project');
+    expect(result.current.upperCwd).toBe(TEST_ROOT);
     expect(result.current.resumeSessionId).toBe('sess-xyz789');
     expect(result.current.lowerCwd).toBe('/home/user/other');
   });
@@ -144,7 +147,7 @@ describe('useWorkbenchRestore — persistTerminalSessions:false short-circuit', 
       config: { get: mockGet },
     };
 
-    const { result } = renderHook(() => useWorkbenchRestore());
+    const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     await act(async () => {
       // Flush microtasks — config.get must NOT be called.

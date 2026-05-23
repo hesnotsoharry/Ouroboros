@@ -1,20 +1,23 @@
 /**
- * useWorkbenchRestore — one-shot reader for the canon workbench session store (Wave 9).
+ * useWorkbenchRestore — one-shot reader for the canon workbench session store (Wave 9/10).
  *
- * Reads `canonWorkbenchSessions` from electron-store once on mount and maps the
- * two-frame persisted shape into the spawn-ready form consumed by useWorkbenchTerminals
- * (Phase 2). Returns `isReady: false` until the async read completes.
+ * Wave 10: accepts `projectRoot: string | null`. Reads `canonWorkbenchSessions`
+ * (a Record keyed by project root) and returns the slice under [projectRoot].
  *
- * Short-circuits when `persistTerminalSessions` is false — returns `{ isReady: true }`
- * immediately with all cwd/id fields undefined, so Phase 2 spawns at project root.
+ * Short-circuits (returns `{ isReady: true }` immediately, no config.get) when:
+ *   - projectRoot is null
+ *   - persistTerminalSessions is false
  *
- * Store boundary: reads from electron-store Store A (config.get) only.
- * Never reads from SQLite Store B (pty:listPersistedSessions). ADR D4.
+ * Legacy-shape guard: if the persisted value has `upper` or `lower` as top-level
+ * keys, it is the Wave 9 flat shape — treat as cold-start per ADR D1.
+ *
+ * Store boundary: reads from electron-store Store A (config.get) only. ADR D4.
  */
 
 import { useEffect, useRef, useState } from 'react';
 
 import { useConfig } from '../../../hooks/useConfig';
+import type { CanonWorkbenchSessions, CanonWorkbenchSessionSlot } from '../../../types/electron';
 
 export interface WorkbenchRestoreState {
   upperCwd?: string;
@@ -23,60 +26,69 @@ export interface WorkbenchRestoreState {
   isReady: boolean;
 }
 
-function mapPersistedToRestoreState(
-  persisted:
-    | { upper: { cwd: string; claudeSessionId?: string } | null; lower: { cwd: string } | null }
-    | null
-    | undefined,
+/** Returns true when the value looks like Wave 9's legacy flat { upper, lower } shape. */
+function isLegacyFlatShape(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const obj = value as Record<string, unknown>;
+  return 'upper' in obj || 'lower' in obj;
+}
+
+function mapSlotToRestoreState(
+  slot: CanonWorkbenchSessionSlot | null | undefined,
 ): WorkbenchRestoreState {
-  if (!persisted) {
-    return { isReady: true };
-  }
+  if (!slot) return { isReady: true };
   return {
-    upperCwd: persisted.upper?.cwd,
-    lowerCwd: persisted.lower?.cwd,
-    resumeSessionId: persisted.upper?.claudeSessionId,
+    upperCwd: slot.upper?.cwd,
+    lowerCwd: slot.lower?.cwd,
+    resumeSessionId: slot.upper?.claudeSessionId,
     isReady: true,
   };
 }
 
-export function useWorkbenchRestore(): WorkbenchRestoreState {
+function resolveFromStore(
+  projectRoot: string,
+  setRestoreState: (s: WorkbenchRestoreState) => void,
+): void {
+  void window.electronAPI.config
+    .get('canonWorkbenchSessions')
+    .then((persisted) => {
+      if (isLegacyFlatShape(persisted)) {
+        setRestoreState({ isReady: true });
+        return;
+      }
+      const record = persisted as CanonWorkbenchSessions | null | undefined;
+      setRestoreState(mapSlotToRestoreState(record?.[projectRoot]));
+    })
+    .catch(() => {
+      setRestoreState({ isReady: true });
+    });
+}
+
+export function useWorkbenchRestore(projectRoot: string | null): WorkbenchRestoreState {
   const { config } = useConfig();
   const persistEnabled = config?.persistTerminalSessions ?? false;
 
-  const [restoreState, setRestoreState] = useState<WorkbenchRestoreState>({
-    isReady: false,
-  });
+  const [restoreState, setRestoreState] = useState<WorkbenchRestoreState>({ isReady: false });
 
   // One-shot guard — never re-reads after the initial load.
   const hasReadRef = useRef(false);
 
   useEffect(() => {
     if (hasReadRef.current) return;
+    hasReadRef.current = true;
 
-    if (!persistEnabled) {
-      hasReadRef.current = true;
+    if (projectRoot === null || !persistEnabled) {
       setRestoreState({ isReady: true });
       return;
     }
 
     if (typeof window === 'undefined' || !window.electronAPI?.config?.get) {
-      hasReadRef.current = true;
       setRestoreState({ isReady: true });
       return;
     }
 
-    hasReadRef.current = true;
-
-    void window.electronAPI.config
-      .get('canonWorkbenchSessions')
-      .then((persisted) => {
-        setRestoreState(mapPersistedToRestoreState(persisted));
-      })
-      .catch(() => {
-        setRestoreState({ isReady: true });
-      });
-  }, [persistEnabled]);
+    resolveFromStore(projectRoot, setRestoreState);
+  }, [persistEnabled, projectRoot]);
 
   return restoreState;
 }

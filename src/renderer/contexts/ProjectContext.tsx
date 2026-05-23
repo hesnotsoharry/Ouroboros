@@ -23,6 +23,12 @@ export interface ProjectContextValue {
   addProjectRoot: (path: string) => void;
   removeProjectRoot: (path: string) => void;
   clearProject: () => void;
+  /**
+   * Wave 10 — switch active project among existing `projectRoots` by moving
+   * `path` to position [0] (the "active is [0]" convention). If `path` is not
+   * in `projectRoots`, this is a silent no-op. Phase 2 wires UI callers.
+   */
+  setActiveProjectRoot: (path: string) => void;
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
@@ -70,13 +76,12 @@ function useProjectRootState(
   return [projectRoots, setProjectRoots, isLoaded];
 }
 
-function useProjectRootActions(
+type UpdateRoots = (updater: (roots: string[]) => string[]) => void;
+
+function useUpdateRoots(
   setProjectRoots: React.Dispatch<React.SetStateAction<string[]>>,
-): Pick<
-  ProjectContextValue,
-  'setProjectRoot' | 'addProjectRoot' | 'removeProjectRoot' | 'clearProject'
-> {
-  const updateRoots = useCallback(
+): UpdateRoots {
+  return useCallback(
     (updater: (roots: string[]) => string[]) => {
       setProjectRoots((prev) => {
         const next = updater(prev);
@@ -86,6 +91,21 @@ function useProjectRootActions(
     },
     [setProjectRoots],
   );
+}
+
+type RootActions = Pick<
+  ProjectContextValue,
+  | 'setProjectRoot'
+  | 'addProjectRoot'
+  | 'removeProjectRoot'
+  | 'clearProject'
+  | 'setActiveProjectRoot'
+>;
+
+function useProjectRootActions(
+  setProjectRoots: React.Dispatch<React.SetStateAction<string[]>>,
+): RootActions {
+  const updateRoots = useUpdateRoots(setProjectRoots);
 
   const setProjectRoot = useCallback(
     (path: string): void => {
@@ -112,7 +132,17 @@ function useProjectRootActions(
     updateRoots(() => []);
   }, [updateRoots]);
 
-  return { setProjectRoot, addProjectRoot, removeProjectRoot, clearProject };
+  const setActiveProjectRoot = useCallback(
+    (path: string): void => {
+      updateRoots((prev) => {
+        if (!prev.includes(path)) return prev;
+        return [path, ...prev.filter((root) => root !== path)];
+      });
+    },
+    [updateRoots],
+  );
+
+  return { setProjectRoot, addProjectRoot, removeProjectRoot, clearProject, setActiveProjectRoot };
 }
 
 export interface ProjectProviderProps {
