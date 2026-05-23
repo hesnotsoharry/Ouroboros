@@ -13,6 +13,7 @@
 
 import React, { useEffect, useState } from 'react';
 
+import { useProjectOptional } from '../../contexts/ProjectContext';
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { WorkbenchCommandPalette } from './Overlays/WorkbenchCommandPalette';
 import { WorkbenchFilePicker } from './Overlays/WorkbenchFilePicker';
@@ -24,6 +25,7 @@ import { UnifiedRail } from './Rails/UnifiedRail';
 import { StatusBar } from './StatusBar';
 import { CenterPane } from './Terminals/CenterPane';
 import { TitleBar } from './TitleBar/TitleBar';
+import { ActiveFrameProvider } from './useActiveWorkbenchFrame';
 import { useWorkbenchBreakpoint } from './useWorkbenchBreakpoint';
 
 const stageStyle: React.CSSProperties = {
@@ -97,6 +99,7 @@ interface MiddleRowProps {
   onExpandToDual: () => void;
   claudeSessionId: string | null;
   onClaudeSessionId: (id: string | null) => void;
+  projectKey: string;
 }
 
 function MiddleRow({
@@ -106,6 +109,7 @@ function MiddleRow({
   onExpandToDual,
   claudeSessionId,
   onClaudeSessionId,
+  projectKey,
 }: MiddleRowProps): React.ReactElement {
   return (
     <div style={middleRowStyle}>
@@ -117,7 +121,7 @@ function MiddleRow({
           <InnerRail onCollapse={onCollapseToUnified} />
         </>
       )}
-      <CenterPane onClaudeSessionId={onClaudeSessionId} />
+      <CenterPane key={projectKey} onClaudeSessionId={onClaudeSessionId} />
       <AgentSidebar breakpointMode={breakpointMode} claudeSessionId={claudeSessionId} />
     </div>
   );
@@ -132,6 +136,11 @@ export function Workbench(): React.ReactElement {
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
   // Wave 8 Phase 3: file path for the quick-open viewer modal (null = closed).
   const [openFilePath, setOpenFilePath] = useState<string | null>(null);
+  // Wave 10 Phase 3: key for CenterPane remount on project switch. Use
+  // useProjectOptional so Workbench tests that don't provide ProjectProvider
+  // still render correctly (null → fallback key).
+  const projectCtx = useProjectOptional();
+  const projectKey = projectCtx?.projectRoot ?? '__no-project__';
 
   const isUnified = forceUnified || breakpointMode === 'unified';
 
@@ -139,24 +148,30 @@ export function Workbench(): React.ReactElement {
   const handleExpandToDual = (): void => setForceUnified(false);
 
   return (
-    <div data-testid="workbench-root" style={stageStyle}>
-      <TitleBar />
-      <MiddleRow
-        isUnified={isUnified}
-        breakpointMode={breakpointMode}
-        onCollapseToUnified={handleCollapseToUnified}
-        onExpandToDual={handleExpandToDual}
-        claudeSessionId={claudeSessionId}
-        onClaudeSessionId={setClaudeSessionId}
-      />
-      <StatusBar />
-      <WorkbenchSettingsOverlay />
-      <WorkbenchCommandPalette />
-      <WorkbenchFilePicker onSelectFile={setOpenFilePath} />
-      <WorkbenchFileViewerModal openFilePath={openFilePath} onClose={() => setOpenFilePath(null)} />
-      {scanlines && (
-        <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
-      )}
-    </div>
+    <ActiveFrameProvider>
+      <div data-testid="workbench-root" style={stageStyle}>
+        <TitleBar />
+        <MiddleRow
+          isUnified={isUnified}
+          breakpointMode={breakpointMode}
+          onCollapseToUnified={handleCollapseToUnified}
+          onExpandToDual={handleExpandToDual}
+          claudeSessionId={claudeSessionId}
+          onClaudeSessionId={setClaudeSessionId}
+          projectKey={projectKey}
+        />
+        <StatusBar />
+        <WorkbenchSettingsOverlay />
+        <WorkbenchCommandPalette />
+        <WorkbenchFilePicker onSelectFile={setOpenFilePath} />
+        <WorkbenchFileViewerModal
+          openFilePath={openFilePath}
+          onClose={() => setOpenFilePath(null)}
+        />
+        {scanlines && (
+          <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
+        )}
+      </div>
+    </ActiveFrameProvider>
   );
 }

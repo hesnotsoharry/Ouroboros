@@ -6,10 +6,11 @@
  * affordance; multi-tab management and CC auto-launch deferred to Wave 3.
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 
 import { Icon } from '../../shared/Icon';
 import { TerminalInstance } from '../../Terminal/TerminalInstance';
+import { type ActiveWorkbenchFrame, useActiveWorkbenchFrame } from '../useActiveWorkbenchFrame';
 import { MOCK_TERM_TABS_LOWER, MOCK_TERM_TABS_UPPER, MockTerminalTab } from '../workbenchMockData';
 
 const iconBtnStyle: React.CSSProperties = {
@@ -180,6 +181,10 @@ const SHELL_OUTER: React.CSSProperties = {
  *
  * sessionId is required — both frames are live as of Wave 2 Phase 2.
  * No extra opacity wrapper around <TerminalInstance> (ADR Decision 5).
+ *
+ * Wave 10 Phase 3: onMouseDown sets the active workbench frame via
+ * useActiveWorkbenchFrame. onMouseDown is more reliable than onFocus for
+ * xterm canvas-rendered content (xterm sometimes consumes focus internally).
  */
 export function TerminalShell({
   kind,
@@ -188,9 +193,16 @@ export function TerminalShell({
   isActive,
 }: TerminalShellProps): React.ReactElement {
   const tabs = kind === 'cc' ? MOCK_TERM_TABS_UPPER : MOCK_TERM_TABS_LOWER;
+  const thisFrame: ActiveWorkbenchFrame = kind === 'cc' ? 'upper' : 'lower';
+  const { setActiveFrame } = useActiveWorkbenchFrame();
+  const handleMouseDown = useCallback(() => {
+    setActiveFrame(thisFrame);
+  }, [setActiveFrame, thisFrame]);
+
   return (
     <div
       data-testid={kind === 'cc' ? 'terminal-shell-upper' : 'terminal-shell-lower'}
+      onMouseDown={handleMouseDown}
       style={{ ...SHELL_OUTER, flex }}
     >
       <TabBar tabs={tabs} />
