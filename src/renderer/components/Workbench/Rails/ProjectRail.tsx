@@ -1,26 +1,17 @@
 /**
  * ProjectRail — outer left rail, 56 px wide (canon §07, dual mode).
- *
- * From top to bottom:
- *   Collapse handle (chevron → unified, no-op stub)
- *   Project chips (38×38, radius 11, gradient + active indicator)
- *   Add-project button (dashed border)
- *   [spacer]
- *   Layout selector button
- *   User avatar button
- *
- * Phase 2 live sources:
- *   - project list: useWorkbenchProjects() (open roots + recents, deduped)
- *   - chip color: deterministic HSL from path (data-derived, not hardcoded hex)
- *
- * Dirty badge omitted — per-project git fan-out deferred to follow-up:
- *   roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md
+ * Chips + add-project + layout toggle + user avatar with stub profile menu.
+ * Project list: useWorkbenchProjects(). Chip color: deterministic HSL from path.
  */
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 
+import { useProject } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
+import { UserAvatar } from './ProjectRailAvatar';
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const RAIL_STYLE: React.CSSProperties = {
   width: 56,
@@ -36,29 +27,72 @@ const RAIL_STYLE: React.CSSProperties = {
   borderRight: '1px solid var(--stroke-faint)',
 };
 
+const ICON_BTN_STYLE: React.CSSProperties = {
+  width: 38,
+  height: 38,
+  padding: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--ink-3)',
+  cursor: 'pointer',
+  flexShrink: 0,
+};
+
+// ── Hooks ─────────────────────────────────────────────────────────────────────
+
+function useAddProject(addProjectRoot: (p: string) => void): () => void {
+  return useCallback(async () => {
+    if (!window.electronAPI?.files?.selectFolder) return;
+    const result = await window.electronAPI.files.selectFolder();
+    if (result.success && result.path) addProjectRoot(result.path);
+  }, [addProjectRoot]) as () => void;
+}
+
+function useLayoutToggle(): [string, () => void] {
+  const [label, setLabel] = useState<'A' | 'B'>('A');
+  const toggle = useCallback(() => {
+    const next = label === 'A' ? 'B' : 'A';
+    setLabel(next);
+    console.warn('[wave-10] Layout button click — Wave 12 wires the density mechanic');
+    window.dispatchEvent(
+      new CustomEvent('agent-ide:workbench-layout-toggle', { detail: { layout: next } }),
+    );
+  }, [label]);
+  return [label, toggle];
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 interface ProjectRailProps {
   onCollapse?: () => void;
 }
 
 export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElement {
   const projects = useWorkbenchProjects();
+  const { setActiveProjectRoot, addProjectRoot } = useProject();
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [layoutLabel, handleLayoutClick] = useLayoutToggle();
+  const handleAddProject = useAddProject(addProjectRoot);
 
   return (
     <div data-testid="workbench-projectrail" style={RAIL_STYLE}>
       <CollapseHandle onCollapse={onCollapse} />
-
       {projects.map((p) => (
-        <ProjectChip key={p.path} project={p} />
+        <ProjectChip key={p.path} project={p} onClick={() => setActiveProjectRoot(p.path)} />
       ))}
-
-      <AddProjectButton />
-
+      <AddProjectButton onClick={handleAddProject} />
       <div style={{ flex: 1 }} />
-
-      <FooterButton title="Layout">
+      <FooterButton title={`Layout: ${layoutLabel}`} onClick={handleLayoutClick}>
         <Icon name="Layers" size={15} />
       </FooterButton>
-      <UserAvatar />
+      <UserAvatar
+        menuOpen={profileMenuOpen}
+        onToggleMenu={() => setProfileMenuOpen((prev) => !prev)}
+        onClose={() => setProfileMenuOpen(false)}
+      />
     </div>
   );
 }
@@ -91,10 +125,8 @@ function CollapseHandle({ onCollapse }: { onCollapse?: () => void }): React.Reac
   );
 }
 
-function ProjectChip({ project }: { project: WorkbenchProject }): React.ReactElement {
-  const { name, initial, color, active } = project;
-
-  const chipStyle: React.CSSProperties = {
+function chipStyle(color: string, active: boolean): React.CSSProperties {
+  return {
     position: 'relative',
     width: 38,
     height: 38,
@@ -114,13 +146,6 @@ function ProjectChip({ project }: { project: WorkbenchProject }): React.ReactEle
     justifyContent: 'center',
     flexShrink: 0,
   };
-
-  return (
-    <button title={name} onClick={() => undefined} style={chipStyle}>
-      {initial}
-      {active && <ActiveIndicator color={color} />}
-    </button>
-  );
 }
 
 function ActiveIndicator({ color }: { color: string }): React.ReactElement {
@@ -141,11 +166,33 @@ function ActiveIndicator({ color }: { color: string }): React.ReactElement {
   );
 }
 
-function AddProjectButton(): React.ReactElement {
+function ProjectChip({
+  project,
+  onClick,
+}: {
+  project: WorkbenchProject;
+  onClick: () => void;
+}): React.ReactElement {
+  const { name, initial, color, active } = project;
+  return (
+    <button
+      title={name}
+      onClick={onClick}
+      style={chipStyle(color, active)}
+      data-testid={`project-chip-${name}`}
+    >
+      {initial}
+      {active && <ActiveIndicator color={color} />}
+    </button>
+  );
+}
+
+function AddProjectButton({ onClick }: { onClick: () => void }): React.ReactElement {
   return (
     <button
       title="Add project"
-      onClick={() => undefined}
+      onClick={onClick}
+      data-testid="add-project-btn"
       style={{
         width: 38,
         height: 38,
@@ -169,62 +216,16 @@ function AddProjectButton(): React.ReactElement {
 
 function FooterButton({
   title,
+  onClick,
   children,
 }: {
   title: string;
+  onClick: () => void;
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <button
-      title={title}
-      onClick={() => undefined}
-      style={{
-        width: 38,
-        height: 38,
-        padding: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'transparent',
-        border: 'none',
-        color: 'var(--ink-3)',
-        cursor: 'pointer',
-        flexShrink: 0,
-      }}
-    >
+    <button title={title} onClick={onClick} style={ICON_BTN_STYLE}>
       {children}
-    </button>
-  );
-}
-
-function UserAvatar(): React.ReactElement {
-  return (
-    <button
-      title="Profile"
-      onClick={() => undefined}
-      style={{
-        width: 38,
-        height: 38,
-        padding: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        flexShrink: 0,
-      }}
-    >
-      <span
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: 999,
-          background: 'linear-gradient(135deg, var(--accent), var(--purple, #c084fc))',
-          display: 'block',
-          flexShrink: 0,
-        }}
-      />
     </button>
   );
 }

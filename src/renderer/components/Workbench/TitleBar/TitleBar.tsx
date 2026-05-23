@@ -13,7 +13,7 @@
  *   - branch name: useGitBranch(projectRoot) — BranchChip hidden when null
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
 import { OPEN_SETTINGS_EVENT } from '../../../hooks/appEventNames';
@@ -21,6 +21,8 @@ import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
 import { useWorkbenchProjects } from '../useWorkbenchProjects';
 import { AgentGlobe } from './AgentGlobe';
+import { TitleBarBranchDropdown } from './TitleBarBranchDropdown';
+import { TitleBarProjectDropdown } from './TitleBarProjectDropdown';
 import { BranchChip, ProjectChip } from './TitleChip';
 import { WindowControls } from './WindowControls';
 import { WorkbenchBell } from './WorkbenchBell';
@@ -149,26 +151,65 @@ const titleBarStyle = {
   WebkitAppRegion: 'drag',
 } as React.CSSProperties;
 
+function useTitleBarDropdowns(): {
+  projectOpen: boolean;
+  branchOpen: boolean;
+  toggleProject: () => void;
+  toggleBranch: () => void;
+  closeProject: () => void;
+  closeBranch: () => void;
+} {
+  const [projectOpen, setProjectOpen] = useState(false);
+  const [branchOpen, setBranchOpen] = useState(false);
+  const toggleProject = useCallback(() => {
+    setProjectOpen((p) => !p);
+    setBranchOpen(false);
+  }, []);
+  const toggleBranch = useCallback(() => {
+    setBranchOpen((p) => !p);
+    setProjectOpen(false);
+  }, []);
+  return {
+    projectOpen,
+    branchOpen,
+    toggleProject,
+    toggleBranch,
+    closeProject: useCallback(() => setProjectOpen(false), []),
+    closeBranch: useCallback(() => setBranchOpen(false), []),
+  };
+}
+
 export function TitleBar(): React.ReactElement {
   const { projectRoot } = useProject();
   const projects = useWorkbenchProjects();
   const { branch } = useGitBranch(projectRoot);
-
+  const { projectOpen, branchOpen, toggleProject, toggleBranch, closeProject, closeBranch } =
+    useTitleBarDropdowns();
   const activeProject = projects.find((p) => p.active) ?? projects[0];
-
-  const handleOpenSettings = useCallback((): void => {
-    window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT));
-  }, []);
-
-  const handleOpenPalette = useCallback((): void => {
-    window.dispatchEvent(new CustomEvent('agent-ide:command-palette'));
-  }, []);
+  const handleOpenSettings = useCallback(
+    () => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT)),
+    [],
+  );
+  const handleOpenPalette = useCallback(
+    () => window.dispatchEvent(new CustomEvent('agent-ide:command-palette')),
+    [],
+  );
 
   return (
     <div data-testid="workbench-titlebar" style={titleBarStyle}>
       <AppMark />
-      {activeProject && <ProjectChip project={activeProject} />}
-      {branch && <BranchChip branch={branch} />}
+      {activeProject && (
+        <div style={{ position: 'relative' }}>
+          <ProjectChip project={activeProject} onClick={toggleProject} />
+          {projectOpen && <TitleBarProjectDropdown onClose={closeProject} />}
+        </div>
+      )}
+      {branch && (
+        <div style={{ position: 'relative' }}>
+          <BranchChip branch={branch} onClick={toggleBranch} />
+          {branchOpen && <TitleBarBranchDropdown onClose={closeBranch} />}
+        </div>
+      )}
       <Spacer />
       <AgentGlobe />
       <Spacer />

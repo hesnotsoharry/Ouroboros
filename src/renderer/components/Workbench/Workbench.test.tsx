@@ -193,8 +193,10 @@ describe('TitleBar', () => {
 
   it('renders the active project name from live useWorkbenchProjects', () => {
     render(<Workbench />);
-    // projectRoots = ['/projects/agent-ide'] → basename = 'agent-ide'
-    expect(screen.getByText('agent-ide')).toBeDefined();
+    // projectRoots = ['/projects/agent-ide'] → basename = 'agent-ide'.
+    // Wave 10: name now appears in TitleBar ProjectChip AND InnerRail header.
+    const matches = screen.getAllByText('agent-ide');
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders the active project branch name from live useGitBranch', () => {

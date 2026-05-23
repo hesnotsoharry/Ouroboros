@@ -17,6 +17,8 @@ import { Icon } from '../../shared/Icon';
 import { useWorkbenchAgentData, type WorkbenchSession } from '../useWorkbenchAgentData';
 import { useWorkbenchProjects } from '../useWorkbenchProjects';
 import { iconBtnStyle, SectionLabel, StatusDot } from './InnerRail.parts';
+import { InnerRailAddProjectButton } from './InnerRailAddProjectButton';
+import { InnerRailProjectDropdown } from './InnerRailProjectDropdown';
 import { WorkbenchFileTree } from './WorkbenchFileTree';
 
 const RAIL_STYLE: React.CSSProperties = {
@@ -46,6 +48,7 @@ export function InnerRail({ onCollapse }: InnerRailProps): React.ReactElement {
 
   return (
     <div data-testid="workbench-innerrail" style={RAIL_STYLE}>
+      <InnerRailHeader />
       <RunningSection
         currentSessions={currentSessions}
         otherSessions={otherSessions}
@@ -54,6 +57,27 @@ export function InnerRail({ onCollapse }: InnerRailProps): React.ReactElement {
       <div style={{ height: 1, background: 'var(--stroke-faint)', margin: '0 10px' }} />
       <FilesSection />
       <BranchFooter />
+    </div>
+  );
+}
+
+// ── Project header ────────────────────────────────────────────────────────────
+
+function InnerRailHeader(): React.ReactElement {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '8px 10px 4px',
+        flexShrink: 0,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <InnerRailProjectDropdown />
+      </div>
+      <InnerRailAddProjectButton />
     </div>
   );
 }
