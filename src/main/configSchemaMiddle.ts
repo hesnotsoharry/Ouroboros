@@ -101,6 +101,37 @@ export const middleSchema: Record<string, unknown> = {
       },
     ],
   },
+  /** Wave 9 — canon workbench session persistence (two-frame fixed shape). */
+  canonWorkbenchSessions: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      upper: {
+        oneOf: [
+          {
+            type: 'object',
+            properties: {
+              cwd: { type: 'string' },
+              claudeSessionId: { type: 'string' },
+            },
+            required: ['cwd'],
+          },
+          { type: 'null' },
+        ],
+      },
+      lower: {
+        oneOf: [
+          {
+            type: 'object',
+            properties: { cwd: { type: 'string' } },
+            required: ['cwd'],
+          },
+          { type: 'null' },
+        ],
+      },
+    },
+    default: { upper: null, lower: null },
+  },
   /** Wave 30 Phase G — research auto-firing global defaults.
    *  Wave 30 Phase I — threshold tuning knobs (all read at call time, no restart required). */
   researchSettings: {

@@ -96,6 +96,20 @@ export interface TerminalSessionSnapshot {
   codexThreadId?: string;
 }
 
+/**
+ * Wave 9 — canon workbench session persistence (electron-store Store A).
+ *
+ * Two-frame fixed shape matching the canon shell's upper (claude) and lower (plain
+ * shell) frames. Written by useWorkbenchSessionPersist; read by useWorkbenchRestore.
+ * Kept separate from the legacy `terminalSessions` key to avoid flag-flip conflicts.
+ */
+export interface CanonWorkbenchSessions {
+  /** Upper frame (claude terminal). Null when no prior session exists. */
+  upper: { cwd: string; claudeSessionId?: string } | null;
+  /** Lower frame (plain shell). Null when no prior session exists. */
+  lower: { cwd: string } | null;
+}
+
 export type { ClaudeCliSettings, CodexCliSettings } from '@shared/types/configSlices';
 
 export interface NotificationSettings {

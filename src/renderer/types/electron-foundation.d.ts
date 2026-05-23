@@ -226,6 +226,8 @@ export interface AppConfig {
   backgroundJobsMaxConcurrent: number;
   /** Wave 8 (issue 115) — persist PTY session descriptors to SQLite for cross-restart restore. Default: false. */
   persistTerminalSessions: boolean;
+  /** Wave 9 — canon workbench two-frame session persistence (electron-store Store A). */
+  canonWorkbenchSessions: import('@main/configTypes').CanonWorkbenchSessions;
   /** Wave 3B feature flag — route PTY through PtyHost utility process */
   usePtyHost: boolean;
   /** Wave 3B feature flag — route extensions through ExtensionHost utility process */
