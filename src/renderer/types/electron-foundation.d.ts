@@ -27,6 +27,17 @@ export interface CodexModelOption {
   effectiveContextWindowPercent?: number;
 }
 
+/**
+ * Wave 9 — canon workbench two-frame session persistence.
+ * Renderer-side mirror of `CanonWorkbenchSessions` in `src/main/configTypes.ts`;
+ * keep both in sync. Defined here (not imported from main) per the Wave 96
+ * pattern: `tsconfig.web.json` does not include `src/main/**`.
+ */
+export interface CanonWorkbenchSessions {
+  upper: { cwd: string; claudeSessionId?: string } | null;
+  lower: { cwd: string } | null;
+}
+
 export interface AgentTemplate {
   id: string;
   name: string;
@@ -227,7 +238,7 @@ export interface AppConfig {
   /** Wave 8 (issue 115) — persist PTY session descriptors to SQLite for cross-restart restore. Default: false. */
   persistTerminalSessions: boolean;
   /** Wave 9 — canon workbench two-frame session persistence (electron-store Store A). */
-  canonWorkbenchSessions: import('@main/configTypes').CanonWorkbenchSessions;
+  canonWorkbenchSessions: CanonWorkbenchSessions;
   /** Wave 3B feature flag — route PTY through PtyHost utility process */
   usePtyHost: boolean;
   /** Wave 3B feature flag — route extensions through ExtensionHost utility process */

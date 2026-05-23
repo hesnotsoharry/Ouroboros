@@ -12,10 +12,10 @@
  * Store boundary: writes to electron-store Store A only (config.set). ADR D5.
  */
 
-import type { CanonWorkbenchSessions } from '@main/configTypes';
 import { useEffect, useRef } from 'react';
 
 import { useConfig } from '../../../hooks/useConfig';
+import type { CanonWorkbenchSessions } from '../../../types/electron';
 
 const PERSIST_DEBOUNCE_MS = 750;
 const PERSIST_SAFETY_MS = 30_000;
