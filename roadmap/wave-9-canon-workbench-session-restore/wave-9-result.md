@@ -64,6 +64,8 @@ The architect's text correctly said "electron-store" but the IMPLEMENTATION TARG
 
 **Two orchestrator-owned-test rule applications.** Phase 2's `useWorkbenchTerminals.restore.acceptance.test.ts` was authored RED by the orchestrator pre-dispatch, frozen, and the implementer was briefed with the "may not modify" constraint. Implementation went 7/7 green on first attempt with no test edits requested.
 
+**Pre-push tsc:web caught a Wave-96-shaped renderer→main type-coupling repeat (commit `1b6404fc`).** Phase 1's `useWorkbenchSessionPersist.ts` imported `CanonWorkbenchSessions` from `@main/configTypes`, which `tsconfig.web.json` does NOT include. Per-phase scoped tsc + per-phase test gates use the unified tsconfig and missed it; the pre-push project-wide `tsc -p tsconfig.web.json` caught it. Fix mirrors the Wave 96 / Wave 97 pattern: declared `CanonWorkbenchSessions` directly in `electron-foundation.d.ts` as the renderer-side authoritative type (kept in sync with the main-side definition by convention; not auto-derived); consumer imports from `../../../types/electron`. Same lesson as Wave 96/97: every time the renderer touches a new type defined in `src/main/`, this friction will surface at push time. Worth a future systemic fix (full shared-types extraction for this type, OR pre-commit `tsc:web` run if the time cost is acceptable).
+
 ## Gates (wave-end)
 
 - Orchestrator-owned acceptance test (Phase 2): **7/7** green (authored RED pre-dispatch, frozen).
