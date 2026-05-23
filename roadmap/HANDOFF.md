@@ -1,10 +1,31 @@
-# Session Handoff — 2026-05-22 (Wave 8 SHIPPED — canon parity round 2; Phase 4 split out; Wave 9 cutover next)
+# Session Handoff — 2026-05-23 (Wave 9 SHIPPED — canon session-restore; Wave 10 cutover & teardown next)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-22 (latest) — Wave 8 SHIPPED (canon parity round 2; 3 of 4 phases; Phase 4 split out)
+## 🔼 UPDATE 2026-05-23 (latest) — Wave 9 SHIPPED (canon session-restore; renderer-only)
+
+**Next action: execute Wave 10 — cutover & teardown.** Delete the legacy shell now that the last parity gap is closed. Deletion scope: `AppLayout`/`InnerAppLayout`, `ChatOnlyShell/`, `Dispatch/`, the "Explain error" scrollback action, orphaned `AgentMonitor/ApprovalDialog`, legacy `SymbolSearch`/`FilePickerConnected`, AND `RestoreSessionsGate.tsx` (this wave's bypass made it canon-replaced). Optional retirement candidates: `terminalSessions` electron-store key + `useTerminalSessions.sync.ts`'s `persistCurrentSessions` writer (entirely legacy-bound once legacy shell is gone). The new `canonWorkbenchSessions` key stays. Reference: `roadmap/wave-8-workbench-canon-parity-2/wave-8-followup-audit.md` for the audited deletion scope.
+
+**Wave 9 — SHIPPED (local; push pending wrap commit).** Renderer-only, behind the default-off `layout.canonWorkbench` flag. Commits `5149bde2` (P1: `canonWorkbenchSessions` key + `useWorkbenchRestore` reader + `useWorkbenchSessionPersist` writer) + `96cbf658` (P2: `useWorkbenchTerminals` consumes restore + auto-resumes claude in upper frame conditionally). Artifacts in `roadmap/wave-9-canon-workbench-session-restore/` (`waveplan-9.md`, `wave-9-decisions.md`, `wave-9-result.md`).
+
+- **P1 — canon persistence schema + hooks.** New electron-store key `canonWorkbenchSessions` (shape: `{ upper: { cwd, claudeSessionId? } | null, lower: { cwd } | null }`). `useWorkbenchRestore` reads it once on mount (short-circuits when `persistTerminalSessions` off); `useWorkbenchSessionPersist` writes it 750ms-debounced (+ 30s safety) on `claudeSessionId` capture. Schema in `configSchemaMiddle.ts` (142→174 lines, well under 300 cap). 11/11 unit tests + `test:layout` 132/132 green.
+- **P2 — terminals integration + auto-resume.** Modified ONLY `useWorkbenchTerminals.ts` to (a) consume `useWorkbenchRestore`, (b) gate spawn effect on `isReady`, (c) conditional `spawnClaude(upper, { cwd, resumeMode: resumeSessionId })` when `resumeSessionId` non-null, (d) lower always plain `pty.spawn`, (e) mount `useWorkbenchSessionPersist`. Orchestrator-owned `useWorkbenchTerminals.restore.acceptance.test.ts` 7/7 (RED→green, frozen). `sonnet-phase-reviewer` PASS all four axes. Implementer added `hasSpawnedRef` to distinguish stale-cleanup-from-early-return vs StrictMode-remount — caught the subtle StrictMode race that adding `isReady` to deps would otherwise have created.
+- **Phase 0 Tier 3 catch (the wave's value-add).** Pre-Phase-1 verification of `src/main/ptyPersistence.ts` revealed it's SQLite-backed with NO `is_claude`/`claude_session_id` columns — contradicting the wave plan's foundational assumption ("the fields ARE persisted, only the IPC read strips them"). `sonnet-diagnostician` verdict: TWO parallel persistence stores — Store A (electron-store, `terminalSessions` key) DOES carry the fields end-to-end via `TerminalSessionSnapshot` (`configTypes.ts:88-97`); Store B (SQLite) does NOT. Architect's narrative said "electron-store" but the implementation target was Store B — narrative-vs-target mismatch. Re-targeted to Store A; ADR D3 superseded by D4 + D5 (new `canonWorkbenchSessions` key to avoid mutual-exclusion conflicts with legacy `terminalSessions`). Phase count collapsed from 3 to 2.
+- **Gates:** orchestrator-owned acceptance 7/7 + Phase 1 hooks 11/11 + CenterPane acceptance 6/6 (StrictMode regression check, unchanged) + `test:layout` 132/132 (1109/1109 tests) + `tsc --noEmit` clean + `eslint src/` 0 errors (4 pre-existing warnings, none new) + prettier clean on all wave-touched files. `sonnet-phase-reviewer` PASS on Phase 2.
+
+**⚠️ TWO things the next session MUST carry into Wave 10:**
+1. **`/ui-smoke 9` deferred** — must verify (a) live `claude --resume <id>` UX on relaunch (NOT just the IPC call boundary the acceptance test covers), (b) IDE-runs-in-itself canon-store-isolation (parent + child Electron share `app.getName()` → same `canonWorkbenchSessions` store path — pre-existing exposure, not worsened by this wave, but worth verifying behavior under canon mode), (c) shutdown-race window (capture <750ms before shutdown is lost — same as legacy, accepted debt).
+2. **Pre-existing follow-up still HIGH/OPEN: `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md`.** `useWorkbenchClaudeCapture`'s binding is a timing heuristic; an external session can hijack it. Wave 9 inherits the same exposure (the persisted `claudeSessionId` is only as precise as the capture mechanism that fed it). Proper fix = forward `CLAUDE_SESSION_ID` from pty spawn (main-process work, out of Wave 9's renderer-only scope per D4).
+
+**Push posture: pending wrap commit.** Bulletin sanctions pushes; CI minutes still exhausted until 2026-06-01 → workflows skip cleanly. Wave wrap will: bundle the prettier reformat of the acceptance test + this HANDOFF + temp log + result brief; commit; push to `origin/master`; tag `v2.30.0` (no `package.json` bump per workbench-wave convention).
+
+**Follow-ups:** Wave 9 generates no new follow-ups (clean wave). Pre-existing canon-session-restore deferred doc (`roadmap/deferred/2026-05-22-canon-workbench-session-restore.md`) resolved by this wave; archived with a resolution-pointer at wrap. `/audit-followups wave-9-canon-workbench-session-restore` runs at wrap (expected: closes the deferred doc; no other OPEN items inherit).
+
+---
+
+## 🔼 UPDATE 2026-05-22 — Wave 8 SHIPPED (canon parity round 2; 3 of 4 phases; Phase 4 split out)
 
 **Next action: decide the Wave 9 sequencing.** The original plan is **Wave 9 = cutover & teardown**
 (delete the legacy shell: `AppLayout`/`InnerAppLayout`, `ChatOnlyShell/`, `Dispatch/`, the "Explain

@@ -1,7 +1,9 @@
 ---
-status: SCHEDULED
+status: RESOLVED
+resolved: 2026-05-23
+resolved_by: wave-9-canon-workbench-session-restore
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-05-23
 severity: MED
 area: Workbench / Terminals
 origin: Wave 8 Phase 4 (split out by Cole's decision, 2026-05-22)
@@ -9,6 +11,8 @@ blocks: wave-9-cutover (soft — see "Cutover note")
 ---
 
 # Canon Workbench — session-restore-on-launch (split-out wave)
+
+> **RESOLVED 2026-05-23 by Wave 9** (`roadmap/wave-9-canon-workbench-session-restore/`). The architect's "Option C — extend `PersistedSessionInfo` IPC + verify storage" plan below was partly invalidated mid-wave: Phase 0 diagnostic found the architect's narrative said "electron-store" but the target (`PersistedSessionInfo` + `pty:listPersistedSessions`) is the SQLite Store B, not electron-store Store A. The fields the architect wanted to expose ARE already end-to-end via Store A (`terminalSessions` key → `TerminalSessionSnapshot`). Wave 9 re-targeted to Store A, added a new `canonWorkbenchSessions` key for canon-side writes (to avoid mutual-exclusion vs legacy `terminalSessions`), and shipped renderer-only without any IPC change. **Steps 1-2 below (IPC extension + handler passthrough verification) are N/A — superseded by Wave 9 ADR D4.** Steps 3-7 (renderer hook + integration) are preserved in shape, retargeted at Store A. See `roadmap/wave-9-canon-workbench-session-restore/wave-9-result.md` for the full account.
 
 ## Why this is its own wave
 
