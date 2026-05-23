@@ -194,9 +194,7 @@ describe('Wave 10 — useWorkbenchRestore(null) short-circuits without reading t
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
-    const getMock = (
-      window.electronAPI as unknown as { config: { get: Mock } }
-    ).config.get;
+    const getMock = (window.electronAPI as unknown as { config: { get: Mock } }).config.get;
     expect(getMock).not.toHaveBeenCalled();
     expect(result.current.upperCwd).toBeUndefined();
     expect(result.current.lowerCwd).toBeUndefined();
@@ -214,9 +212,7 @@ describe('Wave 10 — useWorkbenchRestore(null) short-circuits without reading t
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
-    const getMock = (
-      window.electronAPI as unknown as { config: { get: Mock } }
-    ).config.get;
+    const getMock = (window.electronAPI as unknown as { config: { get: Mock } }).config.get;
     expect(getMock).not.toHaveBeenCalled();
     expect(result.current.upperCwd).toBeUndefined();
     expect(result.current.lowerCwd).toBeUndefined();
@@ -322,10 +318,7 @@ describe('Wave 10 — useWorkbenchSessionPersist(projectRoot, …) preserves oth
   });
 
   it('does NOT write when projectRoot is null (no active project)', async () => {
-    const store = newStore(
-      {},
-      { 'pty-upper': '/somewhere', 'pty-lower': '/somewhere' },
-    );
+    const store = newStore({}, { 'pty-upper': '/somewhere', 'pty-lower': '/somewhere' });
     installElectronAPI(store);
 
     renderHook(() =>

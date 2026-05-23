@@ -1,12 +1,41 @@
-# Session Handoff — 2026-05-23 (Wave 9 SHIPPED; cutover deferred; canon-wiring set Waves 10–14 planned)
+# Session Handoff — 2026-05-23 (Wave 10 SHIPPED; Waves 11–14 next; cutover at Wave 15)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-23 (latest) — Cutover deferred; Waves 10–14 introduced (canon-wiring set)
+## 🔼 UPDATE 2026-05-23 (latest) — Wave 10 SHIPPED (project-scoped state foundation + project-switching wiring)
 
-**Next action: execute Wave 10 — project-scoped state foundation + project-switching wiring.** See `roadmap/wave-10-project-scoped-state-foundation/waveplan-10.md` (DRAFT; pending in-session write).
+**Next action: execute Wave 11 — file tree + viewer modal.** Cross-project browse, click-to-open file viewer modal over the existing `FileViewer/` Monaco subsystem (reuse Wave 8 P3's lazy-load pattern — `Overlays/WorkbenchFileViewerModal.tsx` is already in place), fix scroll/collapse interactions. The Wave 10 foundation now means each project switch unmounts + remounts the file tree alongside the terminals — Wave 11 leverages this to make file tree behavior project-scoped without additional state work.
+
+**Wave 10 — SHIPPED (local; push pending wrap commit).** Renderer-only, behind the same default-off `layout.canonWorkbench` flag. Commits `bc45d9c9` (P1: `canonWorkbenchSessions` reshape to `Record<projectRoot, …>` + `setActiveProjectRoot` add), the P2 commit (5 project-switching UI surfaces wired), `d48f5fe2` (P3: `key={projectRoot}` re-mount of `<CenterPane>` + `useActiveWorkbenchFrame` hook/provider + `TerminalShell` `onMouseDown` wiring), `3196744f` (planning + Wave 15 rename). Artifacts in `roadmap/wave-10-project-scoped-state-foundation/` (`waveplan-10.md` SHIPPED, `wave-10-decisions.md` SHIPPED, `wave-10-result.md` pending).
+
+- **P1 — schema reshape + per-project restore/persist hooks (boundary).** `CanonWorkbenchSessions` becomes `Record<string, CanonWorkbenchSessionSlot | null>`; all three sites (main schema + main types + renderer mirror) in lockstep. `useWorkbenchRestore(projectRoot)` reads the per-project slice; cold-starts on Wave 9's legacy flat shape (ADR D1 — `'upper' in obj || 'lower' in obj` legacy guard). `useWorkbenchSessionPersist({ projectRoot, … })` does read-modify-write that preserves OTHER projects' slots. New `ProjectContext.setActiveProjectRoot(path)` — move-to-[0]-if-present, silent no-op if absent. The orchestrator's pre-dispatch read of `ProjectContext.tsx` (D5) confirmed `setProjectRoot` REPLACES the array and would have been wrong for chip-click switching. Orchestrator-owned acceptance test `canonWorkbenchSessions.projectKeyed.acceptance.test.ts` 9/9 (RED before P1; frozen). `sonnet-phase-reviewer` PASS all 4 axes (Check 4 — schema-removal/change — satisfied via the documented cold-start posture per D1).
+- **P2 — wire all five project-switching UI surfaces.** Outer rail chip click → `setActiveProjectRoot` (NOT `setProjectRoot`); `AddProjectButton` → `files.selectFolder` + `addProjectRoot`; `FooterButton` (Layout) → visible A/B toggle + `agent-ide:workbench-layout-toggle` DOM event (stub for Wave 12); `UserAvatar` → placeholder profile menu. Title bar: new `TitleBarProjectDropdown` + `TitleBarBranchDropdown` + new `useGitBranches(projectRoot)` hook over existing `git.branches` IPC. Inner rail: new `InnerRailProjectDropdown` (D4 — sibling, not shared primitive) + `InnerRailAddProjectButton`. All dropdowns absolute-positioned; click-outside + Esc close via new `useCloseOnOutsideOrEsc` hook (no existing reusable pattern in codebase). 20 new render/integration tests + 1 Workbench-level integration test asserting chip click flips all three project display surfaces. No new IPC needed (orchestrator confirmed `git.branches` + `git.checkout` + `files.selectFolder` already wired).
+- **P3 — project-switch reactivity + active-frame state (conceptually-risky).** `<CenterPane key={projectKey} … />` directly inside `MiddleRow` (cleaner than the spec's Fragment-wrapper variant); `projectKey = useProjectOptional()?.projectRoot ?? '__no-project__'`. `useActiveWorkbenchFrame.tsx` exports the hook + `ActiveFrameProvider`; initial `'upper'`; default-return variant outside provider (`{ activeFrame: 'upper', setActiveFrame: noop }` — not throw) to preserve test isolation. `TerminalShell.tsx` calls `setActiveFrame('upper' | 'lower')` on outermost container `onMouseDown` based on `kind`. Wave 9's `hasSpawnedRef` invariant intact (`useWorkbenchTerminals.ts` UNTOUCHED). Orchestrator-owned acceptance test `Workbench.projectSwitch.acceptance.test.tsx` 6/6 (RED before P3; frozen). `sonnet-phase-reviewer` PASS / FLAG (non-blocking — stylistic key placement) / PASS / PASS. **Smart implementer call**: `useProjectOptional` + fallback key preserved all 322 existing Workbench-dir tests with zero mock churn.
+- **One Phase 0 oversight caught + fixed in-flight.** The orchestrator-authored P3 acceptance test mocked `pty.spawn` with the wrong signature (single-arg `(opts)` vs real `(sessionId, opts)`). Implementer surfaced as Tier 3 blocker → orchestrator applied the rule's "additive mock-surface correction" carve-out (`~/.claude/rules/orchestrator-owned-acceptance-tests.md`): assertions byte-identical, only the observation surface changed.
+- **Gates at wrap:** orchestrator-owned acceptance tests 9/9 (P1) + 6/6 (P3) + Wave 9 regression 7/7 + Workbench dir 322/322 + tsc + tsc:web + `eslint src/` 0 errors (4 pre-existing warnings, none new) + prettier clean on wave-touched files.
+
+**Wave 10 NOT done / deferrals:**
+
+1. **`/ui-smoke 10` — DEFERRED at wrap (the painful honest finding).** The plan explicitly mandated "NOT deferred" as the corrective lesson against Waves 0–9's pattern; this session shipped without the live smoke being run (autonomous orchestrator, no Cole interactivity at wrap, Preview MCP not wired for the Electron shell). Documented honestly at `wave-10-smoke-report.md` with a detailed next-session smoke gate. **NEXT SESSION MUST RUN LIVE SMOKE AS ITS VERY FIRST ACTION** before any Wave 11 dispatch. Treat Wave 10 as SHIPPED-but-NOT-VALIDATED until that smoke completes.
+2. **Pre-existing follow-up still HIGH/OPEN: `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md`.** The right-panel binding precision fix is main-process scope and is Wave 13's load-bearing dependency (terminal-scoped right panel). Wave 10 did not address it; the per-project state foundation is independent of binding precision.
+
+**Waves 11–14 still planned:**
+
+| Wave | Title | Scope |
+|---|---|---|
+| **11** | File tree + viewer modal | Cross-project browse, click-to-open viewer modal, fix scroll/collapse interactions |
+| **12** | Terminal CRUD + chrome (project-scoped) | Spawn/delete/rename/+/split/maximize, fix tab-header text overlap |
+| **13** | AgentSidebar terminal-scoped binding | NOW / Context / Files Touched / Latest Hunk / Hook Timeline / Stop / Maximize bind to the currently-viewed upper-terminal's claude session (consumes Wave 10's `useActiveWorkbenchFrame`); likely fixes the long-standing claudeSessionId-binding-precision HIGH via main-process `CLAUDE_SESSION_ID` forwarding |
+| **14** | Status bar real values | Context tokens/cost, tests-passing count, $cost; remove placeholder readouts |
+| **15** | Workbench cutover & teardown | Delete legacy shell (the original "Wave 10" deletion plan); blocked on Waves 10–14 |
+
+---
+
+## 🔼 UPDATE 2026-05-23 (superseded by Wave 10 ship) — Cutover deferred; Waves 10–14 introduced (canon-wiring set)
+
+**Original next action (now superseded — Wave 10 shipped this session): execute Wave 10 — project-scoped state foundation + project-switching wiring.** See `roadmap/wave-10-project-scoped-state-foundation/waveplan-10.md` (DRAFT; pending in-session write).
 
 **Why the restructure.** Right after Wave 9 shipped, Cole ran a live smoke of the canon Workbench and surfaced extensive functional-wiring gaps across most surfaces:
 
