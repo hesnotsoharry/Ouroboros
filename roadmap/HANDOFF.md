@@ -1,12 +1,46 @@
-# Session Handoff — 2026-05-23 (Wave 9 SHIPPED — canon session-restore; Wave 10 cutover & teardown next)
+# Session Handoff — 2026-05-23 (Wave 9 SHIPPED; cutover deferred; canon-wiring set Waves 10–14 planned)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-23 (latest) — Wave 9 SHIPPED (canon session-restore; renderer-only)
+## 🔼 UPDATE 2026-05-23 (latest) — Cutover deferred; Waves 10–14 introduced (canon-wiring set)
 
-**Next action: execute Wave 10 — cutover & teardown.** Delete the legacy shell now that the last parity gap is closed. Deletion scope: `AppLayout`/`InnerAppLayout`, `ChatOnlyShell/`, `Dispatch/`, the "Explain error" scrollback action, orphaned `AgentMonitor/ApprovalDialog`, legacy `SymbolSearch`/`FilePickerConnected`, AND `RestoreSessionsGate.tsx` (this wave's bypass made it canon-replaced). Optional retirement candidates: `terminalSessions` electron-store key + `useTerminalSessions.sync.ts`'s `persistCurrentSessions` writer (entirely legacy-bound once legacy shell is gone). The new `canonWorkbenchSessions` key stays. Reference: `roadmap/wave-8-workbench-canon-parity-2/wave-8-followup-audit.md` for the audited deletion scope.
+**Next action: execute Wave 10 — project-scoped state foundation + project-switching wiring.** See `roadmap/wave-10-project-scoped-state-foundation/waveplan-10.md` (DRAFT; pending in-session write).
+
+**Why the restructure.** Right after Wave 9 shipped, Cole ran a live smoke of the canon Workbench and surfaced extensive functional-wiring gaps across most surfaces:
+
+- **Outer rail** — project clicks inert; layout/profile buttons inert; "+" inert.
+- **Inner rail** — project dropdown inert; "+" inert; file tree partial when rail open / broken when collapsed; file click doesn't open a viewer modal.
+- **Title bar** — project dropdown + branch dropdown inert.
+- **Terminals (both frames)** — pre-populated placeholder tabs (`claude-main`/`claude-refactor` upper, `dev server`/`test:watch`/`shell` lower) that cannot be deleted/renamed/spawned/split/maximized; per-tab top-right has overlapping/stacked text.
+- **Right panel (AgentSidebar)** — not session-scoped (pulls from arbitrary running claude sessions machine-wide); timeline disappears + repopulates from other sessions; Latest Hunk stuck on placeholder `test-out-weights.json`; Now panel same scoping bug; Context always `0 / 200.0k tokens, 0% used`; Stop / Maximize inert; "View all timeline" inert.
+- **Status bar** — Context always `0 / 200.0k`; "24 tests passing" placeholder; Cost always `$0.00`; Clock + "Connected" real.
+
+The Wave 9 "zero parity gaps" claim was structurally true (mounts + tests + types green) but functionally premature. Smoke gating had been deferred Wave 0 → Wave 9, and the cost of that deferral surfaced all at once on 2026-05-23.
+
+**Restructure shape.** The original "Wave 10 = cutover & teardown" plan (drafted 2026-05-23) was renumbered to **Wave 15** and deferred. A new wiring set **Waves 10–14** lands between Wave 9 and Wave 15:
+
+| Wave | Title | Scope (one-line) |
+|---|---|---|
+| **10** | Project-scoped state foundation + project-switching wiring | Outer rail, inner rail dropdown, title bar dropdown + branch, layout/profile buttons, "+" project. Establishes per-project scoping that Waves 11–13 consume. Likely re-shapes `canonWorkbenchSessions` schema to `Record<projectRoot, { upper, lower }>` (cold-start, no migration per Cole's call). |
+| **11** | File tree + viewer modal | Cross-project browse, click-to-open viewer modal, fix scroll/collapse interactions. |
+| **12** | Terminal CRUD + chrome (project-scoped) | Spawn/delete/rename/+/split/maximize, fix tab-header text overlap. Terminal collection is per-project per Wave 10 foundation. |
+| **13** | AgentSidebar terminal-scoped binding | NOW / Context / Files Touched / Latest Hunk / Hook Timeline / Stop / Maximize all bind to the currently-viewed upper-terminal's claude session. Likely the wave that finally fixes `2026-05-22-workbench-claudeSessionId-binding-precision.md` via main-process `CLAUDE_SESSION_ID` forwarding (long-standing HIGH/OPEN follow-up). |
+| **14** | Status bar real values | Context tokens/cost, tests-passing count, $cost; remove the four placeholder readouts. |
+| **15** | Workbench cutover & teardown | Original Wave 10 deletion plan, renamed. `roadmap/wave-15-workbench-cutover-teardown/` (frontmatter `blocked-on: [wave-10..wave-14]`; content needs a revision pass at end of Wave 14). |
+
+**Lesson captured (worth flagging for any future wave planning).** Tests-green + types-green is necessary but not sufficient for "ready to delete the alternative path." Smoke gating MUST run before cutover, not after. The Wave 0–9 posture of "Cole not actively using the app, defer smoke" produced a 9-wave debt that all landed at once. Smoke discipline should be wave-end-mandatory regardless of who's using the app — agent-driven via `/ui-smoke` is the standing answer when manual isn't available.
+
+**Pre-existing HIGH/OPEN that's NOW load-bearing for Wave 13:** `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md` — the main-process `CLAUDE_SESSION_ID` forwarding fix. Wave 13's "terminal-scoped right panel" needs precise per-terminal claude-session identity; the current `useClaudeSessionCapture` heuristic isn't tight enough.
+
+The Wave 9 SHIPPED section below remains accurate; only the "next action" line is superseded.
+
+---
+
+## 🔼 UPDATE 2026-05-23 (superseded next-action) — Wave 9 SHIPPED (canon session-restore; renderer-only)
+
+**Original next action (now superseded by the canon-wiring restructure above): execute Wave 10 — cutover & teardown.** Delete the legacy shell now that the last parity gap is closed. Deletion scope: `AppLayout`/`InnerAppLayout`, `ChatOnlyShell/`, `Dispatch/`, the "Explain error" scrollback action, orphaned `AgentMonitor/ApprovalDialog`, legacy `SymbolSearch`/`FilePickerConnected`, AND `RestoreSessionsGate.tsx` (this wave's bypass made it canon-replaced). Optional retirement candidates: `terminalSessions` electron-store key + `useTerminalSessions.sync.ts`'s `persistCurrentSessions` writer (entirely legacy-bound once legacy shell is gone). The new `canonWorkbenchSessions` key stays. Reference: `roadmap/wave-8-workbench-canon-parity-2/wave-8-followup-audit.md` for the audited deletion scope.
 
 **Wave 9 — SHIPPED (local; push pending wrap commit).** Renderer-only, behind the default-off `layout.canonWorkbench` flag. Commits `5149bde2` (P1: `canonWorkbenchSessions` key + `useWorkbenchRestore` reader + `useWorkbenchSessionPersist` writer) + `96cbf658` (P2: `useWorkbenchTerminals` consumes restore + auto-resumes claude in upper frame conditionally). Artifacts in `roadmap/wave-9-canon-workbench-session-restore/` (`waveplan-9.md`, `wave-9-decisions.md`, `wave-9-result.md`).
 
