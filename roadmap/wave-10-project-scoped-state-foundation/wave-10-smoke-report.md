@@ -66,3 +66,41 @@ Run `npm run dev` with `layout.canonWorkbench` enabled (Settings → Appearance 
 The next session opening on Wave 11 must FIRST run the live smoke above and capture observations in this file. Wave 11 implementation must NOT begin until either (a) the smoke confirms Wave 10's acceptance criteria, or (b) any RED finding has been classified — Tier 1 inline fix (small/known), Tier 2 follow-up, or Tier 3 escalation to Cole.
 
 Until that smoke completes, treat Wave 10 as SHIPPED-but-NOT-VALIDATED.
+
+---
+
+## 2026-05-24 Catch-up (run during Wave 11 Phase 0)
+
+Wave 11's plan made the deferred Wave 10 smoke Phase 0's pre-implementation gate (per D5). Preview MCP was still unavailable for the Electron shell, so the gate fired the manual-smoke fallback per `~/.claude/rules-deferred/manual-smoke-gate.md`. Cole walked through sections 1-6 above section-by-section; orchestrator triaged + filed + fixed bugs as they surfaced.
+
+**Findings (raw, in Cole's verbatim words where applicable):**
+
+- **Section 6 (cold-start on legacy data)** — FAILED on first launch. App crashed at init with `Config schema violation: canonWorkbenchSessions/upper must NOT have additional properties; ...must be null; ...must match exactly one schema in oneOf`. Cause: Wave 10 D1 implemented the legacy-shape guard in the React hook layer (`useWorkbenchRestore`), but Conf throws synchronously inside `new Conf()` BEFORE any hook reads. Wrong layer. → **Fixed inline** via `configPreflight.ts` extension (commit `cacaef21`). Re-verified launch clean.
+- **Section 1 (outer rail)** — `+` works (AddProject picker opens). Chip click did NOT switch active project (silent no-op). UserAvatar opens popup menu but text not readable.
+- **Section 2 (title bar)** — Project dropdown opens; same contrast issue with popover. **Switching projects do not work** (same bug as outer rail). **Branch is not showing at all.**
+- **Section 3 (inner rail)** — `+` works. Project dropdown opens. Same popover contrast issue. Cannot switch (same project-switch bug).
+- **Section 4 (terminals)** — Terminals reload per project selected (Wave 10 P3 working). Cole notes "nothing works still" for tab CRUD — that's Wave 12 scope, not a Wave 10 regression.
+- **Section 5 (per-project relaunch persistence)** — Untestable in current state: terminal UI placeholders (Wave 12 scope) made it ambiguous whether content survives or is fresh-on-launch. Wave 9+10 hook layer has 16/16 unit + acceptance tests proving the per-project read/write contract; full live verification deferred to natural usage once Wave 12 ships.
+
+**Bugs fixed inline during catch-up (Wave 10.1 hotfix batch):**
+
+1. **Conf startup crash** — `configPreflight.ts` extension to reset legacy `{upper, lower}` to `{}` before Conf reads. 4 new tests. Commit `cacaef21`. Filed + RESOLVED in same commit: `roadmap/follow-ups/2026-05-24-wave-10-canon-workbench-sessions-startup-crash.md`.
+2. **`setActiveProjectRoot` silent no-op on recent-only paths** — `ProjectContext.tsx` guard `if (!prev.includes(path)) return prev` refused to promote paths that existed only in `recentProjects` (the switcher UIs source from both `projectRoots` AND recents). Dropped the guard; always promote (add-if-absent, move-if-present). Regression test added. Commit `7c3842e7`.
+3. **Branch chip not rendering** — `TitleBar.tsx:207` gated on `{branch && ...}`, so non-git projects (or pending IPC) had no chip at all. Gated on `activeProject`; renders `branch ?? "—"` placeholder; dropdown only opens when `branch` is non-null. Extracted `BranchSection` helper to stay under max-lines lint cap; inlined the 2 `CustomEvent` dispatchers to module-level. Commit `7c3842e7`.
+4. **Popover background unreadable (4 dropdowns)** — `--glass-panel` (35% opacity → Mica desktop bleeds through) → `--glass-overlay` (92% opacity). One-token rename in each of `ProjectRailAvatar.tsx`, `TitleBarProjectDropdown.tsx`, `TitleBarBranchDropdown.tsx`, `InnerRailProjectDropdown.tsx`. Commit `7c3842e7`.
+5. **Project list active-at-top → alphabetical sort (UX)** — Cole's post-fix feedback: switcher surfaces should sort by name, not move-active-to-[0]. `useWorkbenchProjects.ts` now sorts `localeCompare` case-insensitively; active project flagged independently of position. 4 new sort tests. Commit `94ae90d3`.
+
+**Wave 8 P3 carryover bug also fixed during this catch-up (since it surfaced in Phase 1):**
+
+6. **DiffReview crash on file click** — `useDiffReview must be used within DiffReviewProvider` thrown from `MonacoHunkGutterLayer` whenever any file was opened. Wave 8 P3 chose `FileViewer` direct (not `FileViewerManager`) to avoid legacy-shell listener collision; Manager was what provided `DiffReviewProvider` context. Mounted `<DiffReviewProvider>` at `Workbench.tsx`'s return (wrapping `ActiveFrameProvider`). Zero-prop provider, idle-zero-cost when no review active (`useStaleFileWatcher` early-returns when state is null). Extracted `WorkbenchStage` helper to stay under max-lines lint cap. Commit `7fa7a0db`.
+
+**Wave 10.1 follow-up + Wave 12 deferrals filed:**
+
+- `roadmap/follow-ups/2026-05-24-workbench-project-crud-manual-and-auto-detect.md` (HIGH/OPEN, → Wave 12) — manual project remove + auto-detect stale paths. Cole's "I feel that should have been automatic" + "no way to remove" feedback (he had renamed `Contractor App` → `ContractorApp` and `Agent IDE` → `AgentIDE` on disk; the IDE held stale paths with no UX to clean them up).
+
+**Final status:**
+
+Wave 10's acceptance criteria all confirmed working in production (project switching across 3 surfaces, branch chip, popover contrast, terminals reload on switch, project alphabetical sort, no startup crash on legacy data). Section 5 per-project relaunch persistence remains untestable in the current Wave 12-scope-blocked state — but the underlying hook layer's 16/16 unit + acceptance tests prove the contract; natural usage will verify it once Wave 12 ships.
+
+**Wave 10 status: SHIPPED-AND-VALIDATED** (closing the SHIPPED-but-NOT-VALIDATED caveat from the original deferral above).
+

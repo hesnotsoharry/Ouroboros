@@ -1,10 +1,12 @@
 ---
-status: IN-PROGRESS
+status: SHIPPED
 created: 2026-05-24
 updated: 2026-05-24
 ---
 
 # Wave 11 — Architecture Decisions
+
+> **SHIPPED 2026-05-24.** All 6 ADR decisions honored. See `wave-11-result.md` § "ADRs honored" for per-decision outcome notes.
 
 ## Decision 1: File-tree click → modal open via prop-chain callback, NOT a new DOM CustomEvent
 

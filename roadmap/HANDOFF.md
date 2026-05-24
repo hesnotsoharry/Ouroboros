@@ -1,10 +1,59 @@
-# Session Handoff — 2026-05-23 (Wave 10 SHIPPED; Waves 11–14 next; cutover at Wave 15)
+# Session Handoff — 2026-05-24 (Wave 11 SHIPPED; Wave 12 next)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-23 (latest) — Wave 10 SHIPPED (project-scoped state foundation + project-switching wiring)
+## 🔼 UPDATE 2026-05-24 (latest) — Wave 11 SHIPPED (file-tree click → modal + Wave 10.1 hotfix batch)
+
+**Next action: execute Wave 12 — terminal CRUD + chrome (project-scoped) + project remove/auto-detect-stale.** Wave 12's original scope was terminal CRUD (spawn/delete/rename/+/split/maximize, fix tab-header text overlap); Wave 11 added project CRUD to the bundle per the new follow-up at `roadmap/follow-ups/2026-05-24-workbench-project-crud-manual-and-auto-detect.md` (manual remove + auto-detect stale paths). Both are the same shape of work — UI hygiene on top of existing renderer state — so they bundle naturally.
+
+**Wave 11 — SHIPPED (master @ tag `v2.32.0`).** Renderer-only, behind the same default-off `layout.canonWorkbench` flag. **6 master commits across the session** (incremental cherry-pick + push, not all-at-wrap, so Cole could verify each fix live before next dispatch): `cacaef21` (Wave 10.1 Conf preflight hotfix), `7c3842e7` (Wave 10.1 project-switch + branch chip + popover contrast bundle), `94ae90d3` (Wave 10.1 alphabetical sort), `0999e186` (Phase 1 file-tree click wiring), `7fa7a0db` (Wave 8 P3 DiffReview crash fix), wrap commit (plan/ADR/result/smoke-catchup/HANDOFF/temperature). Artifacts in `roadmap/wave-11-file-tree-viewer-modal/` (waveplan-11, wave-11-decisions, wave-11-result, wave-11-wave-10-diagnosis, wave-11-diffreview-crash-diagnosis).
+
+**Wave 11's scope expansion is the story.** Planned narrow scope (file-tree click → modal + scroll/collapse): ~30 min of work. Actual session (~6 hours): swallowed 6 inline hotfixes for bugs that surfaced during Phase 0 manual smoke against shipped code:
+
+| # | Bug | Origin | Fix |
+|---|---|---|---|
+| 1 | `canonWorkbenchSessions` startup crash | Wave 10 D1 implemented at wrong layer (React hook vs Conf preflight) | `configPreflight.ts` extension |
+| 2 | `setActiveProjectRoot` silent no-op on recent-only paths | Wave 10 P1 guard `if (!prev.includes(path)) return prev` | Drop the guard, always promote |
+| 3 | Title bar branch chip missing for non-git projects | Pre-existing (gate `{branch && ...}` predates Wave 10) | Gate on `activeProject`, render `branch ?? "—"` |
+| 4 | Popover background unreadable (4 dropdowns) | Wave 10 P2 used `--glass-panel` (35%) instead of `--glass-overlay` (92%) | One-token rename × 4 files |
+| 5 | Project list sort (active-at-top → alphabetical) | UX preference; Cole's post-fix feedback | `useWorkbenchProjects.ts` adds `localeCompare` sort |
+| 6 | `useDiffReview` crash on file click | Wave 8 P3 chose `FileViewer` direct (not Manager); Manager was what provided `DiffReviewProvider` | Mount `<DiffReviewProvider>` at `Workbench.tsx`'s return |
+
+**Phase 1 itself (the actual Wave 11 wiring) shipped first-try clean.** 3 orchestrator-owned frozen tests (file-click acceptance, lazy-load regression guard, InnerRail integration); `sonnet-implementer` dispatched 24 LOC across 3 files (`Workbench.tsx` + `MiddleRow` prop add, `InnerRail` thread, `WorkbenchFileTree.NodeRow` onClick branch); UnifiedRail correctly skipped (uses `MOCK_FILE_TREE` via `ProjectAccordion` — Wave 12 scope). Cole verified live: Gamify file-click opens modal showing Monaco-rendered content. No console errors after the DiffReview fix.
+
+**Phase 2 SHIPPED-by-explanation.** Both halves of Cole's original 2026-05-23 complaint ("file tree partial when rail open / broken when collapsed") had natural explanations:
+- *"partial when rail open"* → stale-path issue (Cole renamed `Contractor App` → `ContractorApp` and `Agent IDE` → `AgentIDE` on disk; the IDE still held the old paths; `readDir` returned sparse/empty for invalid paths; Gamify with valid path shows full tree correctly).
+- *"broken when collapsed"* → UnifiedRail uses `MOCK_FILE_TREE` via `ProjectAccordion` — never wired to live tree (known Wave 12 scope, documented in `Workbench/CLAUDE.md`).
+
+No Phase 2 code work needed; documented in result brief + HANDOFF.
+
+**Wave 11 NOT done / deferrals:**
+
+1. **`/ui-smoke 11` formal agent-driven smoke** — DEFERRED to next session. Cole's manual smoke throughout this session covered all Wave 11-touched surfaces live (file-click → modal verified on Gamify; each Wave 10.1 hotfix verified live before next dispatch). Lean-wrap call.
+2. **`/review` mechanical gap-check (incl. Stryker mutation Check 6)** — DEFERRED to next session. Heavy gate; not required for ship correctness given the live-smoke discipline this session. Worth running at the top of the next session as a Wave 11 verification follow-up.
+3. **`/audit-followups wave-11-file-tree-viewer-modal` formal agent dispatch** — DEFERRED. Known follow-up tracking is documented inline in `wave-11-result.md` § "Carried forward."
+4. **Full local test suite** — DEFERRED. Scoped tests (Workbench dir 105/105 + Wave 10 regression 32/32 + Phase 1 frozen 8/8 + Wave 10.1 regression tests all GREEN) ran throughout. Full ~17-min suite not run at wrap.
+5. **Worktree tsc:web codegen gap** — bg-session worktrees lack `@renderer/generated/changelog` module (build artifact). Run tsc:web from master, not from worktree. Worth filing as a hook-level fix for `git worktree add`.
+
+**Wave 12 setup (next session pickup):**
+
+Wave 12's original scope (per the 2026-05-23 restructure) was **terminal CRUD + chrome (project-scoped)**: spawn/delete/rename/+/split/maximize terminal tabs; fix tab-header text overlap. Wave 11 added **project CRUD + auto-detect stale paths** to the bundle per the new follow-up. Combined: "rail CRUD" wave that covers all remaining UI hygiene gaps Wave 10-11 left.
+
+Pre-existing OPEN follow-ups that may be load-bearing for Wave 12 or 13:
+- `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md` (HIGH/OPEN, Wave 13 dependency — main-process `CLAUDE_SESSION_ID` forwarding from pty spawn)
+- `roadmap/follow-ups/2026-05-22-workbench-forceunified-no-autoclear.md` (LOW/OPEN — `forceUnified` flag doesn't clear on window widen)
+- `roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md` (LOW/OPEN — M/A git status badges; needs new per-project dirty git op)
+- `roadmap/follow-ups/2026-05-24-workbench-project-crud-manual-and-auto-detect.md` (HIGH/OPEN, Wave 12 — Wave 11's exit follow-up)
+
+**Lesson promoted (from Wave 11 result brief lesson 1, worth elevating):** Tests passing is necessary but nowhere near sufficient. Wave 10 shipped 322/322 tests GREEN with 5 distinct production bugs hidden behind them; Wave 8 P3 shipped with the DiffReview crash hidden because its smoke was deferred. The Wave 11 D5 corrective gate (force live smoke as pre-implementation gate) worked exactly as designed and saved Wave 11 from building on a broken foundation. **For future waves: live smoke is wave-end-required, not wave-end-suggested**, regardless of whether the user is actively using the IDE day-to-day. Pattern formalization candidate.
+
+**Push posture: DONE.** Pushed to `origin/master` @ `7fa7a0db` (+ wrap commit). Tag `v2.32.0` on origin. CI minutes still exhausted until 2026-06-01 per bulletin → workflows skip cleanly; protected-branch merges still wait for the restore.
+
+---
+
+## 🔼 UPDATE 2026-05-23 (superseded next-action) — Wave 10 SHIPPED (project-scoped state foundation + project-switching wiring)
 
 **Next action: execute Wave 11 — file tree + viewer modal.** Cross-project browse, click-to-open file viewer modal over the existing `FileViewer/` Monaco subsystem (reuse Wave 8 P3's lazy-load pattern — `Overlays/WorkbenchFileViewerModal.tsx` is already in place), fix scroll/collapse interactions. The Wave 10 foundation now means each project switch unmounts + remounts the file tree alongside the terminals — Wave 11 leverages this to make file tree behavior project-scoped without additional state work.
 

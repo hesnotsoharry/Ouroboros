@@ -1,10 +1,12 @@
 ---
-status: IN-PROGRESS
+status: SHIPPED
 created: 2026-05-24
 updated: 2026-05-24
 ---
 
 # Wave 11 — File Tree + Viewer Modal
+
+> **SHIPPED 2026-05-24.** Phase 1 wiring + 5 inline Wave 10.1 hotfixes + 1 Wave 8 P3 carryover (DiffReview crash). Phase 2 SHIPPED-by-explanation (both complaints had natural explanations). Phase 3 lean wrap. See `wave-11-result.md` for full result brief.
 
 ## Context
 
