@@ -14,6 +14,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { useProjectOptional } from '../../contexts/ProjectContext';
+import { DiffReviewProvider } from '../DiffReview/DiffReviewManager';
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { WorkbenchCommandPalette } from './Overlays/WorkbenchCommandPalette';
 import { WorkbenchFilePicker } from './Overlays/WorkbenchFilePicker';
@@ -129,52 +130,95 @@ function MiddleRow({
   );
 }
 
+interface WorkbenchStageProps {
+  scanlines: boolean;
+  breakpointMode: 'full' | 'compact' | 'unified';
+  isUnified: boolean;
+  claudeSessionId: string | null;
+  setClaudeSessionId: (id: string | null) => void;
+  openFilePath: string | null;
+  setOpenFilePath: (path: string | null) => void;
+  projectKey: string;
+  onCollapseToUnified: () => void;
+  onExpandToDual: () => void;
+}
+
+/**
+ * The Workbench shell content (everything inside the two outer providers).
+ * Extracted from Workbench() to stay under the 40-line lint cap after the
+ * Wave 11.1 DiffReviewProvider wrap was added on top.
+ */
+function WorkbenchStage(props: WorkbenchStageProps): React.ReactElement {
+  const {
+    scanlines,
+    breakpointMode,
+    isUnified,
+    claudeSessionId,
+    setClaudeSessionId,
+    openFilePath,
+    setOpenFilePath,
+    projectKey,
+    onCollapseToUnified,
+    onExpandToDual,
+  } = props;
+  return (
+    <div data-testid="workbench-root" style={stageStyle}>
+      <TitleBar />
+      <MiddleRow
+        isUnified={isUnified}
+        breakpointMode={breakpointMode}
+        onCollapseToUnified={onCollapseToUnified}
+        onExpandToDual={onExpandToDual}
+        claudeSessionId={claudeSessionId}
+        onClaudeSessionId={setClaudeSessionId}
+        projectKey={projectKey}
+        onSelectFile={setOpenFilePath}
+      />
+      <StatusBar />
+      <WorkbenchSettingsOverlay />
+      <WorkbenchCommandPalette />
+      <WorkbenchFilePicker onSelectFile={setOpenFilePath} />
+      <WorkbenchFileViewerModal openFilePath={openFilePath} onClose={() => setOpenFilePath(null)} />
+      {scanlines && (
+        <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Wave 11.1 — DiffReviewProvider required for the lazy FileViewer's
+ * MonacoHunkGutterLayer (useEditorHunkDecorations → useDiffReview throws
+ * outside provider). Wave 8 P3 chose FileViewer-direct (not FileViewerManager)
+ * to avoid legacy-shell listener collision; the legacy shell's Manager is
+ * what provided this context. Idle-zero-cost when no review active
+ * (useStaleFileWatcher early-returns at diffReviewState.stale.ts:99).
+ */
 export function Workbench(): React.ReactElement {
   const scanlines = useScanlines();
   const breakpointMode = useWorkbenchBreakpoint();
   const [forceUnified, setForceUnified] = useState(false);
-  // Wave 8 Phase 1: capture the Claude session bound to the upper terminal and
-  // thread it down to AgentSidebar so it scopes to this terminal's session only.
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
-  // Wave 8 Phase 3: file path for the quick-open viewer modal (null = closed).
   const [openFilePath, setOpenFilePath] = useState<string | null>(null);
-  // Wave 10 Phase 3: key for CenterPane remount on project switch. Use
-  // useProjectOptional so Workbench tests that don't provide ProjectProvider
-  // still render correctly (null → fallback key).
   const projectCtx = useProjectOptional();
   const projectKey = projectCtx?.projectRoot ?? '__no-project__';
-
   const isUnified = forceUnified || breakpointMode === 'unified';
-
-  const handleCollapseToUnified = (): void => setForceUnified(true);
-  const handleExpandToDual = (): void => setForceUnified(false);
-
   return (
-    <ActiveFrameProvider>
-      <div data-testid="workbench-root" style={stageStyle}>
-        <TitleBar />
-        <MiddleRow
-          isUnified={isUnified}
+    <DiffReviewProvider>
+      <ActiveFrameProvider>
+        <WorkbenchStage
+          scanlines={scanlines}
           breakpointMode={breakpointMode}
-          onCollapseToUnified={handleCollapseToUnified}
-          onExpandToDual={handleExpandToDual}
+          isUnified={isUnified}
           claudeSessionId={claudeSessionId}
-          onClaudeSessionId={setClaudeSessionId}
-          projectKey={projectKey}
-          onSelectFile={setOpenFilePath}
-        />
-        <StatusBar />
-        <WorkbenchSettingsOverlay />
-        <WorkbenchCommandPalette />
-        <WorkbenchFilePicker onSelectFile={setOpenFilePath} />
-        <WorkbenchFileViewerModal
+          setClaudeSessionId={setClaudeSessionId}
           openFilePath={openFilePath}
-          onClose={() => setOpenFilePath(null)}
+          setOpenFilePath={setOpenFilePath}
+          projectKey={projectKey}
+          onCollapseToUnified={() => setForceUnified(true)}
+          onExpandToDual={() => setForceUnified(false)}
         />
-        {scanlines && (
-          <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
-        )}
-      </div>
-    </ActiveFrameProvider>
+      </ActiveFrameProvider>
+    </DiffReviewProvider>
   );
 }
