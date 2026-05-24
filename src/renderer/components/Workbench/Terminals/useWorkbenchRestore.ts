@@ -1,5 +1,10 @@
 /**
- * useWorkbenchRestore — one-shot reader for the canon workbench session store (Wave 9/10).
+ * useWorkbenchRestore — one-shot reader for the canon workbench session store (Wave 9/10/12).
+ *
+ * Wave 12: also returns `upperCollection` and `lowerCollection` (TabCollection)
+ * when the persisted value has the Wave-12 shape. The Wave-9 fields
+ * (`upperCwd`, `lowerCwd`, `resumeSessionId`) are preserved for backward
+ * compat with `useWorkbenchTerminals` (Wave-9 acceptance test must stay GREEN).
  *
  * Wave 10: accepts `projectRoot: string | null`. Reads `canonWorkbenchSessions`
  * (a Record keyed by project root) and returns the slice under [projectRoot].
@@ -17,12 +22,20 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { useConfig } from '../../../hooks/useConfig';
-import type { CanonWorkbenchSessions, CanonWorkbenchSessionSlot } from '../../../types/electron';
+import type {
+  CanonWorkbenchSessions,
+  CanonWorkbenchSessionSlot,
+  TabCollection,
+} from '../../../types/electron';
 
 export interface WorkbenchRestoreState {
+  /** Wave-9 compat fields — derived from upper tab sessionId / tab cwds when available. */
   upperCwd?: string;
   lowerCwd?: string;
   resumeSessionId?: string;
+  /** Wave-12 fields — full TabCollection per frame. */
+  upperCollection?: TabCollection;
+  lowerCollection?: TabCollection;
   isReady: boolean;
 }
 
@@ -33,14 +46,38 @@ function isLegacyFlatShape(value: unknown): boolean {
   return 'upper' in obj || 'lower' in obj;
 }
 
+/** Returns true when a slot has the Wave-12 TabCollection shape (has `tabs` array). */
+function isWave12Slot(slot: unknown): slot is CanonWorkbenchSessionSlot {
+  if (!slot || typeof slot !== 'object' || Array.isArray(slot)) return false;
+  const s = slot as Record<string, unknown>;
+  return (
+    'upper' in s &&
+    'lower' in s &&
+    typeof s.upper === 'object' &&
+    s.upper !== null &&
+    'tabs' in (s.upper as Record<string, unknown>)
+  );
+}
+
 function mapSlotToRestoreState(
   slot: CanonWorkbenchSessionSlot | null | undefined,
 ): WorkbenchRestoreState {
   if (!slot) return { isReady: true };
+
+  const upper = slot.upper;
+  const lower = slot.lower;
+
+  // Wave-12 shape: derive Wave-9 compat fields from the active CC tab.
+  const activeCcTab =
+    upper.tabs.find((t) => t.kind === 'cc' && t.id === upper.activeTabId) ??
+    upper.tabs.find((t) => t.kind === 'cc');
+
   return {
-    upperCwd: slot.upper?.cwd,
-    lowerCwd: slot.lower?.cwd,
-    resumeSessionId: slot.upper?.claudeSessionId,
+    upperCollection: upper,
+    lowerCollection: lower,
+    // Wave-9 compat: upperCwd and lowerCwd from first tab sessionId (no cwd stored in tabs).
+    // resumeSessionId from the active CC tab's sessionId.
+    resumeSessionId: activeCcTab?.sessionId,
     isReady: true,
   };
 }
@@ -57,7 +94,14 @@ function resolveFromStore(
         return;
       }
       const record = persisted as CanonWorkbenchSessions | null | undefined;
-      setRestoreState(mapSlotToRestoreState(record?.[projectRoot]));
+      const slot = record?.[projectRoot];
+      // Wave-12 shape: has `tabs` on upper. Wave-10 shape: has `cwd` on upper (cleared by
+      // preflight before app starts, but guard here for safety).
+      if (slot && isWave12Slot(slot)) {
+        setRestoreState(mapSlotToRestoreState(slot));
+      } else {
+        setRestoreState({ isReady: true });
+      }
     })
     .catch(() => {
       setRestoreState({ isReady: true });

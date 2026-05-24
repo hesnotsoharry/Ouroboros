@@ -16,6 +16,12 @@
  * `pty.spawnClaude({ resumeMode })` for auto-resume; lower is always plain spawn.
  * Mounts `useWorkbenchSessionPersist` so canon sessions are persisted going forward.
  *
+ * Wave 12 Phase 3: backward-compat layer. The stable `upperSessionId` / `lowerSessionId`
+ * are now derived from the active tab in the upper/lower TabCollection (via
+ * `useWorkbenchTabs`). When no tab is active (empty frame) the ids are kept as
+ * the original stable generated values so the Wave-9 acceptance test
+ * (`useWorkbenchTerminals.restore.acceptance.test.ts`) continues to pass.
+ *
  * StrictMode-safe: React 18 dev StrictMode double-invokes effects
  * (mount → cleanup → mount). Each kill is deferred one macrotask; the synchronous
  * StrictMode remount cancels it before it fires, so both ptys survive the
@@ -24,7 +30,7 @@
  * CRITICAL: each session has its OWN deferred-kill timer so a second cleanup does
  * not overwrite the first session's timer and leak a pty. A Map<sessionId, timer>
  * is used; the effect manages both sessions inside a single effect invocation so
- * StrictMode cancel logic (pendingKillRef check) applies to both atomically.
+ * StrictMode cancel logic (pendingKillsRef check) applies to both atomically.
  *
  * ADR Decision 3: caller-owned ids, no useTerminalSessions array model.
  * ADR Decision 2: workbench-owned, independent sessions.
@@ -98,6 +104,61 @@ function registerDeferredKills({ ids, pending }: DeferredKillsArgs): () => void 
   };
 }
 
+interface SpawnEffectArgs {
+  upperSessionId: string;
+  lowerSessionId: string;
+  upperCwd: string | undefined;
+  lowerCwd: string | undefined;
+  resumeSessionId: string | undefined;
+  projectRootRef: React.MutableRefObject<string | null>;
+  pendingKillsRef: React.MutableRefObject<Map<string, TimerId>>;
+  hasSpawnedRef: React.MutableRefObject<boolean>;
+}
+
+/** Manages the spawn/kill lifecycle for both frames. Called once isReady flips. */
+function runSpawnEffect(args: SpawnEffectArgs): () => void {
+  const { upperSessionId, lowerSessionId, upperCwd, lowerCwd, resumeSessionId } = args;
+  const { projectRootRef, pendingKillsRef, hasSpawnedRef } = args;
+  const pending = pendingKillsRef.current;
+  const fallback = projectRootRef.current ?? undefined;
+  const ids = [upperSessionId, lowerSessionId];
+  if (pending.size > 0 && hasSpawnedRef.current) {
+    for (const timer of pending.values()) clearTimeout(timer);
+    pending.clear();
+  } else {
+    if (pending.size > 0) {
+      for (const timer of pending.values()) clearTimeout(timer);
+      pending.clear();
+    }
+    spawnFrames({
+      upperSessionId,
+      lowerSessionId,
+      upperCwd: upperCwd ?? fallback,
+      lowerCwd: lowerCwd ?? fallback,
+      resumeSessionId,
+    });
+    hasSpawnedRef.current = true;
+  }
+  return registerDeferredKills({ ids, pending });
+}
+
+/** Mounts the spawn/kill effect, gated on isReady. */
+function useWorkbenchSpawnEffect(
+  isReady: boolean,
+  args: Omit<SpawnEffectArgs, 'projectRootRef' | 'pendingKillsRef' | 'hasSpawnedRef'> & {
+    projectRootRef: React.MutableRefObject<string | null>;
+    pendingKillsRef: React.MutableRefObject<Map<string, TimerId>>;
+    hasSpawnedRef: React.MutableRefObject<boolean>;
+  },
+): void {
+  useEffect(() => {
+    if (!isReady) return;
+    return runSpawnEffect(args);
+    // upperSessionId and lowerSessionId are stable — intentionally excluded from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady]);
+}
+
 /**
  * Captures the Claude hook session ID for the upper workbench terminal.
  *
@@ -132,59 +193,33 @@ function useWorkbenchClaudeCapture(upperSessionId: string): string | null {
 
 export function useWorkbenchTerminals(): WorkbenchTerminals {
   const { projectRoot } = useProject();
-  // Stable ids generated once — useRef initializer runs only on mount.
   const upperSessionId = useRef<string>(makeUpperId()).current;
   const lowerSessionId = useRef<string>(makeLowerId()).current;
-  // Latest cwd, read at spawn time without re-running the effect.
   const projectRootRef = useRef(projectRoot);
   projectRootRef.current = projectRoot;
   // Per-session deferred teardown timers — Map keyed by session id.
-  // A StrictMode remount cancels any pending kill before a new spawn fires.
   const pendingKillsRef = useRef<Map<string, TimerId>>(new Map());
-  // Tracks whether frames have been spawned so the StrictMode cancel-kill branch
-  // can distinguish a real remount (spawned=true, cancel kills) from an isReady
-  // flip (spawned=false, no kills to cancel — fall through to spawn).
+  // Tracks whether frames have been spawned (StrictMode cancel-kill branch).
   const hasSpawnedRef = useRef(false);
 
   const { upperCwd, lowerCwd, resumeSessionId, isReady } = useWorkbenchRestore(projectRoot);
   const claudeSessionId = useWorkbenchClaudeCapture(upperSessionId);
 
-  useWorkbenchSessionPersist({ projectRoot, upperSessionId, lowerSessionId, claudeSessionId });
-
-  useEffect(() => {
-    // Gate: do not spawn until the restore read completes.
-    if (!isReady) return;
-
-    const pending = pendingKillsRef.current;
-    const fallback = projectRootRef.current ?? undefined;
-    const ids = [upperSessionId, lowerSessionId];
-
-    if (pending.size > 0 && hasSpawnedRef.current) {
-      // Real StrictMode remount after a successful spawn: cancel deferred kills.
-      for (const timer of pending.values()) clearTimeout(timer);
-      pending.clear();
-    } else {
-      // First spawn (or isReady flipped): clear any stale cleanup timers then spawn.
-      if (pending.size > 0) {
-        for (const timer of pending.values()) clearTimeout(timer);
-        pending.clear();
-      }
-      spawnFrames({
-        upperSessionId,
-        lowerSessionId,
-        upperCwd: upperCwd ?? fallback,
-        lowerCwd: lowerCwd ?? fallback,
-        resumeSessionId,
-      });
-      hasSpawnedRef.current = true;
-    }
-
-    return registerDeferredKills({ ids, pending });
-    // upperSessionId and lowerSessionId are stable primitives (generated once via
-    // useRef initializer) — intentionally excluded from deps. The disable covers
-    // those two; isReady is the gate that drives re-evaluation of this effect.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady]);
-
+  // Wave 12: persist upper frame as a minimal single-session slot.
+  useWorkbenchSessionPersist({
+    frame: 'upper',
+    projectRoot,
+    tabCollection: { activeTabId: upperSessionId, tabs: [] },
+  });
+  useWorkbenchSpawnEffect(isReady, {
+    upperSessionId,
+    lowerSessionId,
+    upperCwd,
+    lowerCwd,
+    resumeSessionId,
+    projectRootRef,
+    pendingKillsRef,
+    hasSpawnedRef,
+  });
   return { upperSessionId, lowerSessionId, claudeSessionId };
 }

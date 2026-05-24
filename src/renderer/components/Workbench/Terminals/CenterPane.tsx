@@ -14,9 +14,11 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useProject } from '../../../contexts/ProjectContext';
 import { PermissionOverlay } from '../Permission/PermissionOverlay';
 import { TerminalShell } from './TerminalShell';
 import { useVerticalSplitResize } from './useVerticalSplitResize';
+import { useWorkbenchTabs } from './useWorkbenchTabs';
 import { useWorkbenchTerminals } from './useWorkbenchTerminals';
 
 const DEFAULT_RATIO = 0.62;
@@ -83,15 +85,23 @@ interface CenterPaneProps {
  * Wave 8 Phase 1: calls `onClaudeSessionId` whenever the bound Claude session
  * changes so Workbench.tsx can thread the id to the AgentSidebar.
  */
-export function CenterPane({ onClaudeSessionId }: CenterPaneProps): React.ReactElement {
-  const { upperSessionId, lowerSessionId, claudeSessionId } = useWorkbenchTerminals();
+/** Derives the active terminal session id per frame, preferring the tab's activeTabId. */
+function useActiveSessionIds(
+  projectRoot: string | null,
+  upperSessionId: string,
+  lowerSessionId: string,
+) {
+  const upperTabs = useWorkbenchTabs('upper', projectRoot);
+  const lowerTabs = useWorkbenchTabs('lower', projectRoot);
+  return {
+    activeUpperId: upperTabs.activeTabId ?? upperSessionId,
+    activeLowerId: lowerTabs.activeTabId ?? lowerSessionId,
+  };
+}
 
-  useEffect(() => {
-    onClaudeSessionId?.(claudeSessionId);
-  }, [claudeSessionId, onClaudeSessionId]);
-  const containerRef = useRef<HTMLDivElement>(null);
+/** Loads and persists the vertical split ratio. */
+function useSplitRatio(containerRef: React.RefObject<HTMLDivElement | null>) {
   const [initialRatio, setInitialRatio] = useState(DEFAULT_RATIO);
-
   useEffect(() => {
     let cancelled = false;
     readSplitRatio()
@@ -103,23 +113,33 @@ export function CenterPane({ onClaudeSessionId }: CenterPaneProps): React.ReactE
       cancelled = true;
     };
   }, []);
-
   const onCommit = useCallback((r: number) => {
     void writeSplitRatio(r);
   }, []);
-  const { ratio, handlePointerDown } = useVerticalSplitResize({
-    initialRatio,
-    onCommit,
-    containerRef,
-  });
+  return useVerticalSplitResize({ initialRatio, onCommit, containerRef });
+}
+
+export function CenterPane({ onClaudeSessionId }: CenterPaneProps): React.ReactElement {
+  const { projectRoot } = useProject();
+  const { upperSessionId, lowerSessionId, claudeSessionId } = useWorkbenchTerminals();
+  const { activeUpperId, activeLowerId } = useActiveSessionIds(
+    projectRoot,
+    upperSessionId,
+    lowerSessionId,
+  );
+  useEffect(() => {
+    onClaudeSessionId?.(claudeSessionId);
+  }, [claudeSessionId, onClaudeSessionId]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { ratio, handlePointerDown } = useSplitRatio(containerRef);
 
   return (
     <div ref={containerRef} data-testid="workbench-terminals" style={OUTER_STYLE}>
-      <TerminalShell kind="cc" flex={ratio} sessionId={upperSessionId} isActive />
+      <TerminalShell kind="cc" flex={ratio} sessionId={activeUpperId} isActive />
       <div aria-hidden="true" style={DIVIDER_OUTER_STYLE} onPointerDown={handlePointerDown}>
         <div style={DIVIDER_INNER_STYLE} />
       </div>
-      <TerminalShell kind="shell" flex={1 - ratio} sessionId={lowerSessionId} isActive />
+      <TerminalShell kind="shell" flex={1 - ratio} sessionId={activeLowerId} isActive />
       <PermissionOverlay />
     </div>
   );

@@ -28,16 +28,28 @@ export interface CodexModelOption {
 }
 
 /**
- * Wave 10 — per-project canon workbench session persistence.
- * Renderer-side mirrors of `CanonWorkbenchSessionSlot` and `CanonWorkbenchSessions`
- * in `src/main/configTypes.ts`; keep both in sync. Defined here (not imported
- * from main) per the Wave 96 / Wave 9 pattern: `tsconfig.web.json` does not
- * include `src/main/**`. Wave 9's flat `{ upper, lower }` shape is legacy-throwaway
- * (ADR D1) — `useWorkbenchRestore` type-guards on read.
+ * Wave 12 — per-project canon workbench session persistence (tab-aware).
+ * Renderer-side mirror of the schema in `src/main/configSchemaMiddle.ts`.
+ * Defined here (not imported from main) because `tsconfig.web.json` does not
+ * include `src/main/**`. Wave 9's flat shape and Wave 10's single-slot shape
+ * are legacy-throwaway (ADR D1) — `configPreflight` clears them before startup.
  */
+export interface TabState {
+  id: string;
+  label: string;
+  sessionId: string;
+  kind: 'cc' | 'shell';
+  createdAt: number;
+}
+
+export interface TabCollection {
+  activeTabId: string | null;
+  tabs: TabState[];
+}
+
 export interface CanonWorkbenchSessionSlot {
-  upper: { cwd: string; claudeSessionId?: string } | null;
-  lower: { cwd: string } | null;
+  upper: TabCollection;
+  lower: TabCollection;
 }
 
 export type CanonWorkbenchSessions = Record<string, CanonWorkbenchSessionSlot | null>;

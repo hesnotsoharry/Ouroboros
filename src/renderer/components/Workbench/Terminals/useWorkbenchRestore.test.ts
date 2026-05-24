@@ -105,37 +105,72 @@ describe('useWorkbenchRestore — empty store', () => {
   });
 });
 
-describe('useWorkbenchRestore — claude-only upper frame', () => {
-  it('returns upperCwd and resumeSessionId when upper has claudeSessionId, lower is null', async () => {
+describe('useWorkbenchRestore — Wave 12 CC tab restore (active CC tab → resumeSessionId)', () => {
+  it('returns upperCollection and resumeSessionId when upper has an active CC tab', async () => {
+    // Wave 12 shape: TabCollection with an active CC tab.
     (window as unknown as { electronAPI: unknown }).electronAPI = makeElectronAPI({
-      upper: { cwd: TEST_ROOT, claudeSessionId: 'sess-abc123' },
-      lower: null,
+      upper: {
+        activeTabId: 'tab-cc-1',
+        tabs: [
+          {
+            id: 'tab-cc-1',
+            label: 'claude',
+            sessionId: 'sess-abc123',
+            kind: 'cc',
+            createdAt: 1716000000000,
+          },
+        ],
+      },
+      lower: { activeTabId: null, tabs: [] },
     });
 
     const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
-    expect(result.current.upperCwd).toBe(TEST_ROOT);
+    expect(result.current.upperCollection).toBeDefined();
+    expect(result.current.upperCollection!.tabs.length).toBe(1);
     expect(result.current.resumeSessionId).toBe('sess-abc123');
-    expect(result.current.lowerCwd).toBeUndefined();
+    expect(result.current.lowerCollection).toBeDefined();
   });
 });
 
-describe('useWorkbenchRestore — full two-frame restore', () => {
-  it('returns all three values when both frames are populated', async () => {
+describe('useWorkbenchRestore — Wave 12 full two-frame restore', () => {
+  it('returns upperCollection and lowerCollection when both frames have Tab Collections', async () => {
     (window as unknown as { electronAPI: unknown }).electronAPI = makeElectronAPI({
-      upper: { cwd: TEST_ROOT, claudeSessionId: 'sess-xyz789' },
-      lower: { cwd: '/home/user/other' },
+      upper: {
+        activeTabId: 'tab-cc-1',
+        tabs: [
+          {
+            id: 'tab-cc-1',
+            label: 'claude',
+            sessionId: 'sess-xyz789',
+            kind: 'cc',
+            createdAt: 1716000000000,
+          },
+        ],
+      },
+      lower: {
+        activeTabId: 'tab-sh-1',
+        tabs: [
+          {
+            id: 'tab-sh-1',
+            label: 'shell',
+            sessionId: 'tab-sh-1',
+            kind: 'shell',
+            createdAt: 1716000001000,
+          },
+        ],
+      },
     });
 
     const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
-    expect(result.current.upperCwd).toBe(TEST_ROOT);
     expect(result.current.resumeSessionId).toBe('sess-xyz789');
-    expect(result.current.lowerCwd).toBe('/home/user/other');
+    expect(result.current.upperCollection!.activeTabId).toBe('tab-cc-1');
+    expect(result.current.lowerCollection!.activeTabId).toBe('tab-sh-1');
   });
 });
 

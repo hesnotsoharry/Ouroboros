@@ -94,13 +94,61 @@ function stripDeprecatedKeys(data: Record<string, unknown>): boolean {
  * flat shape. Wave 10 reshaped to `Record<projectRoot, ...>` where keys are
  * absolute paths (e.g. `C:\Users\Cole\dev\foo`). A valid Wave 10 record would
  * never have bare "upper"/"lower" string keys (project roots are absolute paths).
+ *
+ * Wave 12 additionally detects the Wave 10 per-project slot shape where each
+ * value is `{ upper: { cwd, ... } | null, lower: { cwd } | null }` (i.e. the
+ * slot has a `cwd` property rather than the Wave-12 `tabs` array). Those entries
+ * are incompatible with the Wave-12 TabCollection schema and must be cleared.
  */
 function resetLegacyCanonWorkbenchSessions(data: Record<string, unknown>): boolean {
   const value = Reflect.get(data, 'canonWorkbenchSessions');
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  if (!('upper' in value) && !('lower' in value)) return false;
-  data.canonWorkbenchSessions = {};
-  return true;
+  const record = value as Record<string, unknown>;
+
+  // Wave 9 flat shape: top-level keys "upper" or "lower" (not absolute paths).
+  if ('upper' in record || 'lower' in record) {
+    data.canonWorkbenchSessions = {};
+    return true;
+  }
+
+  // Wave 12 valid shape: check if ANY entry has the TabCollection shape.
+  // If ALL non-null entries already have TabCollection shape → no migration needed.
+  // If ANY entry has the Wave-10 single-slot shape (cwd-bearing upper/lower) → clear all.
+  if (hasAnyWave10SlotEntry(record)) {
+    data.canonWorkbenchSessions = {};
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns true if any entry in the record looks like a Wave-10 single-slot value:
+ * `{ upper: { cwd: string, ... } | null, lower: { cwd: string } | null }`.
+ * The distinguishing mark is the presence of a `cwd` string property on `upper`
+ * or `lower` (Wave-12 TabCollection has `activeTabId` + `tabs`, never `cwd`).
+ */
+function hasAnyWave10SlotEntry(record: Record<string, unknown>): boolean {
+  for (const entry of Object.values(record)) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const slot = entry as Record<string, unknown>;
+    if (isWave10SlotShape(slot)) return true;
+  }
+  return false;
+}
+
+function hasCwdProperty(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    'cwd' in (value as Record<string, unknown>)
+  );
+}
+
+function isWave10SlotShape(slot: Record<string, unknown>): boolean {
+  if (!('upper' in slot) && !('lower' in slot)) return false;
+  return hasCwdProperty(slot.upper) || hasCwdProperty(slot.lower);
 }
 
 function deleteNestedKey(data: Record<string, unknown>, parent: string, child: string): boolean {

@@ -194,22 +194,23 @@ describe('runConfigPreflight', () => {
     expect(after.activeTheme).toBe('modern');
   });
 
-  it('leaves a valid wave-10 record-shape canonWorkbenchSessions untouched', async () => {
+  it('resets wave-10 record-shape canonWorkbenchSessions (cwd-slot) to {} for Wave 12 migration', async () => {
+    // Wave 12 Phase 3: the Wave-10 single-slot shape { upper: {cwd,...}|null, lower: {cwd}|null }
+    // is now legacy — configPreflight must clear it so the Wave-12 TabCollection schema
+    // doesn't crash on startup. (Previously this test asserted "untouched"; Wave-12 changes that.)
     const dir = makeTmpUserData();
-    const valid = {
+    const wave10Shape = {
       '/home/cole/proj-a': {
         upper: { cwd: '/home/cole/proj-a', claudeSessionId: 'sess-a' },
         lower: { cwd: '/home/cole/proj-a' },
       },
       '/home/cole/proj-b': null,
     };
-    const file = writeConfig(dir, { canonWorkbenchSessions: valid });
-    const before = fs.statSync(file).mtimeMs;
+    const file = writeConfig(dir, { canonWorkbenchSessions: wave10Shape });
     const { runConfigPreflight } = await loadModule(dir);
     runConfigPreflight();
     const after = readConfig(file);
-    expect(after.canonWorkbenchSessions).toEqual(valid);
-    expect(fs.statSync(file).mtimeMs).toBe(before);
+    expect(after.canonWorkbenchSessions).toEqual({});
   });
 
   it('resets wave-9 partial flat canonWorkbenchSessions { upper } (lower absent) to {}', async () => {

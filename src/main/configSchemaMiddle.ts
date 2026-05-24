@@ -102,9 +102,13 @@ export const middleSchema: Record<string, unknown> = {
     ],
   },
   /**
-   * Wave 10 — per-project canon workbench session persistence.
-   * Keys are absolute project root paths; values are the two-frame slot or null.
-   * Wave 9's flat { upper, lower } shape is legacy-throwaway (ADR D1).
+   * Wave 12 — per-project canon workbench session persistence (tab-aware).
+   * Keys are absolute project root paths; values hold two TabCollections or null.
+   * Wave 9's flat { upper, lower } shape and Wave 10's single-slot shape are
+   * legacy-throwaway (ADR D1) — configPreflight clears them before startup.
+   *
+   * TabState  = { id, label, sessionId, kind:'cc'|'shell', createdAt }
+   * TabCollection = { activeTabId: string|null, tabs: TabState[] }
    */
   canonWorkbenchSessions: {
     type: 'object',
@@ -115,29 +119,53 @@ export const middleSchema: Record<string, unknown> = {
           additionalProperties: false,
           properties: {
             upper: {
-              oneOf: [
-                {
-                  type: 'object',
-                  properties: {
-                    cwd: { type: 'string' },
-                    claudeSessionId: { type: 'string' },
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                activeTabId: { oneOf: [{ type: 'string' }, { type: 'null' }] },
+                tabs: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    properties: {
+                      id: { type: 'string' },
+                      label: { type: 'string' },
+                      sessionId: { type: 'string' },
+                      kind: { type: 'string', enum: ['cc', 'shell'] },
+                      createdAt: { type: 'number' },
+                    },
+                    required: ['id', 'label', 'sessionId', 'kind', 'createdAt'],
                   },
-                  required: ['cwd'],
                 },
-                { type: 'null' },
-              ],
+              },
+              required: ['activeTabId', 'tabs'],
             },
             lower: {
-              oneOf: [
-                {
-                  type: 'object',
-                  properties: { cwd: { type: 'string' } },
-                  required: ['cwd'],
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                activeTabId: { oneOf: [{ type: 'string' }, { type: 'null' }] },
+                tabs: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    properties: {
+                      id: { type: 'string' },
+                      label: { type: 'string' },
+                      sessionId: { type: 'string' },
+                      kind: { type: 'string', enum: ['cc', 'shell'] },
+                      createdAt: { type: 'number' },
+                    },
+                    required: ['id', 'label', 'sessionId', 'kind', 'createdAt'],
+                  },
                 },
-                { type: 'null' },
-              ],
+              },
+              required: ['activeTabId', 'tabs'],
             },
           },
+          required: ['upper', 'lower'],
         },
         { type: 'null' },
       ],
