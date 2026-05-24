@@ -19,6 +19,14 @@ export interface ProjectContextValue {
    * the empty initial state.
    */
   isLoaded: boolean;
+  /**
+   * Wave 12 Phase 2 — paths that have been explicitly removed via
+   * `removeProjectRoot`. Used by `useWorkbenchProjects` to filter out
+   * recently-removed paths that still appear in `config.recentProjects`
+   * (recents come from a separate config key and are not automatically
+   * stripped when a project is removed from the active roots).
+   */
+  excludedPaths: ReadonlySet<string>;
   setProjectRoot: (path: string) => void;
   addProjectRoot: (path: string) => void;
   removeProjectRoot: (path: string) => void;
@@ -94,6 +102,27 @@ function useUpdateRoots(
   );
 }
 
+type SetExcluded = React.Dispatch<React.SetStateAction<ReadonlySet<string>>>;
+
+/** Add a path to the excluded set (idempotent). */
+function excludeAdd(set: SetExcluded, path: string): void {
+  set((prev) => {
+    const next = new Set(prev);
+    next.add(path);
+    return next;
+  });
+}
+
+/** Remove a path from the excluded set; no-op if absent (stable ref). */
+function excludeDelete(set: SetExcluded, path: string): void {
+  set((prev) => {
+    if (!prev.has(path)) return prev;
+    const next = new Set(prev);
+    next.delete(path);
+    return next;
+  });
+}
+
 type RootActions = Pick<
   ProjectContextValue,
   | 'setProjectRoot'
@@ -105,6 +134,7 @@ type RootActions = Pick<
 
 function useProjectRootActions(
   setProjectRoots: React.Dispatch<React.SetStateAction<string[]>>,
+  setExcludedPaths: SetExcluded,
 ): RootActions {
   const updateRoots = useUpdateRoots(setProjectRoots);
 
@@ -117,16 +147,19 @@ function useProjectRootActions(
 
   const addProjectRoot = useCallback(
     (path: string): void => {
+      excludeDelete(setExcludedPaths, path);
       updateRoots((prev) => (prev.includes(path) ? prev : [...prev, path]));
     },
-    [updateRoots],
+    [updateRoots, setExcludedPaths],
   );
 
   const removeProjectRoot = useCallback(
     (path: string): void => {
+      // Track removed path so useWorkbenchProjects can filter it from recents.
+      excludeAdd(setExcludedPaths, path);
       updateRoots((prev) => prev.filter((root) => root !== path));
     },
-    [updateRoots],
+    [updateRoots, setExcludedPaths],
   );
 
   const clearProject = useCallback((): void => {
@@ -135,15 +168,11 @@ function useProjectRootActions(
 
   const setActiveProjectRoot = useCallback(
     (path: string): void => {
-      // Wave 10.1 — drop the original "no-op if absent" guard: switcher UI
-      // surfaces (outer rail / title bar dropdown / inner rail dropdown) source
-      // their lists from useWorkbenchProjects which merges projectRoots WITH
-      // config.recentProjects. A user clicking a recents-only chip must promote
-      // it to active; the guard caused a silent no-op (see Wave 11 Phase 0
-      // diagnosis 2026-05-24). Add-if-absent + move-if-present is the contract.
+      // Wave 10.1: add-if-absent + move-if-present. Un-exclude if previously removed.
+      excludeDelete(setExcludedPaths, path);
       updateRoots((prev) => [path, ...prev.filter((root) => root !== path)]);
     },
-    [updateRoots],
+    [updateRoots, setExcludedPaths],
   );
 
   return { setProjectRoot, addProjectRoot, removeProjectRoot, clearProject, setActiveProjectRoot };
@@ -159,7 +188,8 @@ export function ProjectProvider({
   children,
 }: ProjectProviderProps): React.ReactElement {
   const [projectRoots, setProjectRoots, isLoaded] = useProjectRootState(initialRoot);
-  const projectActions = useProjectRootActions(setProjectRoots);
+  const [excludedPaths, setExcludedPaths] = useState<ReadonlySet<string>>(new Set());
+  const projectActions = useProjectRootActions(setProjectRoots, setExcludedPaths);
   const projectRoot = projectRoots[0] ?? null;
   const projectName = projectRoot ? basename(projectRoot) : '';
 
@@ -169,9 +199,10 @@ export function ProjectProvider({
       projectRoot,
       projectName,
       isLoaded,
+      excludedPaths,
       ...projectActions,
     }),
-    [isLoaded, projectActions, projectName, projectRoot, projectRoots],
+    [isLoaded, excludedPaths, projectActions, projectName, projectRoot, projectRoots],
   );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

@@ -7,9 +7,10 @@
  * D4: separate from InnerRailProjectDropdown — title bar has wider layout constraints.
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { type RefObject, useCallback, useEffect, useRef } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
+import { useProjectCRUDActions } from '../useProjectCRUDActions';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -33,6 +34,26 @@ const DROPDOWN_STYLE: React.CSSProperties = {
   overflow: 'hidden',
   padding: '4px 0',
 };
+
+// ── Hooks ─────────────────────────────────────────────────────────────────────
+
+function useDismiss(ref: RefObject<HTMLElement | null>, onClose: () => void): void {
+  useEffect(() => {
+    const onMouse = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', onMouse);
+    return () => document.removeEventListener('mousedown', onMouse);
+  }, [ref, onClose]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -83,23 +104,53 @@ function miniChipStyle(color: string): React.CSSProperties {
   };
 }
 
+const REMOVE_BTN_STYLE: React.CSSProperties = {
+  marginLeft: 'auto',
+  padding: '0 4px',
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--ink-4)',
+  cursor: 'pointer',
+  fontSize: 14,
+  lineHeight: '1',
+  flexShrink: 0,
+};
+
 function ProjectRow({
   project,
   onSelect,
+  onRemove,
 }: {
   project: WorkbenchProject;
   onSelect: (path: string) => void;
+  onRemove: (path: string) => void;
 }): React.ReactElement {
   return (
-    <button
-      style={rowStyle(project.active)}
-      onClick={() => onSelect(project.path)}
+    <div
+      style={{ display: 'flex', alignItems: 'center' }}
       data-testid={`titlebar-project-row-${project.name}`}
+      onClick={() => onSelect(project.path)}
     >
-      <span style={miniChipStyle(project.color)}>{project.initial}</span>
-      <span style={NAME_STYLE}>{project.name}</span>
-      {project.active && <span style={CHECK_STYLE}>✓</span>}
-    </button>
+      <button
+        style={{ ...rowStyle(project.active), flex: 1 }}
+        onClick={() => onSelect(project.path)}
+      >
+        <span style={miniChipStyle(project.color)}>{project.initial}</span>
+        <span style={NAME_STYLE}>{project.name}</span>
+        {project.active && <span style={CHECK_STYLE}>✓</span>}
+      </button>
+      <button
+        aria-label={`Remove ${project.name}`}
+        data-testid={`remove-project-${project.name}`}
+        style={REMOVE_BTN_STYLE}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(project.path);
+        }}
+      >
+        ×
+      </button>
+    </div>
   );
 }
 
@@ -113,6 +164,7 @@ export function TitleBarProjectDropdown({
   onClose,
 }: TitleBarProjectDropdownProps): React.ReactElement {
   const { setActiveProjectRoot } = useProject();
+  const { removeProject } = useProjectCRUDActions();
   const projects = useWorkbenchProjects();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -124,26 +176,20 @@ export function TitleBarProjectDropdown({
     [setActiveProjectRoot, onClose],
   );
 
-  useEffect(() => {
-    const onMouse = (e: MouseEvent): void => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener('mousedown', onMouse);
-    return () => document.removeEventListener('mousedown', onMouse);
-  }, [onClose]);
+  const handleRemove = useCallback(
+    (path: string) => {
+      removeProject(path);
+      onClose();
+    },
+    [removeProject, onClose],
+  );
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useDismiss(containerRef, onClose);
 
   return (
     <div ref={containerRef} style={DROPDOWN_STYLE} data-testid="titlebar-project-dropdown">
       {projects.map((p) => (
-        <ProjectRow key={p.path} project={p} onSelect={handleSelect} />
+        <ProjectRow key={p.path} project={p} onSelect={handleSelect} onRemove={handleRemove} />
       ))}
     </div>
   );

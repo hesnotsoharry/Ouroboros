@@ -36,6 +36,7 @@ function useDropdownDismiss(
 
 import { useProject } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
+import { useProjectCRUDActions } from '../useProjectCRUDActions';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -99,42 +100,67 @@ function MiniChip({ color, initial }: { color: string; initial: string }): React
   );
 }
 
+const ROW_REMOVE_STYLE: React.CSSProperties = {
+  padding: '0 8px',
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--ink-4)',
+  cursor: 'pointer',
+  fontSize: 14,
+  lineHeight: '1',
+  flexShrink: 0,
+};
+
+function rowSelectStyle(active: boolean): React.CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 10px',
+    cursor: 'pointer',
+    fontSize: 11.5,
+    fontFamily: 'var(--font-ui)',
+    background: active ? 'var(--interactive-accent-subtle, rgba(99,102,241,0.15))' : 'transparent',
+    color: active ? 'var(--ink)' : 'var(--ink-2)',
+    border: 'none',
+    flex: 1,
+    textAlign: 'left',
+  };
+}
+
 function ProjectRow({
   project,
   onSelect,
+  onRemove,
 }: {
   project: WorkbenchProject;
   onSelect: (path: string) => void;
+  onRemove: (path: string) => void;
 }): React.ReactElement {
   return (
-    <button
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '6px 10px',
-        cursor: 'pointer',
-        fontSize: 11.5,
-        fontFamily: 'var(--font-ui)',
-        background: project.active
-          ? 'var(--interactive-accent-subtle, rgba(99,102,241,0.15))'
-          : 'transparent',
-        color: project.active ? 'var(--ink)' : 'var(--ink-2)',
-        border: 'none',
-        width: '100%',
-        textAlign: 'left',
-      }}
-      onClick={() => onSelect(project.path)}
+    <div
+      style={{ display: 'flex', alignItems: 'center' }}
       data-testid={`innerrail-project-row-${project.name}`}
+      onClick={() => onSelect(project.path)}
     >
-      <MiniChip color={project.color} initial={project.initial} />
-      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {project.name}
-      </span>
-      {project.active && (
-        <span style={{ color: 'var(--interactive-accent)', fontSize: 10, fontWeight: 700 }}>✓</span>
-      )}
-    </button>
+      <button style={rowSelectStyle(project.active)} onClick={() => onSelect(project.path)}>
+        <MiniChip color={project.color} initial={project.initial} />
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {project.name}
+        </span>
+        {project.active && (
+          <span style={{ color: 'var(--interactive-accent)', fontSize: 10, fontWeight: 700 }}>✓</span>
+        )}
+      </button>
+      <button
+        aria-label={`Remove ${project.name}`}
+        data-testid={`remove-project-${project.name}`}
+        style={ROW_REMOVE_STYLE}
+        onClick={(e) => { e.stopPropagation(); onRemove(project.path); }}
+      >
+        ×
+      </button>
+    </div>
   );
 }
 
@@ -182,6 +208,7 @@ function TriggerButton({
 
 export function InnerRailProjectDropdown(): React.ReactElement {
   const { setActiveProjectRoot } = useProject();
+  const { removeProject } = useProjectCRUDActions();
   const projects = useWorkbenchProjects();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -192,6 +219,13 @@ export function InnerRailProjectDropdown(): React.ReactElement {
       setOpen(false);
     },
     [setActiveProjectRoot],
+  );
+  const handleRemove = useCallback(
+    (path: string) => {
+      removeProject(path);
+      setOpen(false);
+    },
+    [removeProject],
   );
   useDropdownDismiss(containerRef, open, setOpen);
 
@@ -205,7 +239,7 @@ export function InnerRailProjectDropdown(): React.ReactElement {
       {open && (
         <div style={DROPDOWN_STYLE}>
           {projects.map((p) => (
-            <ProjectRow key={p.path} project={p} onSelect={handleSelect} />
+            <ProjectRow key={p.path} project={p} onSelect={handleSelect} onRemove={handleRemove} />
           ))}
         </div>
       )}

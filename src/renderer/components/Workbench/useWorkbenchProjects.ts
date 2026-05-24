@@ -9,6 +9,7 @@
  *   color   = deterministic HSL from a djb2 hash of the path (data-derived
  *             project identity color — not a hardcoded hex; sanctioned exception
  *             per renderer color rule)
+ *   exists  = boolean from pathExists IPC (optimistic true until IPC resolves)
  *
  * Order: case-insensitive alphabetical by name (Wave 10.1 — UX preference
  * for find-by-name across all three switcher surfaces). The "active is [0]"
@@ -17,7 +18,7 @@
  * independent of position. No dirty badge — deferred to a follow-up.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useProject } from '../../contexts/ProjectContext';
 import { useConfig } from '../../hooks/useConfig';
@@ -31,6 +32,8 @@ export interface WorkbenchProject {
   /** Deterministic HSL color derived from the path. */
   color: string;
   active: boolean;
+  /** Whether the path exists on disk. Optimistic true until the IPC resolves. */
+  exists: boolean;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -60,38 +63,69 @@ function basename(filePath: string): string {
   return filePath.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? filePath;
 }
 
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+type ProjectBase = Omit<WorkbenchProject, 'exists'>;
+
+function deriveProjects(
+  projectRoots: string[],
+  projectRoot: string | null,
+  recentProjects: string[],
+  excluded: ReadonlySet<string>,
+): ProjectBase[] {
+  const seen = new Set<string>(projectRoots);
+  const combined = [...projectRoots].filter((p) => !excluded.has(p));
+  for (const p of recentProjects) {
+    if (!seen.has(p) && !excluded.has(p)) {
+      seen.add(p);
+      combined.push(p);
+    }
+  }
+  return combined
+    .map((path) => {
+      const name = basename(path);
+      return {
+        path,
+        name,
+        initial: name.length > 0 ? name[0].toUpperCase() : '?',
+        color: pathToColor(path),
+        active: path === projectRoot,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+async function fetchExistsMap(paths: string[]): Promise<Record<string, boolean>> {
+  const pathExists = window.electronAPI?.files?.pathExists;
+  if (!pathExists || paths.length === 0) return {};
+  const results = await Promise.all(paths.map((p) => pathExists(p)));
+  const map: Record<string, boolean> = {};
+  for (let i = 0; i < paths.length; i++) map[paths[i]] = results[i];
+  return map;
+}
+
 // ── hook ──────────────────────────────────────────────────────────────────────
 
 export function useWorkbenchProjects(): WorkbenchProject[] {
-  const { projectRoots, projectRoot } = useProject();
+  const { projectRoots, projectRoot, excludedPaths: rawExcluded } = useProject();
   const { config } = useConfig();
+  const [existsMap, setExistsMap] = useState<Record<string, boolean>>({});
 
-  return useMemo(() => {
-    const recentProjects: string[] = Array.isArray(config?.recentProjects)
+  const projects = useMemo(() => {
+    // Defensive: older ProjectContext stubs in tests may not include excludedPaths.
+    const excluded: ReadonlySet<string> = rawExcluded ?? new Set<string>();
+    const recents: string[] = Array.isArray(config?.recentProjects)
       ? (config.recentProjects as string[])
       : [];
+    return deriveProjects(projectRoots, projectRoot, recents, excluded);
+  }, [projectRoots, projectRoot, rawExcluded, config?.recentProjects]);
 
-    // Open roots first, then recents not already open — dedup by path.
-    const seen = new Set<string>(projectRoots);
-    const combined = [...projectRoots];
-    for (const p of recentProjects) {
-      if (!seen.has(p)) {
-        seen.add(p);
-        combined.push(p);
-      }
-    }
+  useEffect(() => {
+    void fetchExistsMap(projects.map((p) => p.path)).then(setExistsMap);
+  }, [projects]);
 
-    return combined
-      .map((path) => {
-        const name = basename(path);
-        return {
-          path,
-          name,
-          initial: name.length > 0 ? name[0].toUpperCase() : '?',
-          color: pathToColor(path),
-          active: path === projectRoot,
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-  }, [projectRoots, projectRoot, config?.recentProjects]);
+  return useMemo(
+    () => projects.map((p) => ({ ...p, exists: existsMap[p.path] ?? true })),
+    [projects, existsMap],
+  );
 }

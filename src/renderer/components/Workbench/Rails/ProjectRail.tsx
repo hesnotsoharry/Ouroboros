@@ -8,6 +8,7 @@ import React, { useCallback, useState } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
+import { useProjectCRUDActions } from '../useProjectCRUDActions';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
 import { UserAvatar } from './ProjectRailAvatar';
 
@@ -73,6 +74,7 @@ interface ProjectRailProps {
 export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElement {
   const projects = useWorkbenchProjects();
   const { setActiveProjectRoot, addProjectRoot } = useProject();
+  const { removeProject } = useProjectCRUDActions();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [layoutLabel, handleLayoutClick] = useLayoutToggle();
   const handleAddProject = useAddProject(addProjectRoot);
@@ -81,7 +83,12 @@ export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElemen
     <div data-testid="workbench-projectrail" style={RAIL_STYLE}>
       <CollapseHandle onCollapse={onCollapse} />
       {projects.map((p) => (
-        <ProjectChip key={p.path} project={p} onClick={() => setActiveProjectRoot(p.path)} />
+        <ProjectChip
+          key={p.path}
+          project={p}
+          onClick={() => setActiveProjectRoot(p.path)}
+          onRemove={() => removeProject(p.path)}
+        />
       ))}
       <AddProjectButton onClick={handleAddProject} />
       <div style={{ flex: 1 }} />
@@ -145,6 +152,7 @@ function chipStyle(color: string, active: boolean): React.CSSProperties {
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
   };
 }
 
@@ -166,24 +174,70 @@ function ActiveIndicator({ color }: { color: string }): React.ReactElement {
   );
 }
 
+const CHIP_WRAPPER_STYLE: React.CSSProperties = {
+  position: 'relative',
+  flexShrink: 0,
+};
+
+const REMOVE_BTN_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  top: 1,
+  right: 1,
+  width: 14,
+  height: 14,
+  borderRadius: 3,
+  padding: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(0,0,0,0.45)',
+  border: 'none',
+  color: 'var(--ink)',
+  cursor: 'pointer',
+  fontSize: 9,
+  lineHeight: '1',
+  fontWeight: 700,
+  zIndex: 1,
+};
+
 function ProjectChip({
   project,
   onClick,
+  onRemove,
 }: {
   project: WorkbenchProject;
   onClick: () => void;
+  onRemove: () => void;
 }): React.ReactElement {
-  const { name, initial, color, active } = project;
+  const { name, initial, color, active, exists } = project;
+  // chipStyle already has position:relative — override to static here;
+  // the wrapper div owns the positioning context.
+  const innerStyle: React.CSSProperties = {
+    ...chipStyle(color, active),
+    position: 'static',
+    flexShrink: undefined,
+  };
+  const wrapperStyle: React.CSSProperties = exists
+    ? CHIP_WRAPPER_STYLE
+    : { ...CHIP_WRAPPER_STYLE, opacity: 0.5 };
   return (
-    <button
-      title={name}
-      onClick={onClick}
-      style={chipStyle(color, active)}
-      data-testid={`project-chip-${name}`}
-    >
-      {initial}
-      {active && <ActiveIndicator color={color} />}
-    </button>
+    <div style={wrapperStyle} data-testid={`project-chip-${name}`} title={name} onClick={onClick}>
+      <button aria-label={name} onClick={onClick} style={innerStyle}>
+        {initial}
+        {active && <ActiveIndicator color={color} />}
+      </button>
+      <button
+        aria-label={`Remove ${name}`}
+        data-testid={`remove-project-${name}`}
+        style={REMOVE_BTN_STYLE}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+      >
+        ×
+      </button>
+    </div>
   );
 }
 
