@@ -120,6 +120,8 @@ const filesAPI: ElectronAPI['files'] = {
 
   showImageDialog: () => ipcRenderer.invoke('files:showImageDialog'),
 
+  pathExists: (p: string) => ipcRenderer.invoke('files:pathExists', p),
+
   search: (root, query, options) => ipcRenderer.invoke('files:search', root, query, options),
 
   onFileChange: (callback) => {

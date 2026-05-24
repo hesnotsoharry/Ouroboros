@@ -333,6 +333,7 @@ export function registerFileHandlers(senderWindow: SenderWindow): string[] {
     ['files:openFile', createOpenFileHandler(senderWindow)],
     ['files:selectFolder', createSelectFolderHandler(senderWindow)],
     ['files:showImageDialog', handleShowImageDialog],
+    ['files:pathExists', async (_event: IpcMainInvokeEvent, p: string) => pathExists(p)],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ].forEach(([channel, handler]) => register(channel as string, handler as FileHandler<any>));
   return channels;

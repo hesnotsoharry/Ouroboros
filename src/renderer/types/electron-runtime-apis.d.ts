@@ -209,6 +209,7 @@ export interface FilesAPI {
   softDelete: (targetPath: string) => Promise<IpcResult & { tempPath?: string }>;
   restoreDeleted: (tempPath: string, originalPath: string) => Promise<IpcResult>;
   showImageDialog: () => Promise<ShowImageDialogResult>;
+  pathExists: (path: string) => Promise<boolean>;
   onFileChange: (callback: (change: FileChangeEvent) => void) => () => void;
   search: (root: string, query: string, options?: SearchOptions) => Promise<SearchResultResponse>;
 }
