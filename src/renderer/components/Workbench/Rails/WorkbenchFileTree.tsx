@@ -18,6 +18,7 @@ import { type LiveFileNode, useWorkbenchFileTree } from './useWorkbenchFileTree'
 
 interface WorkbenchFileTreeProps {
   rootPath: string;
+  onSelectFile?: (path: string) => void;
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
@@ -46,7 +47,10 @@ const LOADING_STYLE: React.CSSProperties = {
  * WorkbenchFileTree renders a single project root's file tree.
  * Directories expand/collapse on click via toggleDir.
  */
-export function WorkbenchFileTree({ rootPath }: WorkbenchFileTreeProps): React.ReactElement {
+export function WorkbenchFileTree({
+  rootPath,
+  onSelectFile,
+}: WorkbenchFileTreeProps): React.ReactElement {
   const { nodes, isLoading, error, toggleDir } = useWorkbenchFileTree(rootPath);
 
   if (isLoading && nodes.length === 0) {
@@ -64,7 +68,7 @@ export function WorkbenchFileTree({ rootPath }: WorkbenchFileTreeProps): React.R
   return (
     <div data-testid="workbench-filetree">
       {nodes.map((node) => (
-        <NodeRow key={node.key} node={node} onToggle={toggleDir} />
+        <NodeRow key={node.key} node={node} onToggle={toggleDir} onSelectFile={onSelectFile} />
       ))}
     </div>
   );
@@ -75,20 +79,25 @@ export function WorkbenchFileTree({ rootPath }: WorkbenchFileTreeProps): React.R
 interface NodeRowProps {
   node: LiveFileNode;
   onToggle: (path: string) => void;
+  onSelectFile?: (path: string) => void;
 }
 
-function NodeRow({ node, onToggle }: NodeRowProps): React.ReactElement {
+function NodeRow({ node, onToggle, onSelectFile }: NodeRowProps): React.ReactElement {
+  const isClickableFile = node.type !== 'dir' && onSelectFile !== undefined;
+
   const handleClick = (): void => {
     if (node.type === 'dir') {
       onToggle(node.path);
+    } else if (onSelectFile) {
+      onSelectFile(node.path);
     }
   };
 
   return (
     <div
-      role={node.type === 'dir' ? 'button' : undefined}
+      role={node.type === 'dir' || isClickableFile ? 'button' : undefined}
       onClick={handleClick}
-      style={{ cursor: node.type === 'dir' ? 'pointer' : 'default' }}
+      style={{ cursor: node.type === 'dir' || isClickableFile ? 'pointer' : 'default' }}
     >
       <FileNode node={node} />
     </div>

@@ -34,9 +34,10 @@ const RAIL_STYLE: React.CSSProperties = {
 
 interface InnerRailProps {
   onCollapse?: () => void;
+  onSelectFile?: (path: string) => void;
 }
 
-export function InnerRail({ onCollapse }: InnerRailProps): React.ReactElement {
+export function InnerRail({ onCollapse, onSelectFile }: InnerRailProps): React.ReactElement {
   const { projectRoot } = useProject();
   const { sessions } = useWorkbenchAgentData();
   // projectId is basename(cwd); match against basename of the current project root.
@@ -55,7 +56,7 @@ export function InnerRail({ onCollapse }: InnerRailProps): React.ReactElement {
         onCollapse={onCollapse}
       />
       <div style={{ height: 1, background: 'var(--stroke-faint)', margin: '0 10px' }} />
-      <FilesSection />
+      <FilesSection onSelectFile={onSelectFile} />
       <BranchFooter />
     </div>
   );
@@ -286,12 +287,18 @@ function FilesSectionHeader(): React.ReactElement {
   );
 }
 
-function FilesSection(): React.ReactElement {
+function FilesSection({
+  onSelectFile,
+}: {
+  onSelectFile?: (path: string) => void;
+}): React.ReactElement {
   const { projectRoot } = useProject();
   return (
     <div style={{ flex: 1, padding: '10px 6px', overflowY: 'auto', minHeight: 0 }}>
       <FilesSectionHeader />
-      {projectRoot !== null && projectRoot !== '' && <WorkbenchFileTree rootPath={projectRoot} />}
+      {projectRoot !== null && projectRoot !== '' && (
+        <WorkbenchFileTree rootPath={projectRoot} onSelectFile={onSelectFile} />
+      )}
     </div>
   );
 }

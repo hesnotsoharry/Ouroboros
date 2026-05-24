@@ -100,6 +100,7 @@ interface MiddleRowProps {
   claudeSessionId: string | null;
   onClaudeSessionId: (id: string | null) => void;
   projectKey: string;
+  onSelectFile: (path: string) => void;
 }
 
 function MiddleRow({
@@ -110,6 +111,7 @@ function MiddleRow({
   claudeSessionId,
   onClaudeSessionId,
   projectKey,
+  onSelectFile,
 }: MiddleRowProps): React.ReactElement {
   return (
     <div style={middleRowStyle}>
@@ -118,7 +120,7 @@ function MiddleRow({
       ) : (
         <>
           <ProjectRail onCollapse={onCollapseToUnified} />
-          <InnerRail onCollapse={onCollapseToUnified} />
+          <InnerRail onCollapse={onCollapseToUnified} onSelectFile={onSelectFile} />
         </>
       )}
       <CenterPane key={projectKey} onClaudeSessionId={onClaudeSessionId} />
@@ -159,6 +161,7 @@ export function Workbench(): React.ReactElement {
           claudeSessionId={claudeSessionId}
           onClaudeSessionId={setClaudeSessionId}
           projectKey={projectKey}
+          onSelectFile={setOpenFilePath}
         />
         <StatusBar />
         <WorkbenchSettingsOverlay />
