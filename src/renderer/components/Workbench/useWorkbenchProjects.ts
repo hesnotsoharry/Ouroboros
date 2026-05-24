@@ -10,8 +10,11 @@
  *             project identity color — not a hardcoded hex; sanctioned exception
  *             per renderer color rule)
  *
- * The list is open roots first (in order), then recents not already in open
- * roots (deduplication by path). No dirty badge — deferred to a follow-up.
+ * Order: case-insensitive alphabetical by name (Wave 10.1 — UX preference
+ * for find-by-name across all three switcher surfaces). The "active is [0]"
+ * convention in ProjectContext stays intact for restore/persistence; the
+ * `active: boolean` flag is set on whichever entry matches `projectRoot`,
+ * independent of position. No dirty badge — deferred to a follow-up.
  */
 
 import { useMemo } from 'react';
@@ -78,15 +81,17 @@ export function useWorkbenchProjects(): WorkbenchProject[] {
       }
     }
 
-    return combined.map((path) => {
-      const name = basename(path);
-      return {
-        path,
-        name,
-        initial: name.length > 0 ? name[0].toUpperCase() : '?',
-        color: pathToColor(path),
-        active: path === projectRoot,
-      };
-    });
+    return combined
+      .map((path) => {
+        const name = basename(path);
+        return {
+          path,
+          name,
+          initial: name.length > 0 ? name[0].toUpperCase() : '?',
+          color: pathToColor(path),
+          active: path === projectRoot,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   }, [projectRoots, projectRoot, config?.recentProjects]);
 }
