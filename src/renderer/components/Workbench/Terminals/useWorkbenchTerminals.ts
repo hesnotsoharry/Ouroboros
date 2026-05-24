@@ -41,7 +41,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useProject } from '../../../contexts/ProjectContext';
 import { TERMINAL_BIND_TRIGGER_TYPES } from '../../../hooks/useTerminalSessions.sync.helpers';
 import { useWorkbenchRestore } from './useWorkbenchRestore';
-import { useWorkbenchSessionPersist } from './useWorkbenchSessionPersist';
 
 type TimerId = ReturnType<typeof setTimeout>;
 
@@ -205,12 +204,10 @@ export function useWorkbenchTerminals(): WorkbenchTerminals {
   const { upperCwd, lowerCwd, resumeSessionId, isReady } = useWorkbenchRestore(projectRoot);
   const claudeSessionId = useWorkbenchClaudeCapture(upperSessionId);
 
-  // Wave 12: persist upper frame as a minimal single-session slot.
-  useWorkbenchSessionPersist({
-    frame: 'upper',
-    projectRoot,
-    tabCollection: { activeTabId: upperSessionId, tabs: [] },
-  });
+  // Wave 12 Phase 4: persistence is now handled by useWorkbenchTabs (mounted inside
+  // each TerminalShell). The Phase 3 stub persist call is removed to avoid stomping
+  // the real tab collection written by the live hook. Wave 9 acceptance test remains
+  // green because the spawn/kill lifecycle is unchanged.
   useWorkbenchSpawnEffect(isReady, {
     upperSessionId,
     lowerSessionId,

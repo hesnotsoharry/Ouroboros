@@ -10,15 +10,17 @@
  * (Mirrors `useImmersiveChatFlag` — the established pattern for layout keys.)
  *
  * Transparent column, 10px padding, as per canon §02 + §08.
+ *
+ * Wave 12 Phase 4: accepts `maximizedFrame` + `onSetMaximizedFrame` props.
+ * When non-null, hides the OTHER frame and the divider so the active frame
+ * takes all available space.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useProject } from '../../../contexts/ProjectContext';
 import { PermissionOverlay } from '../Permission/PermissionOverlay';
 import { TerminalShell } from './TerminalShell';
 import { useVerticalSplitResize } from './useVerticalSplitResize';
-import { useWorkbenchTabs } from './useWorkbenchTabs';
 import { useWorkbenchTerminals } from './useWorkbenchTerminals';
 
 const DEFAULT_RATIO = 0.62;
@@ -76,6 +78,8 @@ const DIVIDER_INNER_STYLE: React.CSSProperties = {
 
 interface CenterPaneProps {
   onClaudeSessionId?: (id: string | null) => void;
+  maximizedFrame?: 'upper' | 'lower' | null;
+  onSetMaximizedFrame?: (frame: 'upper' | 'lower' | null) => void;
 }
 
 /**
@@ -84,21 +88,8 @@ interface CenterPaneProps {
  * Carries `data-testid="workbench-terminals"` so tests resolve on the root.
  * Wave 8 Phase 1: calls `onClaudeSessionId` whenever the bound Claude session
  * changes so Workbench.tsx can thread the id to the AgentSidebar.
+ * Wave 12 Phase 4: maximizedFrame prop hides the non-active frame + divider.
  */
-/** Derives the active terminal session id per frame, preferring the tab's activeTabId. */
-function useActiveSessionIds(
-  projectRoot: string | null,
-  upperSessionId: string,
-  lowerSessionId: string,
-) {
-  const upperTabs = useWorkbenchTabs('upper', projectRoot);
-  const lowerTabs = useWorkbenchTabs('lower', projectRoot);
-  return {
-    activeUpperId: upperTabs.activeTabId ?? upperSessionId,
-    activeLowerId: lowerTabs.activeTabId ?? lowerSessionId,
-  };
-}
-
 /** Loads and persists the vertical split ratio. */
 function useSplitRatio(containerRef: React.RefObject<HTMLDivElement | null>) {
   const [initialRatio, setInitialRatio] = useState(DEFAULT_RATIO);
@@ -119,27 +110,104 @@ function useSplitRatio(containerRef: React.RefObject<HTMLDivElement | null>) {
   return useVerticalSplitResize({ initialRatio, onCommit, containerRef });
 }
 
-export function CenterPane({ onClaudeSessionId }: CenterPaneProps): React.ReactElement {
-  const { projectRoot } = useProject();
-  const { upperSessionId, lowerSessionId, claudeSessionId } = useWorkbenchTerminals();
-  const { activeUpperId, activeLowerId } = useActiveSessionIds(
-    projectRoot,
-    upperSessionId,
-    lowerSessionId,
+function makeMaximizeHandler(
+  frame: 'upper' | 'lower',
+  maximizedFrame: 'upper' | 'lower' | null | undefined,
+  onSetMaximizedFrame: ((f: 'upper' | 'lower' | null) => void) | undefined,
+): () => void {
+  return () => {
+    if (!onSetMaximizedFrame) return;
+    onSetMaximizedFrame(maximizedFrame === frame ? null : frame);
+  };
+}
+
+interface FramePaneProps {
+  ratio: number;
+  handlePointerDown: (e: React.PointerEvent) => void;
+  activeUpperId: string;
+  activeLowerId: string;
+  maximizedFrame: 'upper' | 'lower' | null | undefined;
+  onSetMaximizedFrame: ((f: 'upper' | 'lower' | null) => void) | undefined;
+}
+
+const DIVIDER_HIDDEN_STYLE: React.CSSProperties = { ...DIVIDER_OUTER_STYLE, display: 'none' };
+
+function SplitDivider({
+  hidden,
+  onPointerDown,
+}: {
+  hidden: boolean;
+  onPointerDown: (e: React.PointerEvent) => void;
+}): React.ReactElement {
+  return (
+    <div
+      data-testid="terminal-divider"
+      aria-hidden="true"
+      style={hidden ? DIVIDER_HIDDEN_STYLE : DIVIDER_OUTER_STYLE}
+      onPointerDown={onPointerDown}
+    >
+      <div style={DIVIDER_INNER_STYLE} />
+    </div>
   );
+}
+
+function FramePane({
+  ratio,
+  handlePointerDown,
+  activeUpperId,
+  activeLowerId,
+  maximizedFrame,
+  onSetMaximizedFrame,
+}: FramePaneProps): React.ReactElement {
+  const hideUpper = maximizedFrame === 'lower';
+  const hideLower = maximizedFrame === 'upper';
+  return (
+    <>
+      <TerminalShell
+        kind="cc"
+        flex={hideLower ? 1 : ratio}
+        sessionId={activeUpperId}
+        isActive
+        onMaximize={makeMaximizeHandler('upper', maximizedFrame, onSetMaximizedFrame)}
+        style={hideUpper ? { display: 'none' } : undefined}
+      />
+      <SplitDivider hidden={maximizedFrame != null} onPointerDown={handlePointerDown} />
+      <TerminalShell
+        kind="shell"
+        flex={hideUpper ? 1 : 1 - ratio}
+        sessionId={activeLowerId}
+        isActive
+        onMaximize={makeMaximizeHandler('lower', maximizedFrame, onSetMaximizedFrame)}
+        style={hideLower ? { display: 'none' } : undefined}
+      />
+    </>
+  );
+}
+
+export function CenterPane({
+  onClaudeSessionId,
+  maximizedFrame,
+  onSetMaximizedFrame,
+}: CenterPaneProps): React.ReactElement {
+  const { upperSessionId, lowerSessionId, claudeSessionId } = useWorkbenchTerminals();
   useEffect(() => {
     onClaudeSessionId?.(claudeSessionId);
   }, [claudeSessionId, onClaudeSessionId]);
   const containerRef = useRef<HTMLDivElement>(null);
   const { ratio, handlePointerDown } = useSplitRatio(containerRef);
-
+  // sessionId props are FALLBACKS — TerminalShell mounts its own useWorkbenchTabs
+  // and overrides with activeTab?.sessionId. Mounting useWorkbenchTabs here too
+  // would create duplicate hook instances racing the same persist write path.
   return (
     <div ref={containerRef} data-testid="workbench-terminals" style={OUTER_STYLE}>
-      <TerminalShell kind="cc" flex={ratio} sessionId={activeUpperId} isActive />
-      <div aria-hidden="true" style={DIVIDER_OUTER_STYLE} onPointerDown={handlePointerDown}>
-        <div style={DIVIDER_INNER_STYLE} />
-      </div>
-      <TerminalShell kind="shell" flex={1 - ratio} sessionId={activeLowerId} isActive />
+      <FramePane
+        ratio={ratio}
+        handlePointerDown={handlePointerDown}
+        activeUpperId={upperSessionId}
+        activeLowerId={lowerSessionId}
+        maximizedFrame={maximizedFrame}
+        onSetMaximizedFrame={onSetMaximizedFrame}
+      />
       <PermissionOverlay />
     </div>
   );

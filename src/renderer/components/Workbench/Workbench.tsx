@@ -102,6 +102,8 @@ interface MiddleRowProps {
   onClaudeSessionId: (id: string | null) => void;
   projectKey: string;
   onSelectFile: (path: string) => void;
+  maximizedFrame: 'upper' | 'lower' | null;
+  onSetMaximizedFrame: (frame: 'upper' | 'lower' | null) => void;
 }
 
 function MiddleRow({
@@ -113,6 +115,8 @@ function MiddleRow({
   onClaudeSessionId,
   projectKey,
   onSelectFile,
+  maximizedFrame,
+  onSetMaximizedFrame,
 }: MiddleRowProps): React.ReactElement {
   return (
     <div style={middleRowStyle}>
@@ -124,7 +128,12 @@ function MiddleRow({
           <InnerRail onCollapse={onCollapseToUnified} onSelectFile={onSelectFile} />
         </>
       )}
-      <CenterPane key={projectKey} onClaudeSessionId={onClaudeSessionId} />
+      <CenterPane
+        key={projectKey}
+        onClaudeSessionId={onClaudeSessionId}
+        maximizedFrame={maximizedFrame}
+        onSetMaximizedFrame={onSetMaximizedFrame}
+      />
       <AgentSidebar breakpointMode={breakpointMode} claudeSessionId={claudeSessionId} />
     </div>
   );
@@ -141,6 +150,8 @@ interface WorkbenchStageProps {
   projectKey: string;
   onCollapseToUnified: () => void;
   onExpandToDual: () => void;
+  maximizedFrame: 'upper' | 'lower' | null;
+  onSetMaximizedFrame: (frame: 'upper' | 'lower' | null) => void;
 }
 
 /**
@@ -148,19 +159,20 @@ interface WorkbenchStageProps {
  * Extracted from Workbench() to stay under the 40-line lint cap after the
  * Wave 11.1 DiffReviewProvider wrap was added on top.
  */
-function WorkbenchStage(props: WorkbenchStageProps): React.ReactElement {
-  const {
-    scanlines,
-    breakpointMode,
-    isUnified,
-    claudeSessionId,
-    setClaudeSessionId,
-    openFilePath,
-    setOpenFilePath,
-    projectKey,
-    onCollapseToUnified,
-    onExpandToDual,
-  } = props;
+function WorkbenchStage({
+  scanlines,
+  breakpointMode,
+  isUnified,
+  claudeSessionId,
+  setClaudeSessionId,
+  openFilePath,
+  setOpenFilePath,
+  projectKey,
+  onCollapseToUnified,
+  onExpandToDual,
+  maximizedFrame,
+  onSetMaximizedFrame,
+}: WorkbenchStageProps): React.ReactElement {
   return (
     <div data-testid="workbench-root" style={stageStyle}>
       <TitleBar />
@@ -173,6 +185,8 @@ function WorkbenchStage(props: WorkbenchStageProps): React.ReactElement {
         onClaudeSessionId={setClaudeSessionId}
         projectKey={projectKey}
         onSelectFile={setOpenFilePath}
+        maximizedFrame={maximizedFrame}
+        onSetMaximizedFrame={onSetMaximizedFrame}
       />
       <StatusBar />
       <WorkbenchSettingsOverlay />
@@ -200,6 +214,7 @@ export function Workbench(): React.ReactElement {
   const [forceUnified, setForceUnified] = useState(false);
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
   const [openFilePath, setOpenFilePath] = useState<string | null>(null);
+  const [maximizedFrame, setMaximizedFrame] = useState<'upper' | 'lower' | null>(null);
   const projectCtx = useProjectOptional();
   const projectKey = projectCtx?.projectRoot ?? '__no-project__';
   const isUnified = forceUnified || breakpointMode === 'unified';
@@ -217,6 +232,8 @@ export function Workbench(): React.ReactElement {
           projectKey={projectKey}
           onCollapseToUnified={() => setForceUnified(true)}
           onExpandToDual={() => setForceUnified(false)}
+          maximizedFrame={maximizedFrame}
+          onSetMaximizedFrame={setMaximizedFrame}
         />
       </ActiveFrameProvider>
     </DiffReviewProvider>

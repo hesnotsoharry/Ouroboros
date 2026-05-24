@@ -457,11 +457,11 @@ describe('CenterPane', () => {
 });
 
 describe('TerminalShell (upper — CC)', () => {
-  it('renders tab labels from MOCK_TERM_TABS_UPPER', () => {
+  it('renders the new-tab button for the upper frame (Wave 12 Phase 4)', () => {
+    // Phase 4: live tabs via useWorkbenchTabs. Mock data removed; tab bar always has
+    // new-tab and controls regardless of tab count (which is zero in this test env).
     render(<TerminalShell kind="cc" flex={1.55} sessionId="test-upper" isActive />);
-    // MOCK_TERM_TABS_UPPER: 'claude · main', 'claude · refactor'
-    expect(screen.getByText('claude · main')).toBeDefined();
-    expect(screen.getByText('claude · refactor')).toBeDefined();
+    expect(screen.getByTestId('terminal-tabbar-new-upper')).toBeDefined();
   });
 
   it('renders a live TerminalInstance in the well body', () => {
@@ -479,19 +479,20 @@ describe('TerminalShell (upper — CC)', () => {
     expect(screen.queryByTestId('cc-status-line')).toBeNull();
   });
 
-  it('renders the Split and Maximize tab-bar icons', () => {
+  it('renders the Split (inert) and Maximize tab-bar controls (Wave 12 Phase 4)', () => {
+    // ADR D4: Split button stays mounted but inert with descriptive tooltip.
+    // ADR D5: Maximize button wired; testid is terminal-maximize-upper.
     render(<TerminalShell kind="cc" flex={1.55} sessionId="test-upper" isActive />);
-    expect(screen.getByTitle('Split')).toBeDefined();
-    expect(screen.getByTitle('Maximize')).toBeDefined();
+    expect(screen.getByTitle('Split — coming in a future wave')).toBeDefined();
+    expect(screen.getByTestId('terminal-maximize-upper')).toBeDefined();
   });
 });
 
 describe('TerminalShell (lower — shell)', () => {
-  it('renders tab labels from MOCK_TERM_TABS_LOWER', () => {
+  it('renders the new-tab button for the lower frame (Wave 12 Phase 4)', () => {
+    // Phase 4: live tabs via useWorkbenchTabs. Mock data removed.
     render(<TerminalShell kind="shell" flex={1} sessionId="test-lower" isActive />);
-    // MOCK_TERM_TABS_LOWER: 'dev server', 'test:watch', 'shell'
-    expect(screen.getByText('dev server')).toBeDefined();
-    expect(screen.getByText('test:watch')).toBeDefined();
+    expect(screen.getByTestId('terminal-tabbar-new-lower')).toBeDefined();
   });
 
   it('renders a live TerminalInstance in the well body', () => {
