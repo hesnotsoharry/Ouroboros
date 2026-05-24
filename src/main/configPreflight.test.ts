@@ -178,6 +178,64 @@ describe('runConfigPreflight', () => {
     expect(internalMcp.enabled).toBe(true);
   });
 
+  it('resets wave-9 flat canonWorkbenchSessions { upper, lower } to {}', async () => {
+    const dir = makeTmpUserData();
+    const file = writeConfig(dir, {
+      activeTheme: 'modern',
+      canonWorkbenchSessions: {
+        upper: { cwd: '/home/cole/proj', claudeSessionId: 'sess-abc' },
+        lower: { cwd: '/home/cole/proj' },
+      },
+    });
+    const { runConfigPreflight } = await loadModule(dir);
+    runConfigPreflight();
+    const after = readConfig(file);
+    expect(after.canonWorkbenchSessions).toEqual({});
+    expect(after.activeTheme).toBe('modern');
+  });
+
+  it('leaves a valid wave-10 record-shape canonWorkbenchSessions untouched', async () => {
+    const dir = makeTmpUserData();
+    const valid = {
+      '/home/cole/proj-a': {
+        upper: { cwd: '/home/cole/proj-a', claudeSessionId: 'sess-a' },
+        lower: { cwd: '/home/cole/proj-a' },
+      },
+      '/home/cole/proj-b': null,
+    };
+    const file = writeConfig(dir, { canonWorkbenchSessions: valid });
+    const before = fs.statSync(file).mtimeMs;
+    const { runConfigPreflight } = await loadModule(dir);
+    runConfigPreflight();
+    const after = readConfig(file);
+    expect(after.canonWorkbenchSessions).toEqual(valid);
+    expect(fs.statSync(file).mtimeMs).toBe(before);
+  });
+
+  it('resets wave-9 partial flat canonWorkbenchSessions { upper } (lower absent) to {}', async () => {
+    const dir = makeTmpUserData();
+    const file = writeConfig(dir, {
+      canonWorkbenchSessions: {
+        upper: { cwd: '/home/cole/proj' },
+      },
+    });
+    const { runConfigPreflight } = await loadModule(dir);
+    runConfigPreflight();
+    const after = readConfig(file);
+    expect(after.canonWorkbenchSessions).toEqual({});
+  });
+
+  it('leaves an empty canonWorkbenchSessions {} untouched', async () => {
+    const dir = makeTmpUserData();
+    const file = writeConfig(dir, { canonWorkbenchSessions: {} });
+    const before = fs.statSync(file).mtimeMs;
+    const { runConfigPreflight } = await loadModule(dir);
+    runConfigPreflight();
+    const after = readConfig(file);
+    expect(after.canonWorkbenchSessions).toEqual({});
+    expect(fs.statSync(file).mtimeMs).toBe(before);
+  });
+
   it('is idempotent — running twice on a stripped config does not rewrite', async () => {
     const dir = makeTmpUserData();
     const file = writeConfig(dir, {

@@ -77,14 +77,33 @@ function stripDeprecatedKeys(data: Record<string, unknown>): boolean {
   if (deleteNestedKey(data, 'internalMcp', 'transport')) dirty = true;
   // Wave 86 — agentChatSettings.chatOrchestration.useNewStateMachine flag removed (feature promoted to default).
   if (deleteNestedKey(data, 'agentChatSettings', 'chatOrchestration')) dirty = true;
+  // Wave 10 — canonWorkbenchSessions reshape from flat { upper, lower } to
+  // Record<projectRoot, { upper, lower } | null>. Wave 9 data on disk fails the
+  // new schema (the new shape's additionalProperties: false on the inner per-slot
+  // object rejects the legacy { cwd, claudeSessionId } values appearing under
+  // top-level "upper"/"lower" keys). ADR D1 said cold-start; this is where the
+  // cold-start actually has to happen (Conf throws on validate before any read-
+  // time hook guard runs). Reset to {} if the legacy shape is detected.
+  if (resetLegacyCanonWorkbenchSessions(data)) dirty = true;
   return dirty;
 }
 
-function deleteNestedKey(
-  data: Record<string, unknown>,
-  parent: string,
-  child: string,
-): boolean {
+/**
+ * Wave 9 wrote canonWorkbenchSessions as `{ upper: {...} | null, lower: {...} | null }`
+ * — the keys "upper" and "lower" appearing at the top level signal the legacy
+ * flat shape. Wave 10 reshaped to `Record<projectRoot, ...>` where keys are
+ * absolute paths (e.g. `C:\Users\Cole\dev\foo`). A valid Wave 10 record would
+ * never have bare "upper"/"lower" string keys (project roots are absolute paths).
+ */
+function resetLegacyCanonWorkbenchSessions(data: Record<string, unknown>): boolean {
+  const value = Reflect.get(data, 'canonWorkbenchSessions');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  if (!('upper' in value) && !('lower' in value)) return false;
+  data.canonWorkbenchSessions = {};
+  return true;
+}
+
+function deleteNestedKey(data: Record<string, unknown>, parent: string, child: string): boolean {
   const value = Reflect.get(data, parent);
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   if (!Reflect.has(value, child)) return false;
