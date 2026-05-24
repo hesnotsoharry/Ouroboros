@@ -121,6 +121,7 @@ export function buildFilesApi(t: WebSocketTransport) {
     readFile: (filePath: string) => t.invoke('files:readFile', filePath),
     readBinaryFile: (filePath: string) => t.invoke('files:readBinaryFile', filePath),
     readDir: (dirPath: string) => t.invoke('files:readDir', dirPath),
+    pathExists: (path: string) => t.invoke('files:pathExists', path),
     watchDir: (dirPath: string) => t.invoke('files:watchDir', dirPath),
     unwatchDir: (dirPath: string) => t.invoke('files:unwatchDir', dirPath),
     openFile: desktopOnlyStub('files:openFile'),

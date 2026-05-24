@@ -97,6 +97,7 @@ export const READ_CATALOG: Record<string, CatalogEntry> = {
   'extensions:list': { class: 'paired-read', timeoutClass: 'short' },
 
   // ── files (read) ────────────────────────────────────────────────────────────
+  'files:pathExists': { class: 'paired-read', timeoutClass: 'short' },
   'files:readBinaryFile': { class: 'paired-read', timeoutClass: 'normal' },
   'files:readDir': { class: 'paired-read', timeoutClass: 'normal' },
   'files:readFile': { class: 'paired-read', timeoutClass: 'normal' },

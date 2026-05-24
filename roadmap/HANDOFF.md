@@ -1,10 +1,57 @@
-# Session Handoff — 2026-05-24 (Wave 11 SHIPPED; Wave 12 next)
+# Session Handoff — 2026-05-24 (Wave 12 SHIPPED; Wave 13 next)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-24 (latest) — Wave 11 SHIPPED (file-tree click → modal + Wave 10.1 hotfix batch)
+## 🔼 UPDATE 2026-05-24 (latest) — Wave 12 SHIPPED (rail CRUD: terminal tabs + project remove/auto-detect-stale)
+
+**Next action: execute Wave 13 — AgentSidebar terminal-scoped binding via `OUROBOROS_PANE_ID` env injection.** Per Cole's confirmed architecture 2026-05-24 (HANDOFF earlier entry): inject `OUROBOROS_PANE_ID=<uuid>` into the env when the IDE spawns a pty; forward in `agent_start.mjs` / `agent_end.mjs` hook payloads; sidebar filters events to `paneId === activePane.id`. Closes the long-standing HIGH/OPEN `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md`. Each Wave 12 TabState already carries a `sessionId` field — Wave 13 will key against it (or add a parallel `paneId` if needed).
+
+**Wave 12 — SHIPPED (worktree branch `wave-11-plan` — needs cherry-pick to master + push).** Renderer + main, behind the same default-off `layout.canonWorkbench` flag. **5 commits this session** (4 phase commits + wrap):
+- `48a0cfe6` — Phase 1: `files.pathExists` IPC boundary (6/6 frozen acceptance GREEN, reviewer PASS all 4 axes)
+- `2489f165` — Phase 2: project CRUD + auto-detect-stale paths (13/13 frozen acceptance, all 3 surfaces wired, new `useProjectCRUDActions` hook + `excludedPaths` Set in ProjectContext)
+- `983fa656` — Phase 3: terminal tab state machine + schema migration (Wave 10 → Wave 12 TabCollection cold-start; 13/13 frozen acceptance; reviewer PASS w/ 1 FLAG → resolved in Phase 4)
+- `d30c936c` — Phase 4: terminal CRUD UI + maximize + tab header fix (27/27 frozen acceptance; reviewer FLAG → orchestrator self-fixed inline: CenterPane double-instantiation persistence race)
+- wrap commit (plan/ADR/result/smoke/mechanical-review/followup-audit + HANDOFF + temperature-log + 2 self-fix Phase 5 regressions for web preload + channel catalog)
+
+**Phase 5 wrap gates summary:**
+- Full vitest: 11809 passed / 8 failed / 8 skipped — 5 are pre-existing (ChangelogDrawer worktree codegen gap × 4, ChatWorkbenchShell × 1, Workbench.projectSwitch.wave10 × 1); 2 were real Wave 12 regressions caught + fixed at wrap (Phase 1 missed wiring `pathExists` into `src/web/webPreloadApis.ts` + `channelCatalog.read.ts` — both mechanical 1-LOC adds; preloadParity + channelCatalogCoverage tests GREEN post-fix).
+- `/review` mechanical: FLAG (2 flags). (a) Acceptance tests committed with implementations in same commit (process-discipline gap — the actual discipline WAS followed: tests authored first + run RED + dispatched impl + tests stayed frozen; just bundled in same commit). (b) Plan-vs-test inconsistency on close-last-tab UX: plan said auto-spawn, test+impl say null. **Cole's call (2026-05-24): test wins — ship as-is, file a polish-wave follow-up if it bites.** No follow-up filed yet (lean wrap — bites threshold not crossed).
+- Stryker: 31.72% (above project break:21; same as Wave 11 — pre-existing src/shared/ debt; Wave 12 didn't touch the dominant survivor surface).
+- `/audit-followups wave-12`: 1 RESOLVED (`2026-05-24-workbench-project-crud-manual-and-auto-detect.md` — Wave 12 Phase 2 closed end-to-end; auto-archived). 31 ACTIVE preserved.
+- `/promote-vendor-lessons 12`: N/A (no third-party SDK touched).
+- `/ui-smoke 12`: MANUAL fallback per `~/.claude/rules-deferred/manual-smoke-gate.md` and Wave 11 precedent (Preview MCP can't drive Electron). Checklist at `wave-12-smoke-report.md`; result pending Cole's walk-through.
+
+**Wave 12's notable patterns + lessons:**
+
+1. **Split-dispatch for orchestrator-owned tests scales** (Phases 3 + 4 each used: subagent A authors tests + verifies RED → subagent B implements). Buys orchestrator context relief without violating the discipline (neither subagent owns both test + impl). Worth promoting as the standard pattern for boundary phases with 2+ test files or 200+ LOC of test code.
+
+2. **The split-dispatch DOES leak spec details if the test-author isn't given the full plan grounding.** Phase 3's test-author missed the plan's "auto-spawn last tab" intent → wrote a test for null behavior → impl correctly followed test → contradicted plan. Caught only at `/review` Check 5 (cross-cutting layer). Future split-dispatches: include the relevant plan sections + ADR rows verbatim in the test-author brief, AND have the orchestrator do a sanity-check of the test contract before dispatching impl.
+
+3. **Acceptance test commit-discipline gap.** Tests + impl shipped in the same commit (the orchestrator dispatched impl as soon as RED-verified tests were authored; committed both together via `git add` of both at the end). `/review` Check 5 flagged this — the git history doesn't show "test authored first, then impl" as separate commits. The discipline IS being followed in process; just not visible from `git log`. Mitigation for future waves: commit the RED tests as a separate "test(wave-N): Phase X scaffold" commit before dispatching impl, then the impl commit shows a clean "impl makes tests pass" diff.
+
+4. **Phase 4 CenterPane double-instantiation bug is the textbook "test mocks the bug away" case.** All 27 Phase 4 acceptance tests mock `useWorkbenchTabs` entirely; Workbench.maximize mounts full Workbench but doesn't exercise tab persistence at runtime. So the bug (CenterPane mounted 2 extra `useWorkbenchTabs` instances → 750ms-debounced empty-collection writes racing against live writes from TerminalShell instances) was invisible to the test layer. Caught only by the phase reviewer's static diff analysis. Layered defense (acceptance / reviewer / mechanical) — each layer catches what the others miss.
+
+5. **Wave 12 carries 5 pre-existing test failures forward.** ChangelogDrawer × 4 (worktree codegen gap — see Wave 11 lesson 2), ChatWorkbenchShell × 1 (legacy shell, not Wave 12-related), Workbench.projectSwitch.wave10.test.tsx × 1 (Phase 3 implementer confirmed pre-existing). None block Wave 12 ship.
+
+**Wave 12 NOT done / deferrals:**
+1. **`/ui-smoke 12` formal manual smoke — DEFERRED to Cole's interactive availability.** Checklist authored at `roadmap/wave-12-terminal-and-project-crud-chrome/wave-12-smoke-report.md` with full Phase 1/2/3/4 surface coverage + Wave 9/10/11 regression checks. Cole walks through whenever; orchestrator flips verdict + pushes when results in.
+2. **Stryker mutation debt 31.72%** still below /review's 40 line; standing pre-merge task continues from Wave 3+. Wave 12 didn't reduce or worsen.
+3. **Close-last-tab auto-spawn polish** — Cole picked "test wins" per 2026-05-24. Worth a follow-up later if it bites in real use.
+4. **Pre-existing Workbench.projectSwitch.wave10 test timeout** — worth filing a follow-up if it persists into Wave 13 work.
+
+**Push posture: PENDING.** This session's commits live on the worktree branch `wave-11-plan`. Next: cherry-pick the 5 Wave 12 commits to master, push, tag `v2.33.0`. CI minutes still exhausted until 2026-06-01 per bulletin — workflows skip cleanly; protected-branch merges still wait for the restore.
+
+Pre-existing OPEN follow-ups load-bearing for Wave 13:
+- `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md` (HIGH/OPEN — Wave 13 directly addresses this via `OUROBOROS_PANE_ID`)
+- `roadmap/follow-ups/2026-05-22-workbench-forceunified-no-autoclear.md` (LOW/OPEN — out)
+- `roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md` (LOW/OPEN — out)
+- `roadmap/follow-ups/2026-05-24-workbench-fileviewer-modal-blocks-tree-swap.md` (LOW/OPEN, needs Cole's UX pick A/B/C/D — out)
+
+---
+
+## 🔼 UPDATE 2026-05-24 — Wave 11 SHIPPED (file-tree click → modal + Wave 10.1 hotfix batch)
 
 **Next action: execute Wave 12 — terminal CRUD + chrome (project-scoped) + project remove/auto-detect-stale.** Wave 12's original scope was terminal CRUD (spawn/delete/rename/+/split/maximize, fix tab-header text overlap); Wave 11 added project CRUD to the bundle per the new follow-up at `roadmap/follow-ups/2026-05-24-workbench-project-crud-manual-and-auto-detect.md` (manual remove + auto-detect stale paths). Both are the same shape of work — UI hygiene on top of existing renderer state — so they bundle naturally.
 
