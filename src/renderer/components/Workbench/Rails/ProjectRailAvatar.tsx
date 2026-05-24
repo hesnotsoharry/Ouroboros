@@ -13,7 +13,10 @@ const PROFILE_MENU_STYLE: React.CSSProperties = {
   bottom: '100%',
   left: 46,
   marginBottom: 4,
-  background: 'var(--glass-panel)',
+  // Wave 10.1 — popover uses --glass-overlay (92% opacity), not --glass-panel
+  // (35% opacity which bleeds Mica desktop content through, making menu text
+  // unreadable). Overlay is the canon token for menus/dialogs.
+  background: 'var(--glass-overlay)',
   backdropFilter: 'var(--blur-soft)',
   WebkitBackdropFilter: 'var(--blur-soft)',
   border: '1px solid var(--stroke-inner)',

@@ -179,6 +179,33 @@ function useTitleBarDropdowns(): {
   };
 }
 
+/**
+ * Wave 10.1 — branch chip always renders when a project is active; branch
+ * text shows "—" when useGitBranch is null (non-git project or IPC pending/
+ * failed). Dropdown only opens when we have a real branch to switch from
+ * (a "—" placeholder isn't an actionable dropdown target). Pre-Wave-10.1
+ * the chip was hidden entirely on null branch, so non-git projects had no
+ * visual acknowledgment of git state in the title bar.
+ */
+function BranchSection({
+  branch,
+  branchOpen,
+  toggleBranch,
+  closeBranch,
+}: {
+  branch: string | null;
+  branchOpen: boolean;
+  toggleBranch: () => void;
+  closeBranch: () => void;
+}): React.ReactElement {
+  return (
+    <div style={{ position: 'relative' }}>
+      <BranchChip branch={branch ?? '—'} onClick={branch ? toggleBranch : undefined} />
+      {branchOpen && branch && <TitleBarBranchDropdown onClose={closeBranch} />}
+    </div>
+  );
+}
+
 export function TitleBar(): React.ReactElement {
   const { projectRoot } = useProject();
   const projects = useWorkbenchProjects();
@@ -186,15 +213,6 @@ export function TitleBar(): React.ReactElement {
   const { projectOpen, branchOpen, toggleProject, toggleBranch, closeProject, closeBranch } =
     useTitleBarDropdowns();
   const activeProject = projects.find((p) => p.active) ?? projects[0];
-  const handleOpenSettings = useCallback(
-    () => window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT)),
-    [],
-  );
-  const handleOpenPalette = useCallback(
-    () => window.dispatchEvent(new CustomEvent('agent-ide:command-palette')),
-    [],
-  );
-
   return (
     <div data-testid="workbench-titlebar" style={titleBarStyle}>
       <AppMark />
@@ -204,19 +222,29 @@ export function TitleBar(): React.ReactElement {
           {projectOpen && <TitleBarProjectDropdown onClose={closeProject} />}
         </div>
       )}
-      {branch && (
-        <div style={{ position: 'relative' }}>
-          <BranchChip branch={branch} onClick={toggleBranch} />
-          {branchOpen && <TitleBarBranchDropdown onClose={closeBranch} />}
-        </div>
+      {activeProject && (
+        <BranchSection
+          branch={branch}
+          branchOpen={branchOpen}
+          toggleBranch={toggleBranch}
+          closeBranch={closeBranch}
+        />
       )}
       <Spacer />
       <AgentGlobe />
       <Spacer />
-      <CtrlKButton onClick={handleOpenPalette} />
+      <CtrlKButton onClick={dispatchCommandPalette} />
       <WorkbenchBell />
-      <SettingsButton onClick={handleOpenSettings} />
+      <SettingsButton onClick={dispatchOpenSettings} />
       <WindowControls />
     </div>
   );
+}
+
+function dispatchOpenSettings(): void {
+  window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT));
+}
+
+function dispatchCommandPalette(): void {
+  window.dispatchEvent(new CustomEvent('agent-ide:command-palette'));
 }

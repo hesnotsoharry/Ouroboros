@@ -59,7 +59,11 @@ const DROPDOWN_STYLE: React.CSSProperties = {
   left: 0,
   right: 0,
   marginTop: 2,
-  background: 'var(--glass-panel)',
+  // Wave 10.1 — popover uses --glass-overlay (92% opacity), not --glass-panel
+  // (35% opacity). With Mica window transparency, the panel token bleeds
+  // desktop content through and makes dropdown text unreadable. The overlay
+  // token is the canon choice for menus/dialogs.
+  background: 'var(--glass-overlay)',
   backdropFilter: 'var(--blur-soft)',
   WebkitBackdropFilter: 'var(--blur-soft)',
   border: '1px solid var(--stroke-inner)',

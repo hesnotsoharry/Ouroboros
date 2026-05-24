@@ -24,9 +24,10 @@ export interface ProjectContextValue {
   removeProjectRoot: (path: string) => void;
   clearProject: () => void;
   /**
-   * Wave 10 — switch active project among existing `projectRoots` by moving
-   * `path` to position [0] (the "active is [0]" convention). If `path` is not
-   * in `projectRoots`, this is a silent no-op. Phase 2 wires UI callers.
+   * Wave 10 — switch active project by moving `path` to position [0] (the
+   * "active is [0]" convention). Wave 10.1 fix: if `path` is not in
+   * `projectRoots`, ADD it at [0] (recents-list paths shown in switcher UI
+   * surfaces must be promotable). Phase 2 wires UI callers.
    */
   setActiveProjectRoot: (path: string) => void;
 }
@@ -134,10 +135,13 @@ function useProjectRootActions(
 
   const setActiveProjectRoot = useCallback(
     (path: string): void => {
-      updateRoots((prev) => {
-        if (!prev.includes(path)) return prev;
-        return [path, ...prev.filter((root) => root !== path)];
-      });
+      // Wave 10.1 — drop the original "no-op if absent" guard: switcher UI
+      // surfaces (outer rail / title bar dropdown / inner rail dropdown) source
+      // their lists from useWorkbenchProjects which merges projectRoots WITH
+      // config.recentProjects. A user clicking a recents-only chip must promote
+      // it to active; the guard caused a silent no-op (see Wave 11 Phase 0
+      // diagnosis 2026-05-24). Add-if-absent + move-if-present is the contract.
+      updateRoots((prev) => [path, ...prev.filter((root) => root !== path)]);
     },
     [updateRoots],
   );
