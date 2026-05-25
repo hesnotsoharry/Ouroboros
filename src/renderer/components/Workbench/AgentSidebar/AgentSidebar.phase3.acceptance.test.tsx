@@ -42,6 +42,45 @@ vi.mock('../../../hooks/useClaudeCliSettings', () => ({
   useClaudeCliSettings: vi.fn(),
 }));
 
+// Wave 13 Phase 2.6: AgentSidebar derives paneId from useWorkbenchTabs.
+// Mock useWorkbenchTabs directly to return a stable tab whose id matches
+// SESSION.paneId so hasActiveSession = true and PanelStack renders.
+// vi.mock factories are hoisted — use a literal string here; PANE_ID below
+// must match this literal exactly.
+vi.mock('../Terminals/useWorkbenchRestore', () => ({
+  useWorkbenchRestore: vi.fn().mockReturnValue({
+    isReady: false,
+    upperCollection: undefined,
+    lowerCollection: undefined,
+  }),
+}));
+
+vi.mock('../Terminals/useWorkbenchSessionPersist', () => ({
+  useWorkbenchSessionPersist: vi.fn(),
+}));
+
+vi.mock('../Terminals/useWorkbenchTabs', () => ({
+  useWorkbenchTabs: vi.fn().mockReturnValue({
+    tabs: [
+      {
+        id: 'wb-upper-cc-phase3-fixture',
+        label: 'claude',
+        sessionId: 'wb-upper-cc-phase3-fixture',
+        kind: 'cc',
+        createdAt: 0,
+      },
+    ],
+    activeTabId: 'wb-upper-cc-phase3-fixture',
+    addTab: vi.fn(),
+    closeTab: vi.fn(),
+    renameTab: vi.fn(),
+    setActiveTab: vi.fn(),
+  }),
+}));
+
+// Must match the literal in the vi.mock factory above (factory is hoisted, no variable access).
+const PANE_ID = 'wb-upper-cc-phase3-fixture';
+
 import { useAgentEventsContext } from '../../../contexts/AgentEventsContext';
 import { useClaudeCliSettings } from '../../../hooks/useClaudeCliSettings';
 import type { AgentSession, ConversationTurn, ToolCallEvent } from '../../AgentMonitor/types';
@@ -60,6 +99,7 @@ function tc(toolName: string, input: string, status: ToolCallEvent['status']): T
 
 const SESSION: AgentSession = {
   id: 's1',
+  paneId: PANE_ID, // Wave 13 Phase 2.5: must match active tab id for hasActiveSession = true
   taskLabel: 'live diff session',
   status: 'running',
   startedAt: Date.now() - 30_000,

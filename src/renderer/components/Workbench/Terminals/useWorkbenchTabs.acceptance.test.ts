@@ -198,8 +198,16 @@ describe('useWorkbenchTabs — renameTab (Wave 12 Phase 3)', () => {
 });
 
 describe('useWorkbenchTabs — closeTab (Wave 12 Phase 3)', () => {
+  // NOTE (Wave 13 Phase 2): useWorkbenchTabs now initialises with one default
+  // tab in useState (gives AgentSidebar a stable pane-id before isReady fires).
+  // Tests that assert exact tab counts account for this +1 default tab by
+  // capturing the initial tab set before calling addTab.
+
   it('closeTab removes tab, kills pty, and falls back activeTabId to remaining tab', async () => {
     const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+
+    // Capture the initial default tab so we know the pre-existing count.
+    const initialTabCount = result.current.tabs.length; // 1 (default tab from Wave 13)
 
     let firstId!: string;
     let secondId!: string;
@@ -208,8 +216,9 @@ describe('useWorkbenchTabs — closeTab (Wave 12 Phase 3)', () => {
       secondId = result.current.addTab({ kind: 'shell' });
     });
 
+    // After 2 addTabs: initial + 2 tabs; secondId is active (addTab activates each new tab).
     await waitFor(() => {
-      expect(result.current.tabs.length).toBe(2);
+      expect(result.current.tabs.length).toBe(initialTabCount + 2);
       expect(result.current.activeTabId).toBe(secondId);
     });
 
@@ -222,25 +231,32 @@ describe('useWorkbenchTabs — closeTab (Wave 12 Phase 3)', () => {
       expect(result.current.tabs.find((t) => t.id === secondId)).toBeUndefined();
       // (b) pty.kill was called with the closed tab's id
       expect(ptyKill()).toHaveBeenCalledWith(secondId);
-      // (c) activeTabId falls back to the remaining tab
+      // (c) activeTabId falls back to the remaining tab (firstId, the most-recently-added)
       expect(result.current.activeTabId).toBe(firstId);
     });
   });
 
-  it('closeTab sets activeTabId to null when the last tab is closed', async () => {
+  it('closeTab sets activeTabId to null when all tabs are closed', async () => {
     const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
 
-    let tabId!: string;
+    // Capture all pre-existing tab ids (the default tab from Wave 13 Phase 2).
+    const initialIds = result.current.tabs.map((t) => t.id);
+
+    let addedId!: string;
     act(() => {
-      tabId = result.current.addTab({ kind: 'shell' });
+      addedId = result.current.addTab({ kind: 'shell' });
     });
 
     await waitFor(() => {
-      expect(result.current.tabs.length).toBe(1);
+      expect(result.current.tabs.find((t) => t.id === addedId)).toBeDefined();
     });
 
+    // Close all tabs (added tab first, then any pre-existing ones).
     act(() => {
-      result.current.closeTab(tabId);
+      result.current.closeTab(addedId);
+      for (const id of initialIds) {
+        result.current.closeTab(id);
+      }
     });
 
     await waitFor(() => {

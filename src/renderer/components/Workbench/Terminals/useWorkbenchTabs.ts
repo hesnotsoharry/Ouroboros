@@ -62,9 +62,9 @@ export const buildSpawnEnv = (tabId: string): { OUROBOROS_PANE_ID: string } => (
 
 function spawnTab(id: string, kind: 'cc' | 'shell', cwd: string | undefined): void {
   if (kind === 'cc') {
-    void window.electronAPI.pty.spawnClaude(id, { cwd, env: buildSpawnEnv(id) });
+    void window.electronAPI?.pty?.spawnClaude?.(id, { cwd, env: buildSpawnEnv(id) });
   } else {
-    void window.electronAPI.pty.spawn(id, { cwd, env: buildSpawnEnv(id) });
+    void window.electronAPI?.pty?.spawn?.(id, { cwd, env: buildSpawnEnv(id) });
   }
 }
 
@@ -79,7 +79,7 @@ function autoResumeCcTab(
     if (tab.id !== activeTabId && activeTabId !== null) continue;
     if (spawned.has(tab.id)) break;
     spawned.add(tab.id);
-    void window.electronAPI.pty.spawnClaude(tab.id, {
+    void window.electronAPI?.pty?.spawnClaude?.(tab.id, {
       cwd,
       resumeMode: tab.sessionId,
       env: buildSpawnEnv(tab.id),

@@ -226,7 +226,9 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useAgentEventsContext>);
 
   // Default: useWorkbenchAgentData returns empty data shape (D4 empty state).
-  mockedUseWorkbenchAgentData.mockReturnValue(EMPTY_AGENT_DATA as ReturnType<typeof useWorkbenchAgentData>);
+  mockedUseWorkbenchAgentData.mockReturnValue(
+    EMPTY_AGENT_DATA as ReturnType<typeof useWorkbenchAgentData>,
+  );
 });
 
 afterEach(() => {
@@ -338,7 +340,9 @@ describe('AgentSidebar paneId binding (Wave 13 Phase 2)', () => {
 
     // Find initial active paneId arg from first synchronous render.
     const initialArgs = capturedPaneIdArgs();
-    const initialPaneId = initialArgs.find((a) => typeof a === 'string' && a.startsWith('wb-upper-cc-'));
+    const initialPaneId = initialArgs.find(
+      (a) => typeof a === 'string' && a.startsWith('wb-upper-cc-'),
+    );
 
     // Add a second tab by clicking the add-tab button.
     // Phase 2 must add data-testid="add-tab-upper" to the upper frame's add-tab control.
@@ -356,7 +360,9 @@ describe('AgentSidebar paneId binding (Wave 13 Phase 2)', () => {
     }
 
     // Click add-tab to create tab B (becomes active).
-    act(() => { addTabBtn.click(); });
+    act(() => {
+      addTabBtn.click();
+    });
 
     // After add, the new tab becomes active. Its id must appear in spy args.
     const allArgs = capturedPaneIdArgs();
@@ -404,7 +410,9 @@ describe('AgentSidebar paneId binding (Wave 13 Phase 2)', () => {
     // Maximize the upper frame — synchronous click, matches maximize test pattern.
     const maxBtn = screen.queryByTestId('terminal-maximize-upper');
     if (maxBtn) {
-      act(() => { maxBtn.click(); });
+      act(() => {
+        maxBtn.click();
+      });
     }
 
     // Even in maximize mode (lower frame unmounted), paneId derivation must work.

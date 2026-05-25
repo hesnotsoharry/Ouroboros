@@ -57,6 +57,24 @@ vi.mock('../../Terminal/TerminalInstance', async () => {
   };
 });
 
+// Wave 13 Phase 2.6: mock useWorkbenchTabs so TerminalShell's internal tab
+// management doesn't spawn ptys independently. The CenterPane acceptance test
+// covers the useWorkbenchTerminals spawn path (two ptys, one per frame); it
+// does NOT test useWorkbenchTabs' spawn path (which is covered separately in
+// useWorkbenchTabs.acceptance.test.ts). Without this mock, Phase 2's default-tab
+// init fires a third spawn call that breaks the "two distinct ptys" assertion.
+vi.mock('./useWorkbenchTabs', () => ({
+  useWorkbenchTabs: vi.fn().mockReturnValue({
+    tabs: [],
+    activeTabId: null,
+    addTab: vi.fn(() => 'mock-tab-id'),
+    closeTab: vi.fn(),
+    renameTab: vi.fn(),
+    setActiveTab: vi.fn(),
+  }),
+  buildSpawnEnv: vi.fn((id: string) => ({ OUROBOROS_PANE_ID: id })),
+}));
+
 // Fixed project root so cwd resolution is deterministic.
 vi.mock('../../../contexts/ProjectContext', () => ({
   useProject: () => ({

@@ -1,37 +1,37 @@
 /**
  * Orchestrator-owned acceptance test — Wave 8 Phase 1 (session-identity scoping boundary).
  *
- * Locks the SCOPING contract of `useWorkbenchAgentData(claudeSessionId?)`: the canon
+ * Locks the SCOPING contract of `useWorkbenchAgentData(paneId?)`: the canon
  * sidebar must reflect ONLY the Claude session bound to the active workbench terminal in
  * the active project — not whichever session is most-recently-active machine-wide. This is
  * the conceptual-risk + boundary piece of Phase 1 (session-identity matching across two
  * independent ID sources). The implementer extends `useWorkbenchAgentData` against THIS
  * test and MAY NOT modify it (per ~/.claude/rules/orchestrator-owned-acceptance-tests.md).
  *
- * Phase 1 scoping contract:
- *   `useWorkbenchAgentData(claudeSessionId?: string | null)`:
+ * Phase 1 scoping contract (updated Wave 13 Phase 2.5 — matches by session.paneId,
+ * stamped from AGENT_START hook payload's OUROBOROS_PANE_ID):
+ *   `useWorkbenchAgentData(paneId?: string | null)`:
  *
- *   BOUND path (id supplied) — explicit binding wins; project filter does NOT apply:
- *     - primary = agents.find((s) => s.id === claudeSessionId)
+ *   BOUND path (paneId supplied) — explicit binding wins; project filter does NOT apply:
+ *     - primary = agents.find((s) => s.paneId === paneId)
  *       → NOT selectPrimarySession; the most-recently-active OTHER session is ignored.
  *     - contextStats reflect THAT session (usedTokens = its input + output), even if a
  *       newer/zero-token session exists.
- *     - a bound id whose cwd does NOT match the active project root is STILL returned
- *       (explicit binding overrides the project-cwd fallback filter).
- *     - a bound id that matches no session → primary null → zeroed contextStats (graceful).
+ *     - a bound paneId whose session cwd does NOT match the active project root is STILL
+ *       returned (explicit binding overrides the project-cwd fallback filter).
+ *     - a bound paneId that matches no session → primary null → zeroed contextStats (graceful).
  *
- *   FALLBACK path (no id) — pre-binding behavior, additionally project-scoped:
- *     - selection pool is filtered to sessions whose cwd matches the active project root
- *       (read from ProjectContext via the NON-throwing `useProjectOptional` so the hook is
- *       safe to render outside a provider — fallback then applies no cwd filter).
- *     - a more-recently-active session in a DIFFERENT project is excluded; the primary
- *       (and thus the active rail row + contextStats) comes from the active-project session.
- *     - with no active project root available (provider absent → null), no cwd filter is
- *       applied — preserves the pre-Wave-8 fallback so existing tests that don't mock
- *       ProjectContext keep their behavior.
+ *   FALLBACK path (no paneId, D4 Option A) — no fallback, always empty:
+ *     - When no paneId is supplied, returns empty data shape regardless of session pool.
+ *     - The heuristic project-cwd fallback path (Wave 8) is removed — it was the source
+ *       of the hijack bug closed in Wave 13 (ADR D4, D5).
  *
  * The frozen Wave-3 sessions test (`…sessions.acceptance.test.ts`) still owns the
  * rail-mapping + non-scoped contextStats contract; this file is additive and owns scoping.
+ *
+ * Wave 13 Phase 2.5 update (orchestrator-sanctioned): bound-path describe block mock
+ * sessions now include `paneId: 'X'` to align with the resolvePrimary filter change
+ * (was session.id === paneId; now session.paneId === paneId). Assertions unchanged.
  *
  * @vitest-environment jsdom
  */
@@ -109,12 +109,17 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('Wave 8 Phase 1 — bound-id scoping (orchestrator-owned)', () => {
-  it('binds to agents.find(id===X), not the most-recently-active session', () => {
+describe('Wave 8 Phase 1 — bound-paneId scoping (orchestrator-owned)', () => {
+  // Wave 13 Phase 2.5 update: resolvePrimary now matches by session.paneId === paneId
+  // (stamped from AGENT_START hook payload's OUROBOROS_PANE_ID). Mock sessions include
+  // paneId: 'X' to satisfy the new contract. Assertions are unchanged.
+
+  it('binds to agents.find(paneId===X), not the most-recently-active session', () => {
     const data = dataFor(
       [
         makeSession({
           id: 'X',
+          paneId: 'X',
           status: 'running',
           startedAt: 1000,
           cwd: ACTIVE_ROOT,
@@ -124,6 +129,7 @@ describe('Wave 8 Phase 1 — bound-id scoping (orchestrator-owned)', () => {
         // Y is more recent — selectPrimarySession would pick it; binding must override.
         makeSession({
           id: 'Y',
+          paneId: 'Y',
           status: 'running',
           startedAt: 9000,
           cwd: ACTIVE_ROOT,
@@ -144,6 +150,7 @@ describe('Wave 8 Phase 1 — bound-id scoping (orchestrator-owned)', () => {
       [
         makeSession({
           id: 'X',
+          paneId: 'X',
           status: 'running',
           startedAt: 1000,
           cwd: OTHER_ROOT, // different project than ACTIVE_ROOT
@@ -158,9 +165,10 @@ describe('Wave 8 Phase 1 — bound-id scoping (orchestrator-owned)', () => {
     expect(data.contextStats.usedTokens).toBe(1000);
   });
 
-  it('a bound id that matches no session → null primary → zeroed context stats', () => {
+  it('a bound paneId that matches no session → null primary → zeroed context stats', () => {
+    // 'ghost' paneId matches nothing — 'real' session has paneId: 'real', not 'ghost'.
     const data = dataFor(
-      [makeSession({ id: 'real', status: 'running', cwd: ACTIVE_ROOT, inputTokens: 42 })],
+      [makeSession({ id: 'real', paneId: 'real', status: 'running', cwd: ACTIVE_ROOT, inputTokens: 42 })],
       'ghost',
     );
     expect(data.sessions.some((s) => s.active)).toBe(false);

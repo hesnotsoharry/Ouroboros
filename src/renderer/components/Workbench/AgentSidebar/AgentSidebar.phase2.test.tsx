@@ -21,6 +21,44 @@ vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: vi.fn(),
 }));
 
+// Wave 13 Phase 2.6: AgentSidebar derives paneId from useWorkbenchTabs.
+// Mock it to return a stable tab so hasActiveSession = true when a session
+// with matching paneId is provided. Literal string used here because vi.mock
+// factories are hoisted and cannot reference file-level const declarations.
+vi.mock('../Terminals/useWorkbenchTabs', () => ({
+  useWorkbenchTabs: vi.fn().mockReturnValue({
+    tabs: [
+      {
+        id: 'wb-upper-cc-phase2-fixture',
+        label: 'claude',
+        sessionId: 'wb-upper-cc-phase2-fixture',
+        kind: 'cc',
+        createdAt: 0,
+      },
+    ],
+    activeTabId: 'wb-upper-cc-phase2-fixture',
+    addTab: vi.fn(),
+    closeTab: vi.fn(),
+    renameTab: vi.fn(),
+    setActiveTab: vi.fn(),
+  }),
+}));
+
+vi.mock('../Terminals/useWorkbenchRestore', () => ({
+  useWorkbenchRestore: vi.fn().mockReturnValue({
+    isReady: false,
+    upperCollection: undefined,
+    lowerCollection: undefined,
+  }),
+}));
+
+vi.mock('../Terminals/useWorkbenchSessionPersist', () => ({
+  useWorkbenchSessionPersist: vi.fn(),
+}));
+
+// Must match the literal id in the vi.mock factory above (factory is hoisted).
+const PANE_ID = 'wb-upper-cc-phase2-fixture';
+
 import { useAgentEventsContext } from '../../../contexts/AgentEventsContext';
 import type { AgentSession, ConversationTurn, ToolCallEvent } from '../../AgentMonitor/types';
 
@@ -67,6 +105,9 @@ function makeSession(
 ): AgentSession {
   return {
     id: 's1',
+    // Wave 13 Phase 2.5: paneId must match the active tab id returned by the
+    // useWorkbenchTabs mock so hasActiveSession = true and PanelStack shows live data.
+    paneId: PANE_ID,
     taskLabel: 'test task',
     status: 'running',
     startedAt: Date.now() - 30_000,

@@ -316,16 +316,18 @@ export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): Re
     <div data-testid="workbench-agentsidebar" style={sidebarStyle}>
       <SidebarHeader paneId={paneId} />
       <div style={SIDEBAR_SCROLL_STYLE}>
-        {!hasActiveSession ? (
-          <SidebarEmptyState />
-        ) : isPending && takeoverProps ? (
+        {isPending && takeoverProps ? (
+          // Permission request takes priority over empty state and normal NOW block.
           <PermissionSidebarTakeover {...takeoverProps} />
+        ) : !hasActiveSession ? (
+          <SidebarEmptyState />
         ) : (
           <NowBlock data={agentData.now} />
         )}
-        {hasActiveSession && (
-          <PanelStack agentData={agentData} dim={isPending} collapsed={!isFull} />
-        )}
+        {/* PanelStack renders unconditionally so breakpoint-gated sub-panels
+            (e.g. latest-hunk-collapsed in COMPACT mode) remain in the DOM even
+            when no active session is bound (empty data → panels show placeholders). */}
+        <PanelStack agentData={agentData} dim={isPending} collapsed={!isFull} />
       </div>
     </div>
   );

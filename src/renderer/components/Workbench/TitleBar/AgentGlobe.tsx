@@ -16,8 +16,8 @@
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import type { WorkbenchAgentState } from '../useWorkbenchAgentData';
-import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
+import type { WorkbenchAgentState } from '../useWorkbenchGlobeData';
+import { useWorkbenchGlobeData } from '../useWorkbenchGlobeData';
 
 // ── Inject shimmer keyframe once ─────────────────────────────────────────────
 
@@ -266,7 +266,7 @@ function GlobeContent(props: {
 // ── AgentGlobe ────────────────────────────────────────────────────────────────
 
 export function AgentGlobe(): React.ReactElement {
-  const { state, model, activeTool, target, elapsedSec } = useWorkbenchAgentData();
+  const { state, model, activeTool, target, elapsedSec } = useWorkbenchGlobeData();
   const active = isActiveState(state);
 
   return (

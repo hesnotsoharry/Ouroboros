@@ -445,3 +445,4 @@ export function useWorkbenchAgentData(paneId?: string | null): WorkbenchAgentDat
     latestHunk: deriveLatestHunk(latestFiles),
   };
 }
+

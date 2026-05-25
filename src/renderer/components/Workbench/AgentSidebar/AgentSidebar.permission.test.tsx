@@ -34,10 +34,35 @@ vi.mock('../../../contexts/ApprovalContext', () => ({
   useApprovalContext: vi.fn(),
 }));
 
+// Wave 13 Phase 2: useWorkbenchAgentData is paneId-keyed. The permission test
+// does not test session binding — it tests the permission UI. Mock the hook to
+// return a running state (hasActiveSession = true) so PanelStack + NowBlock
+// render as expected by the pre-Wave13 contract.
+vi.mock('../useWorkbenchAgentData', () => ({
+  useWorkbenchAgentData: vi.fn(),
+}));
+
+// useWorkbenchRestore — needed by useWorkbenchTabs which runs inside AgentSidebar
+// via useActivePaneId. Mock isReady: false so no pty spawn is attempted.
+vi.mock('../Terminals/useWorkbenchRestore', () => ({
+  useWorkbenchRestore: vi.fn().mockReturnValue({
+    isReady: false,
+    upperCollection: undefined,
+    lowerCollection: undefined,
+  }),
+}));
+
+vi.mock('../Terminals/useWorkbenchSessionPersist', () => ({
+  useWorkbenchSessionPersist: vi.fn(),
+}));
+
 import { useAgentEventsContext } from '../../../contexts/AgentEventsContext';
 import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import type { AgentSession } from '../../AgentMonitor/types';
+import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
 import { AgentSidebar } from './AgentSidebar';
+
+const mockedUseWorkbenchAgentData = vi.mocked(useWorkbenchAgentData);
 
 const mockedAgentCtx = vi.mocked(useAgentEventsContext);
 const mockedApprovalCtx = vi.mocked(useApprovalContext);
@@ -86,12 +111,33 @@ function stubElectronApi(): void {
   };
 }
 
+// Minimal agent data shape with state: 'running' so hasActiveSession = true.
+// The permission test is NOT testing session binding — it tests the permission UI.
+// We need hasActiveSession = true so PanelStack and NowBlock render as expected.
+const RUNNING_AGENT_DATA = {
+  state: 'running' as const,
+  model: 'claude',
+  activeTool: 'Bash',
+  target: 'npm test',
+  elapsedSec: 2,
+  sessions: [],
+  contextStats: { usedTokens: 0, maxTokens: 200000, costUsd: 0, model: 'claude' },
+  now: { tool: 'Bash', target: 'npm test', description: 'npm test', elapsedSec: 2, progress: undefined },
+  context: { usedTokens: 0, maxTokens: 200000, costUsd: 0, model: 'claude', elapsedSec: 2 },
+  filesTouched: [],
+  timeline: [],
+  latestHunk: undefined,
+};
+
 beforeEach(() => {
   approve = vi.fn();
   reject = vi.fn();
   alwaysAllow = vi.fn();
   stubElectronApi();
   mockedAgentCtx.mockReturnValue(agentCtx());
+  mockedUseWorkbenchAgentData.mockReturnValue(
+    RUNNING_AGENT_DATA as ReturnType<typeof useWorkbenchAgentData>,
+  );
 });
 
 afterEach(() => {
