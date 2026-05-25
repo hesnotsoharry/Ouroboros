@@ -8,6 +8,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { clearExtensionContributionsCache } from './extensionStoreCache';
+
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 const mockLoadExtensionThemes = vi.fn().mockResolvedValue([]);
@@ -66,6 +68,7 @@ function makeExtension(id: string, overrides = {}) {
 describe('getThemeContributions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearExtensionContributionsCache();
     mockGetDisabledList.mockReturnValue([]);
   });
 
@@ -98,6 +101,7 @@ describe('getThemeContributions', () => {
 describe('getIconThemeContributions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearExtensionContributionsCache();
     mockGetDisabledList.mockReturnValue([]);
   });
 
@@ -131,6 +135,7 @@ describe('getIconThemeContributions', () => {
 describe('getProductIconThemeContributions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clearExtensionContributionsCache();
     mockGetDisabledList.mockReturnValue([]);
   });
 

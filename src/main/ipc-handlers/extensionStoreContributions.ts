@@ -11,9 +11,19 @@ import {
   loadExtensionProductIconThemes,
 } from '../contributions/iconThemeLoader';
 import { loadExtensionThemes, type OuroborosTheme } from '../contributions/themeLoader';
+import {
+  getCachedIconThemeContributions,
+  getCachedProductIconThemeContributions,
+  getCachedThemeContributions,
+  setCachedIconThemeContributions,
+  setCachedProductIconThemeContributions,
+  setCachedThemeContributions,
+} from './extensionStoreCache';
 import { getDisabledList, refreshInstalledListFromDisk } from './extensionStoreHelpers';
 
 export async function getThemeContributions(): Promise<{ themes: OuroborosTheme[] }> {
+  const cached = getCachedThemeContributions();
+  if (cached) return cached;
   const installed = await refreshInstalledListFromDisk();
   const disabled = new Set(getDisabledList());
   const allThemes: OuroborosTheme[] = [];
@@ -21,12 +31,16 @@ export async function getThemeContributions(): Promise<{ themes: OuroborosTheme[
     if (disabled.has(ext.id) || !ext.contributes.themes?.length) continue;
     allThemes.push(...(await loadExtensionThemes(ext.id, ext.contributes.themes)));
   }
-  return { themes: allThemes };
+  const result = { themes: allThemes };
+  setCachedThemeContributions(result);
+  return result;
 }
 
 export async function getIconThemeContributions(): Promise<{
   iconThemes: ExtensionIconThemeData[];
 }> {
+  const cached = getCachedIconThemeContributions();
+  if (cached) return cached;
   const installed = await refreshInstalledListFromDisk();
   const disabled = new Set(getDisabledList());
   const allIconThemes: ExtensionIconThemeData[] = [];
@@ -34,12 +48,16 @@ export async function getIconThemeContributions(): Promise<{
     if (disabled.has(ext.id) || !ext.contributes.iconThemes?.length) continue;
     allIconThemes.push(...(await loadExtensionIconThemes(ext.id, ext.contributes.iconThemes)));
   }
-  return { iconThemes: allIconThemes };
+  const result = { iconThemes: allIconThemes };
+  setCachedIconThemeContributions(result);
+  return result;
 }
 
 export async function getProductIconThemeContributions(): Promise<{
   productIconThemes: ExtensionProductIconThemeData[];
 }> {
+  const cached = getCachedProductIconThemeContributions();
+  if (cached) return cached;
   const installed = await refreshInstalledListFromDisk();
   const disabled = new Set(getDisabledList());
   const allProductIconThemes: ExtensionProductIconThemeData[] = [];
@@ -49,5 +67,7 @@ export async function getProductIconThemeContributions(): Promise<{
       ...(await loadExtensionProductIconThemes(ext.id, ext.contributes.productIconThemes)),
     );
   }
-  return { productIconThemes: allProductIconThemes };
+  const result = { productIconThemes: allProductIconThemes };
+  setCachedProductIconThemeContributions(result);
+  return result;
 }

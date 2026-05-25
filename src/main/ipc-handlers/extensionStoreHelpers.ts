@@ -14,6 +14,7 @@ import path from 'path';
 import { store } from '../config';
 import log from '../logger';
 import { broadcastToWebClients } from '../web/webServer';
+import { clearExtensionContributionsCache } from './extensionStoreCache';
 
 export type {
   InstalledVsxExtension,
@@ -240,14 +241,20 @@ async function buildInstalledEntry(
 ): Promise<InstalledVsxExtension> {
   const { extensionId, namespace, name, version, displayName, description } = opts;
   const localizationBundle = await readLocalizationBundle(extensionRoot);
-  const contributes = buildContributes(pkgJson.contributes ?? {}, extensionRoot, localizationBundle);
+  const contributes = buildContributes(
+    pkgJson.contributes ?? {},
+    extensionRoot,
+    localizationBundle,
+  );
   return {
     id: extensionId,
     namespace,
     name,
-    displayName: resolveLocalizedString(pkgJson.displayName, localizationBundle) ?? displayName ?? name,
+    displayName:
+      resolveLocalizedString(pkgJson.displayName, localizationBundle) ?? displayName ?? name,
     version,
-    description: resolveLocalizedString(pkgJson.description, localizationBundle) ?? description ?? '',
+    description:
+      resolveLocalizedString(pkgJson.description, localizationBundle) ?? description ?? '',
     installPath: targetDir,
     installedAt: new Date().toISOString(),
     contributes,
@@ -264,6 +271,7 @@ export async function installExtensionFromBuffer(
     const { pkgJson, targetDir, extensionRoot } = await extractAndParse(tempPath, extensionId);
     const installed = await buildInstalledEntry(options, pkgJson, targetDir, extensionRoot);
     updateInstalledRegistry(extensionId, installed, existing);
+    clearExtensionContributionsCache();
     broadcastToWindows('extensionStore:installed', installed);
     return installed;
   } finally {
@@ -284,6 +292,7 @@ export async function uninstallExtension(id: string): Promise<Record<string, nev
   setInstalledList(existing.filter((e) => e.id !== id));
   const disabled = getDisabledList();
   if (disabled.includes(id)) setDisabledList(disabled.filter((d) => d !== id));
+  clearExtensionContributionsCache();
   broadcastToWindows('extensionStore:uninstalled', { id });
   return {};
 }
@@ -294,6 +303,7 @@ export async function enableContributions(id: string): Promise<Record<string, ne
   const disabled = getDisabledList();
   if (!disabled.includes(id)) return {};
   setDisabledList(disabled.filter((d) => d !== id));
+  clearExtensionContributionsCache();
   broadcastToWindows('extensionStore:contributionsChanged', { id, enabled: true });
   return {};
 }
@@ -304,7 +314,7 @@ export async function disableContributions(id: string): Promise<Record<string, n
   const disabled = getDisabledList();
   if (disabled.includes(id)) return {};
   setDisabledList([...disabled, id]);
+  clearExtensionContributionsCache();
   broadcastToWindows('extensionStore:contributionsChanged', { id, enabled: false });
   return {};
 }
-
