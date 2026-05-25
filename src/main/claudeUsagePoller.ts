@@ -14,7 +14,7 @@ import * as pty from 'node-pty';
 
 import log from './logger';
 
-const POLL_INTERVAL_MS = 5 * 60_000;
+export const POLL_INTERVAL_MS = 5 * 60_000;
 const SPAWN_TIMEOUT_MS = 25_000;
 const USAGE_DIR = path.join(os.homedir(), '.ouroboros');
 const USAGE_FILE = path.join(USAGE_DIR, 'claude-usage.json');

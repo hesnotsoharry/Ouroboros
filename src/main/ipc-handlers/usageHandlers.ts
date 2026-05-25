@@ -10,6 +10,7 @@ import {
   findSessionDetailById,
   getRecentSessionsFromEntries,
 } from '../costHistoryAggregation';
+import { getCoalescedSnapshot } from './usageSnapshotCoalescer';
 
 type ChannelList = string[];
 type IpcHandler = Parameters<typeof ipcMain.handle>[1];
@@ -68,11 +69,11 @@ export function registerUsageHandlers(channels: ChannelList): void {
   );
   registerChannel(channels, 'usage:getUsageWindowSnapshot', async () =>
     runQuery(async () => ({
-      snapshot: {
+      snapshot: await getCoalescedSnapshot(async () => ({
         fetchedAt: Date.now(),
         claude: await getLatestClaudeUsageSnapshot(),
         codex: await getLatestCodexUsageSnapshot(),
-      },
+      })),
     })),
   );
 }
