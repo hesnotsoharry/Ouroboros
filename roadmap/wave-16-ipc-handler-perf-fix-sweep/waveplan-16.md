@@ -1,5 +1,5 @@
 ---
-status: IN-PROGRESS
+status: SHIPPED-PENDING-VERIFICATION
 created: 2026-05-25
 updated: 2026-05-25
 type: fix-sweep
@@ -9,7 +9,23 @@ type: fix-sweep
 
 ## Status
 
-IN-PROGRESS. Phase 1 implementing this session; Phases 2–5 queued for follow-up sessions.
+SHIPPED-PENDING-VERIFICATION. Phases 1–4 committed in this session
+(`ffd66fba`, `b8abf975`, `27b9f002`, `e72d1ae0`). Phase 5 (window-close
+async dispose) DEFERRED — new boot trace showed window:close at 1484ms
+(down from 5091ms), suggesting some upstream improvement; re-measure
+after P1–P4 land before committing to a P5 investigation.
+
+Cole verifies by restarting `npm run dev` and capturing a new boot trace.
+Expected: no `[ipc-perf] slow handler` lines for `git:isRepo`,
+`extensionStore:getThemeContributions`, `shellHistory:read`, or
+`usage:getUsageWindowSnapshot` after the cold-call warmup.
+
+New findings filed as follow-ups (not Wave 16 scope):
+- `roadmap/follow-ups/2026-05-25-config-set-slow-handler.md` (MED)
+- `roadmap/follow-ups/2026-05-25-repomap-worker-3927ms.md` (MED)
+- `roadmap/follow-ups/2026-05-25-gpu-process-crash-d3d11.md` (LOW)
+- `roadmap/follow-ups/2026-05-25-extensionStoreHelpers-over-cap.md` (LOW)
+- `roadmap/follow-ups/2026-05-25-codex-usage-pre-warm-poller.md` (MED)
 
 ## Context
 
