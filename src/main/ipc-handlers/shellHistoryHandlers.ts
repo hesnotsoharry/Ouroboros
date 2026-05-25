@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 
 import { getErrorMessage } from '../agentChat/utils';
 import { readShellHistory } from './miscSymbolSearch';
+import { getCachedShellHistory, setCachedShellHistory } from './shellHistoryCache';
 
 type ChannelList = string[];
 type IpcHandler = Parameters<typeof ipcMain.handle>[1];
@@ -36,6 +37,12 @@ async function runQuery<T extends object>(
 
 export function registerShellHistoryHandlers(channels: ChannelList): void {
   registerChannel(channels, 'shellHistory:read', async () =>
-    runQuery(async () => ({ commands: await readShellHistory() })),
+    runQuery(async () => {
+      const cached = getCachedShellHistory();
+      if (cached !== undefined) return { commands: cached };
+      const commands = await readShellHistory();
+      setCachedShellHistory(commands);
+      return { commands };
+    }),
   );
 }
