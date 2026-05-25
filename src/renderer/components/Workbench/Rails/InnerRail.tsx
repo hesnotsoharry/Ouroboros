@@ -166,7 +166,7 @@ function SessionRow({
     <div style={rowStyle}>
       <ProjectMiniChip color={chipColor} initial={chipInitial} />
       <KindIcon kind={session.kind} active={session.active} />
-      <SessionLabel label={session.label} sub={session.sub} active={session.active} />
+      <SessionLabel label={session.label} sub={session.sub} />
       <StatusDot status={session.status} />
     </div>
   );
@@ -220,39 +220,23 @@ function KindIcon({
   );
 }
 
+const ELLIPSIS: React.CSSProperties = {
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
 function SessionLabel({
   label,
   sub,
-  active,
 }: {
   label: string;
   sub: string;
-  active: boolean;
 }): React.ReactElement {
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div
-        style={{
-          fontSize: 11.5,
-          color: active ? 'var(--ink)' : 'var(--ink)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 10,
-          color: 'var(--ink-3)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {sub}
-      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--ink)', ...ELLIPSIS }}>{label}</div>
+      <div style={{ fontSize: 10, color: 'var(--ink-3)', ...ELLIPSIS }}>{sub}</div>
     </div>
   );
 }

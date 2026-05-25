@@ -34,7 +34,7 @@ describe('Wave 11 P1 — WorkbenchFileViewerModal lazy-load gotcha (regression g
     // The implementer can change the .then() shape (e.g., name-export normalization)
     // but the React.lazy + dynamic-import pair MUST be present.
     expect(source).toMatch(/React\.lazy\s*\(/);
-    expect(source).toMatch(/import\s*\(\s*['"][.\/]+FileViewer\/FileViewer['"]\s*\)/);
+    expect(source).toMatch(/import\s*\(\s*['"][./]+FileViewer\/FileViewer['"]\s*\)/);
   });
 
   it('does NOT contain a static top-level import of FileViewer', () => {

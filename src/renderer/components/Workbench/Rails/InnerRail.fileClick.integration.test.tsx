@@ -130,6 +130,16 @@ afterEach(() => {
   cleanup();
 });
 
+function findRowWrapper(start: HTMLElement): HTMLElement | null {
+  let cur: HTMLElement | null = start;
+  while (cur && cur.parentElement) {
+    const tree = cur.closest('[data-testid="workbench-filetree"]');
+    if (cur.parentElement === tree) return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+}
+
 function findFileRow(container: HTMLElement, name: string): HTMLElement {
   // Find the file row by walking the rendered tree for the matching name.
   // NodeRow renders <div onClick><FileNode node /></div> where FileNode
@@ -138,14 +148,8 @@ function findFileRow(container: HTMLElement, name: string): HTMLElement {
   for (const div of candidates) {
     const text = div.textContent?.trim();
     if (text && text.endsWith(name)) {
-      // Walk up until we find the row wrapper (the div whose direct child
-      // is the FileNode display element).
-      let cur: HTMLElement | null = div;
-      while (cur && cur.parentElement) {
-        const tree = cur.closest('[data-testid="workbench-filetree"]');
-        if (cur.parentElement === tree) return cur;
-        cur = cur.parentElement;
-      }
+      const row = findRowWrapper(div);
+      if (row) return row;
     }
   }
   throw new Error(`row "${name}" not found in tree`);
