@@ -44,6 +44,13 @@ export interface AgentSession {
   kind?: 'chat' | 'agent' | 'terminal';
   /** Working directory captured at session-register time. Used by the popover to scope memory entries. */
   cwd?: string;
+  /**
+   * Wave 13 — IDE pane identifier (OUROBOROS_PANE_ID) when this session was spawned
+   * by the IDE in a workbench terminal tab. Populated from the AGENT_START hook
+   * payload when the hook script inherited OUROBOROS_PANE_ID via process env.
+   * Absent for external claude sessions (spawned outside the IDE).
+   */
+  paneId?: string;
   /** Rules/instructions loaded during this session (populated by InstructionsLoaded hook events). */
   loadedRules?: LoadedRule[];
   /** Skill invocations during this session (populated by agent_start/agent_end with skill signatures). */

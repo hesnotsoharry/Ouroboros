@@ -74,4 +74,6 @@ export interface HookPayload {
   parentToolCallId?: string;
   taskLabel?: string;
   data?: Record<string, unknown>;
+  /** Wave 13 — IDE pane identifier (OUROBOROS_PANE_ID) for terminal-scoped binding. */
+  paneId?: string;
 }

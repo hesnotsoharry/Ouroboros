@@ -84,6 +84,8 @@ export type AgentAction =
       model?: string;
       internal?: boolean;
       external?: boolean;
+      /** Wave 13 — IDE pane identifier (OUROBOROS_PANE_ID) forwarded from hook payload. */
+      paneId?: string;
     }
   | { type: 'TOOL_START'; sessionId: string; toolCall: ToolCallEvent }
   | {
@@ -256,6 +258,7 @@ function updateExistingSession(state: AgentState, action: AgentStartAction): Age
     model: action.model ?? session.model,
     parentSessionId: action.parentSessionId ?? session.parentSessionId,
     external: action.external ?? session.external,
+    paneId: action.paneId ?? session.paneId,
     restored: false,
   }));
 }
@@ -293,6 +296,7 @@ function startSession(state: AgentState, action: AgentStartAction): AgentState {
     model: action.model,
     internal: action.internal,
     external: action.external,
+    paneId: action.paneId,
   };
   return {
     sessions: [newSession, ...state.sessions],

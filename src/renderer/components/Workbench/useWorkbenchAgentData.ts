@@ -384,8 +384,10 @@ export function deriveTimeline(session: AgentSession | null): WorkbenchTimelineE
 /**
  * Picks the primary session applying the Wave 13 paneId-keyed scoping contract
  * (replaces the Wave 8 claudeSessionId contract):
- *   - Bound path (paneId supplied): direct `agents.find` by id; project filter
- *     does NOT apply. Returns null (D4 empty state) when no session matches.
+ *   - Bound path (paneId supplied): direct `agents.find` by `session.paneId`
+ *     (stamped from AGENT_START hook payload's OUROBOROS_PANE_ID); project
+ *     filter does NOT apply. Returns null (D4 empty state) when no session
+ *     matches the active pane's id.
  *   - Fallback path (no paneId, D4 Option A): return null. The heuristic
  *     project-cwd fallback path (Wave 8) is intentionally removed — it was the
  *     source of the hijack bug this wave closes (ADR D4, D5).
@@ -395,7 +397,10 @@ function resolvePrimary(
   paneId: string | null | undefined,
 ): AgentSession | null {
   if (paneId != null && paneId !== '') {
-    return agents.find((s) => s.id === paneId) ?? null;
+    // Wave 13 Phase 2.5: match by AgentSession.paneId (stamped from AGENT_START
+    // hook payload's OUROBOROS_PANE_ID), NOT by claude session id. The pane
+    // identity is the IDE's tab id; the claude session id is a separate value.
+    return agents.find((s) => s.paneId === paneId) ?? null;
   }
   // D4 Option A: no paneId → no fallback → empty state.
   return null;
@@ -405,7 +410,8 @@ function resolvePrimary(
 
 /**
  * Wave 13 Phase 2: param renamed from `claudeSessionId` to `paneId`.
- * Filters the agent session pool to the session whose id matches `paneId`.
+ * Filters the agent session pool to the session whose `paneId` matches the
+ * active pane (stamped via AGENT_START → OUROBOROS_PANE_ID at Phase 2.5).
  * When paneId is null/undefined/empty, returns the empty data shape (D4 empty
  * state — no heuristic fallback, per ADR D4 Option A).
  */

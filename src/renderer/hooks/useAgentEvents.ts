@@ -275,6 +275,7 @@ function dispatchAgentStart(
     model: payload.model,
     internal: payload.internal,
     external: payload.ideSpawned ? undefined : true,
+    paneId: payload.paneId,
   });
   dispatchSkillStart(payload, dispatch);
 }
