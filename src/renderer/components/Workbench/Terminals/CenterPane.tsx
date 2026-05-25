@@ -77,7 +77,6 @@ const DIVIDER_INNER_STYLE: React.CSSProperties = {
 };
 
 interface CenterPaneProps {
-  onClaudeSessionId?: (id: string | null) => void;
   maximizedFrame?: 'upper' | 'lower' | null;
   onSetMaximizedFrame?: (frame: 'upper' | 'lower' | null) => void;
 }
@@ -86,9 +85,8 @@ interface CenterPaneProps {
  * CenterPane — the centre column of the workbench.
  *
  * Carries `data-testid="workbench-terminals"` so tests resolve on the root.
- * Wave 8 Phase 1: calls `onClaudeSessionId` whenever the bound Claude session
- * changes so Workbench.tsx can thread the id to the AgentSidebar.
  * Wave 12 Phase 4: maximizedFrame prop hides the non-active frame + divider.
+ * Wave 13 Phase 2: onClaudeSessionId callback removed (D5 heuristic deletion).
  */
 /** Loads and persists the vertical split ratio. */
 function useSplitRatio(containerRef: React.RefObject<HTMLDivElement | null>) {
@@ -185,14 +183,10 @@ function FramePane({
 }
 
 export function CenterPane({
-  onClaudeSessionId,
   maximizedFrame,
   onSetMaximizedFrame,
 }: CenterPaneProps): React.ReactElement {
-  const { upperSessionId, lowerSessionId, claudeSessionId } = useWorkbenchTerminals();
-  useEffect(() => {
-    onClaudeSessionId?.(claudeSessionId);
-  }, [claudeSessionId, onClaudeSessionId]);
+  const { upperSessionId, lowerSessionId } = useWorkbenchTerminals();
   const containerRef = useRef<HTMLDivElement>(null);
   const { ratio, handlePointerDown } = useSplitRatio(containerRef);
   // sessionId props are FALLBACKS — TerminalShell mounts its own useWorkbenchTabs

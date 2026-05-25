@@ -12,7 +12,6 @@
  */
 
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
-import { useProjectOptional } from '../../contexts/ProjectContext';
 import type { AgentSession } from '../AgentMonitor/types';
 import { buildBadgeMap, deriveLatestHunk, useDiffReviewState } from './useWorkbenchAgentData.diff';
 import type {
@@ -380,48 +379,41 @@ export function deriveTimeline(session: AgentSession | null): WorkbenchTimelineE
   return events;
 }
 
-// ── Session scoping helpers (Wave 8 Phase 1) ──────────────────────────────────
+// ── Session scoping helpers (Wave 13 Phase 2) ────────────────────────────────
 
 /**
- * Returns true when a session's `cwd` is the active root or nested under it.
- * Path-separator tolerant: normalises backslashes to forward slashes before
- * comparing. The frozen acceptance test only uses exact-equal cases, so this
- * normalisation is defensive-only and does not need deep Windows testing here.
- */
-function isCwdInProject(cwd: string | undefined, projectRoot: string): boolean {
-  if (!cwd) return false;
-  const norm = (p: string): string => p.replace(/\\/g, '/').replace(/\/$/, '');
-  const normCwd = norm(cwd);
-  const normRoot = norm(projectRoot);
-  return normCwd === normRoot || normCwd.startsWith(normRoot + '/');
-}
-
-/**
- * Picks the primary session applying the Wave 8 scoping contract:
- *   - Bound path (id supplied): direct `agents.find`; project filter does NOT apply.
- *   - Fallback path (no id): filter agents by active project root (when available)
- *     then delegate to selectPrimarySession.
+ * Picks the primary session applying the Wave 13 paneId-keyed scoping contract
+ * (replaces the Wave 8 claudeSessionId contract):
+ *   - Bound path (paneId supplied): direct `agents.find` by id; project filter
+ *     does NOT apply. Returns null (D4 empty state) when no session matches.
+ *   - Fallback path (no paneId, D4 Option A): return null. The heuristic
+ *     project-cwd fallback path (Wave 8) is intentionally removed — it was the
+ *     source of the hijack bug this wave closes (ADR D4, D5).
  */
 function resolvePrimary(
   agents: AgentSession[],
-  claudeSessionId: string | null | undefined,
-  projectRoot: string | null,
+  paneId: string | null | undefined,
 ): AgentSession | null {
-  if (claudeSessionId != null) {
-    return agents.find((s) => s.id === claudeSessionId) ?? null;
+  if (paneId != null && paneId !== '') {
+    return agents.find((s) => s.id === paneId) ?? null;
   }
-  const pool = projectRoot ? agents.filter((s) => isCwdInProject(s.cwd, projectRoot)) : agents;
-  return selectPrimarySession(pool);
+  // D4 Option A: no paneId → no fallback → empty state.
+  return null;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function useWorkbenchAgentData(claudeSessionId?: string | null): WorkbenchAgentData {
+/**
+ * Wave 13 Phase 2: param renamed from `claudeSessionId` to `paneId`.
+ * Filters the agent session pool to the session whose id matches `paneId`.
+ * When paneId is null/undefined/empty, returns the empty data shape (D4 empty
+ * state — no heuristic fallback, per ADR D4 Option A).
+ */
+export function useWorkbenchAgentData(paneId?: string | null): WorkbenchAgentData {
   const { agents, currentSessions } = useAgentEventsContext();
   const { latestFiles } = useDiffReviewState();
-  const projectCtx = useProjectOptional();
-  const projectRoot = projectCtx?.projectRoot ?? null;
-  const primary = resolvePrimary(agents, claudeSessionId, projectRoot);
+  const primary = resolvePrimary(agents, paneId);
+  // Note: useProjectOptional removed in Wave 13 Phase 2 (D4 Option A — no cwd fallback).
   const primaryId = primary?.id ?? null;
   const state = deriveWorkbenchAgentState(primary);
 

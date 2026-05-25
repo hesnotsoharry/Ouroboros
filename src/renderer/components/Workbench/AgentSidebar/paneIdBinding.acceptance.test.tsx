@@ -244,7 +244,7 @@ function capturedPaneIdArgs(): Array<string | null | undefined> {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe.skip('AgentSidebar paneId binding (Wave 13 Phase 2)', () => {
+describe('AgentSidebar paneId binding (Wave 13 Phase 2)', () => {
   // ── Test 2.1 — Happy path single pane ─────────────────────────────────────
   //
   // Mount Workbench. The canon Workbench creates one upper CC tab on mount.

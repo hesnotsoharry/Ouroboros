@@ -160,21 +160,51 @@ function useTabActions(
   return { addTab, closeTab, renameTab, setActiveTab };
 }
 
-/** Manages initial collection state from restore and CC auto-resume on mount. */
+interface TabRestoreInitArgs {
+  frame: 'upper' | 'lower';
+  restoredCollection: TabCollection | undefined;
+  isReady: boolean;
+  spawnedTabsRef: React.MutableRefObject<Set<string>>;
+  cwd: string | undefined;
+}
+
+/**
+ * Manages initial collection state from restore and CC auto-resume on mount.
+ *
+ * Wave 13 Phase 2: creates a default tab synchronously on first render (when no
+ * restored collection exists). This gives useActivePaneId() a stable pane id from
+ * the very first render so the AgentSidebar can bind deterministically. The default
+ * tab is spawned once isReady fires. When a restored collection IS available,
+ * the isReady effect overwrites the default tab as before.
+ */
 function useTabRestoreInit(
-  restoredCollection: TabCollection | undefined,
-  isReady: boolean,
-  spawnedTabsRef: React.MutableRefObject<Set<string>>,
-  cwd: string | undefined,
+  args: TabRestoreInitArgs,
 ): [TabCollection, React.Dispatch<React.SetStateAction<TabCollection>>] {
-  const [collection, setCollection] = useState<TabCollection>({ activeTabId: null, tabs: [] });
+  const { frame, restoredCollection, isReady, spawnedTabsRef, cwd } = args;
+  // Default tab created synchronously — gives AgentSidebar a pane id on first render.
+  const defaultTab = useRef<TabState>(buildNewTab(frame, defaultKind(frame)));
+  const defaultCollection: TabCollection = {
+    activeTabId: defaultTab.current.id,
+    tabs: [defaultTab.current],
+  };
+  const [collection, setCollection] = useState<TabCollection>(defaultCollection);
   const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     if (!isReady || hasInitializedRef.current) return;
     hasInitializedRef.current = true;
-    setCollection(restoredCollection ?? { activeTabId: null, tabs: [] });
-  }, [isReady, restoredCollection]);
+    if (restoredCollection && restoredCollection.tabs.length > 0) {
+      // Restored session — overwrite the default tab with the persisted collection.
+      setCollection(restoredCollection);
+    } else {
+      // No restore data — spawn the default tab now that the pty layer is ready.
+      const tab = defaultTab.current;
+      if (!spawnedTabsRef.current.has(tab.id)) {
+        spawnedTabsRef.current.add(tab.id);
+        spawnTab(tab.id, tab.kind, cwd);
+      }
+    }
+  }, [isReady, restoredCollection, cwd, spawnedTabsRef]);
 
   useEffect(() => {
     if (!isReady || !restoredCollection || restoredCollection.tabs.length === 0) return;
@@ -193,12 +223,13 @@ export function useWorkbenchTabs(
   const restoredCollection = frame === 'upper' ? upperCollection : lowerCollection;
   const cwd = projectRoot ?? undefined;
   const spawnedTabsRef = useRef<Set<string>>(new Set());
-  const [collection, setCollection] = useTabRestoreInit(
+  const [collection, setCollection] = useTabRestoreInit({
+    frame,
     restoredCollection,
     isReady,
     spawnedTabsRef,
     cwd,
-  );
+  });
   useWorkbenchSessionPersist({ frame, projectRoot, tabCollection: collection });
   const actions = useTabActions(frame, cwd, spawnedTabsRef, setCollection);
   return { tabs: collection.tabs, activeTabId: collection.activeTabId, ...actions };

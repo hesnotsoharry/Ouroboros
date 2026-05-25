@@ -12,8 +12,11 @@
 import React, { useState } from 'react';
 
 import { useApprovalContext } from '../../../contexts/ApprovalContext';
+import { useProjectOptional } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
 import { PermissionSidebarTakeover } from '../Permission/PermissionSidebarTakeover';
+import { useWorkbenchTabs } from '../Terminals/useWorkbenchTabs';
+import { useActiveWorkbenchFrame } from '../useActiveWorkbenchFrame';
 import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
 import type { WorkbenchBreakpointMode } from '../useWorkbenchBreakpoint';
 import { ContextBlock } from './ContextBlock';
@@ -118,11 +121,11 @@ function IconButton({
 const HEADER_FALLBACK = { label: '—', sub: '' };
 
 interface SidebarHeaderProps {
-  claudeSessionId?: string | null;
+  paneId?: string | null;
 }
 
-function SidebarHeader({ claudeSessionId }: SidebarHeaderProps): React.ReactElement {
-  const { sessions } = useWorkbenchAgentData(claudeSessionId);
+function SidebarHeader({ paneId }: SidebarHeaderProps): React.ReactElement {
+  const { sessions } = useWorkbenchAgentData(paneId);
   const primary = sessions.find((s) => s.active) ?? HEADER_FALLBACK;
   return (
     <div
@@ -263,31 +266,66 @@ const SIDEBAR_SCROLL_STYLE: React.CSSProperties = {
   flexDirection: 'column',
 };
 
-interface AgentSidebarProps {
-  breakpointMode?: WorkbenchBreakpointMode;
-  /** Wave 8 Phase 1: the Claude session bound to the active upper terminal. */
-  claudeSessionId?: string | null;
+// ── D4 empty state ────────────────────────────────────────────────────────────
+
+const EMPTY_STATE_STYLE: React.CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '24px 16px',
+  color: 'var(--ink-3)',
+  fontSize: 12,
+  textAlign: 'center',
+};
+
+function SidebarEmptyState(): React.ReactElement {
+  return <div style={EMPTY_STATE_STYLE}>No active claude session in this pane</div>;
 }
 
-export function AgentSidebar({
-  breakpointMode = 'full',
-  claudeSessionId,
-}: AgentSidebarProps): React.ReactElement {
-  const agentData = useWorkbenchAgentData(claudeSessionId);
+// ── paneId derivation ─────────────────────────────────────────────────────────
+
+/**
+ * Derives the active pane id from the active frame + active tab.
+ * Wave 13: AgentSidebar owns this derivation; it no longer receives claudeSessionId
+ * as a prop (the heuristic binding is deleted — ADR D5).
+ */
+function useActivePaneId(): string | null {
+  const { activeFrame } = useActiveWorkbenchFrame();
+  const projectCtx = useProjectOptional();
+  const projectRoot = projectCtx?.projectRoot ?? null;
+  const { tabs, activeTabId } = useWorkbenchTabs(activeFrame, projectRoot);
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  return activeTab?.id ?? null;
+}
+
+interface AgentSidebarProps {
+  breakpointMode?: WorkbenchBreakpointMode;
+}
+
+export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): React.ReactElement {
+  const paneId = useActivePaneId();
+  const agentData = useWorkbenchAgentData(paneId);
   const { isPending, takeoverProps } = useSidebarApproval();
   const isFull = breakpointMode === 'full';
   const sidebarStyle: React.CSSProperties = { ...SIDEBAR_BASE_STYLE, width: isFull ? 348 : 300 };
+  // D4: show empty state when no paneId-tagged session is active.
+  const hasActiveSession = agentData.state !== 'fresh';
 
   return (
     <div data-testid="workbench-agentsidebar" style={sidebarStyle}>
-      <SidebarHeader claudeSessionId={claudeSessionId} />
+      <SidebarHeader paneId={paneId} />
       <div style={SIDEBAR_SCROLL_STYLE}>
-        {isPending && takeoverProps ? (
+        {!hasActiveSession ? (
+          <SidebarEmptyState />
+        ) : isPending && takeoverProps ? (
           <PermissionSidebarTakeover {...takeoverProps} />
         ) : (
           <NowBlock data={agentData.now} />
         )}
-        <PanelStack agentData={agentData} dim={isPending} collapsed={!isFull} />
+        {hasActiveSession && (
+          <PanelStack agentData={agentData} dim={isPending} collapsed={!isFull} />
+        )}
       </div>
     </div>
   );

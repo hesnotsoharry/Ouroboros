@@ -5,12 +5,6 @@
  * *real* unmount. Returns stable { upperSessionId, lowerSessionId } so CenterPane
  * can pass ids to the two TerminalShell → TerminalInstance frames.
  *
- * Wave 8 Phase 1: also returns `claudeSessionId` — the Claude hook session ID
- * captured from the upper (wb-cc-*) terminal. Starts null; populated when the first
- * binding-class agent event arrives from that terminal. Mirrors the capture heuristic
- * in `useClaudeSessionCapture` (src/renderer/hooks/useTerminalSessions.sync.ts) but
- * stores state locally (string | null) without the legacy TerminalSession[] model.
- *
  * Wave 9 Phase 2: consumes `useWorkbenchRestore` to gate spawn on `isReady` and
  * thread restored cwds. When `resumeSessionId` is non-null, the upper frame uses
  * `pty.spawnClaude({ resumeMode })` for auto-resume; lower is always plain spawn.
@@ -21,6 +15,11 @@
  * `useWorkbenchTabs`). When no tab is active (empty frame) the ids are kept as
  * the original stable generated values so the Wave-9 acceptance test
  * (`useWorkbenchTerminals.restore.acceptance.test.ts`) continues to pass.
+ *
+ * Wave 13 Phase 2 (D5): `useWorkbenchClaudeCapture` and the `claudeSessionId` field
+ * have been deleted. The heuristic binding was the source of the IDE-in-itself hijack
+ * bug. AgentSidebar now derives paneId deterministically from useActiveWorkbenchFrame
+ * + useWorkbenchTabs (see AgentSidebar.tsx useActivePaneId()).
  *
  * StrictMode-safe: React 18 dev StrictMode double-invokes effects
  * (mount → cleanup → mount). Each kill is deferred one macrotask; the synchronous
@@ -36,10 +35,9 @@
  * ADR Decision 2: workbench-owned, independent sessions.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
-import { TERMINAL_BIND_TRIGGER_TYPES } from '../../../hooks/useTerminalSessions.sync.helpers';
 import { useWorkbenchRestore } from './useWorkbenchRestore';
 
 type TimerId = ReturnType<typeof setTimeout>;
@@ -55,8 +53,6 @@ function makeLowerId(): string {
 export interface WorkbenchTerminals {
   upperSessionId: string;
   lowerSessionId: string;
-  /** The Claude hook session ID bound to the upper (wb-cc-*) terminal. Null until captured. */
-  claudeSessionId: string | null;
 }
 
 interface SpawnFramesArgs {
@@ -158,38 +154,6 @@ function useWorkbenchSpawnEffect(
   }, [isReady]);
 }
 
-/**
- * Captures the Claude hook session ID for the upper workbench terminal.
- *
- * Listens to all agent events; binds on the first binding-class event from an
- * unknown session ID (same trigger-type guard as the legacy capture hook). Once
- * bound, subsequent events from a different session ID rebind — this mirrors the
- * terminal-launched fallback behaviour in useClaudeSessionCapture.
- */
-function useWorkbenchClaudeCapture(upperSessionId: string): string | null {
-  const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
-  // Stable ref so the effect closure sees the latest value without re-subscribing.
-  const upperSessionIdRef = useRef(upperSessionId);
-  upperSessionIdRef.current = upperSessionId;
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.electronAPI?.hooks?.onAgentEvent) return;
-
-    return window.electronAPI.hooks.onAgentEvent((event) => {
-      const payload = event as { type?: string; sessionId?: string };
-      if (typeof payload.sessionId !== 'string') return;
-      if (!TERMINAL_BIND_TRIGGER_TYPES.has(payload.type ?? '')) return;
-      // Bind/rebind: the running Claude is whoever last sent a binding event.
-      // setClaudeSessionId is a no-op when the value is already the same string.
-      setClaudeSessionId(payload.sessionId);
-    });
-    // upperSessionId is stable (generated once on mount) — no dep needed here,
-    // but upperSessionIdRef keeps the closure fresh if it ever changed.
-  }, []);
-
-  return claudeSessionId;
-}
-
 export function useWorkbenchTerminals(): WorkbenchTerminals {
   const { projectRoot } = useProject();
   const upperSessionId = useRef<string>(makeUpperId()).current;
@@ -202,12 +166,10 @@ export function useWorkbenchTerminals(): WorkbenchTerminals {
   const hasSpawnedRef = useRef(false);
 
   const { upperCwd, lowerCwd, resumeSessionId, isReady } = useWorkbenchRestore(projectRoot);
-  const claudeSessionId = useWorkbenchClaudeCapture(upperSessionId);
 
   // Wave 12 Phase 4: persistence is now handled by useWorkbenchTabs (mounted inside
-  // each TerminalShell). The Phase 3 stub persist call is removed to avoid stomping
-  // the real tab collection written by the live hook. Wave 9 acceptance test remains
-  // green because the spawn/kill lifecycle is unchanged.
+  // each TerminalShell). Wave 13 Phase 2: claudeSessionId capture (useWorkbenchClaudeCapture)
+  // deleted per D5 — AgentSidebar now derives paneId deterministically.
   useWorkbenchSpawnEffect(isReady, {
     upperSessionId,
     lowerSessionId,
@@ -218,5 +180,5 @@ export function useWorkbenchTerminals(): WorkbenchTerminals {
     pendingKillsRef,
     hasSpawnedRef,
   });
-  return { upperSessionId, lowerSessionId, claudeSessionId };
+  return { upperSessionId, lowerSessionId };
 }

@@ -168,10 +168,20 @@ describe('Wave 8 Phase 1 — bound-id scoping (orchestrator-owned)', () => {
   });
 });
 
-describe('Wave 8 Phase 1 — fallback project scoping (orchestrator-owned)', () => {
-  it('with no id, excludes a more-recent session from a DIFFERENT project', () => {
+/**
+ * Wave 13 Phase 2 — D4 Option A: no-paneId → D4 empty state (orchestrator-owned update).
+ *
+ * The fallback project-cwd filter (Wave 8 Phase 1) is removed by D4 Option A + D5.
+ * When no paneId is supplied, useWorkbenchAgentData returns the empty data shape
+ * regardless of what sessions exist in the pool. This eliminates the heuristic that
+ * allowed external/IDE-in-itself sessions to hijack the sidebar via project-cwd matching.
+ *
+ * The old Wave 8 fallback-path tests are superseded by these D4 empty-state tests.
+ */
+describe('Wave 13 Phase 2 — D4 empty state when no paneId supplied (orchestrator-owned)', () => {
+  it('with no paneId, returns empty state even when sessions exist for the active project', () => {
+    // D4 Option A: no fallback — external sessions cannot hijack the sidebar.
     const data = dataFor([
-      // Active-project session — older.
       makeSession({
         id: 'in-project',
         status: 'running',
@@ -180,43 +190,21 @@ describe('Wave 8 Phase 1 — fallback project scoping (orchestrator-owned)', () 
         inputTokens: 200,
         outputTokens: 100,
       }),
-      // Other-project session — more recent; must NOT become primary.
-      makeSession({
-        id: 'cross-project',
-        status: 'running',
-        startedAt: 9000,
-        cwd: OTHER_ROOT,
-        inputTokens: 999,
-        outputTokens: 999,
-      }),
     ]);
-    const active = data.sessions.filter((s) => s.active).map((s) => s.id);
-    expect(active).toEqual(['in-project']);
-    expect(data.contextStats.usedTokens).toBe(300); // in-project, not cross-project's 1998
+    // No session is active — primary is null → empty state.
+    expect(data.sessions.some((s) => s.active)).toBe(false);
+    expect(data.contextStats.usedTokens).toBe(0);
+    expect(data.state).toBe('fresh');
   });
 
-  it('with no active project root (provider absent), applies no cwd filter (pre-Wave-8 behavior)', () => {
+  it('with no paneId and no project root, returns empty state (no unfiltered fallback)', () => {
     setActiveRoot(null);
     const data = dataFor([
-      makeSession({
-        id: 'older',
-        status: 'running',
-        startedAt: 1000,
-        cwd: ACTIVE_ROOT,
-        inputTokens: 10,
-      }),
-      // Most-recently-active wins when no project scoping is available.
-      makeSession({
-        id: 'newer',
-        status: 'running',
-        startedAt: 9000,
-        cwd: OTHER_ROOT,
-        inputTokens: 50,
-        outputTokens: 7,
-      }),
+      makeSession({ id: 'any', status: 'running', startedAt: 9000, cwd: OTHER_ROOT }),
     ]);
-    const active = data.sessions.filter((s) => s.active).map((s) => s.id);
-    expect(active).toEqual(['newer']);
-    expect(data.contextStats.usedTokens).toBe(57);
+    // D4 Option A: empty state regardless of available sessions.
+    expect(data.sessions.some((s) => s.active)).toBe(false);
+    expect(data.contextStats.usedTokens).toBe(0);
+    expect(data.state).toBe('fresh');
   });
 });

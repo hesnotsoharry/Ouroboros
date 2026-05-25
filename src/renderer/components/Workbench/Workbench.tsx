@@ -98,8 +98,6 @@ interface MiddleRowProps {
   breakpointMode: 'full' | 'compact' | 'unified';
   onCollapseToUnified: () => void;
   onExpandToDual: () => void;
-  claudeSessionId: string | null;
-  onClaudeSessionId: (id: string | null) => void;
   projectKey: string;
   onSelectFile: (path: string) => void;
   maximizedFrame: 'upper' | 'lower' | null;
@@ -111,8 +109,6 @@ function MiddleRow({
   breakpointMode,
   onCollapseToUnified,
   onExpandToDual,
-  claudeSessionId,
-  onClaudeSessionId,
   projectKey,
   onSelectFile,
   maximizedFrame,
@@ -130,11 +126,10 @@ function MiddleRow({
       )}
       <CenterPane
         key={projectKey}
-        onClaudeSessionId={onClaudeSessionId}
         maximizedFrame={maximizedFrame}
         onSetMaximizedFrame={onSetMaximizedFrame}
       />
-      <AgentSidebar breakpointMode={breakpointMode} claudeSessionId={claudeSessionId} />
+      <AgentSidebar breakpointMode={breakpointMode} />
     </div>
   );
 }
@@ -143,8 +138,6 @@ interface WorkbenchStageProps {
   scanlines: boolean;
   breakpointMode: 'full' | 'compact' | 'unified';
   isUnified: boolean;
-  claudeSessionId: string | null;
-  setClaudeSessionId: (id: string | null) => void;
   openFilePath: string | null;
   setOpenFilePath: (path: string | null) => void;
   projectKey: string;
@@ -158,13 +151,12 @@ interface WorkbenchStageProps {
  * The Workbench shell content (everything inside the two outer providers).
  * Extracted from Workbench() to stay under the 40-line lint cap after the
  * Wave 11.1 DiffReviewProvider wrap was added on top.
+ * Wave 13 Phase 2: claudeSessionId state + threading removed (D5).
  */
 function WorkbenchStage({
   scanlines,
   breakpointMode,
   isUnified,
-  claudeSessionId,
-  setClaudeSessionId,
   openFilePath,
   setOpenFilePath,
   projectKey,
@@ -181,8 +173,6 @@ function WorkbenchStage({
         breakpointMode={breakpointMode}
         onCollapseToUnified={onCollapseToUnified}
         onExpandToDual={onExpandToDual}
-        claudeSessionId={claudeSessionId}
-        onClaudeSessionId={setClaudeSessionId}
         projectKey={projectKey}
         onSelectFile={setOpenFilePath}
         maximizedFrame={maximizedFrame}
@@ -212,7 +202,6 @@ export function Workbench(): React.ReactElement {
   const scanlines = useScanlines();
   const breakpointMode = useWorkbenchBreakpoint();
   const [forceUnified, setForceUnified] = useState(false);
-  const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
   const [openFilePath, setOpenFilePath] = useState<string | null>(null);
   const [maximizedFrame, setMaximizedFrame] = useState<'upper' | 'lower' | null>(null);
   const projectCtx = useProjectOptional();
@@ -225,8 +214,6 @@ export function Workbench(): React.ReactElement {
           scanlines={scanlines}
           breakpointMode={breakpointMode}
           isUnified={isUnified}
-          claudeSessionId={claudeSessionId}
-          setClaudeSessionId={setClaudeSessionId}
           openFilePath={openFilePath}
           setOpenFilePath={setOpenFilePath}
           projectKey={projectKey}
