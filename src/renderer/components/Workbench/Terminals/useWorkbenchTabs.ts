@@ -48,11 +48,23 @@ function defaultLabel(kind: 'cc' | 'shell'): string {
   return kind === 'cc' ? 'claude' : 'shell';
 }
 
+/**
+ * buildSpawnEnv — constructs the env object injected into every pty spawn for
+ * OUROBOROS_PANE_ID round-trip binding (Wave 13 D6).
+ *
+ * Both spawnTab AND autoResumeCcTab MUST call this helper. Any future spawn
+ * site added to this file must also use buildSpawnEnv — it is the single
+ * injection point for pane-id env propagation.
+ */
+export const buildSpawnEnv = (tabId: string): { OUROBOROS_PANE_ID: string } => ({
+  OUROBOROS_PANE_ID: tabId,
+});
+
 function spawnTab(id: string, kind: 'cc' | 'shell', cwd: string | undefined): void {
   if (kind === 'cc') {
-    void window.electronAPI.pty.spawnClaude(id, { cwd });
+    void window.electronAPI.pty.spawnClaude(id, { cwd, env: buildSpawnEnv(id) });
   } else {
-    void window.electronAPI.pty.spawn(id, { cwd });
+    void window.electronAPI.pty.spawn(id, { cwd, env: buildSpawnEnv(id) });
   }
 }
 
@@ -67,7 +79,11 @@ function autoResumeCcTab(
     if (tab.id !== activeTabId && activeTabId !== null) continue;
     if (spawned.has(tab.id)) break;
     spawned.add(tab.id);
-    void window.electronAPI.pty.spawnClaude(tab.id, { cwd, resumeMode: tab.sessionId });
+    void window.electronAPI.pty.spawnClaude(tab.id, {
+      cwd,
+      resumeMode: tab.sessionId,
+      env: buildSpawnEnv(tab.id),
+    });
     break;
   }
 }

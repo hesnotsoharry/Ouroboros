@@ -5,12 +5,7 @@
 
 import { randomBytes } from 'node:crypto';
 
-import {
-  loadTokens,
-  readStdin,
-  sendEvent,
-  shouldSkipForNoIde,
-} from './lib/ouroboros.mjs';
+import { loadTokens, readStdin, sendEvent, shouldSkipForNoIde } from './lib/ouroboros.mjs';
 
 if (process.env.OUROBOROS_CHAT_SESSION === '1') process.exit(0);
 if (shouldSkipForNoIde()) process.exit(0);
@@ -20,12 +15,17 @@ if (!hooksToken) process.exit(0);
 
 const stdinData = await readStdin();
 let agentData = {};
-try { if (stdinData.trim()) agentData = JSON.parse(stdinData); } catch { /* ignore */ }
+try {
+  if (stdinData.trim()) agentData = JSON.parse(stdinData);
+} catch {
+  /* ignore */
+}
 
 const subagentSessionId = agentData.session_id || agentData.sessionId;
-const sessionId = subagentSessionId || ('subagent-' + randomBytes(6).toString('hex'));
+const sessionId = subagentSessionId || 'subagent-' + randomBytes(6).toString('hex');
 
 const parentSessionId = process.env.CLAUDE_SESSION_ID;
+const paneId = process.env.OUROBOROS_PANE_ID;
 const model = agentData.model_id || agentData.model;
 const prompt = agentData.prompt || agentData.message || agentData.task;
 
@@ -37,6 +37,7 @@ const payload = {
   cwd: process.cwd(),
 };
 if (parentSessionId) payload.parentSessionId = parentSessionId;
+if (paneId) payload.paneId = paneId;
 if (prompt) payload.prompt = prompt;
 if (model) payload.model = model;
 if (process.env.OUROBOROS_INTERNAL === '1') payload.internal = true;

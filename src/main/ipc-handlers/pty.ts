@@ -30,6 +30,8 @@ interface PtySpawnOptions {
   cols?: number;
   rows?: number;
   startupCommand?: string;
+  /** Extra env vars merged into the pty process env (Wave 13: OUROBOROS_PANE_ID). */
+  env?: Record<string, string>;
 }
 
 interface ClaudeSpawnOptions extends PtySpawnOptions {

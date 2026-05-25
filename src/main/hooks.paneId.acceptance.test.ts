@@ -90,7 +90,7 @@ vi.mock('./web/webServer', () => ({
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe.skip('hooks.paneId pipeline (Wave 13 Phase 1)', () => {
+describe('hooks.paneId pipeline (Wave 13 Phase 1)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

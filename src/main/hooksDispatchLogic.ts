@@ -33,7 +33,10 @@ export function shouldSuppressDispatch(
 
 /** [trace:agent-record] Site 1 — log instructions_loaded as it passes through the dispatcher.
  * Captures the hook-pipe sessionId so we can compare it against the stream-json claudeSessionId. */
-export function traceInstructionsLoaded(payload: HookPayload, activeSyntheticIds: Set<string>): void {
+export function traceInstructionsLoaded(
+  payload: HookPayload,
+  activeSyntheticIds: Set<string>,
+): void {
   if (payload.type !== 'instructions_loaded') return;
   log.debug('[trace:agent-record] instructions_loaded reaching dispatcher', {
     hookPipeSessionId: payload.sessionId,
@@ -60,6 +63,17 @@ export function truncatePayloadForDispatch(payload: HookPayload): HookPayload {
     ...(needsInput && { input: truncateField(payload.input) }),
     ...(needsOutput && { output: truncateField(payload.output) }),
   };
+}
+
+/**
+ * buildRendererPayload — pure transform from named-pipe inbound HookPayload to
+ * the renderer-bound payload. Mirrors the truncation applied in sendPayload
+ * (hooks.ts) but does NOT call webContents.send — testable seam (Wave 13 Phase 1).
+ *
+ * paneId is preserved unchanged from inbound to outbound per ADR D3.
+ */
+export function buildRendererPayload(inbound: HookPayload): HookPayload {
+  return truncatePayloadForDispatch(inbound);
 }
 
 // ── Session tracking ──────────────────────────────────────────────────

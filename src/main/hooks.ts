@@ -82,6 +82,11 @@ export interface HookPayload {
   ideSpawned?: boolean;
   /** Correlation ID for linking related events (e.g. pre_tool_use → post_tool_use). */
   correlationId?: string;
+  /**
+   * Wave 13: paneId is the IDE pane identifier (OUROBOROS_PANE_ID) for terminal-scoped binding.
+   * Set by hook scripts that inherit the env var from the pty spawn; absent for external sessions.
+   */
+  paneId?: string;
   /** Catch-all for event-specific data forwarded from Claude Code stdin JSON. */
   data?: Record<string, unknown>;
 }

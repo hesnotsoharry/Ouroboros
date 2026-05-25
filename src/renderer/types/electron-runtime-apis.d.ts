@@ -70,7 +70,14 @@ export interface PersistedSessionInfo {
 export interface PtyAPI {
   spawn: (
     id: string,
-    options?: { cwd?: string; cols?: number; rows?: number; startupCommand?: string },
+    options?: {
+      cwd?: string;
+      cols?: number;
+      rows?: number;
+      startupCommand?: string;
+      /** Extra env vars merged into the pty process env (Wave 13: OUROBOROS_PANE_ID). */
+      env?: Record<string, string>;
+    },
   ) => Promise<PtySpawnResult>;
   spawnClaude: (
     id: string,
@@ -83,6 +90,8 @@ export interface PtyAPI {
       resumeMode?: string;
       /** Provider:model override (e.g. 'minimax:MiniMax-M2.7') */
       providerModel?: string;
+      /** Extra env vars merged into the pty process env (Wave 13: OUROBOROS_PANE_ID). */
+      env?: Record<string, string>;
     },
   ) => Promise<PtySpawnResult>;
   spawnCodex: (
