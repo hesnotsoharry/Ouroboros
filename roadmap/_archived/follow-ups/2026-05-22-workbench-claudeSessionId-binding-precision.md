@@ -1,7 +1,8 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-05-24
+resolved-by-wave: 13
 severity: HIGH
 blocks: wave-9-cutover (soft — see "Why HIGH")
 relates: 2026-05-22-workbench-sidebar-session-scoping.md
@@ -68,3 +69,14 @@ launching `claude` session active — confirm whether the sidebar tracks the upp
 gets hijacked by the outer one. Record the result.
 
 _Surfaced by sonnet-phase-reviewer during Wave 8 Phase 1 review, 2026-05-22._
+
+## Resolution (Wave 13)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-24.
+
+Wave 13 Phase 2 shipped the proper fix across the main-process + IPC + renderer boundary:
+- Phase 1: `pty.ts` + `hooks.ts` forward `OUROBOROS_PANE_ID` from env → hook payload.paneId.
+- Phase 2: `AgentSidebar.tsx` derives `paneId` deterministically from `useActiveWorkbenchFrame` + `useWorkbenchTabs`; `useWorkbenchAgentData.resolvePrimary` filters sessions by `session.paneId === activeTab.id` (no longer relying on event-timing heuristics). Deleted `useWorkbenchClaudeCapture` hook entirely (`src/renderer/components/Workbench/Terminals/useWorkbenchTerminals.ts` lines 158–192 removed).
+- External sessions: their pty was not spawned with `OUROBOROS_PANE_ID`, so `session.paneId` is undefined, and `resolvePrimary` finds no match → D4 empty state. Hijack closed by construction, not by heuristic.
+
+Evidence: Wave 13 result brief section "Wave 13 architecture (the deterministic chain)" (lines 40–82) explicitly solves the IDE-in-itself hijack scenario described in this follow-up's §Why HIGH. Commit `90eb8dd1` Phase 2 deleted `useWorkbenchClaudeCapture` and re-keyed binding to paneId (verified in diff `git diff 1ddbcf73..HEAD -- src/renderer/components/Workbench/Terminals/useWorkbenchTerminals.ts`).
