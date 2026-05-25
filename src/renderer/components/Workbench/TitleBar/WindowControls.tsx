@@ -2,9 +2,8 @@
  * WindowControls — Windows-native min/max/close buttons.
  *
  * Three borderless 46×40 buttons. Close hover is #e81123 (sanctioned
- * Windows platform color — canon §06). IPC wiring is deferred until
- * electronAPI.app.minimize/maximize/close is added to the IPC contract;
- * buttons are no-op stubs this wave per spec.
+ * Windows platform color — canon §06). Calls window.electronAPI.app
+ * minimize/toggleMaximize/close via the existing IPC contract.
  *
  * -webkit-app-region: no-drag so clicks reach the buttons.
  */
@@ -51,10 +50,11 @@ function CloseGlyph(): React.ReactElement {
 interface WinBtnProps {
   title: string;
   isClose?: boolean;
+  onClick?: () => void;
   children: React.ReactNode;
 }
 
-function WinBtn({ title, isClose = false, children }: WinBtnProps): React.ReactElement {
+function WinBtn({ title, isClose = false, onClick, children }: WinBtnProps): React.ReactElement {
   const [hovered, setHovered] = React.useState(false);
 
   const bg = hovered
@@ -85,6 +85,7 @@ function WinBtn({ title, isClose = false, children }: WinBtnProps): React.ReactE
           flexShrink: 0,
         } as React.CSSProperties
       }
+      onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -96,6 +97,18 @@ function WinBtn({ title, isClose = false, children }: WinBtnProps): React.ReactE
 // ── WindowControls ───────────────────────────────────────────────────────────
 
 export function WindowControls(): React.ReactElement {
+  const handleMinimize = (): void => {
+    window.electronAPI.app.minimizeWindow().catch(() => undefined);
+  };
+
+  const handleMaximize = (): void => {
+    window.electronAPI.app.toggleMaximizeWindow().catch(() => undefined);
+  };
+
+  const handleClose = (): void => {
+    window.electronAPI.app.closeWindow().catch(() => undefined);
+  };
+
   return (
     <div
       data-testid="window-controls"
@@ -109,13 +122,13 @@ export function WindowControls(): React.ReactElement {
         } as React.CSSProperties
       }
     >
-      <WinBtn title="Minimize">
+      <WinBtn title="Minimize" onClick={handleMinimize}>
         <MinimizeGlyph />
       </WinBtn>
-      <WinBtn title="Maximize">
+      <WinBtn title="Maximize" onClick={handleMaximize}>
         <MaximizeGlyph />
       </WinBtn>
-      <WinBtn title="Close" isClose>
+      <WinBtn title="Close" isClose onClick={handleClose}>
         <CloseGlyph />
       </WinBtn>
     </div>
