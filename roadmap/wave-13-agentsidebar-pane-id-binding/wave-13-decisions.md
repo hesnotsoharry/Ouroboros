@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: SHIPPED
 created: 2026-05-24
 updated: 2026-05-24
 wave: 13

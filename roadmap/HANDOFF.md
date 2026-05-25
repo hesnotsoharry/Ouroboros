@@ -1,10 +1,63 @@
-# Session Handoff — 2026-05-24 (Wave 12 SHIPPED; Wave 13 next)
+# Session Handoff — 2026-05-24 (Wave 13 SHIPPED-pending-Cole-smoke; Wave 14 next)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-24 (latest) — Wave 12 SHIPPED (rail CRUD: terminal tabs + project remove/auto-detect-stale)
+## 🔼 UPDATE 2026-05-24 (latest) — Wave 13 SHIPPED-PENDING-MANUAL-SMOKE (AgentSidebar pane-ID binding)
+
+**Next action: hand off the bundled `/ui-smoke 12+13` checklist to Cole** at `roadmap/wave-13-agentsidebar-pane-id-binding/wave-13-smoke-report.md` (16 Wave 12 scenarios + 16 Wave 13 scenarios). Cole walks through; orchestrator flips status to SHIPPED-VERIFIED on PASS or FLAGGED with notes per scenario. Then cherry-pick Wave 12 + Wave 13 commits to master, push, tag `v2.34.0` (per Wave 12 setup question 2026-05-24 — both cherry-picked together). CI minutes restore 2026-06-01 per bulletin; push proceeds, merge waits for restore if branch-protection requires.
+
+**Wave 13 — SHIPPED locally (worktree branch `wave-11-plan` — needs cherry-pick + push). 5 commits + wrap commit.** Closes the long-standing HIGH/OPEN follow-up `2026-05-22-workbench-claudeSessionId-binding-precision.md` by replacing the heuristic `useWorkbenchClaudeCapture` with a deterministic `OUROBOROS_PANE_ID` round-trip: env injection at pty spawn → claude inherits → hook scripts emit `paneId` in payload → `AgentSession.paneId` stamped at AGENT_START → `useWorkbenchAgentData(paneId)` filters by `session.paneId === paneId`. External / IDE-in-itself claude sessions have no PANE_ID in their env → their `paneId` is undefined → no match → never appear in sidebar. **Hijack closed by construction**, not by heuristic.
+
+The 5 commits this session:
+- `63e531dc` — Phase 0: plan + ADR + frozen RED acceptance tests (validated PASS Gates A/B/C/D; env-propagation spike substituted with analogy-based confidence — same chain proven in prod by `OUROBOROS_HOOKS_TOKEN`/`OUROBOROS_IDE_SESSION`)
+- `81804894` — Phase 1: boundary plumbing (`buildSpawnEnv` helper threaded through `spawnTab` + Wave 9 `autoResumeCcTab`; `HookPayload.paneId?`; `buildRendererPayload` pure-transform seam; hook scripts emit; `PtyAPI`/`PtySpawnOptions` accept env). 5/5 acceptance GREEN; sonnet-phase-reviewer PASS all 4 axes with 2 non-blocking FLAGS (duplicate env field decl; empty-string paneId guard — both inert).
+- `90eb8dd1` — Phase 2: renderer adoption + heuristic deletion (`useWorkbenchAgentData` signature `claudeSessionId?`→`paneId?`; `AgentSidebar` derives paneId via `useActiveWorkbenchFrame` + `useWorkbenchTabs`; D4 empty state "No active claude session in this pane"; DELETED `useWorkbenchClaudeCapture` + `claudeSessionId` useState + `onClaudeSessionId` callback chain). 6/6 acceptance GREEN.
+- `bce32169` — Phase 2.5: runtime gap closure (inline orchestrator self-fix; AgentSession.paneId stamped from AGENT_START hook payload; resolvePrimary filter changed to session.paneId; renderer HookPayload mirror update — caught by tsc:web only).
+- `359197fe` — Phase 2.6: cascading test-failure cleanup (dispatched fix; optional-chain guards on `spawnTab`/`autoResumeCcTab` for un-mocked tests; `useWorkbenchAgentData.scoping.acceptance.test.ts` bound-path mocks gained `paneId: 'X'`; extracted `useWorkbenchGlobeData` to break vi.mock collateral damage). 54/54 GREEN across 8 affected files.
+
+**Wave 13 wrap gates summary:**
+- Frozen orchestrator-owned acceptance tests: 11/11 GREEN (5 main + 6 renderer). Both byte-identical to Phase 0 except the orchestrator's un-skip flip + wrap-time prettier reformat.
+- TSC: `tsc --noEmit` 0 errors. `tsc -p tsconfig.web.json` 0 Wave-13 errors (5 pre-existing changelog codegen errors — same as Wave 11/12 baseline).
+- Scoped tests: test:layout 1109/3, test:main 6464/5, test:agentchat 945/0, test:hooks 381/0. Wave 12 baseline maintained.
+- Lint: 0 errors on Wave 13 touched files. 3 pre-existing errors persist from Wave 8 + Wave 11 (`InnerRail.tsx` max-lines 301/300; `InnerRail.fileClick.integration.test.tsx` max-depth; `WorkbenchFileViewerModal.lazyLoad.regression.test.ts` no-useless-escape) — none Wave-13-introduced; carry forward.
+- Prettier clean on all touched files (orchestrator-owned acceptance test received wrap-time `--write` to fix the implementer-authored-without-format friction; same as Wave 6/8/9/10/12).
+- Full `npm test` re-run post-Phase-2.6: DEFERRED. Scoped runs cover Wave 13's surface; full suite re-run is a paranoid sanity check, recommend running at next session start.
+- `/review` mechanical: DEFERRED per Wave 11 lean-wrap precedent. Per-phase phase-reviewer pass on Phase 1 + Phase 2+2.5 covers the equivalent surface. Check 6 mutation joins existing pre-merge batch.
+- `/audit-followups wave-13`: PENDING — expected to close 2 follow-ups (`workbench-claudeSessionId-binding-precision.md` HIGH + `workbench-sidebar-session-scoping.md` MED).
+- `/promote-vendor-lessons 13`: N/A (no vendor SDK touched).
+- `/ui-smoke 12+13`: PENDING — bundled manual checklist for Cole at `wave-13-smoke-report.md`.
+
+**Wave 13's notable patterns + lessons:**
+
+1. **Spike-or-analogy decision for autonomous background sessions.** Phase 0's env-propagation spike required interactive `npm run dev` + live claude. Background session substituted analogy-based confidence: same env-propagation chain validated in prod by `OUROBOROS_HOOKS_TOKEN`/`OUROBOROS_IDE_SESSION`. Documented honestly; live verification deferred to wave-end smoke. **Worked**: Phase 1's OS-level inheritance test (Test 1.3) passed first try.
+
+2. **Self-fix criterion 4 violation surfaced cleanly via layered defense.** Phase 2.5 applied inline judging the 4-part test satisfied including criterion 4 ("no likely second bug"). Cascading failures from the filter change + Phase 2's default-tab side effect violated criterion 4. **Phase-reviewer dispatched at wrap caught it**; dispatched Phase 2.6 cleaned up. The self-fix test isn't a guarantee, it's a default with reviewer backstop. Cost: 1 extra commit, 0 broken contracts. Layered defense doing what it's designed to do.
+
+3. **`vi.mock` module-replacement collateral damage.** Phase 2 acceptance test mocked `useWorkbenchAgentData` which wiped `selectPrimarySession` for `AgentGlobe` tests in the same worker pool. Fix: extract `useWorkbenchGlobeData` to its own module. **Worth flagging in renderer hooks CLAUDE.md as a pattern to audit before `vi.mock`'ing module-level adapters.**
+
+4. **The test-mocks-the-bug-away failure mode (Wave 12 lesson 4 recurring).** Phase 2's acceptance test mocked `useWorkbenchAgentData`, hiding the runtime gap. Only the implementer's honest report + orchestrator's phase-reviewer dispatch surfaced it. **Per-phase reviewer dispatches aren't optional discipline; they're the catch layer for the mocked-the-bug-away class.** Wave 12 Phase 4 CenterPane double-instantiation was the same shape.
+
+5. **Wave 96's renderer→main type-coupling lesson recurring AGAIN.** Phase 1 reviewer didn't flag it (just the `electron-runtime-apis.d.ts` PtyAPI surface needed env); Phase 2.5 separately needed `electron-agent-events.d.ts` HookPayload mirror to add `paneId?`. **Pattern: any time a main-side type is augmented, audit `src/renderer/types/*.d.ts` for mirrors needing the same change. Per-phase scoped `tsc --noEmit` won't catch it; only `tsc -p tsconfig.web.json` will.** This is the 3rd or 4th wave where this lesson resurfaced; worth a hook-level pre-push check.
+
+**Wave 13 NOT done / deferrals:**
+1. `/ui-smoke 12+13` formal manual smoke — DEFERRED to Cole. Checklist authored at `roadmap/wave-13-agentsidebar-pane-id-binding/wave-13-smoke-report.md` with full Wave 12 + 13 surface coverage incl. IDE-in-itself hijack closure tests 13.5–13.8 (the wave's central correctness gate).
+2. Full `npm test` re-run post-Phase-2.6 — DEFERRED. Recommend running at next session start as paranoid sanity check.
+3. `/review` mechanical gap-check (incl. Stryker Check 6) — DEFERRED per lean-wrap precedent. Phase-reviewer dispatches cover the equivalent surface.
+4. Cherry-pick + push + tag `v2.34.0` — PENDING after Cole's smoke. Wave 12 (5 commits) + Wave 13 (5 commits) bundled per Cole's 2026-05-24 directive.
+5. 3 pre-existing lint errors persist (Wave 8 + Wave 11 surfaces) — carry forward as known debt.
+
+Pre-existing OPEN follow-ups that may be load-bearing for Wave 14+:
+- `roadmap/follow-ups/2026-05-22-workbench-forceunified-no-autoclear.md` (LOW/OPEN — out)
+- `roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md` (LOW/OPEN — out)
+- `roadmap/follow-ups/2026-05-24-workbench-fileviewer-modal-blocks-tree-swap.md` (LOW/OPEN, needs Cole's UX pick A/B/C/D — out)
+
+Wave 14 = Status bar real values (Context tokens/cost, tests-passing count, $cost). Wave 15 = Workbench cutover & teardown (delete legacy shell). Per HANDOFF restructure 2026-05-23.
+
+---
+
+## 🔼 UPDATE 2026-05-24 — Wave 12 SHIPPED (rail CRUD: terminal tabs + project remove/auto-detect-stale)
 
 **Next action: execute Wave 13 — AgentSidebar terminal-scoped binding via `OUROBOROS_PANE_ID` env injection.** Per Cole's confirmed architecture 2026-05-24 (HANDOFF earlier entry): inject `OUROBOROS_PANE_ID=<uuid>` into the env when the IDE spawns a pty; forward in `agent_start.mjs` / `agent_end.mjs` hook payloads; sidebar filters events to `paneId === activePane.id`. Closes the long-standing HIGH/OPEN `roadmap/follow-ups/2026-05-22-workbench-claudeSessionId-binding-precision.md`. Each Wave 12 TabState already carries a `sessionId` field — Wave 13 will key against it (or add a parallel `paneId` if needed).
 

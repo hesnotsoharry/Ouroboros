@@ -1,14 +1,15 @@
 ---
-status: DRAFT
+status: SHIPPED-PENDING-MANUAL-SMOKE
 created: 2026-05-24
 updated: 2026-05-24
+tag: v2.34.0
 ---
 
 # Wave 13 — AgentSidebar pane-ID binding (deterministic OUROBOROS_PANE_ID round-trip)
 
 ## Status
 
-DRAFT · target v2.34.0 · drafted 2026-05-24.
+SHIPPED-PENDING-MANUAL-SMOKE · tag v2.34.0 · 5 commits (Phase 0 / 1 / 2 / 2.5 / 2.6) + wrap on branch wave-11-plan · 2026-05-24. Final ship state pending Cole's bundled `/ui-smoke 12+13` walkthrough; see `wave-13-result.md` for per-phase breakdown and `wave-13-smoke-report.md` for the manual checklist.
 
 ## Context — why this wave exists
 
