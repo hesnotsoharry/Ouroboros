@@ -59,6 +59,7 @@ interface CacheEntry {
 }
 
 const CACHE_TTL_MS = 60_000;
+// FIFO-bounded at 20 entries — see Wave 20 Decision 3.
 const _cache = new Map<string, CacheEntry>();
 
 function buildCacheKey(options: PageRankOptions): string {
@@ -131,8 +132,9 @@ function buildPersonalizationVector(
 ): Map<string, number> {
   const vector = new Map<string, number>();
   let totalWeight = 0;
+  const nodeIdSet = new Set(nodeIds);
   for (const seed of seeds) {
-    if (!nodeIds.includes(seed.id)) continue;
+    if (!nodeIdSet.has(seed.id)) continue;
     vector.set(seed.id, (vector.get(seed.id) ?? 0) + seed.weight);
     totalWeight += seed.weight;
   }
@@ -261,6 +263,10 @@ export function computePageRank(db: GraphDatabase, options: PageRankOptions): Pa
   });
 
   const fileScores = aggregateToFiles(symbolScores, graph.nodeToFile);
+  if (_cache.size >= 20) {
+    const oldestKey = _cache.keys().next().value;
+    if (oldestKey !== undefined) _cache.delete(oldestKey);
+  }
   _cache.set(cacheKey, { scores: fileScores, cachedAt: Date.now() });
   return { scores: fileScores, fromCache: false, iterations };
 }

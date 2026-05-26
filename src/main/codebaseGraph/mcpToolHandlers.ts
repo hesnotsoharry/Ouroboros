@@ -5,7 +5,13 @@
  * objects replicating the codebase-memory-mcp API. Each handler returns formatted
  * plain text (not JSON), includes qualified names and file:line locations, and
  * truncates output at ~8000 chars.
+ *
+ * NOTE: file is over the 300-line max-lines limit. The TOOL_SCHEMAS constant
+ * (lines ~36-200) is mostly inline JSON-schema declarations; splitting them
+ * into a separate module is the natural fix. Tracked as Wave 20 Tier-3
+ * follow-up: roadmap/follow-ups/2026-05-26-mcptoolhandlers-over-cap.md.
  */
+/* eslint-disable max-lines */
 
 import type { McpToolDefinition, McpToolResult } from '../internalMcp/internalMcpTypes';
 import { textResult } from '../internalMcp/internalMcpTypes';
@@ -60,7 +66,11 @@ const TOOL_SCHEMAS = {
   search_graph: {
     type: 'object',
     properties: {
-      query: { type: 'string', description: 'Symbol IDENTIFIER (PascalCase/camelCase, no spaces). Substring match. ✓ "ChatWorkbenchArtifactPane", "parseConfig". ✗ "chat workbench artifact pane" returns zero.' },
+      query: {
+        type: 'string',
+        description:
+          'Symbol IDENTIFIER (PascalCase/camelCase, no spaces). Substring match. ✓ "ChatWorkbenchArtifactPane", "parseConfig". ✗ "chat workbench artifact pane" returns zero.',
+      },
       label: { type: 'string' },
       project: { type: 'string' },
       file_pattern: { type: 'string' },
@@ -79,7 +89,12 @@ const TOOL_SCHEMAS = {
   get_architecture: {
     type: 'object',
     properties: {
-      aspects: { type: 'array', items: { type: 'string' }, description: 'Which aspects: "languages","packages","entry_points","routes","hotspots","boundaries","services","layers","clusters","file_tree","adr","all". Default ["all"]. Pre-refactor: ["hotspots"].' },
+      aspects: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Which aspects: "languages","packages","entry_points","routes","hotspots","boundaries","services","layers","clusters","file_tree","adr","all". Default ["all"]. Pre-refactor: ["hotspots"].',
+      },
       project: { type: 'string' },
     },
     required: [],
@@ -99,14 +114,22 @@ const TOOL_SCHEMAS = {
   get_code_snippet: {
     type: 'object',
     properties: {
-      symbol: { type: 'string', description: 'Symbol IDENTIFIER (PascalCase/camelCase). ✓ "ChatWorkbenchArtifactPane". ✗ "chat workbench artifact pane".' },
+      symbol: {
+        type: 'string',
+        description:
+          'Symbol IDENTIFIER (PascalCase/camelCase). ✓ "ChatWorkbenchArtifactPane". ✗ "chat workbench artifact pane".',
+      },
     },
     required: [],
   },
   trace_call_path: {
     type: 'object',
     properties: {
-      symbol: { type: 'string', description: 'Function/method IDENTIFIER (PascalCase/camelCase). ✓ "parseConfig". ✗ "parse config".' },
+      symbol: {
+        type: 'string',
+        description:
+          'Function/method IDENTIFIER (PascalCase/camelCase). ✓ "parseConfig". ✗ "parse config".',
+      },
       direction: {
         type: 'string',
         enum: ['inbound', 'outbound', 'both', 'callers', 'callees'],
@@ -115,17 +138,33 @@ const TOOL_SCHEMAS = {
       },
       depth: { type: 'number' },
       risk_labels: { type: 'boolean' },
-      min_confidence: { type: 'number', description: 'Filter edges below this confidence (0.0–1.0). Default 0 (no filter). Import-resolved edges ~0.95; name-collision edges ~0.65.' },
+      min_confidence: {
+        type: 'number',
+        description:
+          'Filter edges below this confidence (0.0–1.0). Default 0 (no filter). Import-resolved edges ~0.95; name-collision edges ~0.65.',
+      },
     },
     required: [],
   },
   detect_changes: {
     type: 'object',
     properties: {
-      scope: { type: 'string', enum: ['unstaged', 'staged', 'all', 'branch'], description: '"unstaged"=working-tree vs HEAD; "staged"=index vs HEAD; "all"=both vs HEAD; "branch"=current vs base_branch (requires base_branch).' },
-      base_branch: { type: 'string', description: 'Required when scope="branch". Branch to diff against (e.g., "main").' },
+      scope: {
+        type: 'string',
+        enum: ['unstaged', 'staged', 'all', 'branch'],
+        description:
+          '"unstaged"=working-tree vs HEAD; "staged"=index vs HEAD; "all"=both vs HEAD; "branch"=current vs base_branch (requires base_branch).',
+      },
+      base_branch: {
+        type: 'string',
+        description: 'Required when scope="branch". Branch to diff against (e.g., "main").',
+      },
       depth: { type: 'number' },
-      min_confidence: { type: 'number', description: 'Filter edges below this confidence (0.0–1.0). Default 0 (no filter). See trace_call_path for confidence semantics.' },
+      min_confidence: {
+        type: 'number',
+        description:
+          'Filter edges below this confidence (0.0–1.0). Default 0 (no filter). See trace_call_path for confidence semantics.',
+      },
     },
     required: [],
   },
@@ -135,7 +174,6 @@ const TOOL_SCHEMAS = {
     properties: {
       mode: { type: 'string', enum: ['list', 'get', 'store', 'update', 'delete'] },
       project: { type: 'string' },
-      id: { type: 'string', description: 'ADR identifier (when targeting a specific ADR).' },
       content: { type: 'string' },
       sections: { type: 'object' },
     },
@@ -144,7 +182,10 @@ const TOOL_SCHEMAS = {
   ingest_traces: {
     type: 'object',
     properties: {
-      traces: { type: 'string', description: 'JSON-serialized string: JSON.stringify([{ fromId, toId, type, weight? }])' },
+      traces: {
+        type: 'string',
+        description: 'JSON-serialized string: JSON.stringify([{ fromId, toId, type, weight? }])',
+      },
     },
     required: ['traces'],
   },
@@ -168,10 +209,7 @@ async function safeText(label: string, p: Promise<string>): Promise<McpToolResul
 }
 
 // Run a structured handler (returns Promise<McpToolResult>) with error wrapping.
-async function safeStructured(
-  label: string,
-  p: Promise<McpToolResult>,
-): Promise<McpToolResult> {
+async function safeStructured(label: string, p: Promise<McpToolResult>): Promise<McpToolResult> {
   try {
     return await p;
   } catch (err) {
@@ -293,14 +331,15 @@ function buildCypherAndAdrTools(context: GraphToolContext): McpToolDefinition[] 
     {
       name: 'query_graph',
       description:
-        'Complex relationship queries. Cypher-subset: MATCH (n:Label), (a)-[:TYPE]->(b), (a)-[:TYPE*1..3]->(b); WHERE n.prop {=,<>,<,>,<=,>=,CONTAINS,STARTS WITH,ENDS WITH,IN} AND/OR; RETURN n.prop, COUNT(*), labels(n), DISTINCT; ORDER BY, LIMIT. Node columns: name, qualified_name, file_path, start_line, end_line, label, id, project. Any other property name (e.g. n.signature) falls through to JSON_EXTRACT against the node\'s props blob. Use labels(n) for the node label string; for set-membership use either `n.label IN [\'A\',\'B\']` or `labels(n) IN [\'A\',\'B\']` (or `MATCH (n:Label)`). Capped at 200 rows. Use search_graph for simple symbol lookups. Call get_graph_schema first to discover node labels, edge types, and exact property names.',
+        "Complex relationship queries. Cypher-subset: MATCH (n:Label), (a)-[:TYPE]->(b), (a)-[:TYPE*1..3]->(b); WHERE n.prop {=,<>,<,>,<=,>=,CONTAINS,STARTS WITH,ENDS WITH,IN} AND/OR; RETURN n.prop, COUNT(*), labels(n), DISTINCT; ORDER BY, LIMIT. Node columns: name, qualified_name, file_path, start_line, end_line, label, id, project. Any other property name (e.g. n.signature) falls through to JSON_EXTRACT against the node's props blob. Use labels(n) for the node label string; for set-membership use either `n.label IN ['A','B']` or `labels(n) IN ['A','B']` (or `MATCH (n:Label)`). Capped at 200 rows. Use search_graph for simple symbol lookups. Call get_graph_schema first to discover node labels, edge types, and exact property names.",
       inputSchema: TOOL_SCHEMAS.query_graph,
       handler: async (a: Record<string, unknown>) =>
         safeStructured('Query error', handleQueryGraph(a, cypherEngine)),
     },
     {
       name: 'manage_adr',
-      description: 'Manage Architecture Decision Records (ADR). Modes: list, get, store, update, delete.',
+      description:
+        'Manage Architecture Decision Records (ADR). Modes: list, get, store, update, delete.',
       inputSchema: TOOL_SCHEMAS.manage_adr,
       handler: async (a: Record<string, unknown>) =>
         safeText('Error managing ADR', handleManageAdr(a, context)),

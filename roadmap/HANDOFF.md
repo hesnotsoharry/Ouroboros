@@ -1,10 +1,42 @@
-# Session Handoff — 2026-05-26 (Wave 19 SHIPPED-PENDING-SMOKE)
+# Session Handoff — 2026-05-26 (Wave 20 SHIPPED · Wave 19 SHIPPED-PENDING-SMOKE)
 
-**Audience:** the next Claude Code session — this is YOUR entry point. Wave 19 (Renderer bundle React.lazy + FK constraint fix) is shipped locally on master + worktree removed. Cole runs the smoke checklist at `roadmap/wave-19-renderer-bundle-and-fk-fixes/wave-19-result.md` on the next interactive session to flip status SHIPPED-PENDING-SMOKE → SHIPPED-VERIFIED. No active wave in flight.
+**Audience:** the next Claude Code session — this is YOUR entry point. Wave 20 (Ouroboros codebase graph Tier-1 cleanup) is shipped locally on master. Wave 19 (Renderer bundle React.lazy + FK constraint fix) remains SHIPPED-PENDING-SMOKE — Cole still owes the smoke checklist at `roadmap/wave-19-renderer-bundle-and-fk-fixes/wave-19-result.md`. No active wave in flight.
 
 ---
 
-## 🔼 UPDATE 2026-05-26 (latest) — Wave 19 SHIPPED-PENDING-SMOKE
+## 🔼 UPDATE 2026-05-26 (latest) — Wave 20 SHIPPED
+
+**Next action options (no wave in flight):**
+
+1. **Wave 21 — Tier-2 improvements** (`roadmap/follow-ups/2026-05-26-ouroboros-graph-tier-2-improvements.md`): IMPLEMENTS edges via tree-sitter `class_heritage` + `testDetectPass` incrementality. ~2-3 dev days. No prereqs. Cole's stated plan: do all the cleanup before standalone-MCP extraction.
+2. **Wave 22 — Standalone MCP extraction** (`roadmap/follow-ups/2026-05-26-ouroboros-graph-standalone-mcp-extraction.md`): hard-blocked on Wave 87 chat orchestration overhaul completion. ~3-5 dev days when Wave 87 lands.
+3. **Wave 19 smoke verification** (Cole-owed): renderer-bundle cold/warm + FK violation observation. See `wave-19-result.md`.
+4. **Pre-existing test failure cleanup**: `channelCatalog.test.ts` failing on `test:main` per `2026-05-26-channel-catalog-missing-persist-shared-and-crash-log-count.md`. Not a regression — filed separately today.
+
+### Wave 20 — what shipped
+
+Five-item fix-sweep against `src/main/codebaseGraph/`. Full story in `roadmap/wave-20-ouroboros-graph-tier-1-cleanup/wave-20-result.md`.
+
+- **BFS cycle detector** at `graphDatabaseTraversal.ts:39-52` + `cypherEngineVarpath.ts:92-115` rewritten to SQLite JSON1 visited-set pattern. Eliminates a latent prefix-collision bug.
+- **PageRank** at `graphPageRank.ts`: Set membership + FIFO cache cap at N=20.
+- **`manage_adr` schema honesty (Option B)**: dropped the orphan `id` parameter from the MCP tool input schema; handler comment updated.
+- **Acceptance test** pinning the `manage_adr` schema/handler contract.
+- **Vendor-gotcha doc**: `.claude/vendor-gotchas/better-sqlite3.md` new — captures JSON1 cycle-detection pattern for future graph-SQL waves.
+
+### Wave 20 — gates at wrap
+
+- `test:codebasegraph`: 712 pass, 3 skipped
+- `test:main`: 6573 pass, 1 fail (`channelCatalog missing` — pre-existing, separate FU)
+- `lint`: 0 errors (4 pre-existing warnings)
+- `tsc --noEmit`: clean
+
+### Wave 20 — open Tier-3 surfaced
+
+`2026-05-26-graphcontrollerlike-manageadr-id-orphan-check.md` — does `GraphControllerLike.manageAdr(action, id?)`'s `id?` parameter actually get consumed downstream, or is it a parallel orphan analogous to the MCP schema one we just removed? LOW priority; natural during Wave 22 extraction.
+
+---
+
+## ⬇️ PRIOR UPDATE 2026-05-26 — Wave 19 SHIPPED-PENDING-SMOKE
 
 **Next action: Cole runs the smoke checklist at `roadmap/wave-19-renderer-bundle-and-fk-fixes/wave-19-result.md`.** Three surfaces to verify:
 1. Renderer bundle cold-cache: delete `%APPDATA%\ouroboros\Partitions\shared\`, run `npm run dev`, check `renderer-bundle-loaded` is <15s (was 26s).

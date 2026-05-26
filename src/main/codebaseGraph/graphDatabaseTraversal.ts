@@ -36,15 +36,23 @@ export function runBfsTraversal(
       : `e.target_id = r.id AND e.type IN (${typeList})${confidenceClause}`;
   const nextNode = direction === 'outbound' ? 'e.target_id' : 'e.source_id';
 
+  // Cycle detection: per-row visited set stored in `path` as a JSON array.
+  // Anchor seeds with json_array(start_id). Recursive step appends the next
+  // node via json_insert at '$[#]' (SQLite "next array index" — supported since
+  // 3.31.0, well within better-sqlite3@12.8.0's bundled SQLite 3.53.x).
+  // Membership guard uses NOT EXISTS over json_each, which performs structural
+  // membership — immune to the prefix-collision hazard of the old LIKE pattern
+  // (e.g. 'src.a' and 'src.auth' are distinct in a JSON array but not in a
+  // LIKE '%src.a%' check). Wave 20 — graphDatabaseTraversal.ts.
   const sql = `
     WITH RECURSIVE reachable(id, depth, path) AS (
-      SELECT ?, 0, ?
+      SELECT ?, 0, json_array(?)
       UNION ALL
-      SELECT ${nextNode}, r.depth + 1, r.path || '>' || ${nextNode}
+      SELECT ${nextNode}, r.depth + 1, json_insert(r.path, '$[#]', ${nextNode})
       FROM reachable r
       JOIN edges e ON ${edgeCondition}
       WHERE r.depth < ?
-        AND r.path NOT LIKE '%' || ${nextNode} || '%'
+        AND NOT EXISTS (SELECT 1 FROM json_each(r.path) WHERE value = ${nextNode})
     )
     SELECT id, depth, path FROM reachable
     WHERE depth > 0
@@ -57,7 +65,7 @@ export function runBfsTraversal(
     depth: number;
     path: string;
   }>;
-  return rows.map((r) => ({ id: r.id, depth: r.depth, path: r.path.split('>') }));
+  return rows.map((r) => ({ id: r.id, depth: r.depth, path: JSON.parse(r.path) as string[] }));
 }
 
 // ─── Single-node degree query ─────────────────────────────────────────────────

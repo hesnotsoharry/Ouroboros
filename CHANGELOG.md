@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Wave 20 — Ouroboros codebase graph Tier-1 cleanup (fix-sweep).** Five maintenance items in `src/main/codebaseGraph/`:
+  - **BFS cycle detector** in `graphDatabaseTraversal.ts` + `cypherEngineVarpath.ts` rewritten from string-LIKE substring guard to per-row SQLite JSON1 visited-set (`json_array` + `json_insert($[#])` + `NOT EXISTS json_each`). Eliminates a latent prefix-collision bug where one qualified name being a substring of another (e.g., `src.a` vs `src.auth`) silently dropped nodes from BFS traversal. New regression test in `cypherEngineRegression.test.ts`. Pattern documented at `.claude/vendor-gotchas/better-sqlite3.md`.
+  - **PageRank** in `graphPageRank.ts`: `Set` membership in `buildPersonalizationVector()` (O(n) → O(1) per seed); module-level `_cache` now FIFO-bounded at 20 entries (60s TTL stays as second layer).
+  - **`manage_adr` MCP tool schema honesty**: dropped the orphan `id` parameter from the schema (`mcpToolHandlers.ts`). The parameter was advertised but never consumed by the handler. Per-ID targeting can reopen via a focused follow-up if a real consumer materializes. Acceptance test pins the contract at `mcpToolHandlerSchemaContract.test.ts`.
+
+### Notes
+- Maintenance wave — no functional behavior change for end users; pure correctness, performance, and contract-surface cleanup. Folds into the next minor or patch release.
+- Sets baseline for Wave 21 (Tier-2 improvements) and Wave 22 (standalone-MCP extraction, blocked on Wave 87).
+
 ## [2.28.0] - 2026-05-22
 
 ### Added

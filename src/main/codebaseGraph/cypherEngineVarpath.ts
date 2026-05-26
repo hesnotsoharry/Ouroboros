@@ -91,22 +91,31 @@ export interface VarpathTemplateOptions {
 /** Assemble the WITH RECURSIVE SQL for a variable-length path query. */
 export function buildVarpathSqlTemplate(opts: VarpathTemplateOptions): string {
   const { startConditions, nextNode, edgeJoin, endWhere, distinct, selectParts, orderBy } = opts;
+  // Cycle detection: per-row visited set stored in `path` as a JSON array.
+  // Anchor seeds with json_array(n_start.id). Recursive step appends the next
+  // node via json_insert at '$[#]' (SQLite "next array index" — supported since
+  // 3.31.0, well within better-sqlite3@12.8.0's bundled SQLite 3.53.x).
+  // Membership guard uses NOT EXISTS over json_each, which performs structural
+  // membership — immune to the prefix-collision hazard of the old LIKE pattern
+  // (e.g. 'src.a' and 'src.auth' are distinct in a JSON array but not in a
+  // LIKE '%src.a%' check). Start-node recovered via json_extract(path, '$[0]').
+  // Wave 20 — cypherEngineVarpath.ts.
   return `
     WITH RECURSIVE reachable(current_id, depth, path) AS (
-      SELECT n_start.id, 0, n_start.id
+      SELECT n_start.id, 0, json_array(n_start.id)
       FROM nodes n_start
       WHERE ${startConditions.join(' AND ')}
       UNION ALL
-      SELECT ${nextNode}, r.depth + 1, r.path || '>' || ${nextNode}
+      SELECT ${nextNode}, r.depth + 1, json_insert(r.path, '$[#]', ${nextNode})
       FROM reachable r
       JOIN edges e ON ${edgeJoin}
       WHERE r.depth < ?
-        AND r.path NOT LIKE '%' || ${nextNode} || '%'
+        AND NOT EXISTS (SELECT 1 FROM json_each(r.path) WHERE value = ${nextNode})
     )
     SELECT ${distinct}${selectParts.join(', ')}
     FROM reachable r2
     JOIN nodes n_end ON n_end.id = r2.current_id
-    JOIN nodes n_start ON n_start.id = SUBSTR(r2.path, 1, INSTR(r2.path || '>', '>') - 1)
+    JOIN nodes n_start ON n_start.id = json_extract(r2.path, '$[0]')
     WHERE r2.depth >= ? AND r2.depth <= ?
     ${endWhere}
     ${orderBy ? `ORDER BY ${orderBy}` : ''}

@@ -273,9 +273,9 @@ export async function handleManageAdr(
   ctx: GraphToolContext,
 ): Promise<string> {
   const proj = (args.project as string) ?? ctx.projectName;
-  // Wave 70 Phase B3: `adr_id` deprecated alias dropped from the schema.
-  // Current DB methods are project-level only; per-ID targeting deferred to
-  // a future wave that adds the storage support.
+  // ADR storage is project-level by design (see Wave 20 Decision 4). Per-ID
+  // targeting is not supported and was never wired through. If a consumer
+  // needs per-ID retrieval, file a focused follow-up with the use case.
   const mode = args.mode as string;
   if (!mode) {
     return "Error: missing required parameter 'mode'";
