@@ -148,15 +148,29 @@ Adds W4 (subprocess coalesce + main-process indexer registry) on top of Option B
 | `[perf] startup` summary duplicates | 3 | 1 |
 | Cole's verdict | "brutal" | "fine" |
 
-## Phase plan (revised post-synthesis)
+## Phase plan (revised post-synthesis — Option C locked 2026-05-25)
 
-| # | Phase | Status | Notes |
-|---|---|---|---|
-| 0 | Wave plan + ADR | DONE | This document. |
-| 1 | Parallel diagnose (5 + research) | DONE | All 6 agents returned. 9 findings synthesized below. |
-| 2 | Synthesize findings + revise plan | DONE | This synthesis section. Waiting on Cole's scope pick (A/B/C). |
-| 3+ | Fix phases | AWAITING-SCOPE | See "Phase plan (revised — pick scope)" below. |
-| N | Smoke + wrap | PENDING | Live verification with 3-window scenario + W3 trace verification. |
+Cole picked **Option C — full wave** on 2026-05-25 after reviewing the 9 findings + 3 scope tradeoffs. Wave 18 lands W1, W2, W3, W4, W5, W6; defers W7 as follow-up; W8 + W9 documented as non-bugs.
+
+| # | Phase | Surface | Agent | Status | Notes |
+|---|---|---|---|---|---|
+| 0 | Wave plan + ADR | This doc | orchestrator | DONE | |
+| 1 | Parallel diagnose (5 + research) | 6 reports | 5 sonnet-diagnostician + 1 haiku-research-extractor | DONE | |
+| 2 | Synthesize | This synthesis section | orchestrator | DONE | |
+| 3 | **W1 — single-window dev clamp** | `windowManagerHelpers.ts`, `package.json` dev script | sonnet-implementer | DISPATCHED | Env var `OUROBOROS_SINGLE_WINDOW=1` defaulted on for dev + exclude archived/deleted sessions from restore. Ship FIRST for immediate dev relief. |
+| 4 | **W3 — cold-start indexer worker offload** | `IndexingPipeline.runPass`, `systemTwoRegistry.initWithLaunchDiff`, indexer worker integration | sonnet-architect → sonnet-implementer | DISPATCHED (architect) | The CRITICAL fix. Architect plans offload approach; implementer applies + adds 2 trace lines for verification. |
+| 5 | **W2 — shared session partition** | `BrowserWindow.webPreferences.partition` | sonnet-implementer | PENDING | One-line config per window. Eliminates Vite HTTP serialization across renderer windows. |
+| 6 | **W4 — main-process subprocess registry** | `repoIndexerSupportGit`, `contextLayerController` | sonnet-implementer | PENDING | Coalesce 4 git execFile calls per-root × 3 windows; broadcast results. Aligns with 1F's main-process registry pattern. |
+| 7 | **W5 + W6 polish bundle** | `rulesWatcher.ts`, `rulesAndSkills.ts`, `perfHandlers.ts` | haiku-implementer | PENDING | Tiny: catch-filter for Windows `'Invalid handle'` + activeRoot idempotency + `startupLogFlushed` guard. |
+| 8 | Smoke + wrap | Result brief, audit, HANDOFF, temp log, merge | orchestrator | PENDING | Cole runs live smoke against new 1-window dev default + 3-window cold start. File W7 (approval.wait) as follow-up. Worktree merge-to-master + remove (per standing directive). |
+
+## Option C dispatch order rationale
+
+W1 ships FIRST because it's tiny and immediately restores Cole's dev productivity. While the rest of the wave executes, he has a usable IDE.
+
+W3 ships SECOND because it's the user-felt killer. Architect dispatches in PARALLEL with Phase 3 to save wall-clock — disjoint surfaces (W1 = window manager; W3 = indexer + system2 registry).
+
+W2 + W4 + W5/W6 can run in PARALLEL after W3 lands (disjoint surfaces). Phase 8 wrap is sequential.
 
 ## Constraints (upfront)
 
