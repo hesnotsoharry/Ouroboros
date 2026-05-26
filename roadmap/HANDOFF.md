@@ -54,11 +54,11 @@ Three-fix combination per architect plan (`wave-19-architect-fk-fix.md`):
 3. **`/audit-followups wave-19` — PENDING.** Carry over from Wave 17/18; can run at session start as paranoid sanity.
 4. **Stryker (Check 6) — DEFERRED.** Standing pre-merge; Wave 19 didn't worsen the surface.
 5. **Tag + CHANGELOG bump — PENDING Cole's call.** Current v2.20.0. Patch (v2.20.1) for perf-fix wave OR minor (v2.21.0) for noticeable cold-boot UX improvement. Cole picks.
-6. **Push to remote** — auto per standing autonomy, post-merge.
+6. **Push to remote** — DONE. Origin matches master at `bd6cc94f`.
 
 ### Operational pre-flight for Wave 20's session
 
-- Master at the Wave 19 wrap commit. Origin will match after push.
+- Master at `bd6cc94f` (Wave 19 wrap). Origin matches — `git fetch && git status` will show clean.
 - `src/renderer/generated/changelog.ts` is generated locally via `node tools/build-changelog.js` — pre-push hook requires it. If you re-create a worktree from a fresh master clone, you'll need to regenerate this before push.
 - **Vendor-gotcha to remember (not yet promoted to file):** `npm install` in a fresh worktree bumps `package-lock.json` version field to match package.json. The `lockfile:sync` pre-push hook will block it. Revert with `git checkout -- package-lock.json` before committing.
 - `npm install` in any worktree takes ~2 min — run as background early.
