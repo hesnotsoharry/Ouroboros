@@ -1,10 +1,81 @@
-# Session Handoff — 2026-05-26 (Wave 21 SHIPPED · Wave 19 SHIPPED-PENDING-SMOKE)
+# Session Handoff — 2026-05-26 (Audit + Cleanup · Wave 100 is the real canon gap)
 
-**Audience:** the next Claude Code session — this is YOUR entry point. Wave 21 (Ouroboros codebase graph Tier-2 improvements) is shipped locally on master. Wave 19 (Renderer bundle React.lazy + FK constraint fix) remains SHIPPED-PENDING-SMOKE — Cole still owes the smoke checklist at `roadmap/wave-19-renderer-bundle-and-fk-fixes/wave-19-result.md`. No active wave in flight.
+**Audience:** the next Claude Code session — this is YOUR entry point. Master is clean at `46f419df`. The earlier "Wave 22a" recommendation in prior handoffs was based on a faulty premise (reviving the chat orchestration bridge before realizing the entire chat system is being deleted). It was discarded mid-session. The actual canon gap is **Wave 100 — chat-surface-removal**, currently PAUSED on a local-only branch with Phase A held pending re-scope. Six stale origin branches pruned this session.
 
 ---
 
-## 🔼 UPDATE 2026-05-26 (latest) — Wave 21 SHIPPED
+## 🔼 UPDATE 2026-05-26 (latest) — Audit + cleanup; Wave 100 is the real next work
+
+### What happened this session
+
+1. **Wave 22a was attempted and discarded.** I read the prior HANDOFF's recommendation literally ("merge unblocked wave-87 to unblock Wave 22") and ran a full discovery + plan + execution cycle to revive the `chatOrchestrationBridge` family on master. Cole interrupted mid-Phase-5 with: *"the ENTIRE chat system is retired. We moved to terminal only, because claude -p usage is being eliminated."* Wave 22a was unwound: `git reset --hard` on master back to `46f419df`, worktree branch + dir removed, `wave-87-chat-orchestration-cleanup` branch deleted locally + on origin. **NET STATE CHANGE TO MASTER: ZERO.** The work is purely instructional (in this entry).
+2. **Audit dispatched** — 3 parallel `sonnet-explorer` agents covered the 88→91 chat-substrate migration sequence, wave-99/100 chat-removal dependency chain, and the full branches-vs-master gap. Cross-verified against `git merge-base --is-ancestor v2.17.0..v2.28.0 master` (all tags reachable from master).
+3. **Stale-branch cleanup.** Six origin remote-tracking refs pruned (they were GitHub-auto-deleted post-PR-merge but the local refs lingered):
+   - `origin/wave-88-terminal-foundation` (content on master via PR #7 `68f22749`)
+   - `origin/wave-92-cross-platform-lockfile-stryker` (content on master via PR #9 `4f129140`)
+   - `origin/ci-distutils-node-gyp-fix` (node-gyp@^11 absorbed into `package.json:202`)
+   - `origin/doc-migration-salvage`, `origin/handoff-refresh-m4`, `origin/pipeline-hardening-m4-clean` — abandoned interim branches with no master destination
+4. **HANDOFF rewrite** (this update) to reflect reality.
+
+### Ground truth — what's actually on master
+
+All version tags v2.17.0 through v2.28.0 are reachable from master HEAD `46f419df`. Concretely:
+
+| Waves | Version | Status |
+|---|---|---|
+| 88 (terminal foundation), 92 (cross-platform lockfile + Stryker) | v2.17.0 | ON master |
+| 89 (ChatOnlyShell layout — terminal-first pivot) | v2.18.0 | ON master |
+| 94 (workbench completion) | v2.19.0 | ON master |
+| 95 (workbench terminal QoL), 96-97 (shared types), 98 (orchestration types) | v2.19.1 → v2.19.3 | ON master |
+| 99 (agent completion rail indicators) | v2.20.0 | ON master |
+| WB0–WB6 (workbench overhaul) | v2.21.0 → v2.27.0 | ON master |
+| 21 (Ouroboros graph Tier-2) | v2.28.0 area | ON master (`Unreleased`) |
+
+The chat surface is **partially deleted**: the renderer chat UI (`AgentChat/` components) is largely gone, but `src/main/agentChat/` (~90 files), `src/main/router/` (33 files), `src/main/contextLayer/` (~60 files), and the chat-only provider adapters still live on master as zombie code. The IDE boots into terminal workbench and does NOT mount any chat UI — so Cole's "we moved to terminal only" is observably true at the user surface. But the backend chat infrastructure is still in the tree.
+
+### Wave 90 — implicit dropping worth confirming
+
+The original chat-substrate migration plan named waves 88, 89, 90, 91 as the sequence: terminal foundation → layout → **interactive `claude` PTY substrate (replace `claude -p`)** → cleanup. Wave 89's mid-wave pivot collapsed the dependency chain. Wave 94 explicitly listed "Wave 90 — interactive `claude` substrate swap" as **out of scope**. No folder, no plan, no branch.
+
+Today master has generic terminals in both dock slots. The Wave 100 plan treats terminal sessions as the live substrate already and does NOT list Wave 90 as a prerequisite. So Wave 90 appears to have been implicitly dropped — but this is worth confirming next session. If Wave 90 is canon, the post-Wave-100 IDE has a substrate gap (`primary` dock slot is a generic terminal, not a long-running interactive `claude` PTY).
+
+### The genuine canon gap — Wave 100
+
+**`wave-100-chat-surface-removal`** is a LOCAL ONLY branch (2 commits ahead of master). Plan + ADR are at `roadmap/wave-100-chat-surface-removal/`. Status:
+
+- **Phase 0** (ADR + boundary verification): COMPLETE on local branch. CUT/KEEP lists materialized; Decision 8 (contextLayer full cut) locked with 9 specific unwire sites listed.
+- **Phase A** (helper relocation): COMPLETE but HELD pending re-scope. Commits `dec0d793` ("park Phase A helper relocation — HELD, PAUSED pre-rescope") + `22bc8d40` ("fix(settings): eliminate ~26s UI freeze from crash-log read on main thread") on the local branch.
+- **Phases B–J**: UNSTARTED.
+
+**Why paused:** the original blocker was Wave 99 (agent-completion-rail-indicators rewiring `useWorkbenchAttention` off the retired chat-thread store). Wave 99 SHIPPED as v2.20.0. The pause reason is now stale; the only remaining blocker is **Phase B re-scope**.
+
+**Phase B re-scope:** `waveplan-100.md:13-20` contains a SCOPE CORRECTION that says `ChatOnlyShell/` must NOT be deleted (it's the live terminal workbench — name is a Wave-42 artifact). The existing Phase B table still describes deleting `ChatOnlyShell/`. The phase tables MUST be re-grounded before resuming. Concretely: Phase B's deletion target shrinks from "`AgentChat/` + `Layout/ChatOnlyShell/`" to "`AgentChat/` only," plus whatever specific `ChatOnlyShell` files are dead because Wave 99 removed their only consumer.
+
+**Recommended forward path (next session):**
+
+1. **Confirm or kill Wave 90.** Quick decision: is the interactive `claude` PTY substrate still planned? If yes, surface as Wave 90 work to schedule. If no, fold any residual `claude -p` cleanup into Wave 100 Phase E.
+2. **Re-scope Wave 100 Phase B.** Rewrite the phase table to reflect what actually gets deleted given `ChatOnlyShell/` stays. The ADR already names the live consumers; mapping CUT/KEEP for `ChatOnlyShell/` files specifically should be tractable in one focused session.
+3. **Resume Wave 100 from Phase A-HELD** through Phases B-J. Phase A's commit may need diff-review against the SCOPE CORRECTION before continuing. Phase F is the largest (contextLayer: ~60 files + 9 live unwire sites).
+
+### State of the workspace at session end
+
+- Master: `46f419df` (no commits since Wave 21 wrap).
+- Local branches: `master`, `wave-100-chat-surface-removal` (only — wave-87 is deleted).
+- Remote branches: `origin/master` only (all 6 stale branches pruned this session).
+- Working tree: clean.
+- **Lost data note:** the pre-wave-21 stash that this session popped (`.claude/settings.json` + `tools/__fixtures__/train-context/test-output-weights.json`) was discarded by `git reset --hard 46f419df` during the Wave 22a unwind. The pop was consumed (no longer in `git stash list`), but the dangling commit lives in the reflog — recoverable via `git reflog | grep 'On master: pre-wave-21'` and `git checkout <sha> -- <files>` if needed.
+
+### Wave 22a session learnings (one entry, then move on)
+
+Worth carrying forward to keep the same failure mode from re-firing:
+
+1. **Don't trust prior HANDOFFs that were authored before a strategic pivot.** The HANDOFF that recommended Wave 22a was written before Cole's "chat retired" directive landed. If the codebase direction is ambiguous, ask before launching a wave that touches a substantial subsystem.
+2. **"Wave 100 paused" should have surfaced as a red flag.** A paused chat-removal wave is signal that the chat surface is on its way out. A new wave that REFACTORS the same surface should have triggered "wait, why is this needed?" before launch.
+3. **Architect + reviewer caught the renderer dead-subscription gap** during Wave 22a Phase 3, but the wave's premise was wrong upstream — a per-phase boundary review doesn't catch "this entire wave shouldn't exist." Stage 0 (Vision restatement) is the layer that catches that, and it was effectively skipped because Cole's "Go ahead" was read as approval of the entire wave plan rather than just the path.
+
+---
+
+## 🔼 PRIOR UPDATE 2026-05-26 (superseded by audit + cleanup) — Wave 21 SHIPPED
 
 **Next action options (no wave in flight):**
 
