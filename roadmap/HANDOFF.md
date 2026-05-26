@@ -8,10 +8,10 @@
 
 **Next action options (no wave in flight):**
 
-1. **Wave 22 — Standalone MCP extraction** (`roadmap/follow-ups/2026-05-26-ouroboros-graph-standalone-mcp-extraction.md`): hard-blocked on Wave 87 chat orchestration overhaul. ~3-5 dev days when Wave 87 lands.
-2. **Wave 19 smoke verification** (Cole-owed): renderer-bundle cold/warm + FK violation observation. See `wave-19-result.md`.
-3. **Wave 21 Tier-3 follow-ups (LOW)** — `2026-05-26-graphcontrollerlike-manageadr-id-orphan-check.md` (carried from Wave 20; natural during Wave 22) + `2026-05-26-worktree-postinstall-electron-rebuild-failure.md` (new this wave; investigate when next setting up a worktree).
-4. **Pre-existing test failure** — `channelCatalog.test.ts` still fails on `test:main`; filed at `2026-05-26-channel-catalog-missing-persist-shared-and-crash-log-count.md`. ~10-20 LOC fix for next sweep.
+1. **Wave 22a — Resolve the unmerged wave-87 branch** (RECOMMENDED next wave). This is the unblocking move that gates Wave 22 (standalone MCP extraction). The `wave-87-chat-orchestration-cleanup` branch has been sitting unmerged since mid-May 2026 with 25 commits that delete the entire `chatOrchestrationBridge` family (23 files), retire `agentChat:thread/status/stream` IPC channels, and lazy-init `threadStore`. **Master still has all that zombie code** — the UI is reduced but `src/main/agentChat/` + `src/main/ipc-handlers/agentChat.ts` (imported by `main.ts:21`) + the `chatOrchestrationBridge*.ts` family are all live on master. Full conflict plan + resolution direction in `roadmap/follow-ups/2026-05-25-wave-87-chat-orchestration-cleanup-conflict-resolution.md` (20 rename/rename conflicts on archived wave dirs — master canonical; 8 content conflicts, 5 of them code with real regression risk, notably `hooksDispatchLogic.ts`). Sizable but well-scoped wave.
+2. **Wave 22 — Standalone MCP extraction** (`roadmap/follow-ups/2026-05-26-ouroboros-graph-standalone-mcp-extraction.md`): blocked on (1) above. ~3-5 dev days once Wave 87 lands on master.
+3. **Wave 19 smoke verification** (Cole-owed): renderer-bundle cold/warm + FK violation observation. See `wave-19-result.md`. Single-session, ~15-30 min.
+4. **Fix-sweep wave** — assorted LOW/MED carry-overs that bundle naturally: `channelCatalog.test.ts` missing channels (pre-existing, `2026-05-26-channel-catalog-...`); `mcptoolHandlers-over-cap.md`; `2026-05-26-graphcontrollerlike-manageadr-id-orphan-check.md`; `2026-05-26-worktree-postinstall-electron-rebuild-failure.md`; `2026-05-26-tree-sitter-gotchas-prune-needed.md`; `2026-05-25-codex-usage-pre-warm-poller.md`.
 
 ### Wave 21 — what shipped
 
@@ -49,10 +49,30 @@ Two substantive items closing the Tier-2 gaps from the 2026-05-26 meta-verificat
 
 ### Operational pre-flight for Wave 22's session
 
-- Master at the Wave-21 merge commit (after wave wrap merge). Origin matches if pushed at wrap.
-- `src/renderer/generated/changelog.ts` regenerated at Wave 21 wrap via `node tools/build-changelog.js`.
-- **Vendor-gotcha worth remembering (Wave 21 surfaced):** `class_heritage` in `tree-sitter-typescript` is a NODE TYPE on `class_declaration`, accessed via `namedChildren.find`, NOT a field via `childForFieldName`. Documented inline at `treeSitterParserDefs.ts:222`.
-- Wave 21 worktree was correctly removed at wrap; no orphan to clean up.
+- Master at `568df001` (Wave-21 wrap + orphan-dir FU). Origin matches.
+- `src/renderer/generated/changelog.ts` regenerated at Wave 21 wrap via `node tools/build-changelog.js` on main.
+- **Vendor-gotcha worth remembering (Wave 21 surfaced):** `class_heritage` in `tree-sitter-typescript` is a NODE TYPE on `class_declaration`, accessed via `namedChildren.find(c => c.type === 'class_heritage')`, NOT a field via `childForFieldName` (returns null silently). Promoted to `.claude/vendor-gotchas/tree-sitter.md` with broader fields-vs-named-child-types framing.
+
+### First-command cleanup the next session should run
+
+These two items couldn't be cleaned up at wave wrap because the orchestrator session was Claude-Code-harness-bound to the wave-21 worktree. The next session runs from a fresh shell with no such binding — clean up in one chained command:
+
+```bash
+cd "C:/Web App/AgentIDE"
+
+# 1. Recover the pre-wave-21 stash (Cole's settings.json + train-context fixture dangling on master at session start; stashed with "Stash + ignore" so the worktree started clean).
+git stash list | head -3
+git stash pop  # restores .claude/settings.json + tools/__fixtures__/train-context/test-output-weights.json
+git status --short  # confirm both files back as M
+
+# 2. Remove the two orphan worktree dirs on disk (git already unregistered them via `git worktree list`):
+ls .worktrees/  # expect: wave-21-ouroboros-graph-tier-2/  wave-76-warn-hooks/
+git worktree list  # expect: only the main checkout
+rm -rf .worktrees/wave-21-ouroboros-graph-tier-2  # Wave 21 orphan — see roadmap/follow-ups/2026-05-26-wave-21-worktree-dir-cleanup.md
+rm -rf .worktrees/wave-76-warn-hooks               # pre-existing orphan
+```
+
+Neither item blocks anything; just hygiene.
 
 ---
 
