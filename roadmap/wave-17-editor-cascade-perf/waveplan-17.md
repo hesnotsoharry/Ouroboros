@@ -1,5 +1,5 @@
 ---
-status: PLANNED
+status: IN-PROGRESS
 created: 2026-05-25
 updated: 2026-05-25
 type: perf-investigation
@@ -10,7 +10,23 @@ predecessor: wave-16-ipc-handler-perf-fix-sweep
 
 ## Status
 
-PLANNED. Surfaced by Wave 16's final verification trace (2026-05-25
+IN-PROGRESS. Phase 1 diagnostic complete (`wave-17-diagnostic-save-cascade.md`):
+- Root Cause A (dominant, ~9s): O(N_all_files) scan in `filterChangedFiles()`
+  on every incremental reindex — including no-op saves.
+- Root Cause B (secondary, ~3-4s): worker-to-worker WAL contention; fixed
+  indirectly by Root Cause A's fix.
+- `files:saveFile` 12.9s slow-handler line is a **`patchIpcMainHandle` timer
+  artifact** from event-loop stall delaying the `finally` block — the handler
+  itself does <5ms of work.
+- `IndexingWorkerClient` is a singleton (cross-window correct); closes
+  `2026-05-25-indexing-worker-not-disposed-on-window-close.md` as WONTFIX.
+- `generateRepoMap`-to-worker architect plan IS ALREADY SHIPPED (`main.ts:188`,
+  `repoMapWorker.ts`, etc. all exist); closes
+  `2026-05-17-move-generateRepoMap-to-worker-plan.md` as RESOLVED.
+
+Phase 5 collapses into Phase 2 (the autoSync no-op fast-path IS the Phase 2 fix).
+
+Surfaced by Wave 16's final verification trace (2026-05-25
 21:21–21:23). Wave 16 fixed boot lag + window-close lag; this wave
 addresses the *active editing* lag that's now the dominant user-visible
 friction.
@@ -111,17 +127,16 @@ Upfront constraints:
   the indexer's pure functions are necessary but won't catch the lock
   contention or sync-over-async bugs.
 
-## Phase plan (provisional — replan in Stage 3)
+## Phase plan (revised post-Phase-1)
 
-| # | Phase | Shape | Notes |
-|---|---|---|---|
-| 0 | Wave-plan + ADR | Planning | Resolve hypotheses below; lock decisions; set acceptance criteria for the work |
-| 1 | Diagnose save cascade | Lane B B1 | Dispatch `sonnet-diagnostician`. Instrument the save → watcher → reindex chain; identify the dominant blocker. Secondary observation: answer "is `IndexingWorkerClient` singleton or per-window?" (closes the LOW lifecycle follow-up inline). **Do not start B3 until B1 names the cause with evidence.** |
-| 2 | Fix save cascade | Lane B B3 | Implement the diagnosed fix. Likely involves async-ifying some step or breaking it into yielding chunks. **If diagnostic confirms `generateRepoMap` is the dominant blocker, Option A from `2026-05-17-move-generateRepoMap-to-worker-plan.md` is the pre-designed structural answer** — bake the architect plan into the implementer brief, resolve the `forceRebuild` seam question (option a vs b) before dispatch. Honeycomb test at the boundary. |
-| 3 | Diagnose config:set | Lane B B1 | Separate diagnostician dispatch — config:set's cost is likely in JSON serialization or electron-store write path, not the indexer. |
-| 4 | Fix config:set | Lane B B3 | Per diagnosis. Possible fixes: smaller config blobs, async write, debounce. |
-| 5 | autoSync no-op fast-path | Possibly inline | If diagnostician shows the 9075ms reindex with `files=0` has no work to do, add an early-exit. Trivial fix once diagnosed. |
-| 6 | Smoke + wrap | Verification | Boot trace + active-editing trace; assert acceptance criteria met. |
+| # | Phase | Shape | Status | Notes |
+|---|---|---|---|---|
+| 0 | Wave-plan + ADR | Planning | DONE | Hypotheses + acceptance + dispatch checklist authored. |
+| 1 | Diagnose save cascade | Lane B B1 | DONE | `sonnet-diagnostician` returned `wave-17-diagnostic-save-cascade.md`. Dominant blocker = `filterChangedFiles()` O(N) catalog scan. `IndexingWorkerClient` singleton lifecycle confirmed. |
+| 2 | Fix save cascade + autoSync no-op (merged with original Phase 5) | Lane B B3 | DISPATCHED | `sonnet-implementer`. **Option B from the diagnostic** — early-exit in `IndexingPipeline.resolveFilesToProcess()` when `changed.length === 0` (Option 1) PLUS pass `changedPaths` from `autoSync.pendingEvents` through worker protocol (Option 2). Adds 5 instrumentation trace lines (sections 5.A-E of the diagnostic) in the same commit for post-fix verification. |
+| 3 | Diagnose config:set | Lane B B1 | DISPATCHED (parallel with Phase 2) | Separate `sonnet-diagnostician` — config:set surface is independent of the save cascade. |
+| 4 | Fix config:set | Lane B B3 | PENDING | Per Phase 3's diagnosis. |
+| 5 | Smoke + wrap | Verification | PENDING | Boot trace + active-editing trace via the new instrumentation lines; assert revised acceptance criteria met; run `/audit-followups wave-17` (expects 2 RESOLVED + 1 WONTFIX + the 2 originally-folded MED follow-ups closed by the wave's fix). Merge worktree to master + delete branch + remove worktree (per Cole's standing directive). |
 
 ## Hypotheses to verify in Phase 1 (B1)
 
@@ -207,18 +222,26 @@ confirm with evidence, not reason from the prompt:
 6. `src/main/config.ts` + `src/main/configSchema*.ts` — config:set chain
 7. `src/main/ipc.ts` `patchIpcMainHandle` wrapper — how slow-handler logs work
 
-## Acceptance criteria
+## Acceptance criteria (revised post-Phase-1)
 
 After this wave ships, a boot trace + 5 minutes of normal editing
 (opening files, saving, switching tabs) should show:
 
 | Surface | Acceptance |
 |---|---|
-| `files:saveFile` slow-handler count | 0 |
-| `config:set` slow-handler count | 0 |
-| Event-loop jank events > 500ms during editing | <2 over 5 minutes |
-| `autoSync.reindex` no-op cost (files=0) | <50ms |
-| Concurrent saves still feel snappy | No visible UI freeze |
+| Event-loop jank events > 500ms during editing | 0 over 5 minutes (was: <2; tightened now that cause is known) |
+| `[trace:autoSync.reindex] done` no-op cost (files=0) | <50ms |
+| `[trace:filterChangedFiles] done` (new trace line, Phase 2) | Not invoked OR <50ms when `changedPaths` is empty |
+| `[trace:pipeline.resolve] changed=0` log frequency | Common — fast-path fires on every no-op save |
+| `config:set` slow-handler count | 0 (real, not artifact — config:set has no IPC-handler-timer-artifact path; verified in Phase 3) |
+| Concurrent saves | No visible UI freeze |
+
+**Note on `files:saveFile` slow-handler count:** the Phase 1 diagnostic
+established this line is a **`patchIpcMainHandle` timer artifact** — the
+handler does <5ms of real work; the `finally` block reports false latency
+when the event loop is stalled by concurrent work. It is therefore NOT a
+reliable signal. "No jank events >500ms" is the real bar; the slow-handler
+line should disappear naturally once Root Cause A is fixed.
 
 ## Verification — per-phase experiential observation
 
