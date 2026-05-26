@@ -26,6 +26,8 @@ interface RegistryEntry {
 }
 
 const registry = new Map<string, RegistryEntry>();
+/** Promise-dedup map: prevents concurrent acquires for the same root from each spawning a full index. */
+const inFlightInits = new Map<string, Promise<ContextLayerController>>();
 let defaultRoot: string | null = null;
 let factory: ControllerFactory | null = null;
 
@@ -83,20 +85,49 @@ export async function acquireContextLayer(root: string): Promise<ContextLayerCon
   }
 
   const key = normalizeRoot(root);
+
+  // Fast path: already initialized — bump refcount and return.
   const existing = registry.get(key);
   if (existing) {
     existing.refCount++;
     return existing.controller;
   }
 
-  const impl = factory({
+  // Dedup path: join in-flight init if one is already running for this root.
+  const inFlight = inFlightInits.get(key);
+  if (inFlight) {
+    log.info('[trace:contextLayer.acquire] root=%s inFlight=joined', key);
+    // Bump refcount on the already-registered entry once init completes.
+    return inFlight.then((ctrl) => {
+      bumpRefCount(key);
+      return ctrl;
+    });
+  }
+
+  // Cold path: start a new initialization.
+  log.info('[trace:contextLayer.acquire] root=%s inFlight=started', key);
+  const promise = startInit(key, root).finally(() => {
+    inFlightInits.delete(key);
+  });
+  inFlightInits.set(key, promise);
+  return promise;
+}
+
+/** Increment refcount for an already-registered root (no-op if missing). */
+function bumpRefCount(key: string): void {
+  const entry = registry.get(key);
+  if (entry) entry.refCount++;
+}
+
+function startInit(key: string, root: string): Promise<ContextLayerController> {
+  // factory and sharedBuildRepoIndex/sharedConfig are checked by caller.
+  const impl = factory!({
     workspaceRoot: root,
-    buildRepoIndex: sharedBuildRepoIndex,
-    config: sharedConfig,
+    buildRepoIndex: sharedBuildRepoIndex!,
+    config: sharedConfig!,
   });
   registry.set(key, { controller: impl, refCount: 1 });
-  await impl.initialize();
-  return impl;
+  return impl.initialize().then(() => impl);
 }
 
 export async function releaseContextLayer(root: string): Promise<void> {
