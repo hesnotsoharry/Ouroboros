@@ -50,7 +50,8 @@ async function subscribeMdDir(
     });
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
-    if (code === 'ENOENT' || code === 'ENOTDIR') {
+    const isInvalidHandle = err instanceof Error && err.message === 'Invalid handle';
+    if (code === 'ENOENT' || code === 'ENOTDIR' || isInvalidHandle) {
       log.info(`[rulesWatcher] skipping missing dir: ${dir}`);
       return null;
     }

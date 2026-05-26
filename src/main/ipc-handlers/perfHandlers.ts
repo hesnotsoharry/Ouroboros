@@ -23,6 +23,7 @@ type ChannelList = string[];
 
 const MAX_HISTORY_LIMIT = 100;
 const DEFAULT_HISTORY_LIMIT = 20;
+let startupLogFlushed = false;
 
 function registerChannel(
   channels: ChannelList,
@@ -50,6 +51,8 @@ const VALID_PHASES = new Set<StartupPhase>([
 ]);
 
 function flushStartupLog(): void {
+  if (startupLogFlushed) return;
+  startupLogFlushed = true;
   const summary = formatStartupSummary();
   if (summary) log.info('[perf] startup:', summary);
   appendStartupRecord(getStartupTimings());

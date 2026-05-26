@@ -263,13 +263,16 @@ function broadcastChanged(): void {
 }
 
 let stopWatcher: (() => void) | null = null;
+let activeRoot: string | null = null;
 
 function activateWatcher(channels: string[]): void {
   ipcMain.handle('rulesAndSkills:startWatcher', (event, projectRoot: string) => {
     const denied = assertPathAllowed(event, projectRoot);
     if (denied) return denied;
+    if (activeRoot === projectRoot) return { success: true };
     if (stopWatcher) stopWatcher();
     stopWatcher = startRulesWatcher(projectRoot, broadcastChanged);
+    activeRoot = projectRoot;
     return { success: true };
   });
   channels.push('rulesAndSkills:startWatcher');
