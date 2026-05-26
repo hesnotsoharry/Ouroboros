@@ -1,11 +1,12 @@
 ---
 vendor: web-tree-sitter
 sdkVersion: ^0.26.8
-lastVerified: 2026-05-16
+lastVerified: 2026-05-26
 relatedPaths:
   - src/main/codebaseGraph/treeSitterParser.ts
   - src/main/codebaseGraph/treeSitterParser*.ts
   - src/main/codebaseGraph/treeSitterParser.integration.test.ts
+  - src/main/codebaseGraph/indexingPipelineHeritage.ts
 sourceWave: 93
 ---
 
@@ -139,6 +140,42 @@ it, manually write `.lockfile-sync.marker` with `generatedBy:
 The drift checker (Wave 93 Phase A) catches unintended transitive bumps when
 `lockfile:sync` IS used. Use it. But for narrow surgical bumps, the
 `--package-lock-only` pattern is still appropriate.
+
+## Grammar node access — fields vs named-child node types (Wave 21)
+
+The TS/TSX grammar exposes child relationships in TWO distinct ways, and confusing them silently breaks extraction:
+
+1. **Fields** (declared with `field:` in the grammar) — accessed via `node.childForFieldName('field_name')`. Returns the field's value or `null`.
+2. **Named-child node types** (declared as plain rules) — accessed by walking `node.namedChildren` and filtering by `.type`. `childForFieldName` returns `null` for these.
+
+**Concrete trap:** `class_heritage` is a NAMED-CHILD NODE TYPE on `class_declaration`, not a field. `node.childForFieldName('class_heritage')` returns `null` for every class node, silently — no error, no warning, just no heritage extraction. The correct access pattern is:
+
+```ts
+const heritage = node.namedChildren.find((c) => c.type === 'class_heritage');
+if (heritage) {
+  // heritage's children are `extends_clause` and/or `implements_clause`,
+  // also named-child node types (not fields).
+  for (const clauseChild of heritage.namedChildren) {
+    if (clauseChild.type === 'extends_clause') { /* ... */ }
+    if (clauseChild.type === 'implements_clause') { /* ... */ }
+  }
+}
+```
+
+The same trap applies to other commonly-confused TS grammar shapes:
+
+| Looks like a field, actually a node type | Correct access |
+|------------------------------------------|----------------|
+| `class_heritage` | `node.namedChildren.find(c => c.type === 'class_heritage')` |
+| `extends_clause` | walk inside `class_heritage.namedChildren` |
+| `implements_clause` | walk inside `class_heritage.namedChildren` |
+| `type_parameters` | `childForFieldName('type_parameters')` — IS a field on class/function declarations |
+
+**How to tell at design time:** check the grammar's `node-types.json` (in tree-sitter-typescript's generated artifacts). Field-style relationships have a `fields` key with named entries; child-style relationships appear only under `children` with `type`/`named: true`.
+
+**Symptom signature:** an extraction function for a particular grammar feature works on synthetic test fixtures (because the test confirms the function is called) but produces zero results on real source. Verify by logging `node.childForFieldName(...)` before and `node.namedChildren.map(c => c.type)` after — the latter should reveal the actual child shape.
+
+Source: Wave 21 (Agent IDE), `src/main/codebaseGraph/treeSitterParserDefs.ts:222-258` — IMPLEMENTS/EXTENDS edge extraction for the codebase graph. The wave's research grounding initially documented `childForFieldName('class_heritage')` as the primary access pattern; the implementer caught the error during implementation when the first run produced zero heritage edges. The function's inline comment block documents the correct pattern at the call site.
 
 ## Symptoms to watch for
 
