@@ -9,11 +9,20 @@ type: fix-sweep
 
 ## Status
 
-SHIPPED-PENDING-VERIFICATION. Phases 1–4 committed in this session
-(`ffd66fba`, `b8abf975`, `27b9f002`, `e72d1ae0`). Phase 5 (window-close
-async dispose) DEFERRED — new boot trace showed window:close at 1484ms
-(down from 5091ms), suggesting some upstream improvement; re-measure
-after P1–P4 land before committing to a P5 investigation.
+SHIPPED-PENDING-VERIFICATION. P1–P4 committed in this session
+(`ffd66fba`, `b8abf975`, `27b9f002`, `e72d1ae0`); P7 dogpile hotfix
+committed (`cc04f48b`) after post-deploy boot trace showed P1–P3 not
+deduping concurrent calls. Phase 5 (window-close async dispose)
+DEFERRED — boot trace showed window:close at 1484ms (down from 5091ms);
+re-measure after P7 lands before committing to P5 investigation.
+
+**P6 diagnostic correction (re P4):** the 6 `usage:getUsageWindowSnapshot`
+slow-handler log entries are NOT 6 fetches — they're 6 handlers all
+awaiting the SAME shared Promise. Each `patchIpcMainHandle` wrapper
+measures from its own invocation, so all 6 log ~2700ms even though
+only one fetch happened. P4's coalescer was correctly designed and
+correctly wired from the start; the slow-handler log line is
+intrinsically misleading for shared-Promise handlers.
 
 Cole verifies by restarting `npm run dev` and capturing a new boot trace.
 Expected: no `[ipc-perf] slow handler` lines for `git:isRepo`,
