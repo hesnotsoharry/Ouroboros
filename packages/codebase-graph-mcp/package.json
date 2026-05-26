@@ -1,0 +1,34 @@
+{
+  "name": "@hesnotsoharry/codebase-graph-mcp",
+  "version": "0.1.0",
+  "description": "Standalone MCP server exposing the Ouroboros codebase graph — consumable from any Claude Code session via npx",
+  "type": "module",
+  "bin": {
+    "codebase-graph-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.0"
+  }
+}
