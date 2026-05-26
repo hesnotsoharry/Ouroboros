@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Wave 21 — Ouroboros codebase graph Tier-2 improvements.** Two substantive items in `src/main/codebaseGraph/`:
+  - **IMPLEMENTS + EXTENDS edges via tree-sitter `class_heritage`.** TS/TSX classes' `extends Base implements IA, IB` clauses are now extracted and emitted as graph edges by `definitionPass`. `ExtractedDefinition` gains `implements?: string[]` and `extendsClause?: string | null`. New helper module `indexingPipelineHeritage.ts` resolves heritage targets via the Wave 19 `callResolutionPass.filterEdges` pattern (skip on unresolved) and emits both edge types from one heritage walk. Cypher queries like `MATCH (c:Class)-[:IMPLEMENTS]->(i:Interface)` now return real rows over indexed TS/TSX projects. Boundary-phase acceptance test at `indexingPipeline.heritageEdges.acceptance.test.ts` pins the contract (11 assertions). Other OO languages (Java/Python/C++/Rust/Go) deferred to a future wave.
+  - **`testDetectPass` cache** eliminates the per-keystroke full-label scan of Function + Method nodes. Module-level `Map<projectName, FunctionIndexEntry>`, FIFO-capped at 10 projects, invalidated per-file by QN-prefix intersection (and unconditionally on full reindex). New `[trace:testDetectPass.cache]` log line with hit/miss status + durationMs. I/O contract preserved — same TESTS edges in, same TESTS edges out.
+
 ### Fixed
 
 - **Wave 20 — Ouroboros codebase graph Tier-1 cleanup (fix-sweep).** Five maintenance items in `src/main/codebaseGraph/`:
