@@ -23,7 +23,7 @@ import {
   toRecord,
 } from './gitParsers';
 import { applyPatch, stagePatch } from './gitPatch';
-import { getCachedRepoStatus, setCachedRepoStatus } from './gitRepoStatusCache';
+import { getOrFetchRepoStatus } from './gitRepoStatusCache';
 
 // Re-export types and parsers consumed by git.ts
 export type {
@@ -114,18 +114,15 @@ export async function discardFile(
 }
 
 export async function gitIsRepo(root: string) {
-  const cached = getCachedRepoStatus(root);
-  if (cached !== undefined) {
-    return { success: true as const, isRepo: cached };
-  }
-  try {
-    await gitExec(['rev-parse', '--git-dir'], { cwd: root });
-    setCachedRepoStatus(root, true);
-    return { success: true as const, isRepo: true };
-  } catch {
-    setCachedRepoStatus(root, false);
-    return { success: true as const, isRepo: false };
-  }
+  const isRepo = await getOrFetchRepoStatus(root, async () => {
+    try {
+      await gitExec(['rev-parse', '--git-dir'], { cwd: root });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  return { success: true as const, isRepo };
 }
 
 export function gitStatus(root: string) {
