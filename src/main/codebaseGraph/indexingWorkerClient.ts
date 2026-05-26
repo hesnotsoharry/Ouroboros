@@ -63,6 +63,7 @@ export class IndexingWorkerClient {
   // ── Public API ──────────────────────────────────────────────────────────────
 
   runIndex(options: IndexingOptions): Promise<IndexingResult> {
+    log.info(`[trace:workerClient.runIndex] queueDepth=${this.queue.length} busy=${this.busy}`);
     return new Promise((resolve, reject) => {
       this.queue.push(() => this.dispatch(options, resolve, reject));
       this.drainQueue();

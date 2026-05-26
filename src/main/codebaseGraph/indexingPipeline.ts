@@ -25,9 +25,9 @@ import path from 'path';
 import log from '../logger';
 import { GraphDatabase } from './graphDatabase';
 import { callResolutionPass } from './indexingPipelineCallResolution';
-import { discoverFiles, filterChangedFiles } from './indexingPipelineIncremental';
+import { discoverFiles, resolveIncrementalFiles } from './indexingPipelineIncremental';
 import { definitionPass, importPass, parsePass, structurePass } from './indexingPipelinePasses';
-import { buildIndexResult } from './indexingPipelineResult';
+import { buildIndexResult, buildNoOpResult } from './indexingPipelineResult';
 import type {
   DiscoveredFile,
   IndexedFile,
@@ -213,9 +213,7 @@ export class IndexingPipeline {
     progress.filesTotal = allFiles.length;
     const isIncremental = options.incremental !== false;
     const { filesToProcess, isIncrementalRun } = await this.resolveFilesToProcess(
-      isIncremental,
-      projectName,
-      allFiles,
+      isIncremental, projectName, allFiles, options.changedPaths,
     );
     this.db.upsertProject({
       name: projectName,
@@ -240,6 +238,12 @@ export class IndexingPipeline {
       projectName,
       progress,
     );
+
+    if (filesToProcess.length === 0 && isIncrementalRun) {
+      log.info('[trace:pipeline.runIndex] no-op fast-path: 0 changed files, skipping all passes');
+      return buildNoOpResult(projectName, allFiles, progress, startTime);
+    }
+
     report('parsing');
     const indexedFiles = await parsePass(this.parser, filesToProcess, (processed) => {
       progress.filesProcessed = processed;
@@ -329,17 +333,17 @@ export class IndexingPipeline {
     isIncremental: boolean,
     projectName: string,
     allFiles: DiscoveredFile[],
+    changedPaths?: string[],
   ): Promise<{ filesToProcess: DiscoveredFile[]; isIncrementalRun: boolean }> {
     if (isIncremental && this.db.getProject(projectName)) {
-      const { changed } = await filterChangedFiles(this.db, projectName, allFiles);
-      const isIncrementalRun = changed.length < allFiles.length;
-
-      if (isIncrementalRun) {
-        for (const file of changed) this.db.deleteNodesByFile(projectName, file.relativePath);
-        this.pruneDeletedFiles(projectName, allFiles);
-      }
-
-      return { filesToProcess: changed, isIncrementalRun };
+      return resolveIncrementalFiles({
+        db: this.db,
+        projectName,
+        allFiles,
+        changedPaths,
+        pruneDeleted: (files) => this.pruneDeletedFiles(projectName, files),
+        deleteNodes: (rel) => this.db.deleteNodesByFile(projectName, rel),
+      });
     }
 
     this.db.deleteProject(projectName);

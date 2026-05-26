@@ -103,6 +103,13 @@ export class AutoSyncWatcher {
   /** Accumulates file paths during the 300ms app-layer debounce window (OS-level coalescing + app idle gap). */
   private pendingEvents: Map<string, number> = new Map();
 
+  /**
+   * Snapshot of watcher-reported absolute paths carried from drainPendingEvents
+   * through the 3s DEBOUNCE_MS window to triggerReindex. Passed as changedPaths
+   * hint to skip the O(N_all_files) filterChangedFiles scan. Cleared on consume.
+   */
+  private watcherHintPaths: string[] = [];
+
   private opts: AutoSyncOptions;
 
   constructor(opts: AutoSyncOptions) {
@@ -287,9 +294,15 @@ export class AutoSyncWatcher {
   async triggerReindex(): Promise<void> {
     if (this.disposed || this.reindexing) return;
 
+    log.info(`[trace:autoSync.triggerReindex] pendingEventsSize=${this.pendingEvents.size} reindexing=${this.reindexing} hintPaths=${this.watcherHintPaths.length}`);
+
     this.reindexing = true;
     const startTime = Date.now();
     log.info(`[trace:autoSync.reindex] start root=${this.opts.projectRoot}`);
+
+    // Consume the watcher hint paths and clear so the next run starts fresh.
+    const changedPaths = this.watcherHintPaths.length > 0 ? [...this.watcherHintPaths] : undefined;
+    this.watcherHintPaths = [];
 
     try {
       // Route through the shared IndexingWorkerClient singleton so reindex runs
@@ -299,6 +312,7 @@ export class AutoSyncWatcher {
         projectRoot: this.opts.projectRoot,
         projectName: this.opts.projectName,
         incremental: true,
+        changedPaths,
       });
       this.handleReindexResult(result, startTime);
     } catch (err) {
@@ -400,6 +414,8 @@ export class AutoSyncWatcher {
 
     const paths = Array.from(this.pendingEvents.keys());
     this.pendingEvents.clear();
+    // Accumulate hint paths; merge across drain-cycles within the same debounce window.
+    this.watcherHintPaths = [...new Set([...this.watcherHintPaths, ...paths])];
     this.onFileChange(paths);
   }
 

@@ -47,3 +47,24 @@ export function buildIndexResult(opts: IndexResultOpts): IndexingResult {
     parseAnomalies,
   };
 }
+
+/** Builds the no-op IndexingResult used when 0 files changed in an incremental run. */
+export function buildNoOpResult(
+  projectName: string,
+  allFiles: DiscoveredFile[],
+  progress: IndexingProgress,
+  startTime: number,
+): IndexingResult {
+  return {
+    projectName,
+    success: true,
+    filesIndexed: 0,
+    filesSkipped: allFiles.length,
+    nodesCreated: 0,
+    edgesCreated: 0,
+    errors: progress.errors,
+    durationMs: Date.now() - startTime,
+    incremental: true,
+    phaseTimingsMs: {},
+  };
+}

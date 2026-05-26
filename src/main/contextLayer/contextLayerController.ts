@@ -139,8 +139,16 @@ class ContextLayerControllerImpl implements ContextLayerController {
     return true;
   }
 
-  private async runFullRebuild(): Promise<void> {
+  /** Wraps buildRepoIndex with trace-D timing. Extracted to keep runFullRebuild under 40 lines. */
+  private async buildRepoIndexTimed(): Promise<RepoIndexSnapshot> {
+    const t0ri = Date.now();
     const snapshot = await this.buildRepoIndex([this.workspaceRoot]);
+    log.info(`[trace:contextLayer.buildRepoIndex] elapsed=${Date.now() - t0ri}ms`);
+    return snapshot;
+  }
+
+  private async runFullRebuild(): Promise<void> {
+    const snapshot = await this.buildRepoIndexTimed();
     this.snapshot = snapshot;
     const repoFacts = snapshot.repoFacts;
 

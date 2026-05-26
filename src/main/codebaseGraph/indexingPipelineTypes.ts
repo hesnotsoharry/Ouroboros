@@ -18,6 +18,13 @@ export interface IndexingOptions {
   maxFiles?: number; // Safety cap (default 10000)
   ignorePaths?: string[]; // Additional ignore patterns
   onProgress?: (progress: IndexingProgress) => void;
+  /**
+   * Optional hint from the watcher: the absolute paths that triggered this
+   * reindex. When provided, the incremental scan skips the O(N_all_files)
+   * filterChangedFiles walk and classifies only these specific paths.
+   * The hash check is still applied (watcher events can be spurious).
+   */
+  changedPaths?: string[];
 }
 
 // ─── Progress reporting ───────────────────────────────────────────────────────
