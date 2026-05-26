@@ -9,12 +9,20 @@ type: fix-sweep
 
 ## Status
 
-SHIPPED-PENDING-VERIFICATION. P1–P4 committed in this session
-(`ffd66fba`, `b8abf975`, `27b9f002`, `e72d1ae0`); P7 dogpile hotfix
-committed (`cc04f48b`) after post-deploy boot trace showed P1–P3 not
-deduping concurrent calls. Phase 5 (window-close async dispose)
-DEFERRED — boot trace showed window:close at 1484ms (down from 5091ms);
-re-measure after P7 lands before committing to P5 investigation.
+SHIPPED-PENDING-VERIFICATION. All five phases (P1–P5) + diagnostic-driven
+hotfix (P7) committed this session. Post-P7 boot trace verified P1–P4
+caches now dedup correctly (zero slow-handler lines for git:isRepo,
+shellHistory:read, extensionStore:*, usage:getUsageWindowSnapshot).
+P5 surfaced TWO bugs from the same trace (6.5s window-close block + IPC
+handler flood) — both root-caused by sonnet-diagnostician and fixed.
+
+Commits:
+- P1 git:isRepo cache: `ffd66fba`
+- P2 extensionStore cache: `b8abf975`
+- P3 shellHistory cache: `27b9f002`
+- P4 usage coalescer: `e72d1ae0`
+- P7 dogpile hotfix (Promise dedup): `cc04f48b`
+- P5 window-close fix (PTY kill async + IPC scoping): `585cb380`
 
 **P6 diagnostic correction (re P4):** the 6 `usage:getUsageWindowSnapshot`
 slow-handler log entries are NOT 6 fetches — they're 6 handlers all
