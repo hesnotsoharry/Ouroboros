@@ -53,17 +53,35 @@ thread. The visible IPC-handler latency (`files:saveFile` 12.9s) is
 likely the renderer waiting on the WHOLE cascade rather than the disk
 write alone, because something in the chain holds the event loop.
 
-Two other open follow-ups appear to fold into the same investigation:
+Four open follow-ups fold into this wave's surface:
 
 - `roadmap/follow-ups/2026-05-25-config-set-slow-handler.md` (MED) —
-  `config:set` 1–4s. Still showing in this trace.
+  `config:set` 1–4s. Still showing in this trace. **Folds into Phase 3-4
+  verbatim** — its four hypotheses become Phase 3's diagnostic brief.
 - `roadmap/follow-ups/2026-05-25-repomap-worker-3927ms.md` (MED) —
-  worker's `crossModuleDeps` phase regressed mid-session.
-
-The `2026-05-25-indexing-worker-not-disposed-on-window-close.md` (LOW)
-filed by Wave 16 P10 may also be relevant — if the IndexingWorkerClient
-is a singleton with cross-window lifetime, that's the central indexer
-this wave needs to understand.
+  worker's `crossModuleDeps` phase regressed mid-session (412ms → 3866ms).
+  **Folds into Phase 1's diagnostic brief**; overlaps Hypothesis 6 (lock
+  contention) and Hypothesis 2 (better-sqlite3 write contention).
+- `roadmap/follow-ups/2026-05-25-indexing-worker-not-disposed-on-window-close.md`
+  (LOW) filed by Wave 16 P10 — IndexingWorkerClient.dispose() not called
+  on per-window release. **Phase 1's diagnostician should answer
+  "singleton or per-window?" as a secondary observation** while reading
+  `graphControllerCompatRegistry` anyway. Closes inline if singleton
+  (just document the lifecycle); folds into Phase 2 if per-window leak.
+- **`roadmap/follow-ups/2026-05-17-move-generateRepoMap-to-worker-plan.md`
+  (PLANNED, architect's verdict already produced)** — sonnet-architect
+  produced a full integration plan in May for moving `generateRepoMap`
+  off the main thread via Option A (worker opens its own read-only
+  SQLite using WAL multi-reader). Directly addresses Hypothesis 1
+  (autoSync.reindex synchronous) and Hypothesis 5 (tree-sitter parsing
+  on main) — `triggerContextLayerRebuildAfterGraphReady` is explicitly
+  named in the architect plan as "the path that produces the 1–2s
+  freeze." **If Phase 1's diagnostic confirms the cascade bottoms out
+  in `generateRepoMap`, Phase 2's implementation is ~75% pre-designed**
+  (new `WorkerQueryClient` ~50 LOC, three-file injection seam,
+  4-sub-phase migration). One open architect question to resolve before
+  Phase 2: the `forceRebuild` seam (option a — config-injected
+  `generateRepoMapFn` vs option b — bypass at trigger site).
 
 ## Goal
 
@@ -98,8 +116,8 @@ Upfront constraints:
 | # | Phase | Shape | Notes |
 |---|---|---|---|
 | 0 | Wave-plan + ADR | Planning | Resolve hypotheses below; lock decisions; set acceptance criteria for the work |
-| 1 | Diagnose save cascade | Lane B B1 | Dispatch `sonnet-diagnostician`. Instrument the save → watcher → reindex chain; identify the dominant blocker. **Do not start B3 until B1 names the cause with evidence.** |
-| 2 | Fix save cascade | Lane B B3 | Implement the diagnosed fix. Likely involves async-ifying some step or breaking it into yielding chunks. Honeycomb test at the boundary. |
+| 1 | Diagnose save cascade | Lane B B1 | Dispatch `sonnet-diagnostician`. Instrument the save → watcher → reindex chain; identify the dominant blocker. Secondary observation: answer "is `IndexingWorkerClient` singleton or per-window?" (closes the LOW lifecycle follow-up inline). **Do not start B3 until B1 names the cause with evidence.** |
+| 2 | Fix save cascade | Lane B B3 | Implement the diagnosed fix. Likely involves async-ifying some step or breaking it into yielding chunks. **If diagnostic confirms `generateRepoMap` is the dominant blocker, Option A from `2026-05-17-move-generateRepoMap-to-worker-plan.md` is the pre-designed structural answer** — bake the architect plan into the implementer brief, resolve the `forceRebuild` seam question (option a vs b) before dispatch. Honeycomb test at the boundary. |
 | 3 | Diagnose config:set | Lane B B1 | Separate diagnostician dispatch — config:set's cost is likely in JSON serialization or electron-store write path, not the indexer. |
 | 4 | Fix config:set | Lane B B3 | Per diagnosis. Possible fixes: smaller config blobs, async write, debounce. |
 | 5 | autoSync no-op fast-path | Possibly inline | If diagnostician shows the 9075ms reindex with `files=0` has no work to do, add an early-exit. Trivial fix once diagnosed. |
