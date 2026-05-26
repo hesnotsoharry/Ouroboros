@@ -1,10 +1,32 @@
 ---
-status: SHIPPED-PENDING-SMOKE
+status: SHIPPED-VERIFIED
 created: 2026-05-25
 updated: 2026-05-26
 type: perf-investigation
 predecessor: wave-17-editor-cascade-perf
+successor: wave-19-renderer-bundle-and-fk-fixes
 severity: SHOWSTOPPER
+verified-by: cole-trace-00:18-00:20-2026-05-26
+verification-evidence: |
+  Cole's post-merge startup trace 00:18:44-00:20:13 confirmed:
+  - W1: only ONE [perf] startup line (was 3) — single-window dev clamp working
+  - W3: [trace:autoSync.initWithLaunchDiff] dispatching to worker; done elapsed=122ms stale=0
+    (was 9075ms; ~74x improvement for empty/small projects)
+  - W4: [trace:contextLayer.acquire] inFlight=started traces fire for each project switch
+  - W5: clean [rulesWatcher] skipping missing dir (was 22x Invalid handle log noise)
+  - W6: single [perf] startup summary
+  - W2 (shared partition) is structurally correct per the commit; multi-window
+    benefit unobservable from this single-window trace but the config is in place.
+
+  Two outstanding issues surfaced by the same trace, OUT OF Wave 18 scope:
+  - Single-window renderer bundle still 26s (1C diagnostic overgeneralized
+    multi-window as the cause; root is Monaco+pdfjs eager-load); deferred to
+    Wave 19.
+  - FK constraint failures in indexer pipeline (pre-existing, structurally
+    inherent since schema v0; W3 made them VISIBLE by causing 3x cold-index
+    per startup); deferred to Wave 19.
+
+  Both diagnosed; bug docs at roadmap/bugs/2026-05-26-*.md.
 ---
 
 # Wave 18 — Multi-Window Perf

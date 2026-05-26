@@ -1,10 +1,64 @@
-# Session Handoff — 2026-05-26 (Wave 18 SHIPPED-PENDING-SMOKE — multi-window perf cascade fixed)
+# Session Handoff — 2026-05-26 (Wave 18 SHIPPED-VERIFIED; Wave 19 PLANNED — execute in a fresh session)
 
-**Audience:** the next Claude Code session.
+**Audience:** the next Claude Code session — this is YOUR entry point. Cole started this fresh session intentionally to execute Wave 19. Read this entry + `roadmap/wave-19-renderer-bundle-and-fk-fixes/waveplan-19.md` + the 2 bug docs in `roadmap/bugs/2026-05-26-*.md`, then proceed with Phase 2 (renderer bundle implementer) + Phase 3a (FK architect) in parallel.
 
 ---
 
-## 🔼 UPDATE 2026-05-26 (latest) — Wave 18 SHIPPED-PENDING-SMOKE (multi-window perf, SHOWSTOPPER closed)
+## 🔼 UPDATE 2026-05-26 (latest) — Wave 18 SHIPPED-VERIFIED + Wave 19 PLANNED
+
+**Next action for this fresh session:**
+
+1. **Read** `roadmap/wave-19-renderer-bundle-and-fk-fixes/waveplan-19.md` — the wave's plan + dispatch shape.
+2. **Read** `roadmap/bugs/2026-05-26-single-window-renderer-bundle-19s.md` — Finding A diagnostic (renderer bundle 19s; Monaco+pdfjs eager-load; fix is React.lazy in 3 files).
+3. **Read** `roadmap/bugs/2026-05-26-fk-constraint-failures-on-cold-index.md` — Finding B diagnostic (FK constraints, pre-existing structural bug, needs architect for option pick).
+4. **Set up worktree** for Wave 19 via `superpowers:using-git-waves` skill (use the worktree at `.worktrees/wave-19-renderer-bundle-and-fk-fixes`).
+5. **Dispatch Phase 2 (renderer bundle `sonnet-implementer`) + Phase 3a (FK `sonnet-architect`) in parallel.** Disjoint surfaces; safe to run concurrently.
+6. After Phase 3a returns + Phase 2 commits, dispatch Phase 3b (FK `sonnet-implementer`).
+7. Phase 4: smoke + wrap. **Merge worktree to master + remove per Cole's standing directive** (`memory/worktree-merge-and-close-discipline.md`).
+
+**Wave 18 — SHIPPED-VERIFIED.** Cole's post-merge startup trace at 00:18-00:20 today verified:
+- W1: only ONE `[perf] startup` line (was 3) — single-window dev clamp works
+- W3: `[trace:autoSync.initWithLaunchDiff] dispatching to worker` + `done elapsed=122ms stale=0` (was 9075ms — ~74× improvement)
+- W4: `[trace:contextLayer.acquire] inFlight=started` traces fire on project switching
+- W5: clean `[rulesWatcher] skipping missing dir` (was 22× Invalid handle storm)
+- W6: single `[perf] startup` summary
+- W2: shared partition config in place; multi-window benefit unobservable from single-window trace but mechanism is structurally correct per the commit
+
+**Wave 19 — PLANNED, addresses 2 outstanding issues surfaced by Wave 18's verification trace** (both diagnosed; bug docs in `roadmap/bugs/`):
+
+### Finding A — Renderer bundle 19s on cold-cache single-window load
+
+The Wave 18 1C diagnostic OVERGENERALIZED multi-window as the cause. Single-window is STILL 26s `first-render`. Root: ~7.9 MB Monaco + ~796 KB pdfjs in eager static import graph. Fix: React.lazy + Suspense in 3 files (`FileViewer/ContentRouter.tsx`, `FileViewer/FileViewer.tsx`, `FileViewer/index.ts` barrel surgery). Expected 12-16s reduction. Pattern precedent in `Workbench/CLAUDE.md:190-191`.
+
+### Finding B — FK constraint failures in indexer pipeline
+
+PRE-EXISTING structural bug since schema v0. Wave 18 W3 made it visible (3× cold-index per startup) but didn't introduce it. `edges.source_id → nodes(id)` and `edges.target_id → nodes(id)` constraints violate when 500-file chunks process out of dependency order. **Data is silently dropped** in `definitionPass` and `callResolutionPass`. Architect needs to pick from option spectrum (two-pass insertion / chunk sort / INSERT-OR-IGNORE / defer-FK pragma / etc.).
+
+### Notable insights worth carrying forward (from Wave 18 wrap analysis)
+
+1. **Diagnostic memos can over-attribute.** Wave 17 1B's `runPass()` citation was wrong (architect caught it). Wave 18 1C blamed multi-window for cost that's actually intrinsic to single-window. **Pattern: architect re-verification before expensive fixes.** Wave 19 Phase 3a is exactly this — architect re-verifies the FK diagnostic before implementer dispatch.
+
+2. **`patchIpcMainHandle` timer-artifact pattern recurring for the FOURTH wave running** (Wave 16, 17, 18, and again in this trace's `files:pathExists` cluster). Slow-handler lines paired with jank events are timer artifacts; the jank IS the signal.
+
+3. **Catalog agent reliability issues accumulating.** Wave 17's haiku-followup-auditor and Wave 18's haiku-implementer both wrote to MAIN checkout despite worktree-path briefs. Meta follow-up open. **Until that resolves: after every haiku write that targets a specific path, verify with `git status --short` in both main and worktree.**
+
+4. **Promise-dedup is the canonical cross-window resource coalesce pattern** (Wave 16 P7, Wave 18 W4). Worth promoting to project-wide reference.
+
+### Wave 18 follow-ups STILL OPEN (not closed by Wave 19)
+
+- `roadmap/follow-ups/2026-05-26-approval-wait-double-fire-instrument.md` (LOW, W7) — needs `connId` instrumentation
+- `meta/roadmap/follow-ups/2026-05-26-haiku-implementer-wrong-checkout-target.md` (MED) — recurring catalog issue
+
+### Operational pre-flight for Wave 19's session
+
+- Master is at `13bfd280` post-Wave-18-merge + push. Origin matches.
+- `src/renderer/generated/changelog.ts` is generated locally via `node tools/build-changelog.js` — the pre-push hook requires it. **If you re-create the worktree from a fresh master clone, you'll need to regenerate this before push.**
+- `npm install` in any worktree takes ~2 min. Run it as background early.
+- Wave 18's worktree was correctly removed at wrap; no orphan to clean up.
+
+---
+
+## 🔼 UPDATE 2026-05-26 (superseded by Wave 19 setup) — Wave 18 SHIPPED-PENDING-SMOKE (multi-window perf, SHOWSTOPPER closed)
 
 **Next action: Cole runs `roadmap/wave-18-multi-window-perf/wave-18-smoke-report.md` on the next interactive session.** 7-scenario checklist verifying single-window dev default (W1), shared HTTP partition (W2), worker-offloaded cold-start indexer (W3 — the critical fix), per-root acquireContextLayer coalesce (W4), rulesWatcher silence (W5), perf-flush dedup (W6). Flip status SHIPPED-PENDING-SMOKE → SHIPPED-VERIFIED on PASS.
 
