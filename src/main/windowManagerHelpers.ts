@@ -300,9 +300,31 @@ export function mergeBoundsIntoSessions(
 /**
  * Project active Session records that have bounds into WindowSession shape
  * for use by the window restore path.
+ *
+ * Lifecycle exclusion: archived (`archivedAt`) and soft-deleted (`deletedAt`)
+ * sessions are never restored — they would produce ghost windows.
+ *
+ * Single-window clamp: restores at most one window (the first qualifying
+ * session in store order) when EITHER:
+ *   1. `OUROBOROS_SINGLE_WINDOW=1` is explicitly set, OR
+ *   2. The process is running under `npm run dev` (detected via
+ *      `npm_lifecycle_event === 'dev'`, which npm sets automatically).
+ *
+ * Explicit `OUROBOROS_SINGLE_WINDOW=0` always wins — it forces multi-window
+ * restoration even under dev mode (useful for testing multi-window behavior
+ * during development).
+ *
+ * Production / packaged builds are not affected: `npm_lifecycle_event` is
+ * undefined when the app is launched standalone, so multi-window restore
+ * works as before.
  */
 export function sessionsDataToWindowSessions(sessionsData: Session[]): WindowSession[] {
-  return sessionsData
-    .filter((s) => s.projectRoot && s.bounds)
-    .map((s) => ({ projectRoots: [s.projectRoot], bounds: s.bounds }));
+  const active = sessionsData.filter(
+    (s) => s.projectRoot && s.bounds && !s.archivedAt && !s.deletedAt,
+  );
+  const explicit = process.env.OUROBOROS_SINGLE_WINDOW;
+  const isDev = process.env.npm_lifecycle_event === 'dev';
+  const singleWindow = explicit === '1' || (isDev && explicit !== '0');
+  const clamped = singleWindow ? active.slice(0, 1) : active;
+  return clamped.map((s) => ({ projectRoots: [s.projectRoot], bounds: s.bounds }));
 }
