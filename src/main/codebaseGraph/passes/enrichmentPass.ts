@@ -8,9 +8,9 @@
  *   - Index file default exports (barrel re-exports).
  *   - Framework-specific entry points (main, cli, command, route handlers).
  *
- * Also creates IMPLEMENTS edges between classes and interfaces when the
- * tree-sitter parser provides that information (placeholder for now —
- * the extraction would need to be enhanced in treeSitterParser first).
+ * IMPLEMENTS and EXTENDS edges are emitted from `definitionPass` (since
+ * Wave 21) — see indexingPipelinePasses.ts. enrichmentPass remains
+ * focused on entry-point heuristics.
  */
 
 import type { GraphDatabase } from '../graphDatabase';
@@ -61,8 +61,9 @@ export function enrichmentPass(
   projectName: string,
   // _files (IndexedFile[]) reserved for future enrichment heuristics
 ): void {
-  // IMPLEMENTS edges are a placeholder — tree-sitter extraction would need to
-  // expose implements/extends info from class_heritage nodes first.
+  // IMPLEMENTS and EXTENDS edges are emitted from `definitionPass` (since
+  // Wave 21) — see indexingPipelinePasses.ts. enrichmentPass remains
+  // focused on entry-point heuristics.
 
   const allFunctions = db.getNodesByLabel(projectName, 'Function');
 

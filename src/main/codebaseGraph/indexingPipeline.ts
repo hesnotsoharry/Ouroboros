@@ -130,11 +130,15 @@ export class IndexingPipeline {
   }
 
   private async runEnrichmentPasses(
-    ctx: { projectName: string; indexedFiles: IndexedFile[]; gitCommitFiles: string[][] | null },
+    ctx: { projectName: string; indexedFiles: IndexedFile[]; gitCommitFiles: string[][] | null; isIncrementalRun: boolean },
     report: (p: string) => void,
     timings: Record<string, number>,
   ): Promise<void> {
-    const { projectName, indexedFiles, gitCommitFiles } = ctx;
+    const { projectName, indexedFiles, gitCommitFiles, isIncrementalRun } = ctx;
+    // undefined on full reindexes forces unconditional cache rebuild in testDetectPass.
+    const changedFiles = isIncrementalRun
+      ? new Set(indexedFiles.map((f) => f.relativePath))
+      : undefined;
     await this.withTiming(
       'http_links',
       () => this.runPass('http_links', () => httpLinkPass(this.db, projectName, indexedFiles), report),
@@ -142,7 +146,7 @@ export class IndexingPipeline {
     );
     await this.withTiming(
       'test_detection',
-      () => this.runPass('test_detection', () => testDetectPass(this.db, projectName, indexedFiles), report),
+      () => this.runPass('test_detection', () => testDetectPass(this.db, projectName, indexedFiles, changedFiles), report),
       timings,
     );
     await this.withTiming(
@@ -158,12 +162,12 @@ export class IndexingPipeline {
   }
 
   private async runAllPasses(
-    ctx: { projectName: string; projectRoot: string; errCount: { count: number } },
+    ctx: { projectName: string; projectRoot: string; errCount: { count: number }; isIncrementalRun: boolean },
     indexedFiles: IndexedFile[],
     structureFiles: DiscoveredFile[],
     report: (phase: string) => void,
   ): Promise<Record<string, number>> {
-    const { projectName, projectRoot, errCount } = ctx;
+    const { projectName, projectRoot, errCount, isIncrementalRun } = ctx;
     const timings: Record<string, number> = {};
 
     // Pre-fetch async data before entering synchronous SQLite transactions.
@@ -173,7 +177,7 @@ export class IndexingPipeline {
     Object.assign(timings, { git_prefetch: performance.now() - gitStart });
 
     await this.runCorePasses({ projectName, projectRoot, indexedFiles, structureFiles }, report, timings, errCount);
-    await this.runEnrichmentPasses({ projectName, indexedFiles, gitCommitFiles }, report, timings);
+    await this.runEnrichmentPasses({ projectName, indexedFiles, gitCommitFiles, isIncrementalRun }, report, timings);
     return timings;
   }
 
@@ -254,7 +258,7 @@ export class IndexingPipeline {
     });
     const structureFiles = isIncrementalRun ? filesToProcess : allFiles;
     const errCount = { count: 0 };
-    const phaseTimingsMs = await this.runAllPasses({ projectName, projectRoot: options.projectRoot, errCount }, indexedFiles, structureFiles, report);
+    const phaseTimingsMs = await this.runAllPasses({ projectName, projectRoot: options.projectRoot, errCount, isIncrementalRun }, indexedFiles, structureFiles, report);
     report('finalizing');
     const { nodesCreated, edgesCreated } = this.finalizeIndex(projectName, options, indexedFiles);
     return buildIndexResult({

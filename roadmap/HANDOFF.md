@@ -1,10 +1,62 @@
-# Session Handoff — 2026-05-26 (Wave 20 SHIPPED · Wave 19 SHIPPED-PENDING-SMOKE)
+# Session Handoff — 2026-05-26 (Wave 21 SHIPPED · Wave 19 SHIPPED-PENDING-SMOKE)
 
-**Audience:** the next Claude Code session — this is YOUR entry point. Wave 20 (Ouroboros codebase graph Tier-1 cleanup) is shipped locally on master. Wave 19 (Renderer bundle React.lazy + FK constraint fix) remains SHIPPED-PENDING-SMOKE — Cole still owes the smoke checklist at `roadmap/wave-19-renderer-bundle-and-fk-fixes/wave-19-result.md`. No active wave in flight.
+**Audience:** the next Claude Code session — this is YOUR entry point. Wave 21 (Ouroboros codebase graph Tier-2 improvements) is shipped locally on master. Wave 19 (Renderer bundle React.lazy + FK constraint fix) remains SHIPPED-PENDING-SMOKE — Cole still owes the smoke checklist at `roadmap/wave-19-renderer-bundle-and-fk-fixes/wave-19-result.md`. No active wave in flight.
 
 ---
 
-## 🔼 UPDATE 2026-05-26 (latest) — Wave 20 SHIPPED
+## 🔼 UPDATE 2026-05-26 (latest) — Wave 21 SHIPPED
+
+**Next action options (no wave in flight):**
+
+1. **Wave 22 — Standalone MCP extraction** (`roadmap/follow-ups/2026-05-26-ouroboros-graph-standalone-mcp-extraction.md`): hard-blocked on Wave 87 chat orchestration overhaul. ~3-5 dev days when Wave 87 lands.
+2. **Wave 19 smoke verification** (Cole-owed): renderer-bundle cold/warm + FK violation observation. See `wave-19-result.md`.
+3. **Wave 21 Tier-3 follow-ups (LOW)** — `2026-05-26-graphcontrollerlike-manageadr-id-orphan-check.md` (carried from Wave 20; natural during Wave 22) + `2026-05-26-worktree-postinstall-electron-rebuild-failure.md` (new this wave; investigate when next setting up a worktree).
+4. **Pre-existing test failure** — `channelCatalog.test.ts` still fails on `test:main`; filed at `2026-05-26-channel-catalog-missing-persist-shared-and-crash-log-count.md`. ~10-20 LOC fix for next sweep.
+
+### Wave 21 — what shipped
+
+Two substantive items closing the Tier-2 gaps from the 2026-05-26 meta-verification report. Full story in `roadmap/wave-21-ouroboros-graph-tier-2/wave-21-result.md`.
+
+- **Phase 1 — IMPLEMENTS + EXTENDS edges via tree-sitter `class_heritage`** (boundary phase). TS/TSX classes' heritage clauses extracted by new `extractClassHeritage` in `treeSitterParserDefs.ts`; edges emitted from `definitionPass` via new helper module `indexingPipelineHeritage.ts`. Target resolution via `symbolsByName.get(name)?.[0]` with skip-on-unresolved (Wave 19 filterEdges pattern). Trace: `[trace:definitionPass.heritage]`. Orchestrator-authored acceptance test at `indexingPipeline.heritageEdges.acceptance.test.ts` (11 assertions GREEN); `sonnet-phase-reviewer` FLAG on stale `passes/CLAUDE.md` only — addressed inline. Cypher `MATCH (c:Class)-[:IMPLEMENTS]->(i:Interface)` now returns real rows.
+- **Phase 2 — `testDetectPass` cache** eliminates per-keystroke full-label scan. Module-level `Map<string, FunctionIndexEntry>`, FIFO N=10, per-file QN-prefix invalidation; full-reindex unconditional. `[trace:testDetectPass.cache]` log line with hit/miss + durationMs. 9 unit tests + spy assertions on `getNodesByLabel`. I/O contract preserved.
+
+### Wave 21 — gates at wrap
+
+- `test:codebasegraph`: 743 passed, 3 skipped, 0 failures.
+- `test:main`: 6604 passed, 1 failed (pre-existing channelCatalog), 5 skipped, in 210.91s. Wave 21 added 31 new passing tests, zero regressions.
+- `lint`: 0 errors, 4 pre-existing warnings (Wave 19/20 carry-over).
+- `tsc --noEmit`: clean.
+
+### Wave 21 — notable patterns + lessons
+
+1. **Research grounding error caught by implementer.** `class_heritage` is a NODE TYPE not a field — correct access is `node.namedChildren.find(c => c.type === 'class_heritage')`, not `childForFieldName`. Same pattern as Wave 17/18/19's diagnostic citation rot. Verification-before-implementation is reliably load-bearing for boundary phases. Documented inline at `treeSitterParserDefs.ts:222-229`.
+2. **Decisions delegated to orchestrator.** Cole used "which is better long-term / most correct" framing for ADR Decisions 2 + 3; orchestrator picked recommended on technical merits with rationale logged in the ADR. Decision delegation works cleanly when the orchestrator has clear technical criteria.
+3. **Helper extraction to honor lint cap.** Phase 1's heritage emission was lifted into `indexingPipelineHeritage.ts` to keep `indexingPipelinePasses.ts` under 300 LOC. Worker-context-safe (logger + type-only imports).
+4. **`passes/CLAUDE.md` gotcha update on obsoletion.** Reviewer flagged the stale "IMPLEMENTS edges are a placeholder" line. Per the root gotcha-maintenance rule, gotchas should update in the same change that obsoletes them. Worth carrying forward in implementer briefs for waves that touch gotcha-bearing surfaces.
+5. **No haiku-wrong-checkout drift.** Both implementers Sonnet-tier; honored worktree paths cleanly (verified via `git status` in both checkouts post-DONE). M-17 backstop didn't trigger.
+
+### Wave 21 — open Tier-3 surfaced
+
+- `2026-05-26-worktree-postinstall-electron-rebuild-failure.md` (LOW) — `npm install` postinstall chain fails in fresh worktrees; native modules build fine but the chained `electron-rebuild && build-changelog && apply-patches` returns exit -1. Tests run cleanly despite this. `build-changelog.js` re-runs cleanly standalone. Investigate when next setting up a worktree.
+
+### Wave 21 — NOT done / deferrals
+
+1. **Live `query_graph` MCP observation — DEFERRED.** Phase 1's user-observable surface ("agent reply names interface relationships") needs a live IDE session. Cole can confirm by asking an agent "what does `GraphControllerCompat` implement?"
+2. **Live `[trace:testDetectPass.cache] hit` observation — DEFERRED.** Phase 2's surface (log line during save cascade) needs a live save in a running IDE.
+3. **Stryker mutation (Check 6) — DEFERRED.** Standing pre-merge task; Wave 21 didn't worsen the surface.
+4. **Tag + CHANGELOG bump — PENDING Cole's call.** Current v2.20.0. This wave's entries are in `[Unreleased]`. Patch (v2.20.1) or minor (v2.21.0) — Cole picks.
+5. **Push to remote** — auto per standing autonomy, post-merge.
+
+### Operational pre-flight for Wave 22's session
+
+- Master at the Wave-21 merge commit (after wave wrap merge). Origin matches if pushed at wrap.
+- `src/renderer/generated/changelog.ts` regenerated at Wave 21 wrap via `node tools/build-changelog.js`.
+- **Vendor-gotcha worth remembering (Wave 21 surfaced):** `class_heritage` in `tree-sitter-typescript` is a NODE TYPE on `class_declaration`, accessed via `namedChildren.find`, NOT a field via `childForFieldName`. Documented inline at `treeSitterParserDefs.ts:222`.
+- Wave 21 worktree was correctly removed at wrap; no orphan to clean up.
+
+---
+
+## 🔼 PRIOR UPDATE 2026-05-26 (superseded by Wave 21) — Wave 20 SHIPPED
 
 **Next action options (no wave in flight):**
 

@@ -151,6 +151,18 @@ function resolveMethodContext(
   return { effectiveLabel: 'Method', receiver: contextNode.childForFieldName('name')?.text ?? null };
 }
 
+/** Extract the boolean modifier flags from a definition node. */
+function extractNodeFlags(
+  node: Node,
+  label: string,
+): { isAsync: boolean; isStatic: boolean; isAbstract: boolean } {
+  return {
+    isAsync: hasModifier(node, 'async'),
+    isStatic: label === 'Method' && hasModifier(node, 'static'),
+    isAbstract: node.type.includes('abstract') || hasModifier(node, 'abstract'),
+  };
+}
+
 export function extractSingleDefinition(
   node: Node,
   label: string,
@@ -168,11 +180,11 @@ export function extractSingleDefinition(
   }
 
   const decorators = collectDecorators(node);
-  const isAsync = hasModifier(node, 'async');
-  const isStatic = label === 'Method' && hasModifier(node, 'static');
-  const isAbstract = node.type.includes('abstract') || hasModifier(node, 'abstract');
-
+  const { isAsync, isStatic, isAbstract } = extractNodeFlags(node, label);
   const { effectiveLabel, receiver } = resolveMethodContext(node, label, config);
+  const { implementsArr, extendsName } = effectiveLabel === 'Class'
+    ? extractClassHeritage(node)
+    : { implementsArr: undefined, extendsName: undefined };
 
   return {
     name,
@@ -189,7 +201,46 @@ export function extractSingleDefinition(
     decorators,
     receiver,
     constants: [],
+    implements: implementsArr,
+    extendsClause: extendsName,
   };
+}
+
+// ─── Heritage extraction (Wave 21 Phase 1) ────────────────────────────────────
+
+/** Extract the identifier text from a type_identifier or leading id of generic_type. */
+function resolveIfaceName(ifaceChild: Node): string {
+  if (ifaceChild.type === 'generic_type') {
+    const inner = ifaceChild.namedChildren[0];
+    return inner ? inner.text : ifaceChild.text;
+  }
+  return ifaceChild.text;
+}
+
+/**
+ * Walk class_heritage children and collect extends + implements info.
+ * `class_heritage` is a named child node type on class_declaration (NOT a field name).
+ * Returns `{ implementsArr: undefined, extendsName: null }` when no heritage exists.
+ */
+function extractClassHeritage(node: Node): {
+  implementsArr: string[] | undefined;
+  extendsName: string | null;
+} {
+  const heritage = node.namedChildren.find((c) => c.type === 'class_heritage');
+  if (!heritage) return { implementsArr: undefined, extendsName: null };
+
+  let implementsArr: string[] | undefined;
+  let extendsName: string | null = null;
+
+  for (const clauseChild of heritage.namedChildren) {
+    if (clauseChild.type === 'extends_clause') {
+      const target = clauseChild.namedChildren[0];
+      if (target) extendsName = target.text;
+    } else if (clauseChild.type === 'implements_clause') {
+      implementsArr = clauseChild.namedChildren.map(resolveIfaceName);
+    }
+  }
+  return { implementsArr, extendsName };
 }
 
 interface ArrowDefNodes {

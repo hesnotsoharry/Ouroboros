@@ -13,6 +13,7 @@ import log from '../logger';
 import { mapConcurrent } from './concurrency';
 import type { GraphDatabase } from './graphDatabase';
 import type { GraphEdge, GraphNode } from './graphDatabaseTypes';
+import { emitHeritageEdges } from './indexingPipelineHeritage';
 import {
   buildDefProps,
   buildFileEdges,
@@ -245,6 +246,7 @@ export function definitionPass(
     }
     db.insertNodes(acc.nodes);
     db.insertEdges(acc.edges);
+    emitHeritageEdges(db, projectName, indexedFiles);
     return;
   }
   // Chunked path: Phase 1 across all chunks (nodes), then Phase 2 (edges).
@@ -256,6 +258,8 @@ export function definitionPass(
   for (const chunk of chunks) {
     db.transaction(() => processChunkEdges(db, projectName, chunk));
   }
+  // Wave 21: heritage edges land after Phase 2 so all Class/Interface nodes exist.
+  emitHeritageEdges(db, projectName, indexedFiles);
 }
 
 // ─── Import Pass (Pass 4) ─────────────────────────────────────────────────────

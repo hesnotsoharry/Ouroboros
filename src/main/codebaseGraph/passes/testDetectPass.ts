@@ -8,8 +8,15 @@
  *   1. Name-based: test function name contains the subject function name.
  *   2. Import-based: the test file imports specific functions from the
  *      subject module.
+ *
+ * Performance: The Function+Method symbol index is cached per-project at
+ * module level (FIFO, capped at FUNCTION_INDEX_CACHE_MAX projects). The
+ * cache is invalidated when a changed file's QN prefix intersects the
+ * cached functionsByName keys, or unconditionally on a full reindex
+ * (changedFiles === undefined). Observable via [trace:testDetectPass.cache].
  */
 
+import log from '../../logger';
 import type { GraphDatabase } from '../graphDatabase';
 import type { GraphEdge, GraphNode } from '../graphDatabaseTypes';
 import type { ExtractedDefinition, ExtractedImport } from '../treeSitterTypes';
@@ -18,6 +25,23 @@ import type { IndexedFile } from './passTypes';
 // ─── Test file detection pattern ─────────────────────────────────────────────
 
 const TEST_FILE_PATTERN = /\.(test|spec|_test|_spec)\.[^.]+$/;
+
+// ─── Module-level Function+Method index cache ─────────────────────────────────
+
+interface FunctionIndexEntry {
+  allFunctions: GraphNode[];
+  functionsByName: Map<string, string[]>;
+}
+
+const FUNCTION_INDEX_CACHE_MAX = 10;
+const _functionIndexCache = new Map<string, FunctionIndexEntry>();
+
+function evictOldestIfFull(): void {
+  if (_functionIndexCache.size >= FUNCTION_INDEX_CACHE_MAX) {
+    const oldestKey = _functionIndexCache.keys().next().value;
+    if (oldestKey !== undefined) _functionIndexCache.delete(oldestKey);
+  }
+}
 
 // ─── Test context types ───────────────────────────────────────────────────────
 
@@ -102,6 +126,42 @@ function buildFunctionsByName(allFunctions: GraphNode[]): Map<string, string[]> 
   return functionsByName;
 }
 
+// ─── Cache invalidation check ─────────────────────────────────────────────────
+
+type InvalidationReason = 'cold' | 'full' | 'invalidated' | null;
+
+function qnIntersectsPrefix(
+  functionsByName: Map<string, string[]>,
+  fileQnPrefix: string,
+): boolean {
+  const prefixDot = `${fileQnPrefix}.`;
+  for (const qns of functionsByName.values()) {
+    for (const qn of qns) {
+      if (qn === fileQnPrefix || qn.startsWith(prefixDot)) return true;
+    }
+  }
+  return false;
+}
+
+function computeInvalidationReason(
+  entry: FunctionIndexEntry | undefined,
+  changedFiles: Set<string> | undefined,
+  projectName: string,
+): InvalidationReason {
+  if (!entry) return 'cold';
+  // Full reindex: changedFiles === undefined means caller wants unconditional rebuild.
+  if (changedFiles === undefined) return 'full';
+  // Empty changeset: existing entry is valid — cache hit.
+  if (changedFiles.size === 0) return null;
+  // Per-file QN-prefix intersection check.
+  for (const relativePath of changedFiles) {
+    const fileQnPrefix =
+      `${projectName}.${relativePath.replace(/\//g, '.').replace(/\.[^.]+$/, '')}`;
+    if (qnIntersectsPrefix(entry.functionsByName, fileQnPrefix)) return 'invalidated';
+  }
+  return null;
+}
+
 // ─── Process a single test file ───────────────────────────────────────────────
 
 function processTestFile(
@@ -138,11 +198,33 @@ export function testDetectPass(
   db: GraphDatabase,
   projectName: string,
   indexedFiles: IndexedFile[],
+  changedFiles?: Set<string>,
 ): void {
-  const allFunctions = db
-    .getNodesByLabel(projectName, 'Function')
-    .concat(db.getNodesByLabel(projectName, 'Method'));
-  const functionsByName = buildFunctionsByName(allFunctions);
+  const startMs = Date.now();
+  let cacheStatus: 'hit' | 'miss-cold' | 'miss-full' | 'miss-invalidated' = 'hit';
+
+  let entry = _functionIndexCache.get(projectName);
+  const reason = computeInvalidationReason(entry, changedFiles, projectName);
+
+  if (reason !== null) {
+    cacheStatus =
+      reason === 'cold' ? 'miss-cold' :
+      reason === 'full' ? 'miss-full' :
+      'miss-invalidated';
+    evictOldestIfFull();
+    const allFunctions = db
+      .getNodesByLabel(projectName, 'Function')
+      .concat(db.getNodesByLabel(projectName, 'Method'));
+    const functionsByName = buildFunctionsByName(allFunctions);
+    entry = { allFunctions, functionsByName };
+    _functionIndexCache.set(projectName, entry);
+  }
+
+  // entry is guaranteed non-null at this point: either it existed (null reason)
+  // or we just populated it above (non-null reason).
+  const { allFunctions, functionsByName } = entry!;
+  const durationMs = Date.now() - startMs;
+  log.info('[trace:testDetectPass.cache]', { projectName, status: cacheStatus, durationMs });
 
   const allEdges = indexedFiles.flatMap((file) =>
     processTestFile(file, allFunctions, projectName, functionsByName),
@@ -157,3 +239,7 @@ export function testDetectPass(
   });
   if (unique.length > 0) db.insertEdges(unique);
 }
+
+// ─── Test-only export for cache inspection ────────────────────────────────────
+
+export { _functionIndexCache };
