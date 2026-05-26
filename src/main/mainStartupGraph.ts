@@ -84,7 +84,14 @@ async function runInitialIndex(args: InitialIndexArgs): Promise<void> {
     onProgress: buildProgressHandler(projectName),
   });
   if (result.success) {
-    db.writeCatalogHash(projectName);
+    // Fix C: if any core pass threw (partial index), invalidate the catalog hash so the
+    // next startup triggers a clean full rebuild rather than accepting a partial index.
+    if ((result.passErrors ?? 0) > 0) {
+      db.invalidateCatalogHash(projectName);
+      log.warn('[system2] partial index detected (%d pass errors); catalog hash invalidated for next rebuild', result.passErrors);
+    } else {
+      db.writeCatalogHash(projectName);
+    }
     sendIndexProgress({
       kind: 'complete',
       projectName,

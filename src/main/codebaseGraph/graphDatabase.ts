@@ -33,6 +33,7 @@ import { migrateToV1, migrateToV2 } from './graphDatabaseMigrations';
 import { SCHEMA_VERSION } from './graphDatabaseSchema';
 import {
   detectChangesForSession,
+  invalidateCatalogHash,
   pruneProject,
   verifyCatalogHash,
   writeCatalogHash,
@@ -119,9 +120,7 @@ export class GraphDatabase {
   }
 
   getProjectLastOpened(name: string): number | null {
-    const row = this.db.prepare('SELECT last_opened_at FROM projects WHERE name = ?').get(name) as
-      | { last_opened_at: number }
-      | undefined;
+    const row = this.db.prepare('SELECT last_opened_at FROM projects WHERE name = ?').get(name) as { last_opened_at: number } | undefined;
     return row ? row.last_opened_at : null;
   }
 
@@ -251,9 +250,7 @@ export class GraphDatabase {
   }
 
   getAllFileHashes(project: string): FileHashRecord[] {
-    return (this.stmts.getAllFileHashes.all(project) as Record<string, unknown>[]).map(
-      rowToFileHash,
-    );
+    return (this.stmts.getAllFileHashes.all(project) as Record<string, unknown>[]).map(rowToFileHash);
   }
 
   deleteFileHashes(project: string): void {
@@ -374,6 +371,10 @@ export class GraphDatabase {
 
   writeCatalogHash(projectName: string): void {
     writeCatalogHash(this.db, projectName);
+  }
+
+  invalidateCatalogHash(projectName: string): void {
+    invalidateCatalogHash(this.db, projectName);
   }
 
   verifyCatalogHash(projectName: string): boolean {

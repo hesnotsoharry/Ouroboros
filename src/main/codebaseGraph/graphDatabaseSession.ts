@@ -113,6 +113,18 @@ export function writeCatalogHash(db: Database.Database, projectName: string): vo
   );
 }
 
+/**
+ * Invalidate the stored catalog hash for the given project by writing an empty string.
+ * `verifyCatalogHash` will return false on next call, triggering a clean rebuild.
+ * Use when a pass threw during indexing so a partial index is not accepted as complete.
+ */
+export function invalidateCatalogHash(db: Database.Database, projectName: string): void {
+  db.prepare('INSERT OR REPLACE INTO graph_metadata (key, value) VALUES (?, ?)').run(
+    `catalog_hash:${projectName}`,
+    '',
+  );
+}
+
 /** Verify the stored catalog hash matches the current file-hash state. Returns true if valid. */
 export function verifyCatalogHash(db: Database.Database, projectName: string): boolean {
   const row = db

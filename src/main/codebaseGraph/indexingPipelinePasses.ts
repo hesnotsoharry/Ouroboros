@@ -190,20 +190,41 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 
 // ─── Definition Pass (Pass 3, continued) ─────────────────────────────────────
 
-function processDefinitionChunk(
-  db: GraphDatabase,
-  projectName: string,
-  files: IndexedFile[],
-): void {
+/**
+ * Pure accumulator: walks parse results for a chunk and returns nodes+edges.
+ * No DB access — callers decide what to flush and when.
+ */
+function collectChunkAccumulator(projectName: string, files: IndexedFile[]): NodeAccumulator {
   const acc: NodeAccumulator = { nodes: [], edges: [], projectName };
   for (const file of files) {
     if (!file.parsed) continue;
     const fileQn = `${projectName}.${file.relativePath.replace(/\//g, '.').replace(/\.[^.]+$/, '')}`;
-    updateFileProps(db, fileQn, file);
     collectDefinitions(file, fileQn, acc);
     addRouteNodes(file, fileQn, acc);
   }
+  return acc;
+}
+
+/**
+ * Phase 1 of a chunk: insert nodes + update file props.
+ * Must run before phase 2 so all FK targets exist.
+ */
+function processChunkNodes(db: GraphDatabase, projectName: string, files: IndexedFile[]): void {
+  const acc = collectChunkAccumulator(projectName, files);
+  for (const file of files) {
+    if (!file.parsed) continue;
+    const fileQn = `${projectName}.${file.relativePath.replace(/\//g, '.').replace(/\.[^.]+$/, '')}`;
+    updateFileProps(db, fileQn, file);
+  }
   db.insertNodes(acc.nodes);
+}
+
+/**
+ * Phase 2 of a chunk: insert edges only.
+ * All node FKs are satisfied because phase 1 ran across ALL chunks first.
+ */
+function processChunkEdges(db: GraphDatabase, projectName: string, files: IndexedFile[]): void {
+  const acc = collectChunkAccumulator(projectName, files);
   db.insertEdges(acc.edges);
 }
 
@@ -215,11 +236,25 @@ export function definitionPass(
 ): void {
   const size = options?.chunkSize;
   if (!size) {
-    processDefinitionChunk(db, projectName, indexedFiles);
+    // Single-chunk (non-chunked) path: nodes first, then edges — same two-phase guarantee.
+    const acc = collectChunkAccumulator(projectName, indexedFiles);
+    for (const file of indexedFiles) {
+      if (!file.parsed) continue;
+      const fileQn = `${projectName}.${file.relativePath.replace(/\//g, '.').replace(/\.[^.]+$/, '')}`;
+      updateFileProps(db, fileQn, file);
+    }
+    db.insertNodes(acc.nodes);
+    db.insertEdges(acc.edges);
     return;
   }
-  for (const chunk of chunkArray(indexedFiles, size)) {
-    db.transaction(() => processDefinitionChunk(db, projectName, chunk));
+  // Chunked path: Phase 1 across all chunks (nodes), then Phase 2 (edges).
+  // chunkArray is called ONCE so both phases iterate the same chunk boundaries.
+  const chunks = chunkArray(indexedFiles, size);
+  for (const chunk of chunks) {
+    db.transaction(() => processChunkNodes(db, projectName, chunk));
+  }
+  for (const chunk of chunks) {
+    db.transaction(() => processChunkEdges(db, projectName, chunk));
   }
 }
 

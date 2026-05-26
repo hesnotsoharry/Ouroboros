@@ -76,12 +76,14 @@ export class IndexingPipeline {
     phase: string,
     thunk: () => void,
     report: (p: string) => void,
+    errorCounter?: { count: number },
   ): Promise<void> {
     report(phase);
     try {
       thunk();
     } catch (err) {
       log.warn('[pipeline] pass=%s threw, isolating: %s', phase, err instanceof Error ? err.message : String(err));
+      if (errorCounter) errorCounter.count++;
     }
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
@@ -101,6 +103,7 @@ export class IndexingPipeline {
     ctx: { projectName: string; projectRoot: string; indexedFiles: IndexedFile[]; structureFiles: DiscoveredFile[] },
     report: (p: string) => void,
     timings: Record<string, number>,
+    errorCounter: { count: number },
   ): Promise<void> {
     const { projectName, projectRoot, indexedFiles, structureFiles } = ctx;
     const CHUNK = 500;
@@ -111,17 +114,17 @@ export class IndexingPipeline {
     );
     await this.withTiming(
       'definitions',
-      () => this.runChunkedPass('definitions', () => definitionPass(this.db, projectName, indexedFiles, { chunkSize: CHUNK }), report),
+      () => this.runChunkedPass('definitions', () => definitionPass(this.db, projectName, indexedFiles, { chunkSize: CHUNK }), report, errorCounter),
       timings,
     );
     await this.withTiming(
       'imports',
-      () => this.runChunkedPass('imports', () => importPass(this.db, projectName, indexedFiles, { allFiles: structureFiles, chunkSize: CHUNK }), report),
+      () => this.runChunkedPass('imports', () => importPass(this.db, projectName, indexedFiles, { allFiles: structureFiles, chunkSize: CHUNK }), report, errorCounter),
       timings,
     );
     await this.withTiming(
       'calls',
-      () => this.runChunkedPass('calls', () => callResolutionPass(this.db, projectName, indexedFiles, { chunkSize: CHUNK }), report),
+      () => this.runChunkedPass('calls', () => callResolutionPass(this.db, projectName, indexedFiles, { chunkSize: CHUNK }), report, errorCounter),
       timings,
     );
   }
@@ -155,12 +158,12 @@ export class IndexingPipeline {
   }
 
   private async runAllPasses(
-    ctx: { projectName: string; projectRoot: string },
+    ctx: { projectName: string; projectRoot: string; errCount: { count: number } },
     indexedFiles: IndexedFile[],
     structureFiles: DiscoveredFile[],
     report: (phase: string) => void,
   ): Promise<Record<string, number>> {
-    const { projectName, projectRoot } = ctx;
+    const { projectName, projectRoot, errCount } = ctx;
     const timings: Record<string, number> = {};
 
     // Pre-fetch async data before entering synchronous SQLite transactions.
@@ -169,7 +172,7 @@ export class IndexingPipeline {
     const gitCommitFiles = await prefetchGitCoChangeData(projectRoot);
     Object.assign(timings, { git_prefetch: performance.now() - gitStart });
 
-    await this.runCorePasses({ projectName, projectRoot, indexedFiles, structureFiles }, report, timings);
+    await this.runCorePasses({ projectName, projectRoot, indexedFiles, structureFiles }, report, timings, errCount);
     await this.runEnrichmentPasses({ projectName, indexedFiles, gitCommitFiles }, report, timings);
     return timings;
   }
@@ -250,17 +253,13 @@ export class IndexingPipeline {
       report('parsing');
     });
     const structureFiles = isIncrementalRun ? filesToProcess : allFiles;
-    const phaseTimingsMs = await this.runAllPasses(
-      { projectName, projectRoot: options.projectRoot },
-      indexedFiles,
-      structureFiles,
-      report,
-    );
+    const errCount = { count: 0 };
+    const phaseTimingsMs = await this.runAllPasses({ projectName, projectRoot: options.projectRoot, errCount }, indexedFiles, structureFiles, report);
     report('finalizing');
     const { nodesCreated, edgesCreated } = this.finalizeIndex(projectName, options, indexedFiles);
     return buildIndexResult({
       db: this.db, projectName, allFiles, filesToProcess, indexedFiles,
-      nodesCreated, edgesCreated, phaseTimingsMs, progress, isIncrementalRun, startTime,
+      nodesCreated, edgesCreated, phaseTimingsMs, passErrors: errCount.count, progress, isIncrementalRun, startTime,
     });
   }
 

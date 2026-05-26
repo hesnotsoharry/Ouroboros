@@ -205,12 +205,17 @@ export function callResolutionPass(
   const classIds = new Set(db.getNodesByLabel(projectName, 'Class').map((n) => n.id));
   const fileImportMap = buildFileImportMap(indexedFiles, projectName, symbolsByName);
   const callCtx: CallResolutionContext = { projectName, symbolsByName, fileImportMap, classIds };
+  // Safety net: build a Set of all valid node IDs from symbolsByName.
+  // Filters out edges whose source or target was dropped by a failed definition chunk.
+  const validNodeIds = new Set<string>([...symbolsByName.values()].flat());
+  const filterEdges = (edges: Omit<GraphEdge, 'id'>[]): Omit<GraphEdge, 'id'>[] =>
+    edges.filter((e) => validNodeIds.has(e.source_id) && validNodeIds.has(e.target_id));
   const size = options?.chunkSize;
   if (!size) {
-    db.insertEdges(resolveChunkEdges(indexedFiles, callCtx));
+    db.insertEdges(filterEdges(resolveChunkEdges(indexedFiles, callCtx)));
     return;
   }
   for (const chunk of chunkArray(indexedFiles, size)) {
-    db.transaction(() => db.insertEdges(resolveChunkEdges(chunk, callCtx)));
+    db.transaction(() => db.insertEdges(filterEdges(resolveChunkEdges(chunk, callCtx))));
   }
 }

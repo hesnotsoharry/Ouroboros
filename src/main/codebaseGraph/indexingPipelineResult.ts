@@ -22,6 +22,7 @@ export interface IndexResultOpts {
   nodesCreated: number;
   edgesCreated: number;
   phaseTimingsMs: Record<string, number>;
+  passErrors: number;
   progress: IndexingProgress;
   isIncrementalRun: boolean;
   startTime: number;
@@ -44,6 +45,7 @@ export function buildIndexResult(opts: IndexResultOpts): IndexingResult {
     durationMs: Date.now() - opts.startTime,
     incremental: opts.isIncrementalRun,
     phaseTimingsMs: opts.phaseTimingsMs,
+    passErrors: opts.passErrors,
     parseAnomalies,
   };
 }

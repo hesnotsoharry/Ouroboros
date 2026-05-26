@@ -54,6 +54,7 @@ export interface IndexingResult {
   incremental: boolean; // Was this an incremental reindex?
   phaseTimingsMs?: Record<string, number>; // per-pass wall-clock time (ms)
   parseAnomalies?: ParseAnomalyResult; // Files with zero definitions (regression detection)
+  passErrors?: number; // Count of passes that threw during core indexing (Fix C: catalog integrity)
 }
 
 // ─── Discovered file (from directory walk) ────────────────────────────────────
