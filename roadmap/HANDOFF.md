@@ -1,6 +1,67 @@
-# Session Handoff — 2026-05-26 (Wave 18 SHIPPED-VERIFIED; Wave 19 PLANNED — execute in a fresh session)
+# Session Handoff — 2026-05-26 (Wave 19 SHIPPED-PENDING-SMOKE)
 
-**Audience:** the next Claude Code session — this is YOUR entry point. Cole started this fresh session intentionally to execute Wave 19. Read this entry + `roadmap/wave-19-renderer-bundle-and-fk-fixes/waveplan-19.md` + the 2 bug docs in `roadmap/bugs/2026-05-26-*.md`, then proceed with Phase 2 (renderer bundle implementer) + Phase 3a (FK architect) in parallel.
+**Audience:** the next Claude Code session — this is YOUR entry point. Wave 19 (Renderer bundle React.lazy + FK constraint fix) is shipped locally on master + worktree removed. Cole runs the smoke checklist at `roadmap/wave-19-renderer-bundle-and-fk-fixes/wave-19-result.md` on the next interactive session to flip status SHIPPED-PENDING-SMOKE → SHIPPED-VERIFIED. No active wave in flight.
+
+---
+
+## 🔼 UPDATE 2026-05-26 (latest) — Wave 19 SHIPPED-PENDING-SMOKE
+
+**Next action: Cole runs the smoke checklist at `roadmap/wave-19-renderer-bundle-and-fk-fixes/wave-19-result.md`.** Three surfaces to verify:
+1. Renderer bundle cold-cache: delete `%APPDATA%\ouroboros\Partitions\shared\`, run `npm run dev`, check `renderer-bundle-loaded` is <15s (was 26s).
+2. Renderer bundle warm-cache: re-boot, check `renderer-bundle-loaded` is <5s.
+3. FK violations on cold index: switch to a large project, watch dev console for `[pipeline] pass=definitions threw, isolating: FOREIGN KEY` lines (target: 0 occurrences).
+
+**Wave 19 — SHIPPED locally on master via merge-from-worktree. 4 commits + wave wrap.** Closes 2 outstanding issues from Wave 18's verification trace:
+
+### Finding A — Renderer bundle React.lazy refactor
+
+`MonacoEditorHost` + `MonacoDiffEditor` + `PdfViewer` → `React.lazy()` with `Suspense`. Monaco re-exports stripped from `FileViewer/index.ts` barrel. Reused existing `Layout/LazyPanelFallback`. Expected cold-cache renderer-bundle-loaded drop: 12-16s.
+
+### Finding B — FK constraint two-phase fix + safety net + catalog invalidation
+
+Three-fix combination per architect plan (`wave-19-architect-fk-fix.md`):
+- **Option 1 (core):** Two-phase split in `definitionPass` — all chunks insert nodes first, then all chunks insert edges. `chunkArray()` called once, reused.
+- **Option 6 (safety net):** `callResolutionPass` Set-filter using existing `symbolsByName`, checks BOTH `source_id` and `target_id`.
+- **Option 7 (catalog integrity):** `errorCounter` plumbed through `runChunkedPass` → `IndexingResult.passErrors`; `mainStartupGraph` calls new `db.invalidateCatalogHash` when `passErrors > 0` to prevent partial-index acceptance.
+
+**Architect surfaced load-bearing diagnostic correction:** DEFINES_METHOD is NOT the primary FK violator (`classQn = ${fileQn}.${def.receiver}` always same-file). **HANDLES edges (route file A → handler file B, different chunks) are the production trigger.** Regression test uses `chunkSize: 1` to reproduce HANDLES correctly.
+
+### Wave 19's notable patterns + lessons
+
+1. **Architect-as-diagnostic-correction step paid off for the third wave running.** Wave 17 (1B `runPass` citation), Wave 18 (1C multi-window misattribution), Wave 19 (DEFINES_METHOD vs HANDLES framing). Architect re-verification before implementer dispatch is the catch layer for the diagnostic-citation-rot class. **Make it a non-optional step for any diagnostic-driven fix.**
+
+2. **Parallel dispatch on truly disjoint surfaces is cheap and clean.** Phase 2 (renderer) ran concurrently with Phase 3a (main-process architect). Phase 3b launched as soon as 3a returned while Phase 2 was still in flight. Total wall-clock ≈ 35 min vs ~50+ sequential.
+
+3. **Lockfile drift from `npm install` in worktree.** Fresh worktree `npm install` bumped `package-lock.json`'s `"version"` 2.17→2.20 to match package.json. Would be blocked by the `lockfile:sync` pre-push hook. **Reverted via `git checkout -- package-lock.json` before commits.** Worth a vendor-gotchas entry: when creating a worktree, expect this drift and revert before committing.
+
+4. **Haiku-wrong-checkout pattern did NOT recur.** Both implementers Sonnet-tier; both honored worktree paths cleanly. Pattern remains Haiku-specific.
+
+5. **`test:main` surfaced a pre-existing failure** — `channelCatalogCoverage.test.ts` missing `persist:shared` (Wave 18 W2 carry-over) + `app:getCrashLogCount`. Verified against master with stash; NOT a Wave 19 regression. **Wave 18's "test:main PASS" claim was either an excluded run or a missed failure.** Filed as LOW follow-up.
+
+### Wave 19 follow-ups GENERATED
+
+- `roadmap/follow-ups/2026-05-26-channel-catalog-missing-persist-shared-and-crash-log-count.md` (LOW) — pre-existing test failure; fix is ~10-20 LOC for next fix-sweep.
+
+### Wave 18 follow-ups STILL OPEN (not closed by Wave 19)
+
+- `roadmap/follow-ups/2026-05-26-approval-wait-double-fire-instrument.md` (LOW, W7) — unrelated surface
+- `meta/roadmap/follow-ups/2026-05-26-haiku-implementer-wrong-checkout-target.md` (MED) — did NOT recur; signal not stale but no new evidence either way
+
+### Wave 19 NOT done / deferrals
+
+1. **Live smoke trace — DEFERRED to Cole.** Checklist at `wave-19-result.md`.
+2. **Full `npm test` — DEFERRED.** Scoped runs covered Wave 19's surface. The pre-existing channel-catalog failure would persist regardless.
+3. **`/audit-followups wave-19` — PENDING.** Carry over from Wave 17/18; can run at session start as paranoid sanity.
+4. **Stryker (Check 6) — DEFERRED.** Standing pre-merge; Wave 19 didn't worsen the surface.
+5. **Tag + CHANGELOG bump — PENDING Cole's call.** Current v2.20.0. Patch (v2.20.1) for perf-fix wave OR minor (v2.21.0) for noticeable cold-boot UX improvement. Cole picks.
+6. **Push to remote** — auto per standing autonomy, post-merge.
+
+### Operational pre-flight for Wave 20's session
+
+- Master at the Wave 19 wrap commit. Origin will match after push.
+- `src/renderer/generated/changelog.ts` is generated locally via `node tools/build-changelog.js` — pre-push hook requires it. If you re-create a worktree from a fresh master clone, you'll need to regenerate this before push.
+- **Vendor-gotcha to remember (not yet promoted to file):** `npm install` in a fresh worktree bumps `package-lock.json` version field to match package.json. The `lockfile:sync` pre-push hook will block it. Revert with `git checkout -- package-lock.json` before committing.
+- `npm install` in any worktree takes ~2 min — run as background early.
 
 ---
 

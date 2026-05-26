@@ -1,5 +1,5 @@
 ---
-status: PLANNED
+status: SHIPPED-PENDING-SMOKE
 created: 2026-05-26
 updated: 2026-05-26
 type: bug-fix-sweep
@@ -11,7 +11,7 @@ severity: HIGH
 
 ## Status
 
-PLANNED. Diagnostics already complete in `roadmap/bugs/`:
+SHIPPED-PENDING-SMOKE — see `wave-19-result.md` for full wrap. Architect plan + ADR finalized; both fixes implemented + scoped gates green. Diagnostics already complete in `roadmap/bugs/`:
 - `2026-05-26-single-window-renderer-bundle-19s.md`
 - `2026-05-26-fk-constraint-failures-on-cold-index.md`
 
