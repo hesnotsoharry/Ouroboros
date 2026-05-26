@@ -1,7 +1,7 @@
 ---
-status: OPEN
+status: WONTFIX
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 wave: 16-p10-hotfix
 ---
 
@@ -42,3 +42,7 @@ reclaimed on app-quit regardless.
 - `src/main/codebaseGraph/indexingWorkerClient.ts` — `dispose()` implementation
 - `src/main/codebaseGraph/graphControllerCompatRegistry.ts` — `releaseGraphController`
 - `src/main/mainStartupGraph.ts` — `disposeCodebaseGraph` (app-quit path)
+
+## Resolution (2026-05-26, wave-17)
+
+Closed WONTFIX: IndexingWorkerClient is correctly a module-level singleton (cross-window lifetime, working-as-intended). See `roadmap/wave-17-editor-cascade-perf/wave-17-followup-audit.md` and `wave-17-diagnostic-save-cascade.md` Section 6 for full citation.

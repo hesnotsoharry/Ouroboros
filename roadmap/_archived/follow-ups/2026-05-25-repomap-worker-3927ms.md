@@ -1,7 +1,7 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 priority: MED
 ---
 
@@ -61,3 +61,7 @@ worth diagnosing but not in scope.
 - Boot trace timestamp: 2026-05-25 19:06:35–19:06:39
 - Files: `src/main/codebaseGraph/`, `src/main/contextLayer/`
 - Codebase-graph CLAUDE.md at `src/main/codebaseGraph/CLAUDE.md` if it exists
+
+## Resolution (2026-05-26, wave-17)
+
+See `roadmap/wave-17-editor-cascade-perf/wave-17-followup-audit.md` for full citation. Closed as RESOLVED by Wave 17 wrap audit.

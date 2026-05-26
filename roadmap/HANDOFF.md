@@ -1,10 +1,65 @@
-# Session Handoff — 2026-05-25 (Wave 16 SHIPPED-VERIFIED; Wave 17 PLANNED)
+# Session Handoff — 2026-05-25 (Wave 17 SHIPPED-PENDING-SMOKE)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-25 (latest) — Wave 16 SHIPPED-VERIFIED; Wave 17 ready to start
+## 🔼 UPDATE 2026-05-25 (latest) — Wave 17 SHIPPED-PENDING-SMOKE (editor cascade perf)
+
+**Next action: Cole runs `roadmap/wave-17-editor-cascade-perf/wave-17-smoke-report.md` on the next interactive session.** The wave shipped autonomously; the live smoke gate (capture 6 trace-line scenarios in a real IDE session) was deferred to Cole because the orchestrator can't drive the IDE interactively. If all 6 scenarios pass: flip status `SHIPPED-PENDING-SMOKE` → `SHIPPED-VERIFIED`. If any fail: dispatch a follow-up diagnostician.
+
+**Wave 17 — SHIPPED locally on master via merge-from-worktree. 5 wave commits.** Editor cascade perf wave. Eliminated the 9–13s active-editing jank that surfaced after Wave 16 shipped.
+
+The 5 wave commits (now on master):
+- `f5ae0b48` — docs(wave-17): Phase 1 diagnostic landed; revise plan
+- `b449df2d` — perf(wave-17): eliminate O(N) catalog scan on incremental reindex (Phase 2)
+- `3659c3a1` — docs(wave-17): Phase 3 diagnostic — config:set is timer-artifact
+- `f989ba3a` — test(wave-17): cover Phase 2 fast-path + new exports (Phase 2.5 review-feedback)
+- (wave wrap commit pending)
+
+**Root cause:** `filterChangedFiles()` ran O(N_all_files) stat+hash catalog scan on every incremental reindex — including no-op saves where 0 files changed. The 9075ms no-op reindex was this scan. Fix: (1) early-exit fast-path when `changed.length === 0` → drops no-op cost from 9075ms to <100ms; (2) watcher hint paths threaded through worker protocol so single-file saves classify only their specific paths.
+
+**The `config:set` 1-4s slow-handler line was the same `patchIpcMainHandle` timer-artifact pattern as `files:saveFile` (Wave 16 Lesson 2 recurring).** Handler does ~8-15ms of real work; the 3983ms is event-loop stall from the save cascade. Phase 4 (`config:set` fix) collapsed entirely — Phase 2's save-cascade fix eliminates the jank source.
+
+**5 new instrumentation trace lines** kept as forward observability: `[trace:workerClient.runIndex]`, `[trace:filterChangedFiles]`, `[trace:pipeline.resolve]`, `[trace:contextLayer.buildRepoIndex]`, `[trace:autoSync.triggerReindex]`. The smoke report's scenarios verify these fire as expected.
+
+**Wave 17's notable patterns + lessons (carry forward):**
+
+1. **`patchIpcMainHandle` timer-artifact pattern is the leading false-positive perf signal.** Wave 16 Lesson 2 (the shared-Promise N-awaiters case) recurred TWICE in Wave 17 — once for `files:saveFile` (12.9s of timer artifact, ~5ms of real work) and once for `config:set` (1-4s of timer artifact, ~8-15ms of real work). **Pattern:** when a slow-handler line fires alongside a jank event, treat the handler as suspect UNTIL the handler body is read. If the handler is short + async, the slow-handler line is almost certainly an artifact. The real signal is the jank event itself.
+2. **Diagnose-first discipline pays.** Phase 1's diagnostician demolished 4 of 6 plan hypotheses and named a code-cited root cause; collapsed Phase 4 entirely. Without it, Wave 17 would have shipped 2-3 phases of misguided fix attempts based on log timing alone.
+3. **Parallel B1 dispatch on disjoint surfaces.** Phase 2 (codebaseGraph + contextLayer) ran concurrently with Phase 3 (config*) — saved ~10 min wall-clock. Repeat when surfaces are clearly orthogonal.
+4. **Verify long-PLANNED follow-ups against codebase before scope grounding.** The architect plan `2026-05-17-move-generateRepoMap-to-worker-plan.md` (PLANNED status for ~10 days) was ALREADY SHIPPED — Phase 1 surfaced this by reading the code. If we'd assumed PLANNED meant unimplemented, Phase 2 would have re-built something that already exists.
+5. **Phase-reviewer caught a real test gap.** Reviewer FLAG (non-blocking) on missing tests for the new exports — diagnostic had named tests as "the key gate" but Phase 2 implementer skipped them. Phase 2.5 `haiku-test-author` dispatch landed 16 new tests; all green. Reviewer is doing the job it's designed for.
+6. **Pre-commit prettier hook is good discipline.** Fired once during the test commit (test-author hadn't run prettier); one-line `npx prettier --write` to fix. Standard friction.
+
+**Wave 17 follow-ups GENERATED at wrap (filed in `roadmap/follow-ups/`):**
+
+- `2026-05-25-resolve-incremental-files-delete-race.md` (LOW) — `pruneDeleted` skipped on Phase 2's fast-path leaves stale `file_hash` records for the deleted-and-no-other-changes case. Narrow race.
+- `2026-05-25-config-set-double-disk-io.md` (LOW) — `config:set` does ~4ms write + ~4ms readback per call (Phase 3 secondary finding). Not on critical path.
+
+**Wave 17 follow-ups CLOSED by this wave (audit pending — `wave-17-followup-audit.md` to write):**
+
+- `2026-05-25-config-set-slow-handler.md` (MED) — RESOLVED-via-no-fix-needed (Phase 3 verdict)
+- `2026-05-25-repomap-worker-3927ms.md` (MED) — RESOLVED-indirect (Phase 2's fix eliminates the WAL contention)
+- `2026-05-25-indexing-worker-not-disposed-on-window-close.md` (LOW) — WONTFIX (singleton, working-as-intended)
+- `2026-05-17-move-generateRepoMap-to-worker-plan.md` (PLANNED) — RESOLVED (already shipped)
+
+**Wave 17 NOT done / deferrals:**
+
+1. **Live smoke trace — DEFERRED to Cole.** Checklist at `wave-17-smoke-report.md`. Run on next interactive session.
+2. **Full `npm test` — DEFERRED.** Scoped runs (`test:codebasegraph` 693 passed, `vitest run src/main/contextLayer` 339 passed) covered Wave 17's surface. Full ~17 min suite will run at next push if CI minutes are back.
+3. **Stryker mutation (Check 6) — DEFERRED.** Standing pre-merge task; Wave 17 didn't worsen the surface.
+4. **Tag + CHANGELOG bump — DEFERRED.** Current version 2.20.0; this is a patch-level perf wave → 2.20.1 is the obvious bump. Holding for Cole's call on whether to ship 2.20.1 or roll into the next minor.
+5. **Push to origin — DEFERRED but ready.** Wave-17 commits merged to local master + worktree removed per Cole's standing directive. CI minutes still 0 until 2026-06-01; workflows skip cleanly; push is safe.
+
+**Wave 16 carry-overs from the previous entry (still pending):**
+
+- `/audit-followups wave-16` was deferred at Wave 16 wrap; Wave 17 hasn't run it either. Worth a session-start sweep.
+- Wave 16's 4 OPEN follow-ups (`config-set-slow-handler`, `repomap-worker-3927ms`, `indexing-worker-lifecycle`, `extensionStoreHelpers-over-cap`, `codex-usage-pre-warm-poller`, `gpu-process-crash-d3d11`) — first three folded into Wave 17 (expected RESOLVED via `wave-17-followup-audit.md`); the latter three remain ACTIVE.
+
+---
+
+## 🔼 UPDATE 2026-05-25 (superseded) — Wave 16 SHIPPED-VERIFIED; Wave 17 ready to start
 
 **Next action: read `roadmap/wave-17-editor-cascade-perf/waveplan-17.md` and confirm scope with Cole before dispatching Phase 1's `sonnet-diagnostician`.** Wave 17 is PLANNED, not IN-PROGRESS. Worktree isolation is locked upfront (touches hot paths — file save, indexer, config). Test shape is honeycomb (cross-layer integration boundaries).
 

@@ -1,7 +1,7 @@
 ---
-status: PLANNED
+status: RESOLVED
 created: 2026-05-17
-updated: 2026-05-17
+updated: 2026-05-26
 ---
 
 # B3b Architecture Plan — Move `generateRepoMap` to a Worker Thread
@@ -193,3 +193,7 @@ After Phase 3: start app cold, open Agent IDE workspace, wait for `[system2] ini
 Option (b) bypasses `forceRebuild()` at the trigger site and calls a cache-update method on the controller directly — more surgical but creates coupling between the trigger and the controller's internals.
 
 Default to (a) if no preference; surfacing because it determines the file-touch surface and the controller's exposed API.
+
+## Resolution (2026-05-26, wave-17)
+
+See `roadmap/wave-17-editor-cascade-perf/wave-17-followup-audit.md` for full citation. Closed as RESOLVED by Wave 17 wrap audit.

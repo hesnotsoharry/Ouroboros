@@ -1,7 +1,7 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 priority: MED
 ---
 
@@ -55,3 +55,7 @@ shape is unknown — needs diagnosis before fix.
 
 - Boot trace timestamp: 2026-05-25 19:06:38–19:06:44
 - Files probably involved: `src/main/config.ts`, `src/main/configSchema*.ts`
+
+## Resolution (2026-05-26, wave-17)
+
+See `roadmap/wave-17-editor-cascade-perf/wave-17-followup-audit.md` for full citation. Closed as RESOLVED by Wave 17 wrap audit.
