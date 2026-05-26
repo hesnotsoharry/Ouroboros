@@ -26,6 +26,10 @@ export interface ExtractedDefinition {
   decorators: string[];
   receiver: string | null; // For methods: the class name
   constants: string[]; // For modules: exported constants
+  // Wave 21 Phase 1 — class_heritage fields (TS/TSX only; undefined for non-Class kinds)
+  // `implements` is legal as an interface field name in TypeScript (reserved only as a statement keyword).
+  implements?: string[]; // identifier names from implements_clause
+  extendsClause?: string | null; // single identifier from extends_clause; null for Class kinds with no extends clause; undefined for non-Class kinds
 }
 
 export interface ExtractedImport {
