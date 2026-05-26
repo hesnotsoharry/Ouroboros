@@ -274,7 +274,7 @@ function patchIpcMainHandle(): void {
 export function registerIpcHandlers(win: BrowserWindow): () => void {
   if (handlersRegistered) {
     return () => {
-      /* no-op — handled globally */
+      /* no-op — global IPC teardown runs on app quit via performWillQuitShutdown */
     };
   }
 
@@ -288,8 +288,14 @@ export function registerIpcHandlers(win: BrowserWindow): () => void {
   startApprovalManagerCleanup();
   markStartup('ipc-ready');
 
+  // Return a no-op — global IPC handler teardown (ipcMain.removeHandler for all
+  // channels, LSP shutdown, embedding store close, etc.) is app-lifetime work
+  // that must only run on app quit. It is already wired in mainShutdown.ts
+  // via performWillQuitShutdown → cleanupIpcHandlers(). Firing it on per-window
+  // close caused Bug 16-P5-B2: when the first-created window closed its cleanup
+  // closure, every other window lost its IPC handlers.
   return () => {
-    void cleanupIpcHandlers();
+    /* no-op — global teardown handled by performWillQuitShutdown */
   };
 }
 

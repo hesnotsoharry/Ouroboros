@@ -14,25 +14,17 @@ import {
 } from './ptyEnv';
 import {
   getCwdViaPtyHost,
-  getProxySession,
   getShellStateViaPtyHost,
-  killAllViaPtyHost,
-  killForWindowViaPtyHost,
   killViaPtyHost,
   listSessionsViaPtyHost,
   resizeViaPtyHost,
   spawnViaPtyHost,
   writeViaPtyHost,
 } from './ptyHost/ptyHostProxy';
-import { startRecordingViaPtyHost, stopRecordingViaPtyHost } from './ptyHost/ptyHostProxyRecording';
 import { terminalOutputBuffer } from './ptyOutputBuffer';
 import type { PtyPersistence } from './ptyPersistence';
 import { createPtyPersistence } from './ptyPersistence';
-import {
-  type RecordingState,
-  startPtyRecording as startRecording,
-  stopPtyRecording as stopRecording,
-} from './ptyRecording';
+import type { RecordingState } from './ptyRecording';
 import type { ShellState } from './ptyShellIntegration';
 import {
   getShellState as getDirectShellState,
@@ -92,9 +84,9 @@ export { buildClaudeArgs, buildClaudeCommand } from './ptyClaude';
 export { buildCodexArgs, buildCodexCommand } from './ptyCodex';
 export type { AsciicastEvent } from './ptyRecording';
 
-const recordings = new Map<string, RecordingState>();
+export const recordings = new Map<string, RecordingState>();
 export const sessions = new Map<string, PtySession>();
-const sessionWindowMap = new Map<string, number>();
+export const sessionWindowMap = new Map<string, number>();
 
 export interface SessionRegistration {
   id: string;
@@ -190,13 +182,30 @@ interface SpawnDirectOpts {
 function spawnDirect(opts: SpawnDirectOpts): { success: boolean; error?: string } {
   const { id, win, shell, finalArgs, shellEnv, cwd, cols, rows, startupCommand } = opts;
   try {
-    const proc = pty.spawn(shell, finalArgs, { name: 'xterm-256color', cols, rows, cwd, env: shellEnv });
+    const proc = pty.spawn(shell, finalArgs, {
+      name: 'xterm-256color',
+      cols,
+      rows,
+      cwd,
+      env: shellEnv,
+    });
     registerSession({ id, proc, cwd, shell, win });
     if (startupCommand) scheduleStartupCommand(id, proc, startupCommand);
     notifyTerminalCreated(id, cwd);
     const persistence = getPersistence();
     if (persistence.isEnabled()) {
-      persistence.saveSession({ id, cwd, shellPath: shell, shellArgs: finalArgs, cols, rows, windowId: win.id, envHash: '', createdAt: Date.now(), lastSeenAt: Date.now() });
+      persistence.saveSession({
+        id,
+        cwd,
+        shellPath: shell,
+        shellArgs: finalArgs,
+        cols,
+        rows,
+        windowId: win.id,
+        envHash: '',
+        createdAt: Date.now(),
+        lastSeenAt: Date.now(),
+      });
     }
     return { success: true };
   } catch (error) {
@@ -215,10 +224,33 @@ export function spawnPty(
   const { cwd, cols, rows } = resolveSpawnOptions(options);
   const { env: shellEnv, shellArgs } = buildShellEnvWithIntegration(shell, options.env);
   const finalArgs = shellArgs ?? getDefaultArgs(shell);
-  const directOpts = { id, win, shell, finalArgs, shellEnv, cwd, cols, rows, startupCommand: options.startupCommand };
+  const directOpts = {
+    id,
+    win,
+    shell,
+    finalArgs,
+    shellEnv,
+    cwd,
+    cols,
+    rows,
+    startupCommand: options.startupCommand,
+  };
   if (!ptyHostEnabled()) return spawnDirect(directOpts);
-  const inst = { id, shell, args: finalArgs, env: shellEnv, cwd, cols, rows, windowId: win.id, ...(options.startupCommand ? { startupCommand: options.startupCommand } : {}) };
-  return spawnViaPtyHost(inst, win).then((res) => { if (res.success) notifyTerminalCreated(id, cwd); return res; });
+  const inst = {
+    id,
+    shell,
+    args: finalArgs,
+    env: shellEnv,
+    cwd,
+    cols,
+    rows,
+    windowId: win.id,
+    ...(options.startupCommand ? { startupCommand: options.startupCommand } : {}),
+  };
+  return spawnViaPtyHost(inst, win).then((res) => {
+    if (res.success) notifyTerminalCreated(id, cwd);
+    return res;
+  });
 }
 
 export function writeToPty(id: string, data: string): { success: boolean; error?: string } {
@@ -272,33 +304,8 @@ export function killPty(
   }
 }
 
-export function killAllPtySessions(): void | Promise<void> {
-  if (ptyHostEnabled()) return killAllViaPtyHost();
-  for (const [id, session] of sessions) {
-    try {
-      session.process.kill();
-    } catch {
-      /* ignore */
-    }
-    cleanupSession(id);
-  }
-}
-
-export function killPtySessionsForWindow(windowId: number): void | Promise<void> {
-  if (ptyHostEnabled()) return killForWindowViaPtyHost(windowId);
-  for (const [sessionId, ownerWindowId] of sessionWindowMap) {
-    if (ownerWindowId !== windowId) continue;
-    const session = sessions.get(sessionId);
-    if (session) {
-      try {
-        session.process.kill();
-      } catch {
-        /* ignore */
-      }
-    }
-    cleanupSession(sessionId);
-  }
-}
+// Splits (line-limit): bulk kill helpers → ptyKillHelpers.ts
+export { killAllPtySessions, killPtySessionsForWindow } from './ptyKillHelpers';
 
 export function getActiveSessions(): ActiveSessionInfo[] | Promise<ActiveSessionInfo[]> {
   if (ptyHostEnabled()) {
@@ -317,25 +324,8 @@ export async function getPtyCwd(
   return { success: true, cwd };
 }
 
-export function startPtyRecording(
-  id: string,
-  win: BrowserWindow,
-): { success: boolean; error?: string } {
-  if (ptyHostEnabled()) {
-    const session = getProxySession(id);
-    if (!session) return { success: false, error: `Session ${id} not found` };
-    return startRecordingViaPtyHost(id, session.cols, session.rows, win);
-  }
-  return startRecording(id, sessions, recordings, win);
-}
-
-export async function stopPtyRecording(
-  id: string,
-  win: BrowserWindow,
-): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> {
-  if (ptyHostEnabled()) return stopRecordingViaPtyHost(id, win);
-  return stopRecording(id, recordings, win);
-}
+// Splits (line-limit): recording proxy helpers → ptyRecordingProxy.ts
+export { startPtyRecording, stopPtyRecording } from './ptyRecordingProxy';
 
 export function getShellState(id: string): ShellState | null {
   if (ptyHostEnabled()) return getShellStateViaPtyHost(id);

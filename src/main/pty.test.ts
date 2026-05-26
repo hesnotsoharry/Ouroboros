@@ -198,6 +198,11 @@ describe('pty.ts dispatch layer', () => {
       expect(proxyMocks.writeViaPtyHost).not.toHaveBeenCalled();
     });
 
+    it('killPtySessionsForWindow returns a Promise (direct path — Bug 16-P5-B1 contract)', () => {
+      const result = killPtySessionsForWindow(99);
+      expect(result).toBeInstanceOf(Promise);
+    });
+
     it('getShellState returns direct shell state', () => {
       const state = getShellState('s1');
       expect(state?.cwd).toBe('/direct');
@@ -240,6 +245,11 @@ describe('pty.ts dispatch layer', () => {
     it('killPtySessionsForWindow routes through proxy', async () => {
       await killPtySessionsForWindow(42);
       expect(proxyMocks.killForWindowViaPtyHost).toHaveBeenCalledWith(42);
+    });
+
+    it('killPtySessionsForWindow returns a Promise (proxy path — Bug 16-P5-B1 contract)', () => {
+      const result = killPtySessionsForWindow(42);
+      expect(result).toBeInstanceOf(Promise);
     });
 
     it('getActiveSessions routes through proxy and maps to direct shape', async () => {

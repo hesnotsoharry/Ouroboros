@@ -553,6 +553,53 @@ describe('closeWindow', () => {
   });
 });
 
+// ── window close handler — PTY kill event placement (Bug 16-P5-B1) ───────────
+
+describe('setupWindowCloseHandler — PTY kill on closed not close', () => {
+  let wm: WMModule;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    resetMocks();
+    wm = await freshWM();
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it('does not call killPtySessionsForWindow inside the close handler', () => {
+    wm.createWindow('/proj/pty-test');
+    // Collect all (event, handler) pairs registered via win.on()
+    const closeHandlers: Array<() => void> = mocks.winOn.mock.calls
+      .filter((call: unknown[]) => call[0] === 'close')
+      .map((call: unknown[]) => call[1] as () => void);
+
+    expect(closeHandlers.length).toBeGreaterThan(0);
+    mocks.killPtySessionsForWindow.mockClear();
+
+    // Fire every registered 'close' handler
+    for (const handler of closeHandlers) handler();
+
+    expect(mocks.killPtySessionsForWindow).not.toHaveBeenCalled();
+  });
+
+  it('calls killPtySessionsForWindow inside the closed handler with correct winId', () => {
+    const win = wm.createWindow('/proj/pty-test');
+    const closedHandlers: Array<() => void> = mocks.winOn.mock.calls
+      .filter((call: unknown[]) => call[0] === 'closed')
+      .map((call: unknown[]) => call[1] as () => void);
+
+    expect(closedHandlers.length).toBeGreaterThan(0);
+    mocks.killPtySessionsForWindow.mockClear();
+    mocks.killPtySessionsForWindow.mockReturnValue(Promise.resolve());
+
+    for (const handler of closedHandlers) handler();
+
+    expect(mocks.killPtySessionsForWindow).toHaveBeenCalledWith(win.id);
+  });
+});
+
 // ── getAllActiveWindows ────────────────────────────────────────────────────────
 
 describe('getAllActiveWindows', () => {

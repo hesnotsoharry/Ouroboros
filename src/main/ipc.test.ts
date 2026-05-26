@@ -164,3 +164,52 @@ describe('cleanupIpcHandlers', () => {
     expect(() => registerIpcHandlers(mockWin)).not.toThrow();
   });
 });
+
+describe('registerIpcHandlers — per-window cleanup does not remove global handlers (Bug 16-P5-B2)', () => {
+  let removeHandlerSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    // Must re-import to get a fresh handlersRegistered flag after prior tests
+    // ran cleanupIpcHandlers (which resets it).
+    const { ipcMain } = await import('electron');
+    removeHandlerSpy = vi.fn();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ipcMain as any).removeHandler = removeHandlerSpy;
+  });
+
+  afterEach(async () => {
+    await cleanupIpcHandlers();
+  });
+
+  it('first-window cleanup closure does not call ipcMain.removeHandler', () => {
+    // First call — returns the real closure (not the no-op guard).
+    const cleanup = registerIpcHandlers(mockWin);
+    removeHandlerSpy.mockClear();
+    cleanup();
+    expect(removeHandlerSpy).not.toHaveBeenCalled();
+  });
+
+  it('second-window cleanup closure does not call ipcMain.removeHandler', () => {
+    registerIpcHandlers(mockWin); // first window — registers globals
+    const secondWin = { webContents: { send: vi.fn() }, id: 2 } as unknown as BrowserWindow;
+    const cleanup = registerIpcHandlers(secondWin); // second window — gets no-op
+    removeHandlerSpy.mockClear();
+    cleanup();
+    expect(removeHandlerSpy).not.toHaveBeenCalled();
+  });
+
+  it('closing first window out of two leaves second window IPC intact after cleanup fires', () => {
+    // Simulate: win1 registered first (owns global handlers), win1 closes.
+    // win2 was registered second (got no-op). After win1's closure fires,
+    // ipcMain.removeHandler must not have been called.
+    const win1Cleanup = registerIpcHandlers(mockWin);
+    const win2 = { webContents: { send: vi.fn() }, id: 2 } as unknown as BrowserWindow;
+    registerIpcHandlers(win2);
+    removeHandlerSpy.mockClear();
+
+    // Simulate win1 close: fire its cleanup
+    win1Cleanup();
+
+    expect(removeHandlerSpy).not.toHaveBeenCalled();
+  });
+});

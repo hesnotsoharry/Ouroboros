@@ -185,7 +185,12 @@ function setupWindowCloseHandler(win: BrowserWindow, winId: number): void {
     clearBoundsTimer(winId);
     if (!win.isMaximized()) saveWindowBounds(win, false);
     persistWindowSessions();
-    killPtySessionsForWindow(winId);
+    // PTY kill is deferred to 'closed' so that synchronous ConPTY kernel calls
+    // (one per session, ~150ms each on Windows) do not block the close handler's
+    // synchronous path and stall the event loop for several seconds when many
+    // sessions are open (Bug 16-P5-B1). PTY processes are still killed — just
+    // after the window is destroyed, which is sufficient because nothing reads
+    // PTY output after the renderer is gone.
   });
   // Defer IPC handler cleanup to 'closed' — the renderer still makes IPC
   // calls (config:set, files:readDir, etc.) during beforeunload/unload which
@@ -199,6 +204,12 @@ function setupWindowCloseHandler(win: BrowserWindow, winId: number): void {
     clearWindowActiveSession(winId);
     cleanupIpcHandlers(winId);
     windows.delete(winId);
+    // Kill PTY sessions after the window is destroyed. Fire-and-forget with void
+    // so the 'closed' handler returns immediately and the event loop can service
+    // pending kernel signals between individual process.kill() calls (ptyHost
+    // path is already async; direct path accumulates synchronous kills but does
+    // not block anything useful after window destruction).
+    void killPtySessionsForWindow(winId);
   });
 }
 
