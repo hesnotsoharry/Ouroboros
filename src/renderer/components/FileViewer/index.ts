@@ -32,16 +32,6 @@ export type { MediaViewerProps } from './MediaViewer';
 export { MediaViewer } from './MediaViewer';
 export type { MinimapProps } from './Minimap';
 export { Minimap } from './Minimap';
-export type { MonacoDiffEditorProps } from './MonacoDiffEditor';
-export { MonacoDiffEditor } from './MonacoDiffEditor';
-export type { MonacoEditorProps } from './MonacoEditor';
-export { disposeMonacoModel, MonacoEditor } from './MonacoEditor';
-export type { MonacoEditorHostProps } from './MonacoEditorHost';
-export { MonacoEditorHost } from './MonacoEditorHost';
-export { disposeMonacoModel as disposeMonacoHostModel } from './MonacoEditorHost';
-export { registerInlineCompletionProvider } from './monacoInlineCompletions';
-export type { KeybindingMode } from './monacoVimMode';
-export { disableVimMode, enableVimMode } from './monacoVimMode';
 export type {
   AddExcerptFormProps,
   MultiBufferManagerProps,

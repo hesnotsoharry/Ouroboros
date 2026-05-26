@@ -1,7 +1,8 @@
 import type { RefObject } from 'react';
-import React, { memo } from 'react';
+import React, { memo, Suspense } from 'react';
 
 import type { ViewportBreakpoint } from '../../hooks/useViewportBreakpoint';
+import { LazyPanelFallback } from '../Layout/LazyPanelFallback';
 import { ClaudeMdEditor } from './ClaudeMdEditor';
 import type { CodeViewProps } from './CodeView';
 import { CodeView } from './CodeView';
@@ -12,12 +13,18 @@ import { DiffView } from './DiffView';
 import { HtmlPreview } from './HtmlPreview';
 import { InlineEditor } from './InlineEditor';
 import { MarkdownPreview } from './MarkdownPreview';
-import { MonacoDiffEditor } from './MonacoDiffEditor';
-// MonacoEditor kept as legacy fallback — see MonacoEditor.tsx
-// import { MonacoEditor } from './MonacoEditor';
-import { MonacoEditorHost } from './MonacoEditorHost';
 import { MonacoMobileFallback } from './MonacoMobileFallback';
 import { detectLanguage } from './monacoSetup';
+
+// Lazy-load Monaco components to keep them out of the initial bundle.
+// MonacoEditorHost and MonacoDiffEditor pull in ~7.9 MB of monaco-editor;
+// deferring until first file open saves 12-16s on cold-cache boot.
+const MonacoDiffEditor = React.lazy(() =>
+  import('./MonacoDiffEditor').then((m) => ({ default: m.MonacoDiffEditor })),
+);
+const MonacoEditorHost = React.lazy(() =>
+  import('./MonacoEditorHost').then((m) => ({ default: m.MonacoEditorHost })),
+);
 
 /**
  * Feature flag: when true, Monaco Editor is used for code views instead of the
@@ -149,19 +156,21 @@ function renderClaudeMdEditor(props: ContentRouterProps): React.ReactElement {
 
 function renderMonacoEditor(props: ContentRouterProps): React.ReactElement {
   return (
-    <MonacoEditorHost
-      filePath={props.filePath!}
-      content={props.content!}
-      readOnly={false}
-      projectRoot={props.projectRoot}
-      onSave={props.onSave!}
-      onContentChange={props.onContentChange ?? noop}
-      onDirtyChange={props.onDirtyChange ?? noop}
-      wordWrap={props.wordWrap}
-      showMinimap={props.showMinimap}
-      showBlame={props.showBlame}
-      formatOnSave={props.formatOnSave}
-    />
+    <Suspense fallback={<LazyPanelFallback />}>
+      <MonacoEditorHost
+        filePath={props.filePath!}
+        content={props.content!}
+        readOnly={false}
+        projectRoot={props.projectRoot}
+        onSave={props.onSave!}
+        onContentChange={props.onContentChange ?? noop}
+        onDirtyChange={props.onDirtyChange ?? noop}
+        wordWrap={props.wordWrap}
+        showMinimap={props.showMinimap}
+        showBlame={props.showBlame}
+        formatOnSave={props.formatOnSave}
+      />
+    </Suspense>
   );
 }
 
@@ -221,13 +230,15 @@ function renderDiffContent(props: ContentRouterProps): React.ReactElement | null
   if (USE_MONACO) {
     const language = props.filePath ? detectLanguage(props.filePath) : 'plaintext';
     return renderPanel(
-      <MonacoDiffEditor
-        originalContent={diffBaseContent}
-        modifiedContent={props.content}
-        language={language}
-        filePath={props.filePath ?? undefined}
-        readOnly={true}
-      />,
+      <Suspense fallback={<LazyPanelFallback />}>
+        <MonacoDiffEditor
+          originalContent={diffBaseContent}
+          modifiedContent={props.content}
+          language={language}
+          filePath={props.filePath ?? undefined}
+          readOnly={true}
+        />
+      </Suspense>,
     );
   }
 
@@ -280,18 +291,20 @@ function resolveContent(props: ContentRouterProps): React.ReactElement {
     }
     if (USE_MONACO) {
       return renderPanel(
-        <MonacoEditorHost
-          filePath={props.filePath}
-          content={props.content}
-          readOnly={true}
-          projectRoot={props.projectRoot}
-          onSave={props.onSave}
-          onDirtyChange={props.onDirtyChange}
-          wordWrap={props.wordWrap}
-          showMinimap={props.showMinimap}
-          showBlame={props.showBlame}
-          diffLines={props.codeViewProps.diffLines}
-        />,
+        <Suspense fallback={<LazyPanelFallback />}>
+          <MonacoEditorHost
+            filePath={props.filePath}
+            content={props.content}
+            readOnly={true}
+            projectRoot={props.projectRoot}
+            onSave={props.onSave}
+            onDirtyChange={props.onDirtyChange}
+            wordWrap={props.wordWrap}
+            showMinimap={props.showMinimap}
+            showBlame={props.showBlame}
+            diffLines={props.codeViewProps.diffLines}
+          />
+        </Suspense>,
       );
     }
   }

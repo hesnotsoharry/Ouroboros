@@ -50,7 +50,7 @@ Files follow a consistent suffixing pattern:
 ## Gotchas
 
 - **`USE_MONACO` flag** in `ContentRouter.tsx` (line 21) controls whether Monaco or legacy Shiki/CodeMirror is used. Currently `true`. Set to `false` to revert. Affects both read-only and edit modes.
-- **Monaco is lazily imported** — `FileViewerManager.internal.ts` uses `require('monaco-editor')` to avoid eagerly loading ~40MB at startup. Don't convert to static import.
+- **Monaco and PdfViewer MUST stay lazy (`React.lazy`) — load-bearing (Wave 19).** `ContentRouter.tsx` imports `MonacoEditorHost` and `MonacoDiffEditor` via `React.lazy()`; `FileViewer.tsx` imports `PdfViewer` via `React.lazy()`. These are wrapped in `<Suspense fallback={<LazyPanelFallback />}>` at each render site. Converting any of these back to static imports will pull ~7.9 MB of monaco-editor or ~796 KB of pdfjs-dist into the initial bundle, adding 12-16s to cold-cache renderer startup. Reason: Wave 19 fixed a 19s cold-cache boot time caused by eager loading of Monaco + pdfjs.
 - **Two editor systems coexist**: Monaco (primary) and CodeMirror (for InlineEditor/ClaudeMdEditor and as legacy fallback). The `editorRegistry.ts` only tracks CodeMirror instances.
 - **Theme bridging is runtime-only** — `monacoThemeBridge.ts` reads computed CSS vars from the DOM (using a canvas 2d context for color conversion), so it only works in the renderer process.
 - **`useFileViewerState`** resets all UI state (search, go-to-line, view mode, edit mode, history) when `filePath` changes. Don't store cross-file UI state there.

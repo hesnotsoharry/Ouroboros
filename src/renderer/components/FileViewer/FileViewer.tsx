@@ -1,5 +1,6 @@
-import React, { memo } from 'react';
+import React, { memo, Suspense } from 'react';
 
+import { LazyPanelFallback } from '../Layout/LazyPanelFallback';
 import type { CodeRow } from './codeViewTypes';
 import { EmptyState } from './EmptyState';
 import { ErrorDisplay } from './ErrorDisplay';
@@ -10,8 +11,13 @@ import { ImageViewer } from './ImageViewer';
 import { injectLinks } from './linkDetector';
 import { LoadingState } from './LoadingState';
 import { MediaViewer } from './MediaViewer';
-import { PdfViewer } from './PdfViewer';
 import { useFileViewerState } from './useFileViewerState';
+
+// Lazy-load PdfViewer to keep pdfjs-dist (~796 KB) out of the initial bundle.
+// Defers the pdfjs module graph until the user opens a PDF file.
+const PdfViewer = React.lazy(() =>
+  import('./PdfViewer').then((m) => ({ default: m.PdfViewer })),
+);
 
 export interface FileViewerProps {
   filePath: string | null;
@@ -75,7 +81,12 @@ function renderFileTypeViewer(props: FileViewerProps): React.ReactElement | null
   const { filePath, isImage, isPdf, isAudio, isVideo, isBinary, binaryContent } = props;
   if (!filePath) return null;
   if (isImage) return <ImageViewer filePath={filePath} />;
-  if (isPdf) return <PdfViewer filePath={filePath} />;
+  if (isPdf)
+    return (
+      <Suspense fallback={<LazyPanelFallback />}>
+        <PdfViewer filePath={filePath} />
+      </Suspense>
+    );
   if (isAudio || isVideo) return renderMediaViewer(filePath, isVideo, isAudio);
   if (isBinary) return renderBinaryViewer(filePath, binaryContent);
   return null;
