@@ -4,7 +4,8 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { buildIndexResult, type IndexResultOpts } from './indexingPipelineResult';
+import { buildIndexResult, buildNoOpResult, type IndexResultOpts } from './indexingPipelineResult';
+import type { DiscoveredFile } from './indexingPipelineTypes';
 import type { ParsedFileResult } from './treeSitterTypes';
 
 // Helper to create a minimal parsed file result
@@ -213,5 +214,153 @@ describe('buildIndexResult', () => {
 
     expect(result.filesIndexed).toBe(3);
     expect(result.filesSkipped).toBe(7);
+  });
+});
+
+// ─── buildNoOpResult ──────────────────────────────────────────────────────────
+
+describe('buildNoOpResult', () => {
+  it('returns an IndexingResult with success=true and 0 files processed', () => {
+    const allFiles: DiscoveredFile[] = [
+      {
+        absolutePath: '/test/src/a.ts',
+        relativePath: 'src/a.ts',
+        extension: 'ts',
+        sizeBytes: 100,
+        mtimeMs: 1_000_000,
+      },
+      {
+        absolutePath: '/test/src/b.ts',
+        relativePath: 'src/b.ts',
+        extension: 'ts',
+        sizeBytes: 200,
+        mtimeMs: 2_000_000,
+      },
+    ];
+    const startTime = Date.now();
+    const progress = {
+      phase: 'discovery',
+      filesTotal: 2,
+      filesProcessed: 0,
+      nodesCreated: 0,
+      edgesCreated: 0,
+      errors: [],
+      startedAt: startTime,
+      elapsedMs: 10,
+    };
+
+    const result = buildNoOpResult('test-proj', allFiles, progress, startTime);
+
+    expect(result.projectName).toBe('test-proj');
+    expect(result.success).toBe(true);
+    expect(result.filesIndexed).toBe(0);
+    expect(result.filesSkipped).toBe(2);
+    expect(result.nodesCreated).toBe(0);
+    expect(result.edgesCreated).toBe(0);
+    expect(result.errors).toEqual([]);
+    expect(result.incremental).toBe(true);
+    expect(result.phaseTimingsMs).toEqual({});
+  });
+
+  it('carries errors from progress into the result', () => {
+    const allFiles: DiscoveredFile[] = [
+      {
+        absolutePath: '/test/src/a.ts',
+        relativePath: 'src/a.ts',
+        extension: 'ts',
+        sizeBytes: 100,
+        mtimeMs: 1_000_000,
+      },
+    ];
+    const startTime = Date.now();
+    const progress = {
+      phase: 'discovery',
+      filesTotal: 1,
+      filesProcessed: 0,
+      nodesCreated: 0,
+      edgesCreated: 0,
+      errors: ['Parse error in file X', 'IO error reading file Y'],
+      startedAt: startTime,
+      elapsedMs: 10,
+    };
+
+    const result = buildNoOpResult('test-proj', allFiles, progress, startTime);
+
+    expect(result.errors).toEqual(['Parse error in file X', 'IO error reading file Y']);
+  });
+
+  it('returns filesSkipped equal to allFiles.length when allFiles is empty', () => {
+    const startTime = Date.now();
+    const progress = {
+      phase: 'discovery',
+      filesTotal: 0,
+      filesProcessed: 0,
+      nodesCreated: 0,
+      edgesCreated: 0,
+      errors: [],
+      startedAt: startTime,
+      elapsedMs: 0,
+    };
+
+    const result = buildNoOpResult('test-proj', [], progress, startTime);
+
+    expect(result.filesSkipped).toBe(0);
+    expect(result.filesIndexed).toBe(0);
+  });
+
+  it('calculates durationMs as Date.now() - startTime', () => {
+    const startTime = Date.now();
+    const allFiles: DiscoveredFile[] = [];
+    const progress = {
+      phase: 'discovery',
+      filesTotal: 0,
+      filesProcessed: 0,
+      nodesCreated: 0,
+      edgesCreated: 0,
+      errors: [],
+      startedAt: startTime,
+      elapsedMs: 0,
+    };
+
+    const result = buildNoOpResult('test-proj', allFiles, progress, startTime);
+
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
+    expect(result.durationMs).toBeLessThan(100); // Should be near-instant
+  });
+
+  it('always sets incremental=true for no-op results', () => {
+    const startTime = Date.now();
+    const progress = {
+      phase: 'discovery',
+      filesTotal: 0,
+      filesProcessed: 0,
+      nodesCreated: 0,
+      edgesCreated: 0,
+      errors: [],
+      startedAt: startTime,
+      elapsedMs: 0,
+    };
+
+    const result = buildNoOpResult('test-proj', [], progress, startTime);
+
+    expect(result.incremental).toBe(true);
+  });
+
+  it('returns empty phaseTimingsMs object for no-op results', () => {
+    const startTime = Date.now();
+    const progress = {
+      phase: 'discovery',
+      filesTotal: 0,
+      filesProcessed: 0,
+      nodesCreated: 0,
+      edgesCreated: 0,
+      errors: [],
+      startedAt: startTime,
+      elapsedMs: 0,
+    };
+
+    const result = buildNoOpResult('test-proj', [], progress, startTime);
+
+    expect(result.phaseTimingsMs).toEqual({});
   });
 });

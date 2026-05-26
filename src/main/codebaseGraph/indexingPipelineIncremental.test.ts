@@ -7,7 +7,11 @@ import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { discoverFiles, filterChangedFiles } from './indexingPipelineIncremental';
+import {
+  discoverFiles,
+  filterChangedFiles,
+  resolveIncrementalFiles,
+} from './indexingPipelineIncremental';
 import type { DiscoveredFile } from './indexingPipelineTypes';
 
 vi.mock('../logger', () => ({
@@ -129,5 +133,198 @@ describe('filterChangedFiles', () => {
 
     const result = await filterChangedFiles(db, 'proj', [makeFile('src/new.ts')]);
     expect(result.changed.map((f) => f.relativePath)).toContain('src/new.ts');
+  });
+});
+
+// ─── resolveIncrementalFiles ─────────────────────────────────────────────────
+
+describe('resolveIncrementalFiles', () => {
+  it('returns filesToProcess=[] and isIncrementalRun=true when no files changed', async () => {
+    const allFiles = [makeFile('src/a.ts'), makeFile('src/b.ts'), makeFile('src/c.ts')];
+
+    const db = {
+      getFileHash: vi.fn().mockReturnValue({
+        mtime_ns: Math.floor(makeFile('src/a.ts').mtimeMs * 1e6),
+        size: makeFile('src/a.ts').sizeBytes,
+        content_hash: 'abc123',
+      }),
+      upsertFileHash: vi.fn(),
+    } as unknown as import('./graphDatabase').GraphDatabase;
+
+    const deleteNodesFn = vi.fn();
+    const pruneDeletedFn = vi.fn();
+
+    const result = await resolveIncrementalFiles({
+      db,
+      projectName: 'proj',
+      allFiles,
+      pruneDeleted: pruneDeletedFn,
+      deleteNodes: deleteNodesFn,
+    });
+
+    expect(result.filesToProcess).toHaveLength(0);
+    expect(result.isIncrementalRun).toBe(true);
+    // Fast-path: deleteNodes and pruneDeleted should NOT be called
+    expect(deleteNodesFn).not.toHaveBeenCalled();
+    expect(pruneDeletedFn).not.toHaveBeenCalled();
+  });
+
+  it('calls deleteNodes for each changed file', async () => {
+    const allFiles = [makeFile('src/a.ts'), makeFile('src/b.ts')];
+
+    const db = {
+      getFileHash: vi.fn((projectName, path) => {
+        // First file is unchanged, second is missing from DB (changed)
+        if (path === 'src/a.ts') {
+          return {
+            mtime_ns: Math.floor(allFiles[0]!.mtimeMs * 1e6),
+            size: allFiles[0]!.sizeBytes,
+            content_hash: 'abc123',
+          };
+        }
+        return null;
+      }),
+      upsertFileHash: vi.fn(),
+    } as unknown as import('./graphDatabase').GraphDatabase;
+
+    const deleteNodesFn = vi.fn();
+    const pruneDeletedFn = vi.fn();
+
+    const result = await resolveIncrementalFiles({
+      db,
+      projectName: 'proj',
+      allFiles,
+      pruneDeleted: pruneDeletedFn,
+      deleteNodes: deleteNodesFn,
+    });
+
+    expect(result.filesToProcess).toHaveLength(1);
+    expect(result.filesToProcess[0]!.relativePath).toBe('src/b.ts');
+    expect(deleteNodesFn).toHaveBeenCalledWith('src/b.ts');
+    expect(pruneDeletedFn).toHaveBeenCalled();
+  });
+
+  it('classifies only the subset when changedPaths is provided and non-empty', async () => {
+    const fileA = makeFile('src/a.ts');
+    const fileB = makeFile('src/b.ts');
+    const fileC = makeFile('src/c.ts');
+    const allFiles = [fileA, fileB, fileC];
+
+    const changedPaths = [fileB.absolutePath]; // Only one file in the hint
+
+    const db = {
+      getFileHash: vi.fn().mockReturnValue(null),
+      upsertFileHash: vi.fn(),
+    } as unknown as import('./graphDatabase').GraphDatabase;
+
+    const deleteNodesFn = vi.fn();
+    const pruneDeletedFn = vi.fn();
+
+    const result = await resolveIncrementalFiles({
+      db,
+      projectName: 'proj',
+      allFiles,
+      changedPaths,
+      pruneDeleted: pruneDeletedFn,
+      deleteNodes: deleteNodesFn,
+    });
+
+    expect(result.filesToProcess).toHaveLength(1);
+    expect(result.filesToProcess[0]!.relativePath).toBe('src/b.ts');
+    expect(deleteNodesFn).toHaveBeenCalledWith('src/b.ts');
+  });
+
+  it('treats empty changedPaths array as "no hint" and classifies all files', async () => {
+    const allFiles = [makeFile('src/a.ts'), makeFile('src/b.ts')];
+
+    const db = {
+      getFileHash: vi.fn().mockReturnValue(null),
+      upsertFileHash: vi.fn(),
+    } as unknown as import('./graphDatabase').GraphDatabase;
+
+    const deleteNodesFn = vi.fn();
+    const pruneDeletedFn = vi.fn();
+
+    const result = await resolveIncrementalFiles({
+      db,
+      projectName: 'proj',
+      allFiles,
+      changedPaths: [], // Empty hint — should fall through to full classify
+      pruneDeleted: pruneDeletedFn,
+      deleteNodes: deleteNodesFn,
+    });
+
+    // All files are new (no prior hash)
+    expect(result.filesToProcess).toHaveLength(2);
+    expect(result.filesToProcess.map((f) => f.relativePath)).toEqual(['src/a.ts', 'src/b.ts']);
+  });
+
+  it('calls pruneDeleted with allFiles', async () => {
+    const allFiles = [makeFile('src/a.ts'), makeFile('src/b.ts')];
+
+    const db = {
+      getFileHash: vi.fn().mockReturnValue(null),
+      upsertFileHash: vi.fn(),
+    } as unknown as import('./graphDatabase').GraphDatabase;
+
+    const deleteNodesFn = vi.fn();
+    const pruneDeletedFn = vi.fn();
+
+    await resolveIncrementalFiles({
+      db,
+      projectName: 'proj',
+      allFiles,
+      pruneDeleted: pruneDeletedFn,
+      deleteNodes: deleteNodesFn,
+    });
+
+    // pruneDeleted is called with allFiles when there are changed files
+    expect(pruneDeletedFn).toHaveBeenCalledWith(allFiles);
+  });
+
+  it('detects isIncrementalRun as true when not all files are in filesToProcess', async () => {
+    const allFiles = [makeFile('src/a.ts'), makeFile('src/b.ts'), makeFile('src/c.ts')];
+
+    const db = {
+      getFileHash: vi.fn((projectName, path) => {
+        // Only b.ts is changed; a.ts and c.ts are unchanged
+        if (path === 'src/b.ts') return null;
+        return {
+          mtime_ns: Math.floor(makeFile('src/a.ts').mtimeMs * 1e6),
+          size: makeFile('src/a.ts').sizeBytes,
+          content_hash: 'abc123',
+        };
+      }),
+      upsertFileHash: vi.fn(),
+    } as unknown as import('./graphDatabase').GraphDatabase;
+
+    const result = await resolveIncrementalFiles({
+      db,
+      projectName: 'proj',
+      allFiles,
+      pruneDeleted: vi.fn(),
+      deleteNodes: vi.fn(),
+    });
+
+    expect(result.isIncrementalRun).toBe(true);
+  });
+
+  it('detects isIncrementalRun as false when all files must be reprocessed', async () => {
+    const allFiles = [makeFile('src/a.ts'), makeFile('src/b.ts')];
+
+    const db = {
+      getFileHash: vi.fn().mockReturnValue(null), // All files are new
+      upsertFileHash: vi.fn(),
+    } as unknown as import('./graphDatabase').GraphDatabase;
+
+    const result = await resolveIncrementalFiles({
+      db,
+      projectName: 'proj',
+      allFiles,
+      pruneDeleted: vi.fn(),
+      deleteNodes: vi.fn(),
+    });
+
+    expect(result.isIncrementalRun).toBe(false);
   });
 });
