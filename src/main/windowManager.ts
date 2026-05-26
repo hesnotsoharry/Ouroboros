@@ -110,6 +110,10 @@ function createBrowserWindow(preloadPath: string, state: WindowCreationState): B
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
+      // Shared partition enables HTTP cache + storage sharing across all renderer
+      // windows (Wave 18 W2). Without this, each window loads the Vite dev-server
+      // module graph independently, causing 3x cache misses on startup.
+      partition: 'persist:shared',
     },
   });
 
