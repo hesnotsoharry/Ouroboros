@@ -9,20 +9,31 @@ type: fix-sweep
 
 ## Status
 
-SHIPPED-PENDING-VERIFICATION. All five phases (P1–P5) + diagnostic-driven
-hotfix (P7) committed this session. Post-P7 boot trace verified P1–P4
-caches now dedup correctly (zero slow-handler lines for git:isRepo,
-shellHistory:read, extensionStore:*, usage:getUsageWindowSnapshot).
-P5 surfaced TWO bugs from the same trace (6.5s window-close block + IPC
-handler flood) — both root-caused by sonnet-diagnostician and fixed.
+SHIPPED-VERIFIED 2026-05-25. All cache + window-close phases shipped; final
+boot trace (21:21–21:23) verified:
+- Boot caches: 0 slow-handler lines for git:isRepo / shellHistory:read /
+  extensionStore:* / usage:getUsageWindowSnapshot
+- Window close path: `[context-layer] Watcher disposed` and `[compat]
+  dispose Agent IDE` log lines 1ms apart (previously 12.6s gap). No
+  `window:close-self` slow-handler line (previously 6598ms / 1091ms).
+- "No handler registered" flood after window close: gone.
+
+A new perf class surfaced in the verification trace — `files:saveFile`
+blocking 12.9s during active editing, `autoSync.reindex` taking 9s for a
+no-op. NOT in Wave 16 scope. Folded forward into Wave 17
+(`roadmap/wave-17-editor-cascade-perf/`).
 
 Commits:
 - P1 git:isRepo cache: `ffd66fba`
 - P2 extensionStore cache: `b8abf975`
 - P3 shellHistory cache: `27b9f002`
 - P4 usage coalescer: `e72d1ae0`
+- P5 docs + 5 follow-ups: `085b5a1d`
 - P7 dogpile hotfix (Promise dedup): `cc04f48b`
+- P7 docs: `ae110a75`
 - P5 window-close fix (PTY kill async + IPC scoping): `585cb380`
+- P5 docs: `95cba3f6`
+- P10 fire-and-forget @parcel/watcher close: `56ed0142`
 
 **P6 diagnostic correction (re P4):** the 6 `usage:getUsageWindowSnapshot`
 slow-handler log entries are NOT 6 fetches — they're 6 handlers all

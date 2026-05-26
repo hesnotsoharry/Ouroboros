@@ -1,10 +1,68 @@
-# Session Handoff — 2026-05-24 (Wave 13 SHIPPED-pending-Cole-smoke; Wave 14 next)
+# Session Handoff — 2026-05-25 (Wave 16 SHIPPED-VERIFIED; Wave 17 PLANNED)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-24 (latest) — Wave 13 SHIPPED-PENDING-MANUAL-SMOKE (AgentSidebar pane-ID binding)
+## 🔼 UPDATE 2026-05-25 (latest) — Wave 16 SHIPPED-VERIFIED; Wave 17 ready to start
+
+**Next action: read `roadmap/wave-17-editor-cascade-perf/waveplan-17.md` and confirm scope with Cole before dispatching Phase 1's `sonnet-diagnostician`.** Wave 17 is PLANNED, not IN-PROGRESS. Worktree isolation is locked upfront (touches hot paths — file save, indexer, config). Test shape is honeycomb (cross-layer integration boundaries).
+
+**Wave 16 — SHIPPED-VERIFIED on master. 11 commits.** IPC handler perf fix-sweep. Boot lag from ~40s of cumulative slow-handler time → <5s. Window close from 6598ms → ~1000ms with no event-loop block in the dispose chain. "No handler registered" floods after close: gone.
+
+The 11 commits this session:
+- `ffd66fba` — P1: cache `git:isRepo` with session-positive / 30s-negative TTL
+- `b8abf975` — P2: cache extension contributions (theme + icon-theme + product-icon-theme)
+- `27b9f002` — P3: cache `shellHistory:read` for session lifetime
+- `e72d1ae0` — P4: Promise dedup + TTL cache for `usage:getUsageWindowSnapshot`
+- `085b5a1d` — P5/docs: file 5 follow-ups + status update
+- `cc04f48b` — P7: Promise-dedup wave 16 caches to defeat boot-time dogpile (hotfix after first boot trace exposed concurrent-call race)
+- `ae110a75` — docs: P7 dogpile fix + P6 P4-diagnostic correction (P4 was already correct; 6 slow-handler lines were 6 awaiters of one Promise — misleading log)
+- `585cb380` — P5/fix: defer PTY kill to 'closed' event + global IPC scoping fix (first-window close was deregistering process-global handlers)
+- `95cba3f6` — docs: wave plan reflects P5 shipped
+- `56ed0142` — P10: fire-and-forget `@parcel/watcher` close to unblock event loop (closed the 12.6s post-close gap)
+- (this wave-plan-update commit pending)
+
+**Wave 16's notable patterns + lessons (carry forward to Wave 17 and beyond):**
+
+1. **Dogpile race between cache check + cache set across an `await`.** Map check-then-set is NOT atomic when the work between is async. P1–P3 shipped with this bug; P7 fixed it with Promise-dedup slots. **For any cache that wraps an async fetch, Promise dedup is required, not optional.** Wave 16 P7 commit (`cc04f48b`) is the canonical pattern reference.
+
+2. **The slow-handler log line is intrinsically misleading for shared-Promise handlers.** P4's 6 log lines for `usage:getUsageWindowSnapshot` looked like 6 fetches but were 6 awaiters of one Promise. `patchIpcMainHandle` starts its timer at each handler's invocation, so all N awaiters log their elapsed wall-clock time even when only one fetch happened. **Don't trust slow-handler line count as fetch count.**
+
+3. **`void someAsyncFn()` is not a substitute for actually-async code.** Fire-and-forget at the parent doesn't make the callee yield to the event loop. If the callee does synchronous work before its first `await`, that work still blocks. P9 / P10 caught this in `@parcel/watcher`'s native `close()`. **The callee must yield, not just the caller.**
+
+4. **Closure-bound global teardown is a window-lifecycle bug waiting to happen.** P5 surfaced that `registerIpcHandlers` returned a closure containing `cleanupIpcHandlers()` (which strips every global `ipcMain.handle`). Stored per-window in `windowCleanups`. When the first-created window closed, every surviving window lost its IPC handlers. **Global teardown must only fire on app quit, never on per-window close.**
+
+5. **Diagnose before fix, every time.** Lane B B1 hypothesis enumeration caught the dogpile race (P6 diagnostic) and the `@parcel/watcher` native close (P9 diagnostic) before fix attempts. The earlier P5 diagnostic that inferred `releaseGraphController` was async based on log spacing was WRONG; only the P9 read-the-code investigation surfaced the real cause. **Cite code, not log spacing.**
+
+**Wave 16 follow-ups still OPEN (some fold into Wave 17):**
+
+- `2026-05-25-config-set-slow-handler.md` (MED) — `config:set` 1-4s. **Folds into Wave 17 Phase 3-4.**
+- `2026-05-25-repomap-worker-3927ms.md` (MED) — codebase-graph worker regression. **Folds into Wave 17 Phase 1.**
+- `2026-05-25-codex-usage-pre-warm-poller.md` (MED) — independent of Wave 17; standalone perf win.
+- `2026-05-25-gpu-process-crash-d3d11.md` (LOW) — upstream Electron concern. Visibility-only.
+- `2026-05-25-extensionStoreHelpers-over-cap.md` (LOW) — file at 320/300 lines. Fix on next touch.
+- `2026-05-25-indexing-worker-not-disposed-on-window-close.md` (LOW) — `IndexingWorkerClient.dispose()` not called per-window. **May fold into Wave 17 if Phase 1 surfaces it as the cause; otherwise standalone.**
+
+**Wave 16 NOT done / deferrals:**
+
+1. Push to remote — DEFERRED. CI minutes restore 2026-06-01 per bulletin; pushing IS safe (workflows don't run with 0 minutes), but Cole hasn't been asked. The 11 commits are local on master.
+2. Tag + release notes — DEFERRED until push.
+3. `/audit-followups wave-16` — PENDING. Should run before declaring Wave 16 fully closed; will likely close the 5 follow-ups filed during the wave that are now resolved (most of them aren't, they're scheduled forward).
+4. `/promote-vendor-lessons 16` — N/A; no vendor SDK touched substantively (Wave 16 was internal).
+5. `/ui-smoke 16` — N/A; no UI surface changes.
+6. Full `npm test` post-P10 — DEFERRED. Scoped runs covered Wave 16's surface (caches, window close, pty, ipc, codebaseGraph/systemTwoRegistry). Recommend running at next session start as paranoid sanity check.
+
+**Wave 17 setup at `roadmap/wave-17-editor-cascade-perf/`:**
+
+- `waveplan-17.md` — full plan with 6 hypotheses, file map, phase plan, acceptance criteria.
+- `wave-17-decisions.md` — pending decisions; honeycomb test shape + worktree isolation locked upfront.
+
+The next session should NOT just dive in. Confirm scope + acceptance criteria with Cole, then dispatch Phase 1's `sonnet-diagnostician`.
+
+---
+
+## 🔼 UPDATE 2026-05-24 — Wave 13 SHIPPED-PENDING-MANUAL-SMOKE (AgentSidebar pane-ID binding)
 
 **Next action: hand off the bundled `/ui-smoke 12+13` checklist to Cole** at `roadmap/wave-13-agentsidebar-pane-id-binding/wave-13-smoke-report.md` (16 Wave 12 scenarios + 16 Wave 13 scenarios). Cole walks through; orchestrator flips status to SHIPPED-VERIFIED on PASS or FLAGGED with notes per scenario. Then cherry-pick Wave 12 + Wave 13 commits to master, push, tag `v2.34.0` (per Wave 12 setup question 2026-05-24 — both cherry-picked together). CI minutes restore 2026-06-01 per bulletin; push proceeds, merge waits for restore if branch-protection requires.
 
