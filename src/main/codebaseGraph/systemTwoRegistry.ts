@@ -150,10 +150,8 @@ async function subscribeNativeWatcher(
   watcher: AutoSyncWatcher,
 ): Promise<RegistryEntry['nativeWatcherSubscription']> {
   try {
-    return await watchRecursive(
-      projectRoot,
-      { ignore: AUTOSYNC_WATCHER_IGNORE_GLOBS },
-      (event) => watcher.receiveWatcherEvent(event.path),
+    return await watchRecursive(projectRoot, { ignore: AUTOSYNC_WATCHER_IGNORE_GLOBS }, (event) =>
+      watcher.receiveWatcherEvent(event.path),
     );
   } catch (err) {
     // Native watcher subscription is best-effort — autoSync degrades to
@@ -168,8 +166,14 @@ async function subscribeNativeWatcher(
  * Release a previously acquired root.
  * Decrements refCount. Disposes the watcher and removes the entry when count
  * reaches zero. Does NOT close the shared GraphDatabase.
+ *
+ * The native watcher subscription is closed fire-and-forget (not awaited) so
+ * the Windows ReadDirectoryChangesW drain (~12s under load) does not block the
+ * main-process event loop. The AutoSyncWatcher.disposed flag is set first via
+ * watcher.dispose(), so any events that arrive from the still-draining native
+ * subscription short-circuit in receiveWatcherEvent and are harmless.
  */
-export async function release(projectRoot: string): Promise<void> {
+export function release(projectRoot: string): void {
   const key = normalizeRoot(projectRoot);
   const entry = registry.get(key);
   if (!entry) return;
@@ -178,21 +182,41 @@ export async function release(projectRoot: string): Promise<void> {
   log.info(`[s2-registry] release (refCount=${entry.refCount}) ${entry.projectName}`);
 
   if (entry.refCount <= 0) {
-    await closeNativeSubscription(entry);
+    // Snapshot the subscription and clear it on the entry BEFORE the async
+    // close fires, so a concurrent release() call for the same root won't
+    // see a live subscription and attempt a double-close.
+    const sub = entry.nativeWatcherSubscription;
+    entry.nativeWatcherSubscription = null;
+
+    // Dispose the watcher first — sets AutoSyncWatcher.disposed = true so
+    // incoming events from the still-draining native subscription short-circuit.
     entry.watcher?.dispose();
+
+    // Remove the entry synchronously before kicking off the async close so
+    // no concurrent acquire/release can observe this dying entry.
     registry.delete(key);
     log.info(`[s2-registry] disposed ${entry.projectName}`);
+
+    closeNativeSubscriptionFireAndForget(sub, entry.projectName);
   }
 }
 
-async function closeNativeSubscription(entry: RegistryEntry): Promise<void> {
-  if (!entry.nativeWatcherSubscription) return;
-  try {
-    await entry.nativeWatcherSubscription.close();
-  } catch (err) {
-    log.warn(`[s2-registry] native watcher close failed for ${entry.projectName}:`, err);
-  }
-  entry.nativeWatcherSubscription = null;
+/**
+ * Kick off the native subscription close without awaiting it. On Windows,
+ * ReadDirectoryChangesW drain can take 10–13 s under load; awaiting it on the
+ * window-closed path stalls the main-process event loop. Fire-and-forget is
+ * safe because the AutoSyncWatcher.disposed flag is already set before this
+ * call, so any events that arrive while the native subscription is draining
+ * short-circuit in receiveWatcherEvent.
+ */
+function closeNativeSubscriptionFireAndForget(
+  sub: RegistryEntry['nativeWatcherSubscription'],
+  projectName: string,
+): void {
+  if (!sub) return;
+  sub.close().catch((err: unknown) => {
+    log.warn(`[s2-registry] native watcher close failed for ${projectName}:`, err);
+  });
 }
 
 /** Read-only lookup. Returns null if root is not registered. */
@@ -206,12 +230,21 @@ export function listActive(): SystemTwoHandle[] {
   return Array.from(registry.values()).map(toHandle);
 }
 
-/** Dispose all watchers and clear the registry. Call on app shutdown. */
-export async function disposeAll(): Promise<void> {
+/**
+ * Dispose all watchers and clear the registry. Call on app shutdown.
+ *
+ * On app shutdown the OS reclaims all file handles on process exit, so the
+ * native close can be fire-and-forget here too — we don't need to await the
+ * ReadDirectoryChangesW drain. Keeping it synchronous from the caller's
+ * perspective avoids holding up the shutdown sequence.
+ */
+export function disposeAll(): void {
   const entries = Array.from(registry.values());
   for (const entry of entries) {
-    await closeNativeSubscription(entry);
+    const sub = entry.nativeWatcherSubscription;
+    entry.nativeWatcherSubscription = null;
     entry.watcher?.dispose();
+    closeNativeSubscriptionFireAndForget(sub, entry.projectName);
   }
   registry.clear();
   log.info('[s2-registry] disposeAll complete');

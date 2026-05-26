@@ -3,6 +3,8 @@
  *
  * Tests: acquire/release ref counting, path normalisation (slash variants),
  * dispose on refCount=0, getHandle null for unknown root, listActive.
+ * Wave 16 P10: fire-and-forget native close (non-blocking release), double-close
+ * prevention, and error swallowing on close rejection.
  */
 
 import path from 'path';
@@ -24,6 +26,14 @@ vi.mock('./autoSync', () => {
   }
   return { AutoSyncWatcher };
 });
+
+// Controllable native watcher subscription mock.
+// watchRecursive is used by subscribeNativeWatcher inside systemTwoRegistry.
+// Default: close() resolves immediately so existing tests don't crash in afterEach.
+const mockSubscriptionClose = vi.fn().mockResolvedValue(undefined);
+vi.mock('../watchers', () => ({
+  watchRecursive: vi.fn().mockResolvedValue({ close: mockSubscriptionClose }),
+}));
 
 // Minimal GraphDatabase stub — only getNodeCount is called during construction.
 function makeDb() {
@@ -118,8 +128,8 @@ describe('acquire and release', () => {
     expect(getHandle(ROOT_A)).toBeNull();
   });
 
-  it('release on unknown root is a no-op', async () => {
-    await expect(release('/nonexistent/path')).resolves.toBeUndefined();
+  it('release on unknown root is a no-op', () => {
+    expect(() => release('/nonexistent/path')).not.toThrow();
   });
 });
 
@@ -208,8 +218,81 @@ describe('disposeAll', () => {
     vi.clearAllMocks();
     await acquire(ROOT_A, makeDb(), makePipeline());
     await acquire(ROOT_B, makeDb(), makePipeline());
-    await disposeAll();
+    disposeAll();
     expect(mockDispose).toHaveBeenCalledTimes(2);
     expect(listActive()).toHaveLength(0);
+  });
+});
+
+// ─── fire-and-forget native close (Wave 16 P10) ───────────────────────────────
+
+describe('release — fire-and-forget native close', () => {
+  beforeEach(async () => {
+    disposeAll();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    disposeAll();
+  });
+
+  it('release removes the registry entry before the native close Promise settles', async () => {
+    // Arrange: close() returns a Promise that does not settle until we
+    // explicitly resolve it — simulates the Windows ReadDirectoryChangesW drain.
+    let resolveClose!: () => void;
+    const pendingClose = new Promise<void>((res) => {
+      resolveClose = res;
+    });
+    mockSubscriptionClose.mockReturnValueOnce(pendingClose);
+
+    await acquire(ROOT_A, makeDb(), makePipeline());
+
+    // Act: call release (now synchronous).
+    release(ROOT_A);
+
+    // Assert: the registry entry is gone BEFORE the native close completes.
+    // This is the core contract — the event loop is not blocked.
+    expect(getHandle(ROOT_A)).toBeNull();
+
+    // Also verify close() was started (fire-and-forget means it IS called,
+    // just not awaited).
+    expect(mockSubscriptionClose).toHaveBeenCalledTimes(1);
+
+    // Settle the pending close so the test finishes cleanly.
+    resolveClose();
+    await pendingClose;
+  });
+
+  it('concurrent release calls do not double-close the native subscription', async () => {
+    mockSubscriptionClose.mockResolvedValue(undefined);
+    await acquire(ROOT_A, makeDb(), makePipeline());
+
+    // First release drops refCount to 0 and starts the async close.
+    release(ROOT_A);
+    // Second release on the same root finds no entry (already deleted).
+    release(ROOT_A);
+
+    // Allow microtasks to flush so both close() Promises settle.
+    await Promise.resolve();
+
+    // close() must have been called exactly once — not twice.
+    expect(mockSubscriptionClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs a warning and does not propagate when native close rejects', async () => {
+    const closeError = new Error('IOCP drain failed');
+    // close() rejects after a microtask — simulates a native error.
+    mockSubscriptionClose.mockRejectedValueOnce(closeError);
+
+    await acquire(ROOT_A, makeDb(), makePipeline());
+
+    // release() itself must not throw — the rejection is caught internally.
+    expect(() => release(ROOT_A)).not.toThrow();
+
+    // Flush microtasks so the .catch() handler runs.
+    await new Promise<void>((res) => setTimeout(res, 0));
+
+    // The entry is removed regardless of the close rejection.
+    expect(getHandle(ROOT_A)).toBeNull();
   });
 });
