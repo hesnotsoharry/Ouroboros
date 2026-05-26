@@ -1,5 +1,6 @@
 ---
-status: OPEN
+status: RESOLVED
+resolved-during: wave-21-ouroboros-graph-tier-2
 created: 2026-05-26
 updated: 2026-05-26
 priority: MED
@@ -56,3 +57,9 @@ Two phases, one item each. Sonnet-implementer for both — both require judgment
 ## References
 
 - Meta verification report: `C:\Web App\meta\discovery\2026-05-26-ouroboros-verification-report.md` (improvement opportunities table)
+
+## Resolution (wave-21-ouroboros-graph-tier-2)
+
+Closed by `haiku-followup-auditor` during wave audit on 2026-05-26.
+
+Evidence: Both items shipped in Wave 21. Phase 1 implemented IMPLEMENTS + EXTENDS edges via tree-sitter `class_heritage` extraction (files: treeSitterTypes.ts, treeSitterParserDefs.ts, indexingPipelineHeritage.ts, indexingPipelinePasses.ts, enrichmentPass.ts, treeSitterParserDefs.test.ts, indexingPipeline.heritageEdges.acceptance.test.ts). Phase 2 implemented testDetectPass cache with per-file QN-prefix invalidation (files: testDetectPass.ts, indexingPipeline.ts, testDetectPass.test.ts). All 6 decisions ratified. Gates: 743 codebaseGraph tests passed; 6604 main tests passed (1 pre-existing failure unrelated to wave). See `wave-21-result.md` § Verification.
