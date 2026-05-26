@@ -1,7 +1,7 @@
 ---
-status: PLANNED
+status: SHIPPED-PENDING-SMOKE
 created: 2026-05-25
-updated: 2026-05-25
+updated: 2026-05-26
 type: perf-investigation
 predecessor: wave-17-editor-cascade-perf
 severity: SHOWSTOPPER

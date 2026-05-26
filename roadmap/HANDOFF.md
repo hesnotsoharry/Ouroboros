@@ -1,10 +1,55 @@
-# Session Handoff — 2026-05-25 (Wave 17 SHIPPED-VERIFIED; Wave 18 PLANNED — SHOWSTOPPER multi-window perf)
+# Session Handoff — 2026-05-26 (Wave 18 SHIPPED-PENDING-SMOKE — multi-window perf cascade fixed)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-25 (latest) — Wave 17 SHIPPED-VERIFIED + Wave 18 PLANNED (SHOWSTOPPER multi-window perf)
+## 🔼 UPDATE 2026-05-26 (latest) — Wave 18 SHIPPED-PENDING-SMOKE (multi-window perf, SHOWSTOPPER closed)
+
+**Next action: Cole runs `roadmap/wave-18-multi-window-perf/wave-18-smoke-report.md` on the next interactive session.** 7-scenario checklist verifying single-window dev default (W1), shared HTTP partition (W2), worker-offloaded cold-start indexer (W3 — the critical fix), per-root acquireContextLayer coalesce (W4), rulesWatcher silence (W5), perf-flush dedup (W6). Flip status SHIPPED-PENDING-SMOKE → SHIPPED-VERIFIED on PASS.
+
+**Wave 18 — SHIPPED locally on master via merge-from-worktree. 5 fix commits + 2 docs commits.** Closes Cole's SHOWSTOPPER ("I functionally can't use the app or my computer while the 3 windows are open").
+
+The 5 fix commits:
+- `1752f9c6` — W1 single-window dev clamp (detect-via-npm_lifecycle_event; no new dep)
+- `f5d0c509` — W3 cold-start indexer worker offload (the CRITICAL fix; new `launchDiff` worker message; eliminates 13.3s main-thread stall)
+- `524b7fa2` — W2 shared session partition for BrowserWindows (`partition: 'persist:shared'`)
+- `dafcde03` — W4 coalesce concurrent acquireContextLayer per root (Promise-dedup; 3 windows × 1 root = 1 init, not 3)
+- `9d23ceb0` — W5 + W6 polish (rulesWatcher catch filter + idempotency guard; flushStartupLog one-shot guard)
+
+The 2 wave-process commits: `bce3fce8` (Option C scope lock, pre-wave) + wave-wrap commit (this).
+
+**The diagnostic-first discipline paid off heavily.** 6 parallel agent dispatches (5 diagnosticians + 1 research) decomposed Cole's 5 trace symptoms into 9 distinct findings — 6 got fixes, 1 deferred-investigate (W7 — needs runtime data), 2 confirmed non-bugs (React StrictMode dev-mode noise, intentional two-pass design). Synthesis took ~10 min after agents returned.
+
+**The W3 critical fix story:** 1B diagnostic named `IndexingPipeline.runPass()` as the main-thread blocker. W3 architect re-verified against current code and found `runPass()` only executes IN the worker — the actual stall is `autoSync.ts:361` `getAllFileHashes()` (a synchronous better-sqlite3 read of all file-hash rows). Architect plan (Option A1): new `launchDiff` worker message; worker performs read + concurrent fs.stat + conditional incremental index in one round-trip. ~60 LOC across 4 files. Mirrors Wave 17's worker-offload pattern.
+
+**3 mid-wave orchestrator course-corrections:**
+1. W1 implementer added cross-env devDep (would trigger WSL2 lockfile-sync constraint). Orchestrator dropped it + switched to `npm_lifecycle_event` detection — same outcome, no new dep.
+2. 1B diagnostic citation was partially wrong (above). W3 architect's correction was load-bearing.
+3. haiku-implementer for W5+W6 wrote to MAIN checkout despite worktree-path brief. Orchestrator manually moved files main→worktree. **Same root-cause family as Wave 17's haiku-followup-auditor.** Meta follow-up filed at `meta/roadmap/follow-ups/2026-05-26-haiku-implementer-wrong-checkout-target.md`.
+
+**Lessons (carry forward to Wave 19+):**
+
+1. **patchIpcMainHandle timer-artifact pattern keeps recurring.** Now THIRD wave to surface it (Wave 16 P6 shared-Promise, Wave 17 `files:saveFile`, Wave 18 `config:set` + the W3 jank-from-getAllFileHashes). Slow-handler lines that fire ALONGSIDE jank events are suspect. The jank event is the real signal.
+2. **Parallel diagnosis on disjoint surfaces works at N=5.** 5 sonnet-diagnosticians + 1 haiku-research-extractor returned in ~5 min total wall-clock. ~30-45 min saved vs sequential.
+3. **Architect catches diagnostic citation errors.** W3 verified the 1B claim and corrected it. Diagnose → architect → implement pipeline catches diagnostic precision before implementer waste.
+4. **Haiku writing-to-wrong-location pattern recurring.** Second wave in a row. Meta follow-up open.
+5. **Promise-dedup is the canonical cross-window resource coalesce pattern.** Wave 16 P7 (cache dogpile), Wave 18 W4 (acquireContextLayer). Worth promoting to project-wide.
+
+**Wave 18 follow-ups GENERATED:**
+- `roadmap/follow-ups/2026-05-26-approval-wait-double-fire-instrument.md` (LOW) — W7 needs `connId` to disambiguate two-hook vs reconnect
+- `meta/roadmap/follow-ups/2026-05-26-haiku-implementer-wrong-checkout-target.md` (MED) — Haiku wrong-checkout pattern
+
+**Wave 18 NOT done / deferrals:**
+1. **Live smoke trace — DEFERRED to Cole.** Checklist at `wave-18-smoke-report.md`.
+2. **Full `npm test` — DEFERRED.** Scoped runs (test:codebasegraph 696/3, test:main PASS) covered surface.
+3. **Stryker mutation (Check 6) — DEFERRED.** Standing pre-merge.
+4. **Tag + CHANGELOG bump — PENDING Cole's call.** Current v2.20.0. This is arguably a minor version (1-window dev default IS new behavior) but could be patch (perf fix). Cole picks.
+5. **Push to remote** — auto per standing autonomy, post-merge.
+
+---
+
+## 🔼 UPDATE 2026-05-25 (superseded) — Wave 17 SHIPPED-VERIFIED + Wave 18 PLANNED (SHOWSTOPPER multi-window perf)
 
 **Next action: synthesize the 5 parallel Wave 18 diagnostic dispatches + 1 research extract when they return.** Wave 18 Phase 1 was kicked off in this session as 6 parallel agent dispatches on disjoint surfaces. Once they return, revise the Wave 18 plan with concrete fix scope and surface to Cole for picks before any code changes.
 
