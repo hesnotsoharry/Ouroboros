@@ -9,8 +9,12 @@
  * main-process code.  The class is still directly usable for tests.
  */
 
+import fs from 'fs/promises';
+import path from 'path';
 import { parentPort, workerData } from 'worker_threads';
 
+import log from '../logger';
+import { mapConcurrent } from './concurrency';
 import { GraphDatabase } from './graphDatabase';
 import { IndexingPipeline } from './indexingPipeline';
 import type { IndexingProgress } from './indexingPipelineTypes';
@@ -19,6 +23,7 @@ import type {
   IndexingWorkerRequest,
   IndexingWorkerResponse,
   IndexRepositoryRequest,
+  LaunchDiffRequest,
 } from './indexingWorkerTypes';
 import { TreeSitterParser } from './treeSitterParser';
 
@@ -98,11 +103,95 @@ function handleDispose(req: DisposeRequest): void {
   setImmediate(() => process.exit(0));
 }
 
+// ── Stat helper ───────────────────────────────────────────────────────────────
+
+interface StatResult {
+  relPath: string;
+  absolutePath: string;
+  status: 'stale' | 'deleted' | 'ok';
+}
+
+async function statFileRecord(
+  projectRoot: string,
+  record: { rel_path: string; mtime_ns: number; size: number },
+): Promise<StatResult> {
+  const absolutePath = path.join(projectRoot, record.rel_path);
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- absolutePath from trusted graph record
+    const stat = await fs.stat(absolutePath);
+    const mtimeNs = Math.floor(stat.mtimeMs * 1e6);
+    const status = mtimeNs !== record.mtime_ns || stat.size !== record.size ? 'stale' : 'ok';
+    return { relPath: record.rel_path, absolutePath, status };
+  } catch {
+    return { relPath: record.rel_path, absolutePath, status: 'deleted' };
+  }
+}
+
+interface DiffResult {
+  stale: StatResult[];
+  deleted: StatResult[];
+}
+
+async function runDiff(projectRoot: string, projectName: string): Promise<DiffResult> {
+  const hashes = db?.getAllFileHashes(projectName) ?? [];
+  const statResults = await mapConcurrent(hashes, (record) => statFileRecord(projectRoot, record));
+  return {
+    stale: statResults.filter((r) => r.status === 'stale'),
+    deleted: statResults.filter((r) => r.status === 'deleted'),
+  };
+}
+
+async function handleLaunchDiff(req: LaunchDiffRequest): Promise<void> {
+  if (disposed) {
+    post({ type: 'error', requestId: req.requestId, message: 'Worker is disposed' });
+    return;
+  }
+  const t0 = Date.now();
+  const { projectRoot, projectName } = req;
+  log.info('[trace:worker.launchDiff] start projectName=%s', projectName);
+  const pl = await getOrInitPipeline();
+
+  const { stale, deleted } = await runDiff(projectRoot, projectName);
+  log.info(
+    '[trace:worker.launchDiff] hashes=%d changed=%d deleted=%d elapsed=%dms',
+    stale.length + deleted.length,
+    stale.length,
+    deleted.length,
+    Date.now() - t0,
+  );
+
+  let reindexed = false;
+  if (stale.length > 0 || deleted.length > 0) {
+    log.info('[trace:worker.launchDiff] reindex triggered changedPaths=%d', stale.length);
+    await pl.index({
+      projectRoot,
+      projectName,
+      incremental: true,
+      changedPaths: stale.map((r) => r.absolutePath),
+    });
+    reindexed = true;
+  }
+
+  post({
+    type: 'launchDiffResult',
+    requestId: req.requestId,
+    result: {
+      staleCount: stale.length,
+      deletedCount: deleted.length,
+      reindexed,
+      durationMs: Date.now() - t0,
+    },
+  });
+}
+
 async function handleMessage(msg: IndexingWorkerRequest): Promise<void> {
   try {
     switch (msg.type) {
       case 'indexRepository':
         await handleIndexRepository(msg);
+        break;
+      case 'launchDiff':
+        await handleLaunchDiff(msg);
         break;
       case 'dispose':
         handleDispose(msg);

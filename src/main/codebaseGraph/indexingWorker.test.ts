@@ -17,6 +17,9 @@ vi.mock('worker_threads', () => ({
     postMessage: vi.fn(),
   },
   workerData: {},
+  // W18 W3: logger transitively imports isMainThread to route between
+  // console.warn (worker) and log.info (main); mock must expose it.
+  isMainThread: false,
 }));
 
 // Stub heavy native deps so the module graph resolves in vitest.

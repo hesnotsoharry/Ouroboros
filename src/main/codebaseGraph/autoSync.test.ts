@@ -1,8 +1,8 @@
 /**
  * autoSync.test.ts — Unit tests for AutoSyncWatcher.
  *
- * Covers: 300ms application-layer debounce, onLaunchDiff stat comparison,
- * initWithLaunchDiff triggering reindex on stale files,
+ * Covers: 300ms application-layer debounce,
+ * initWithLaunchDiff dispatching to worker via runLaunchDiff,
  * pollForChanges sliced-window reconciliation, and onFileChange debounce.
  */
 
@@ -27,8 +27,22 @@ const mockRunIndex = vi.hoisted(() =>
     projectName: 'test',
   }),
 );
+
+// initWithLaunchDiff now routes through runLaunchDiff (not runIndex).
+const mockRunLaunchDiff = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    staleCount: 0,
+    deletedCount: 0,
+    reindexed: false,
+    durationMs: 5,
+  }),
+);
+
 vi.mock('./indexingWorkerClient', () => ({
-  getIndexingWorkerClient: () => ({ runIndex: mockRunIndex }),
+  getIndexingWorkerClient: () => ({
+    runIndex: mockRunIndex,
+    runLaunchDiff: mockRunLaunchDiff,
+  }),
 }));
 
 import type { AutoSyncOptions } from './autoSync';
@@ -161,107 +175,51 @@ describe('receiveWatcherEvent — 300ms app-layer debounce', () => {
   });
 });
 
-// ─── onLaunchDiff ─────────────────────────────────────────────────────────────
-
-describe('onLaunchDiff', () => {
-  it('returns empty result when DB has no hashes', async () => {
-    const watcher = new AutoSyncWatcher(makeOpts({ db: makeDb([]) }));
-    const result = await watcher.onLaunchDiff();
-    expect(result.changed).toHaveLength(0);
-    expect(result.deleted).toHaveLength(0);
-  });
-
-  it('classifies a missing file as deleted', async () => {
-    const hash: FakeHashRecord = {
-      project: 'test-project',
-      rel_path: 'src/gone.ts',
-      content_hash: 'abc',
-      mtime_ns: 1000000,
-      size: 100,
-    };
-    const watcher = new AutoSyncWatcher(makeOpts({ db: makeDb([hash]) }));
-    const result = await watcher.onLaunchDiff();
-    expect(result.deleted).toContain('src/gone.ts');
-    expect(result.changed).toHaveLength(0);
-  });
-
-  it('classifies a file with different mtime as changed', async () => {
-    // Use a file that actually exists on disk
-    const fs = await import('fs/promises');
-    const realPath = path.join(process.cwd(), 'package.json');
-    const stat = await fs.stat(realPath);
-    const relPath = 'package.json';
-    const staleMtimeNs = Math.floor(stat.mtimeMs * 1e6) - 1_000_000; // 1ms earlier
-
-    const hash: FakeHashRecord = {
-      project: 'test-project',
-      rel_path: relPath,
-      content_hash: 'stale',
-      mtime_ns: staleMtimeNs,
-      size: stat.size,
-    };
-    const watcher = new AutoSyncWatcher(
-      makeOpts({
-        projectRoot: process.cwd(),
-        db: makeDb([hash]),
-      }),
-    );
-    const result = await watcher.onLaunchDiff();
-    expect(result.changed).toContain(relPath);
-    expect(result.deleted).toHaveLength(0);
-  });
-
-  it('classifies a file with matching mtime+size as unchanged', async () => {
-    const fs = await import('fs/promises');
-    const realPath = path.join(process.cwd(), 'package.json');
-    const stat = await fs.stat(realPath);
-    const mtimeNs = Math.floor(stat.mtimeMs * 1e6);
-    const relPath = 'package.json';
-
-    const hash: FakeHashRecord = {
-      project: 'test-project',
-      rel_path: relPath,
-      content_hash: 'current',
-      mtime_ns: mtimeNs,
-      size: stat.size,
-    };
-    const watcher = new AutoSyncWatcher(
-      makeOpts({
-        projectRoot: process.cwd(),
-        db: makeDb([hash]),
-      }),
-    );
-    const result = await watcher.onLaunchDiff();
-    expect(result.changed).not.toContain(relPath);
-    expect(result.deleted).not.toContain(relPath);
-  });
-});
-
 // ─── initWithLaunchDiff ───────────────────────────────────────────────────────
 
 describe('initWithLaunchDiff', () => {
-  it('triggers reindex when there are stale files', async () => {
-    const hash: FakeHashRecord = {
-      project: 'test-project',
-      rel_path: 'src/gone.ts',
-      content_hash: 'abc',
-      mtime_ns: 1000000,
-      size: 100,
-    };
-    mockRunIndex.mockClear();
-    const pipeline = makePipeline();
-    const watcher = new AutoSyncWatcher(makeOpts({ db: makeDb([hash]), pipeline }));
-    await watcher.initWithLaunchDiff();
-    expect(mockRunIndex).toHaveBeenCalled();
+  beforeEach(() => {
+    mockRunLaunchDiff.mockClear();
   });
 
-  it('does not trigger reindex when catalog is current', async () => {
-    mockRunIndex.mockClear();
-    const pipeline = makePipeline();
-    // No hashes → nothing stale
-    const watcher = new AutoSyncWatcher(makeOpts({ db: makeDb([]), pipeline }));
+  it('dispatches runLaunchDiff to the worker with correct project opts', async () => {
+    const watcher = new AutoSyncWatcher(
+      makeOpts({ projectRoot: '/tmp/proj', projectName: 'my-proj' }),
+    );
     await watcher.initWithLaunchDiff();
-    expect(mockRunIndex).not.toHaveBeenCalled();
+    expect(mockRunLaunchDiff).toHaveBeenCalledOnce();
+    expect(mockRunLaunchDiff).toHaveBeenCalledWith({
+      projectRoot: '/tmp/proj',
+      projectName: 'my-proj',
+    });
+  });
+
+  it('completes without error when worker returns a no-op result', async () => {
+    mockRunLaunchDiff.mockResolvedValueOnce({
+      staleCount: 0,
+      deletedCount: 0,
+      reindexed: false,
+      durationMs: 2,
+    });
+    const watcher = new AutoSyncWatcher(makeOpts());
+    await expect(watcher.initWithLaunchDiff()).resolves.toBeUndefined();
+  });
+
+  it('calls onError when runLaunchDiff rejects', async () => {
+    const onError = vi.fn();
+    mockRunLaunchDiff.mockRejectedValueOnce(new Error('worker failed'));
+    const watcher = new AutoSyncWatcher(makeOpts({ onError }));
+    await watcher.initWithLaunchDiff();
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(onError.mock.calls[0][0].message).toBe('worker failed');
+  });
+
+  it('is a no-op when disposed before dispatch', async () => {
+    const watcher = new AutoSyncWatcher(makeOpts());
+    watcher.dispose();
+    await watcher.initWithLaunchDiff();
+    expect(mockRunLaunchDiff).not.toHaveBeenCalled();
   });
 });
 

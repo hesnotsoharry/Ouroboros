@@ -28,13 +28,6 @@ export interface AutoSyncOptions {
   onError?: (error: Error) => void;
 }
 
-// ─── Launch diff result ───────────────────────────────────────────────────────
-
-export interface LaunchDiffResult {
-  changed: string[];
-  deleted: string[];
-}
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Maximum files to check per poll cycle to avoid blocking the event loop. */
@@ -75,10 +68,7 @@ async function mapWithConcurrency<T, R>(
     }
   }
 
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    () => runNext(),
-  );
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => runNext());
   await Promise.all(workers);
   return results;
 }
@@ -193,9 +183,7 @@ export class AutoSyncWatcher {
 
     const elapsedMs = Date.now() - t0;
     const shouldLog =
-      changed.length > 0 ||
-      this.pollCount % POLL_LOG_EVERY_N === 0 ||
-      elapsedMs > POLL_LOG_SLOW_MS;
+      changed.length > 0 || this.pollCount % POLL_LOG_EVERY_N === 0 || elapsedMs > POLL_LOG_SLOW_MS;
 
     if (shouldLog) {
       log.info(
@@ -294,7 +282,9 @@ export class AutoSyncWatcher {
   async triggerReindex(): Promise<void> {
     if (this.disposed || this.reindexing) return;
 
-    log.info(`[trace:autoSync.triggerReindex] pendingEventsSize=${this.pendingEvents.size} reindexing=${this.reindexing} hintPaths=${this.watcherHintPaths.length}`);
+    log.info(
+      `[trace:autoSync.triggerReindex] pendingEventsSize=${this.pendingEvents.size} reindexing=${this.reindexing} hintPaths=${this.watcherHintPaths.length}`,
+    );
 
     this.reindexing = true;
     const startTime = Date.now();
@@ -325,67 +315,31 @@ export class AutoSyncWatcher {
   // ─── Launch diff ──────────────────────────────────────────────────────────
 
   /**
-   * Run init: perform a launch-time catalog diff to catch changes that
-   * happened while the IDE was closed, then trigger a reindex of stale files.
+   * Run init: perform a launch-time catalog diff off the main thread to catch
+   * changes that happened while the IDE was closed, then trigger a reindex of
+   * stale files. The getAllFileHashes read + fs.stat loop + conditional reindex
+   * all execute in the indexing worker thread, keeping the main thread unblocked.
    * Called by the registry during acquire(); not intended for direct use.
    */
   async initWithLaunchDiff(): Promise<void> {
     if (this.disposed) return;
     const t0 = Date.now();
+    log.info(
+      '[trace:autoSync.initWithLaunchDiff] dispatching to worker root=%s',
+      this.opts.projectRoot,
+    );
     try {
-      const diff = await this.onLaunchDiff();
-      const stale = [...diff.changed, ...diff.deleted];
+      const result = await getIndexingWorkerClient().runLaunchDiff({
+        projectRoot: this.opts.projectRoot,
+        projectName: this.opts.projectName,
+      });
       log.info(
-        `[trace:autoSync.launchDiff] diff in ${Date.now() - t0}ms changed=${diff.changed.length} deleted=${diff.deleted.length}`,
+        '[trace:autoSync.initWithLaunchDiff] done elapsed=%dms stale=%d',
+        Date.now() - t0,
+        result.staleCount,
       );
-      if (stale.length > 0) {
-        await this.triggerReindex();
-      }
     } catch (err) {
       this.opts.onError?.(err instanceof Error ? err : new Error(String(err)));
-    }
-  }
-
-  /**
-   * Stat-only catalog diff (Continue.dev pattern).
-   * Compares each stored file_hash record's mtime_ns+size against the live FS.
-   * Returns paths whose mtime/size differ (changed) or are missing (deleted).
-   * Does NOT read file contents — O(N) stat calls only.
-   */
-  async onLaunchDiff(): Promise<LaunchDiffResult> {
-    const changed: string[] = [];
-    const deleted: string[] = [];
-    let hashes: ReturnType<typeof this.opts.db.getAllFileHashes>;
-
-    try {
-      hashes = this.opts.db.getAllFileHashes(this.opts.projectName);
-    } catch {
-      return { changed, deleted };
-    }
-
-    for (const record of hashes) {
-      const absPath = path.join(this.opts.projectRoot, record.rel_path);
-      await this.classifyStoredFile(absPath, record, changed, deleted);
-    }
-
-    return { changed, deleted };
-  }
-
-  private async classifyStoredFile(
-    absPath: string,
-    record: ReturnType<typeof this.opts.db.getAllFileHashes>[number],
-    changed: string[],
-    deleted: string[],
-  ): Promise<void> {
-    try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- absPath from trusted graph record
-      const stat = await fs.stat(absPath);
-      const mtimeNs = Math.floor(stat.mtimeMs * 1e6);
-      if (mtimeNs !== record.mtime_ns || stat.size !== record.size) {
-        changed.push(record.rel_path);
-      }
-    } catch {
-      deleted.push(record.rel_path);
     }
   }
 

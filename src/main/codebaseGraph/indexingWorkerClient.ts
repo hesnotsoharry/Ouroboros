@@ -16,7 +16,11 @@ import log from '../logger';
 import { Mutex } from './concurrency';
 import { getDbPath } from './graphDatabaseHelpers';
 import type { IndexingOptions, IndexingResult } from './indexingPipelineTypes';
-import type { IndexingWorkerResponse, IndexRequestOptions } from './indexingWorkerTypes';
+import type {
+  IndexingWorkerResponse,
+  IndexRequestOptions,
+  LaunchDiffResult,
+} from './indexingWorkerTypes';
 
 // ── Path resolution (dev vs packaged asar) ────────────────────────────────────
 
@@ -48,11 +52,18 @@ interface PendingRequest {
   onProgress: IndexingOptions['onProgress'];
 }
 
+interface PendingLaunchDiff {
+  requestId: string;
+  resolve: (result: LaunchDiffResult) => void;
+  reject: (err: Error) => void;
+}
+
 // ── Client class ──────────────────────────────────────────────────────────────
 
 export class IndexingWorkerClient {
   private worker: Worker | null = null;
   private pending = new Map<string, PendingRequest>();
+  private pendingLaunchDiff = new Map<string, PendingLaunchDiff>();
   private queue: Array<() => void> = [];
   private busy = false;
   private nextId = 0;
@@ -66,6 +77,21 @@ export class IndexingWorkerClient {
     log.info(`[trace:workerClient.runIndex] queueDepth=${this.queue.length} busy=${this.busy}`);
     return new Promise((resolve, reject) => {
       this.queue.push(() => this.dispatch(options, resolve, reject));
+      this.drainQueue();
+    });
+  }
+
+  /**
+   * Dispatch a launch-time catalog diff to the worker thread.
+   * Serializes through the same queue as runIndex so concurrent launchDiff +
+   * runIndex requests are handled one at a time.
+   */
+  runLaunchDiff(opts: { projectRoot: string; projectName: string }): Promise<LaunchDiffResult> {
+    log.info(
+      `[trace:workerClient.runLaunchDiff] queueDepth=${this.queue.length} busy=${this.busy}`,
+    );
+    return new Promise((resolve, reject) => {
+      this.queue.push(() => this.dispatchLaunchDiff(opts, resolve, reject));
       this.drainQueue();
     });
   }
@@ -86,6 +112,10 @@ export class IndexingWorkerClient {
       p.reject(new Error('IndexingWorkerClient disposed'));
     }
     this.pending.clear();
+    for (const p of this.pendingLaunchDiff.values()) {
+      p.reject(new Error('IndexingWorkerClient disposed'));
+    }
+    this.pendingLaunchDiff.clear();
     this.queue = [];
     this.busy = false;
     if (!worker) return;
@@ -166,6 +196,22 @@ export class IndexingWorkerClient {
     this.ensureWorker().postMessage({ type: 'indexRepository', requestId, options: serialisable });
   }
 
+  private dispatchLaunchDiff(
+    opts: { projectRoot: string; projectName: string },
+    resolve: PendingLaunchDiff['resolve'],
+    reject: PendingLaunchDiff['reject'],
+  ): void {
+    this.busy = true;
+    const requestId = String(this.nextId++);
+    this.pendingLaunchDiff.set(requestId, { requestId, resolve, reject });
+    this.ensureWorker().postMessage({
+      type: 'launchDiff',
+      requestId,
+      projectRoot: opts.projectRoot,
+      projectName: opts.projectName,
+    });
+  }
+
   private drainQueue(): void {
     if (this.busy || this.queue.length === 0) return;
     const next = this.queue.shift();
@@ -182,13 +228,30 @@ export class IndexingWorkerClient {
       case 'result':
         this.settle(msg.requestId, (p) => p.resolve(msg.result));
         break;
+      case 'launchDiffResult':
+        this.settleLaunchDiff(msg.requestId, (p) => p.resolve(msg.result));
+        break;
       case 'error':
-        this.settle(msg.requestId, (p) => p.reject(new Error(msg.message)));
+        // Could be from either launchDiff or indexRepository — check both maps.
+        if (this.pendingLaunchDiff.has(msg.requestId)) {
+          this.settleLaunchDiff(msg.requestId, (p) => p.reject(new Error(msg.message)));
+        } else {
+          this.settle(msg.requestId, (p) => p.reject(new Error(msg.message)));
+        }
         break;
       case 'disposed':
         // Ack — graceful shutdown completion is observed via the worker 'exit' event.
         break;
     }
+  }
+
+  private settleLaunchDiff(requestId: string, fn: (p: PendingLaunchDiff) => void): void {
+    const p = this.pendingLaunchDiff.get(requestId);
+    if (!p) return;
+    this.pendingLaunchDiff.delete(requestId);
+    this.busy = false;
+    fn(p);
+    this.drainQueue();
   }
 
   private settle(requestId: string, fn: (p: PendingRequest) => void): void {
@@ -209,6 +272,8 @@ export class IndexingWorkerClient {
   private rejectAll(err: Error): void {
     for (const p of this.pending.values()) p.reject(err);
     this.pending.clear();
+    for (const p of this.pendingLaunchDiff.values()) p.reject(err);
+    this.pendingLaunchDiff.clear();
     this.busy = false;
     this.queue = [];
     // Release the indexing mutex if we had acquired it.

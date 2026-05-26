@@ -25,7 +25,19 @@ export interface DisposeRequest {
   requestId: string;
 }
 
-export type IndexingWorkerRequest = IndexRepositoryRequest | DisposeRequest;
+/**
+ * Request worker to run a launch-time catalog diff: stat all stored file
+ * hashes, detect stale/deleted files, and conditionally trigger an
+ * incremental reindex — all off the main thread.
+ */
+export interface LaunchDiffRequest {
+  type: 'launchDiff';
+  requestId: string;
+  projectRoot: string;
+  projectName: string;
+}
+
+export type IndexingWorkerRequest = IndexRepositoryRequest | DisposeRequest | LaunchDiffRequest;
 
 // ── Worker → Main ────────────────────────────────────────────────────────────
 
@@ -53,8 +65,24 @@ export interface WorkerDisposedMessage {
   requestId: string;
 }
 
+/** Payload returned from a launchDiff worker job. */
+export interface LaunchDiffResult {
+  staleCount: number;
+  deletedCount: number;
+  reindexed: boolean;
+  durationMs: number;
+}
+
+/** Message posted by the worker after completing a launchDiff request. */
+export interface LaunchDiffResultMessage {
+  type: 'launchDiffResult';
+  requestId: string;
+  result: LaunchDiffResult;
+}
+
 export type IndexingWorkerResponse =
   | WorkerProgressMessage
   | WorkerResultMessage
   | WorkerErrorMessage
-  | WorkerDisposedMessage;
+  | WorkerDisposedMessage
+  | LaunchDiffResultMessage;

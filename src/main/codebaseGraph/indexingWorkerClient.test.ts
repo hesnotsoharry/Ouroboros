@@ -213,6 +213,109 @@ describe('IndexingWorkerClient', () => {
   });
 });
 
+// ── runLaunchDiff ─────────────────────────────────────────────────────────────
+
+describe('IndexingWorkerClient.runLaunchDiff', () => {
+  let client: import('./indexingWorkerClient').IndexingWorkerClient;
+
+  function makeLaunchDiffResult() {
+    return {
+      staleCount: 2,
+      deletedCount: 1,
+      reindexed: true,
+      durationMs: 80,
+    };
+  }
+
+  beforeEach(async () => {
+    MockWorker.lastInstance = null;
+    const mod = await import('./indexingWorkerClient');
+    client = new mod.IndexingWorkerClient();
+  });
+
+  afterEach(async () => {
+    await client.dispose();
+    vi.resetModules();
+  });
+
+  it('resolves with LaunchDiffResult when worker posts launchDiffResult', async () => {
+    const promise = client.runLaunchDiff({ projectRoot: '/tmp/p', projectName: 'p' });
+
+    const worker = MockWorker.lastInstance!;
+    expect(worker.postMessage).toHaveBeenCalledOnce();
+
+    const msg = worker.postMessage.mock.calls[0][0] as {
+      type: string;
+      requestId: string;
+      projectRoot: string;
+      projectName: string;
+    };
+    expect(msg.type).toBe('launchDiff');
+    expect(msg.projectRoot).toBe('/tmp/p');
+    expect(msg.projectName).toBe('p');
+
+    worker.emit('message', {
+      type: 'launchDiffResult',
+      requestId: msg.requestId,
+      result: makeLaunchDiffResult(),
+    });
+
+    const result = await promise;
+    expect(result.staleCount).toBe(2);
+    expect(result.deletedCount).toBe(1);
+    expect(result.reindexed).toBe(true);
+    expect(result.durationMs).toBe(80);
+  });
+
+  it('rejects promise when worker posts error for a launchDiff request', async () => {
+    const promise = client.runLaunchDiff({ projectRoot: '/tmp/p', projectName: 'p' });
+
+    const worker = MockWorker.lastInstance!;
+    const msg = worker.postMessage.mock.calls[0][0] as { requestId: string };
+    worker.emit('message', { type: 'error', requestId: msg.requestId, message: 'stat failed' });
+
+    await expect(promise).rejects.toThrow('stat failed');
+  });
+
+  it('serializes runLaunchDiff + runIndex through the same queue', async () => {
+    const p1 = client.runLaunchDiff({ projectRoot: '/tmp/p', projectName: 'p' });
+    const p2 = client.runIndex(makeOptions());
+
+    const worker = MockWorker.lastInstance!;
+    // Only the first (launchDiff) should have been sent
+    expect(worker.postMessage).toHaveBeenCalledTimes(1);
+    expect((worker.postMessage.mock.calls[0][0] as { type: string }).type).toBe('launchDiff');
+
+    const req1 = worker.postMessage.mock.calls[0][0] as { requestId: string };
+    worker.emit('message', {
+      type: 'launchDiffResult',
+      requestId: req1.requestId,
+      result: { staleCount: 0, deletedCount: 0, reindexed: false, durationMs: 1 },
+    });
+    await p1;
+
+    // Now the runIndex job should have been dispatched
+    expect(worker.postMessage).toHaveBeenCalledTimes(2);
+    expect((worker.postMessage.mock.calls[1][0] as { type: string }).type).toBe('indexRepository');
+
+    const req2 = worker.postMessage.mock.calls[1][0] as { requestId: string };
+    worker.emit('message', { type: 'result', requestId: req2.requestId, result: makeResult() });
+    await p2;
+  });
+
+  it('rejects launchDiff on worker crash', async () => {
+    const promise = client.runLaunchDiff({ projectRoot: '/tmp/p', projectName: 'p' });
+    MockWorker.lastInstance!.emit('error', new Error('worker crashed'));
+    await expect(promise).rejects.toThrow('worker crashed');
+  });
+
+  it('rejects launchDiff when client is disposed', async () => {
+    const promise = client.runLaunchDiff({ projectRoot: '/tmp/p', projectName: 'p' });
+    await client.dispose();
+    await expect(promise).rejects.toThrow('disposed');
+  });
+});
+
 // ── Singleton helpers ─────────────────────────────────────────────────────────
 
 describe('module singleton', () => {
