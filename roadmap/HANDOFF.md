@@ -1,10 +1,51 @@
-# Session Handoff — 2026-05-25 (Wave 17 SHIPPED-PENDING-SMOKE)
+# Session Handoff — 2026-05-25 (Wave 17 SHIPPED-VERIFIED; Wave 18 PLANNED — SHOWSTOPPER multi-window perf)
 
 **Audience:** the next Claude Code session.
 
 ---
 
-## 🔼 UPDATE 2026-05-25 (latest) — Wave 17 SHIPPED-PENDING-SMOKE (editor cascade perf)
+## 🔼 UPDATE 2026-05-25 (latest) — Wave 17 SHIPPED-VERIFIED + Wave 18 PLANNED (SHOWSTOPPER multi-window perf)
+
+**Next action: synthesize the 5 parallel Wave 18 diagnostic dispatches + 1 research extract when they return.** Wave 18 Phase 1 was kicked off in this session as 6 parallel agent dispatches on disjoint surfaces. Once they return, revise the Wave 18 plan with concrete fix scope and surface to Cole for picks before any code changes.
+
+**Wave 17 — SHIPPED-VERIFIED** by Cole's live trace at 23:02-23:03 on 2026-05-25:
+- `[trace:autoSync.reindex] done in 159ms files=0` ← was 9075ms; **57× improvement.**
+- `[trace:filterChangedFiles] done changed=0 elapsed=0ms` ✓
+- `[trace:pipeline.runIndex] no-op fast-path` ✓ (fires)
+- `[trace:pipeline.index] done in 9ms` ✓
+- `[trace:contextLayer.buildRepoIndex] elapsed=78ms` ✓
+
+Targeted save-cascade surface fully verified. Wave 17 result brief, smoke report, audit, and follow-ups all in place.
+
+**Wave 18 — PLANNED, SHOWSTOPPER severity.** Cole's verification trace ALSO exposed a separate perf class making the IDE functionally unusable when 3 windows are open:
+
+- 3 BrowserWindow instances on `npm run dev` (perf markers fire 3×)
+- 26,936ms renderer-bundle-loaded (was <5s single-window per Wave 16)
+- 13,321ms event-loop jank during a save (45 ChildProcess + 45 Pipe handles spiking — ~15 subprocesses per window)
+- 22× `[rulesWatcher] watchRecursive failed: Invalid handle` (per-window setup fighting for one OS handle)
+- Duplicate event firing across windows (mergeThreadCollection × 5, approval.wait × 2 per ID, perf markers × 2)
+- 12 xterm-init calls (6 sessions × 2 windows)
+
+**Cole's quote (captured in Wave 18 plan):** "I functionally can't use the app or my computer while the 3 windows are open. Closing them is painful, causes more lag, having them open is painful, it is so poorly optimized."
+
+Lane B B1, diagnose-first. Wave 18 Phase 1 dispatched 5 parallel `sonnet-diagnostician` agents + 1 `haiku-research-extractor`:
+
+| # | Surface | Agent | Status |
+|---|---|---|---|
+| 1A | Window-spawn behavior (why 3 on dev) | sonnet-diagnostician | DISPATCHED |
+| 1B | Subprocess multiplication (45 ChildProcess) | sonnet-diagnostician | DISPATCHED |
+| 1C | Renderer bundle 27s load | sonnet-diagnostician | DISPATCHED |
+| 1D | rulesWatcher OS handle contention | sonnet-diagnostician | DISPATCHED |
+| 1E | Duplicate event firing | sonnet-diagnostician | DISPATCHED |
+| 1F | Multi-window Electron perf research | haiku-research-extractor | DISPATCHED |
+
+Full plan at `roadmap/wave-18-multi-window-perf/waveplan-18.md`.
+
+**Operational note from Wave 17 wrap:** `haiku-followup-auditor` reported it moved + edited 4 closed follow-ups but ACTUALLY wrote to the main checkout (despite brief specifying worktree path) AND its file moves didn't fully execute. Orchestrator had to manually run sed + git mv before merge could proceed. Worth tightening the agent's prompt or treating file-mutation claims as advisory.
+
+---
+
+## 🔼 UPDATE 2026-05-25 (superseded by Wave 17 ship) — Wave 17 SHIPPED-PENDING-SMOKE (editor cascade perf)
 
 **Next action: Cole runs `roadmap/wave-17-editor-cascade-perf/wave-17-smoke-report.md` on the next interactive session.** The wave shipped autonomously; the live smoke gate (capture 6 trace-line scenarios in a real IDE session) was deferred to Cole because the orchestrator can't drive the IDE interactively. If all 6 scenarios pass: flip status `SHIPPED-PENDING-SMOKE` → `SHIPPED-VERIFIED`. If any fail: dispatch a follow-up diagnostician.
 

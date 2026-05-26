@@ -1,9 +1,22 @@
 ---
-status: SHIPPED-PENDING-SMOKE
+status: SHIPPED-VERIFIED
 created: 2026-05-25
 updated: 2026-05-25
 type: perf-investigation
 predecessor: wave-16-ipc-handler-perf-fix-sweep
+successor: wave-18-multi-window-perf
+verified-by: cole-trace-23:02-23:03-2026-05-25
+verification-evidence: |
+  Cole's startup+save trace at 23:02:12-23:03:38 confirmed:
+  - [trace:autoSync.reindex] done in 159ms files=0 (was 9075ms; 57x improvement)
+  - [trace:filterChangedFiles] done changed=0 elapsed=0ms
+  - [trace:pipeline.runIndex] no-op fast-path: 0 changed files, skipping all passes
+  - [trace:pipeline.index] done in 9ms incremental=true files=0
+  - [trace:contextLayer.buildRepoIndex] elapsed=78ms (first), 290ms (second)
+  Acceptance criteria for the targeted save-cascade surface met.
+  REMAINING brutalness (3-window concurrency, 27s renderer bundle, 13.3s
+  jank, rulesWatcher handle storm, duplicate event firing) is a DIFFERENT
+  set of perf issues — handed off to Wave 18.
 ---
 
 # Wave 17 — Editor / Indexer Cascade Perf
