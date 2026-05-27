@@ -12,7 +12,7 @@ import type {
   AgentChatContentBlock,
   AgentChatOrchestrationLink,
   AgentChatStreamChunk,
-} from '../agentChat/types';
+} from '@shared/types/agentChat';
 
 /**
  * Tracks active streaming sends so that provider event and session update

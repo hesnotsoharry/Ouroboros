@@ -12,7 +12,7 @@
 
 import type { SkillExecutionRecord } from '@shared/types/ruleActivity';
 
-import type { ActiveStreamContext } from './agentChat/chatOrchestrationBridgeTypes';
+import type { ActiveStreamContext } from './hooks/types';
 import type { HookPayload } from './hooks';
 import log from './logger';
 

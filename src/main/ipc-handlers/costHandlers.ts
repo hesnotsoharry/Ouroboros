@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 
-import { getErrorMessage } from '../agentChat/utils';
+import { getErrorMessage } from '../utils';
 import { clearCostHistory, type CostEntry, getCostHistory, saveCostEntry } from '../costHistory';
 
 type ChannelList = string[];

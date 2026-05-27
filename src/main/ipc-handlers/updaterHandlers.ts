@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 
-import { getErrorMessage } from '../agentChat/utils';
+import { getErrorMessage } from '../utils';
 import { getAutoUpdater, getLastOfferedVersion, isVersionRejected } from '../updater';
 
 type ChannelList = string[];

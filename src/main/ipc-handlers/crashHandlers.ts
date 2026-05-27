@@ -2,7 +2,7 @@ import { app, ipcMain, shell } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { getErrorMessage } from '../agentChat/utils';
+import { getErrorMessage } from '../utils';
 import { getCrashReportDirPath } from '../crashReporterStorage';
 import log from '../logger';
 

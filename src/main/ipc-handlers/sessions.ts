@@ -6,7 +6,7 @@ import { app, BrowserWindow, dialog, ipcMain, IpcMainInvokeEvent } from 'electro
 import fs from 'fs/promises';
 import path from 'path';
 
-import { getErrorMessage } from '../agentChat/utils';
+import { getErrorMessage } from '../utils';
 import log from '../logger';
 
 type SenderWindow = (event: IpcMainInvokeEvent) => BrowserWindow;

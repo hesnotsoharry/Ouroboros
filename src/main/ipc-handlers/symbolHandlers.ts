@@ -1,6 +1,6 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
 
-import { getErrorMessage } from '../agentChat/utils';
+import { getErrorMessage } from '../utils';
 import { searchSymbols } from './miscSymbolSearch';
 import { assertPathAllowed } from './pathSecurity';
 

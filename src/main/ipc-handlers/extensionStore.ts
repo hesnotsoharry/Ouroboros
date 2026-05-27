@@ -4,7 +4,7 @@
 
 import { BrowserWindow, ipcMain, IpcMainInvokeEvent } from 'electron';
 
-import { getErrorMessage } from '../agentChat/utils';
+import { getErrorMessage } from '../utils';
 import { getExtensionDetails, installExtension, searchExtensions } from './extensionStoreApi';
 import {
   getIconThemeContributions,

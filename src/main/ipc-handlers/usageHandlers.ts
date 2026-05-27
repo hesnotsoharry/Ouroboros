@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 
-import { getErrorMessage } from '../agentChat/utils';
+import { getErrorMessage } from '../utils';
 import { getLatestClaudeUsageSnapshot } from '../claudeRateLimits';
 import { getLatestCodexUsageSnapshot } from '../codexRateLimits';
 import { getCostHistory } from '../costHistory';

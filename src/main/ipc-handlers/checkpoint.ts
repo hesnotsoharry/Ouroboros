@@ -16,11 +16,12 @@ import type {
 import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from 'electron';
 import path from 'path';
 
+import { execFile } from 'child_process';
+
 import type {
   CheckpointCreateRequest,
   CheckpointCreateResult,
 } from '../../renderer/types/electron-checkpoint';
-import { captureHeadHash, createCheckpointCommit } from '../agentChat/chatOrchestrationBridgeGit';
 import { CheckpointStore } from '../agentChat/checkpointStore';
 import log from '../logger';
 import { openDatabase } from '../storage/database';
@@ -31,6 +32,47 @@ import {
 } from './checkpointHelpers';
 import { gitRestoreSnapshot } from './gitOperationsExtended';
 import { assertPathAllowed } from './pathSecurity';
+
+// ── Git helpers (inlined from agentChat/chatOrchestrationBridgeGit — Phase A) ──
+
+/** Dedicated ref prefix for per-thread checkpoint commits. */
+const CHECKPOINT_REF_PREFIX = 'refs/ouroboros/checkpoints/';
+
+function captureHeadHash(cwd: string): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    execFile('git', ['rev-parse', 'HEAD'], { cwd, timeout: 5000 }, (err, stdout) => {
+      resolve(err ? undefined : stdout.trim() || undefined);
+    });
+  });
+}
+
+async function createCheckpointCommit(
+  cwd: string,
+  threadId: string,
+  headHash: string,
+): Promise<string | undefined> {
+  const ref = `${CHECKPOINT_REF_PREFIX}${threadId}`;
+  return new Promise((resolve) => {
+    const msg = `[checkpoint] thread:${threadId} base:${headHash.slice(0, 8)}`;
+    execFile(
+      'git',
+      ['commit-tree', `${headHash}^{tree}`, '-p', headHash, '-m', msg],
+      { cwd, timeout: 10000 },
+      (err, stdout) => {
+        if (err) {
+          log.warn('[checkpoint] commit-tree failed:', err.message);
+          resolve(undefined);
+          return;
+        }
+        const newHash = stdout.trim();
+        execFile('git', ['update-ref', ref, newHash], { cwd, timeout: 5000 }, (err2) => {
+          if (err2) log.warn('[checkpoint] update-ref failed:', err2.message);
+          resolve(err2 ? undefined : newHash);
+        });
+      },
+    );
+  });
+}
 
 // ── Singleton store ──────────────────────────────────────────────────────
 

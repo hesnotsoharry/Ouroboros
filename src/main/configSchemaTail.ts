@@ -4,7 +4,7 @@ import {
   AGENT_CHAT_PROVIDERS,
   AGENT_CHAT_SETTINGS_DEFAULTS,
   AGENT_CHAT_VERIFICATION_PROFILES,
-} from './agentChat/settingsResolver';
+} from './configDefaults';
 import { tailSchemaExt } from './configSchemaTailExt';
 
 export const tailSchema = {

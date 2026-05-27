@@ -1,8 +1,8 @@
 /**
- * protocolHandler.test.ts — argv parsing + dispatch logic.
+ * protocolHandler.test.ts
  *
- * The Electron app / BrowserWindow integration is covered by manual smoke
- * tests; here we exercise the pure helpers.
+ * Phase A (Wave 100): thread:// deep-link handling removed (Decision 9).
+ * extractPermalinkFromArgv now unconditionally returns null.
  */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -15,33 +15,14 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('./logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('./logger', () => ({ default: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { extractPermalinkFromArgv } from './protocolHandler';
 
 describe('extractPermalinkFromArgv', () => {
-  it('returns null when no argv entry is a thread:// URL', () => {
+  it('always returns null after thread:// deep-link removal', () => {
     expect(extractPermalinkFromArgv(['node', 'main.js', '--flag'])).toBeNull();
-  });
-
-  it('returns parsed permalink for thread:// argv entry', () => {
-    expect(extractPermalinkFromArgv(['electron', 'thread://abc#msg=m1'])).toEqual({
-      threadId: 'abc',
-      messageId: 'm1',
-    });
-  });
-
-  it('ignores non-string entries', () => {
-    const weird = [123 as unknown as string, null as unknown as string, 'thread://xyz'];
-    expect(extractPermalinkFromArgv(weird)).toEqual({ threadId: 'xyz' });
-  });
-
-  it('returns the first valid permalink when multiple exist', () => {
-    const argv = ['thread://first', 'thread://second'];
-    expect(extractPermalinkFromArgv(argv)).toEqual({ threadId: 'first' });
-  });
-
-  it('returns null for malformed thread:// entry', () => {
-    expect(extractPermalinkFromArgv(['thread://'])).toBeNull();
+    expect(extractPermalinkFromArgv(['electron', 'thread://abc#msg=m1'])).toBeNull();
+    expect(extractPermalinkFromArgv([])).toBeNull();
   });
 });
