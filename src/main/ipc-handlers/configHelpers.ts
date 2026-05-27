@@ -58,5 +58,4 @@ export const IMPORTABLE_KEYS: (keyof AppConfig)[] = [
   'promptPattern',
   'formatOnSave',
   'contextLayer',
-  'routerSettings',
 ];

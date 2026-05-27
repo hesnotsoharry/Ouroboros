@@ -33,7 +33,6 @@ import {
   buildMarketplaceApi,
   buildObservabilityApi,
   buildResearchApi,
-  buildRouterApi,
   buildSpecApi,
   buildSystem2Api,
   buildTelemetryApi,
@@ -178,7 +177,6 @@ const marketplaceAPI = buildMarketplaceApi(transport);
 const researchAPI = buildResearchApi(transport);
 const agentConflictAPI = buildAgentConflictApi(transport);
 const system2API = buildSystem2Api(transport);
-const routerAPI = buildRouterApi(transport);
 const workspaceAPI = buildWorkspaceApi(transport);
 const backgroundJobsAPI = buildBackgroundJobsApi(transport);
 const aiAPI = buildAiApi();
@@ -241,7 +239,6 @@ const electronAPI = {
   research: researchAPI,
   agentConflict: agentConflictAPI,
   system2: system2API,
-  router: routerAPI,
   workspace: workspaceAPI,
   backgroundJobs: backgroundJobsAPI,
   ai: aiAPI,

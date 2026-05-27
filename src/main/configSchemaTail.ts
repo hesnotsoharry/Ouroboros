@@ -195,36 +195,6 @@ export const tailSchema = {
       maxLines: 200,
     },
   },
-  routerSettings: {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      enabled: { type: 'boolean', default: true },
-      layer1Enabled: { type: 'boolean', default: true },
-      layer2Enabled: { type: 'boolean', default: true },
-      layer3Enabled: { type: 'boolean', default: true },
-      layer2ConfidenceThreshold: { type: 'number', default: 0.6 },
-      paranoidMode: { type: 'boolean', default: false },
-      /** Wave 53 — log shadow router decision even when user overrides the model. */
-      shadowMode: { type: 'boolean', default: true },
-      /** Wave 61 — gate the periodic retrain observer; default off (see Wave 61 ADR). */
-      autoRetrainEnabled: { type: 'boolean', default: false },
-    },
-    default: {
-      enabled: true,
-      layer1Enabled: true,
-      layer2Enabled: true,
-      layer3Enabled: true,
-      layer2ConfidenceThreshold: 0.6,
-      paranoidMode: false,
-      shadowMode: true,
-      autoRetrainEnabled: false,
-    },
-  },
-  routerLastRetrainCount: {
-    type: 'number',
-    default: 0,
-  },
   internalMcpEnabled: {
     type: 'boolean',
     default: true,

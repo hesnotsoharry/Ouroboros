@@ -31,7 +31,6 @@ import { killAllPtySessions } from './pty';
 import { initCorrectionWriter } from './research/correctionWriter';
 import { scheduleResearchCachePurge } from './research/researchCacheScheduler';
 import { initResearchOutcomeWriter } from './research/researchOutcomeWriter';
-import { loadRetrainedWeightsIfAvailable, observeDatasetGrowth } from './router/retrainTrigger';
 import { fireBootRestore } from './rulesAndSkills/postSpawnRestore';
 import { initSessionServices } from './session/sessionStartup';
 import { runAllMigrations } from './storage/migrate';
@@ -211,8 +210,6 @@ async function initWindowsAndServices(): Promise<void> {
   registerWindowLifecycleHandlers();
   void seedGithubTokenWithRetry();
   startWebServerAsync();
-  loadRetrainedWeightsIfAvailable();
-  observeDatasetGrowth();
 }
 
 async function initializeApplication(): Promise<void> {

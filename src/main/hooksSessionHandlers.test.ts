@@ -14,13 +14,11 @@ const {
   mockDispatchActivation,
   mockGenerateClaudeMd,
   mockGetConfigValue,
-  mockTrackSessionEnd,
   mockEvaluateStop,
 } = vi.hoisted(() => ({
   mockDispatchActivation: vi.fn().mockResolvedValue(undefined),
   mockGenerateClaudeMd: vi.fn().mockResolvedValue(undefined),
   mockGetConfigValue: vi.fn(),
-  mockTrackSessionEnd: vi.fn(),
   mockEvaluateStop: vi.fn(),
 }));
 
@@ -39,10 +37,6 @@ vi.mock('./claudeMdGenerator', () => ({
 
 vi.mock('./config', () => ({
   getConfigValue: mockGetConfigValue,
-}));
-
-vi.mock('./router/qualitySignalCollector', () => ({
-  trackSessionEnd: mockTrackSessionEnd,
 }));
 
 vi.mock('./hooks/gotchaUpdateNudge', () => ({
@@ -112,11 +106,11 @@ describe('handleSessionStop', () => {
 
   // contextLayer onGitCommit + agentChat invalidateSnapshotCache calls removed in Wave 100 Phase F
 
-  it('tracks session end and triggers CLAUDE.md generation for external sessions', () => {
+  // trackSessionEnd removed in Wave 100 Phase G (router CUT)
+  it('triggers CLAUDE.md generation for external sessions', () => {
     mockGetConfigValue.mockReturnValue({ enabled: true, triggerMode: 'post-session' });
     const map = new Map<string, string>();
     handleSessionStop(makePayload({ type: 'session_stop', cwd: '/project' }), map);
-    expect(mockTrackSessionEnd).toHaveBeenCalled();
     expect(mockGenerateClaudeMd).toHaveBeenCalledWith('/project');
   });
 
@@ -124,7 +118,6 @@ describe('handleSessionStop', () => {
     mockGetConfigValue.mockReturnValue({ enabled: true, triggerMode: 'post-session' });
     const map = new Map<string, string>();
     handleSessionStop(makePayload({ type: 'session_stop', internal: true }), map);
-    expect(mockTrackSessionEnd).not.toHaveBeenCalled();
     expect(mockGenerateClaudeMd).not.toHaveBeenCalled();
   });
 });

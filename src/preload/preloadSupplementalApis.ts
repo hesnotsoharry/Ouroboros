@@ -255,7 +255,6 @@ export const supplementalApis: SupplementalApis = {
       onChannel<ClaudeMdGenerationStatus>('claudeMd:statusChange', callback),
   },
 
-  router: { getStats: () => ipcRenderer.invoke('router:getStats') },
   rulesAndSkills: rulesAndSkillsApi,
   ai: aiApi,
   embedding: embeddingApi,

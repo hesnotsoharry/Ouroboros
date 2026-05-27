@@ -196,9 +196,6 @@ export const READ_CATALOG: Record<string, CatalogEntry> = {
   // because its error messages may surface path information.
   'providers:checkAllAvailability': { class: 'paired-read', timeoutClass: 'short' },
 
-  // ── router (read) ───────────────────────────────────────────────────────────
-  'router:getStats': { class: 'paired-read', timeoutClass: 'short' },
-
   // ── rulesAndSkills (read) ───────────────────────────────────────────────────
   'rules:list': { class: 'paired-read', timeoutClass: 'short' },
   'rules:read': { class: 'paired-read', timeoutClass: 'short' },

@@ -8,7 +8,6 @@
  */
 
 import { registerSpawnCostHandler } from './orchestration/providers/spawnCostDrainHandler';
-import { registerRouterShadowHandler } from './router/routerShadowDrainHandler';
 import { registerHookEventsHandler } from './telemetry/hookEventsDrainHandler';
 import { registerSpawnTraceHandler } from './telemetry/spawnTraceDrainHandler';
 
@@ -21,5 +20,4 @@ export function registerAllTelemetryDrainHandlers(): void {
   registerSpawnCostHandler();
   registerHookEventsHandler();
   registerSpawnTraceHandler();
-  registerRouterShadowHandler();
 }

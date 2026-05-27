@@ -93,7 +93,6 @@ vi.mock('./ipc-handlers', () => ({
   registerResearchControlHandlers: vi.fn().mockReturnValue([]),
   registerResearchDashboardHandlers: vi.fn().mockReturnValue([]),
   registerResearchHandlers: vi.fn().mockReturnValue([]),
-  registerRouterStatsHandlers: vi.fn().mockReturnValue([]),
   registerRulesAndSkillsHandlers: vi.fn().mockReturnValue([]),
   registerSearchHandlers: vi.fn().mockReturnValue([]),
   registerSessionCrudHandlers: vi.fn().mockReturnValue([]),

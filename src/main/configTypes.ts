@@ -203,32 +203,6 @@ export interface ContextScoringSettings {
   learnedRanker?: boolean;
 }
 
-export interface RouterSettings {
-  /** Master toggle — when false, router is bypassed entirely. */
-  enabled: boolean;
-  /** Enable the deterministic rule engine (Layer 1). */
-  layer1Enabled: boolean;
-  /** Enable the ML classifier (Layer 2). */
-  layer2Enabled: boolean;
-  /** Enable the Haiku LLM fallback (Layer 3). */
-  layer3Enabled: boolean;
-  /** Classifier confidence below this → low confidence → try next layer. */
-  layer2ConfidenceThreshold: number;
-  /** Always route to Opus regardless of classification. */
-  paranoidMode: boolean;
-  /** Wave 53 — log shadow router decision even when user overrides the model. */
-  shadowMode?: boolean;
-  /**
-   * Wave 61 — when false, the periodic auto-retrain observer never starts.
-   * Decision and quality-signal logging continue regardless. Defaults false:
-   * the retrain pipeline cannot produce de-escalation labels (see
-   * routerExporterHelpers.signalToLabel) so for users who don't actively try
-   * cheaper tiers it loops forever on the same data. Flip true if you have a
-   * tier-balanced label distribution OR want to re-enable for experimentation.
-   */
-  autoRetrainEnabled?: boolean;
-}
-
 export interface AgentTemplate {
   id: string;
   name: string;

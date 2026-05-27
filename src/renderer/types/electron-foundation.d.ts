@@ -103,15 +103,6 @@ export interface ModelSlotAssignments {
   inlineCompletion: string;
 }
 
-export interface RouterSettings {
-  enabled: boolean;
-  layer1Enabled: boolean;
-  layer2Enabled: boolean;
-  layer3Enabled: boolean;
-  layer2ConfidenceThreshold: number;
-  paranoidMode: boolean;
-}
-
 export interface WorkspaceSnapshot {
   id: string;
   commitHash: string;
@@ -237,7 +228,6 @@ export interface AppConfig {
   claudeMdSettings: ClaudeMdSettings;
   modelProviders: ModelProvider[];
   modelSlots: ModelSlotAssignments;
-  routerSettings: RouterSettings;
   webAccessPort: number;
   /** @internal — do not expose in Settings UI */
   webAccessToken: string;
@@ -261,8 +251,6 @@ export interface AppConfig {
   useExtensionHost: boolean;
   /** Wave 3B feature flag — run internal MCP server in dedicated McpHost utility process */
   useMcpHost: boolean;
-  /** @internal — do not expose in Settings UI */
-  routerLastRetrainCount: number;
   /** Wave 17–44 layout flags; Wave 59A chatWorkbench retired (workbench IS the chat shell).
    *  Wave 1 — canonWorkbench (experimental, default-off). */
   layout?: {

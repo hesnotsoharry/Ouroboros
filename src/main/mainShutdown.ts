@@ -19,8 +19,6 @@ import { closeEditProvenance } from './mainStartup';
 import { deleteTokenFile } from './pipeAuth';
 import { closeCorrectionWriter } from './research/correctionWriter';
 import { closeResearchOutcomeWriter } from './research/researchOutcomeWriter';
-import { clearQualityTimers } from './router/qualitySignalCollector';
-import { stopObserving as stopRetrainObserver } from './router/retrainTrigger';
 import { closeSessionServices } from './session/sessionStartup';
 import { closeOutcomeObserver, closeTelemetryStore } from './telemetry';
 
@@ -41,8 +39,6 @@ function closeSyncStores(): void {
   closeOutcomeObserver();
   closeTelemetryStore();
   closeEditProvenance();
-  stopRetrainObserver();
-  clearQualityTimers();
 }
 
 async function disposeSubsystems(): Promise<void> {

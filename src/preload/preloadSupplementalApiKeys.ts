@@ -19,7 +19,6 @@ export type SupplementalApiKey =
   | 'codemode'
   | 'contextLayer'
   | 'claudeMd'
-  | 'router'
   | 'rulesAndSkills'
   | 'ai'
   | 'embedding'

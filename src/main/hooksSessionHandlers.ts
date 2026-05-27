@@ -19,7 +19,6 @@ import { evaluateStop } from './hooks/gotchaUpdateNudge';
 import type { HookDecision } from './hooks/hookDecision';
 import { evaluatePreToolUse as warnTestSuite } from './hooks/warnFullTestSuite';
 import log from './logger';
-import { trackSessionEnd } from './router/qualitySignalCollector';
 
 // ─── PreToolUse enforcement (Wave 50 Phase B) ────────────────────────────────
 
@@ -104,11 +103,6 @@ export function handleSessionEnd(payload: HookPayload): void {
 export function handleSessionStop(payload: HookPayload, sessionCwdMap: Map<string, string>): void {
   if (!payload.internal) {
     triggerClaudeMdGeneration('post-session', payload, sessionCwdMap);
-    trackSessionEnd({
-      type: payload.type,
-      sessionId: payload.sessionId,
-      cwd: payload.cwd ?? sessionCwdMap.get(payload.sessionId),
-    });
     try {
       evaluateStop(payload);
     } catch (err) {

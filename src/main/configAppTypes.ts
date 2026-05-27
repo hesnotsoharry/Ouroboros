@@ -26,7 +26,6 @@ import type {
   PanelSizes,
   PlatformConfig,
   ResearchSettings,
-  RouterSettings,
   SessionDispatchConfig,
   TerminalSessionSnapshot,
   ThemingConfig,
@@ -156,10 +155,6 @@ export interface AppConfig {
   glassOpacity: number;
   /** Wave 45 — material variant (Vapor / Prism / Warp) for the shell. */
   materialVariant: 'vapor' | 'prism' | 'warp';
-  /** Model router settings — automatic tier selection (HAIKU/SONNET/OPUS) */
-  routerSettings: RouterSettings;
-  /** Number of quality signal lines at last retrain — used by retrain trigger. */
-  routerLastRetrainCount: number;
   /** Enable the internal MCP server that exposes IDE tools to Claude Code sessions */
   internalMcpEnabled: boolean;
   /** Wave 48 Phase B — when to inject the Ouroboros MCP entry. Default 'task-gated'. */

@@ -28,10 +28,7 @@ vi.mock('../hooksGraphUsageTap', () => ({
   tapGraphUsage: vi.fn(),
 }));
 
-vi.mock('../router/qualitySignalCollector', () => ({
-  trackSessionEnd: vi.fn(),
-  trackTaskCompleted: vi.fn(),
-}));
+// router/qualitySignalCollector mock removed in Wave 100 Phase G (router CUT)
 
 const mockRecord = vi.fn();
 vi.mock('../telemetry', () => ({
@@ -55,7 +52,6 @@ vi.mock('node:fs', () => ({
 
 import { tapEditProvenance } from '../hooksEditTap';
 import { tapGraphUsage } from '../hooksGraphUsageTap';
-import { trackSessionEnd, trackTaskCompleted } from '../router/qualitySignalCollector';
 import { createHookEventsHandler } from './hookEventsDrainHandler';
 import { HOOK_EVENTS_SCHEMA_VERSION, type HookEventType } from './hookEventsSchema';
 import type { QueueRecord } from './telemetryQueue';
@@ -138,48 +134,44 @@ describe('createHookEventsHandler', () => {
     expect(tapGraphUsage).not.toHaveBeenCalled();
   });
 
+  // trackSessionEnd / trackTaskCompleted removed in Wave 100 Phase G (router CUT).
+  // All event types below now route to telemetryStore only.
+
   it('user_prompt_submit → telemetryStore only', () => {
     handler(makeRecord('user_prompt_submit'));
     expect(mockRecord).toHaveBeenCalledOnce();
     expect(tapGraphUsage).not.toHaveBeenCalled();
     expect(tapEditProvenance).not.toHaveBeenCalled();
-    expect(trackSessionEnd).not.toHaveBeenCalled();
   });
 
   it('session_start → telemetryStore only', () => {
     handler(makeRecord('session_start'));
     expect(mockRecord).toHaveBeenCalledOnce();
-    expect(trackSessionEnd).not.toHaveBeenCalled();
   });
 
-  it('session_end → telemetryStore + trackSessionEnd', () => {
+  it('session_end → telemetryStore only', () => {
     handler(makeRecord('session_end'));
     expect(mockRecord).toHaveBeenCalledOnce();
-    expect(trackSessionEnd).toHaveBeenCalledOnce();
   });
 
-  it('agent_end → telemetryStore + trackSessionEnd', () => {
+  it('agent_end → telemetryStore only', () => {
     handler(makeRecord('agent_end'));
     expect(mockRecord).toHaveBeenCalledOnce();
-    expect(trackSessionEnd).toHaveBeenCalledOnce();
   });
 
-  it('agent_stop → telemetryStore + trackSessionEnd', () => {
+  it('agent_stop → telemetryStore only', () => {
     handler(makeRecord('agent_stop'));
     expect(mockRecord).toHaveBeenCalledOnce();
-    expect(trackSessionEnd).toHaveBeenCalledOnce();
   });
 
   it('agent_start → telemetryStore only', () => {
     handler(makeRecord('agent_start'));
     expect(mockRecord).toHaveBeenCalledOnce();
-    expect(trackSessionEnd).not.toHaveBeenCalled();
   });
 
-  it('task_completed → telemetryStore + trackTaskCompleted', () => {
+  it('task_completed → telemetryStore only', () => {
     handler(makeRecord('task_completed'));
     expect(mockRecord).toHaveBeenCalledOnce();
-    expect(trackTaskCompleted).toHaveBeenCalledWith('sid-1');
   });
 
   // ── Dedup ──────────────────────────────────────────────────────────────

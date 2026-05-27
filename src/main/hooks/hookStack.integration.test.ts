@@ -45,7 +45,6 @@ vi.mock('../contextLayer/contextLayerController', () => ({
 }));
 vi.mock('../extensions', () => ({ dispatchActivationEvent: vi.fn(() => Promise.resolve()) }));
 vi.mock('../ipc-handlers/agentChat', () => ({ invalidateSnapshotCache: vi.fn() }));
-vi.mock('../router/qualitySignalCollector', () => ({ trackSessionEnd: vi.fn() }));
 vi.mock('../hooks/gotchaUpdateNudge', () => ({ evaluateStop: vi.fn() }));
 
 // Imported AFTER vi.mock so the evaluators bind to the mocked modules.

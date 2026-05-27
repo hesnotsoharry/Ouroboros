@@ -25,7 +25,6 @@ export type {
   PlatformConfig,
   ProviderModel,
   ResearchSettings,
-  RouterSettings,
   SessionDispatchConfig,
   TerminalSessionSnapshot,
   ThemingConfig,

@@ -69,8 +69,6 @@ function stripDeprecatedKeys(data: Record<string, unknown>): boolean {
     delete data.windowSessions;
     dirty = true;
   }
-  // 2026-05-01 inline cleanup — routerSettings.llmJudgeSampleRate removed.
-  if (deleteNestedKey(data, 'routerSettings', 'llmJudgeSampleRate')) dirty = true;
   // Wave 79 — codemode.routeInternalMcp removed.
   if (deleteNestedKey(data, 'codemode', 'routeInternalMcp')) dirty = true;
   // Wave 79 — internalMcp.transport removed.

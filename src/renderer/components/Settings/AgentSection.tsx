@@ -8,7 +8,6 @@ import React from 'react';
 import type { AppConfig } from '../../types/electron';
 import type { ContextSettings } from './AgentContextPacketSection';
 import { AgentContextPacketSection } from './AgentContextPacketSection';
-import { DEFAULT_ROUTER_SETTINGS, RouterSettingsGroup } from './AgentSectionRouter';
 import {
   claudeSectionBudgetInputStyle,
   claudeSectionHeaderTextStyle,
@@ -28,7 +27,6 @@ interface AgentSectionProps {
 
 type AgentChatSettings = NonNullable<AppConfig['agentChatSettings']>;
 type ContextLayerSettings = NonNullable<AppConfig['contextLayer']>;
-type RouterSettings = NonNullable<AppConfig['routerSettings']>;
 
 type AgentChatUpdateFn = <K extends keyof AgentChatSettings>(
   field: K,
@@ -193,7 +191,6 @@ export function AgentSection({ draft, onChange }: AgentSectionProps): React.Reac
   const agentChatSettings = draft.agentChatSettings ?? {};
   const contextLayerSettings = draft.contextLayer ?? {};
   const contextSettings = draft.context ?? {};
-  const routerSettings = { ...DEFAULT_ROUTER_SETTINGS, ...(draft.routerSettings ?? {}) };
 
   const updateAgentChat = <K extends keyof AgentChatSettings>(
     field: K,
@@ -209,13 +206,6 @@ export function AgentSection({ draft, onChange }: AgentSectionProps): React.Reac
     onChange('contextLayer', { ...contextLayerSettings, [field]: value });
   };
 
-  const updateRouterSettings = <K extends keyof RouterSettings>(
-    field: K,
-    value: RouterSettings[K],
-  ) => {
-    onChange('routerSettings', { ...routerSettings, [field]: value });
-  };
-
   const updateContext = <K extends keyof ContextSettings>(field: K, value: ContextSettings[K]) => {
     onChange('context', { ...contextSettings, [field]: value });
   };
@@ -223,7 +213,6 @@ export function AgentSection({ draft, onChange }: AgentSectionProps): React.Reac
   return (
     <div style={claudeSectionRootStyle}>
       <AgentChatSettingsGroup settings={agentChatSettings} updateSetting={updateAgentChat} />
-      <RouterSettingsGroup settings={routerSettings} updateSetting={updateRouterSettings} />
       <ContextLayerSettingsGroup
         settings={contextLayerSettings}
         updateSetting={updateContextLayer}

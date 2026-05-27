@@ -27,14 +27,6 @@ function makeDraft(overrides: Partial<AppConfig> = {}): AppConfig {
       openDetailsOnFailure: false,
     },
     contextLayer: { enabled: false, autoSummarize: false },
-    routerSettings: {
-      enabled: true,
-      layer1Enabled: true,
-      layer2Enabled: true,
-      layer3Enabled: true,
-      layer2ConfidenceThreshold: 0.6,
-      paranoidMode: false,
-    },
     backgroundJobsMaxConcurrent: 2,
     ...overrides,
   } as AppConfig;
@@ -46,10 +38,7 @@ describe('AgentSection', () => {
     expect(screen.getByText('Agent Chat')).toBeDefined();
   });
 
-  it('renders Model Router section label', () => {
-    render(<AgentSection draft={makeDraft()} onChange={vi.fn()} />);
-    expect(screen.getByText('Model Router')).toBeDefined();
-  });
+  // 'renders Model Router section label' test removed in Wave 100 Phase G (RouterSettingsGroup removed)
 
   it('renders Context Layer section label', () => {
     render(<AgentSection draft={makeDraft()} onChange={vi.fn()} />);

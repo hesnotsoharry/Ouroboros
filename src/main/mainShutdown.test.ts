@@ -40,8 +40,7 @@ vi.mock('./research/correctionWriter', () => ({
 vi.mock('./research/researchOutcomeWriter', () => ({
   closeResearchOutcomeWriter: recorder('closeResearchOutcomeWriter', true),
 }));
-vi.mock('./router/qualitySignalCollector', () => ({ clearQualityTimers: recorder('clearQualityTimers') }));
-vi.mock('./router/retrainTrigger', () => ({ stopObserving: recorder('stopRetrainObserver') }));
+// router/qualitySignalCollector + router/retrainTrigger mocks removed in Wave 100 Phase G (router CUT)
 vi.mock('./session/sessionStartup', () => ({ closeSessionServices: recorder('closeSessionServices') }));
 vi.mock('./telemetry', () => ({
   closeOutcomeObserver: recorder('closeOutcomeObserver'),

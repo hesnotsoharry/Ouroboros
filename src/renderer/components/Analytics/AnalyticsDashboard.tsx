@@ -1,7 +1,6 @@
 import React, { memo, useMemo, useState } from 'react';
 
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
-import { useRouterStats } from '../../hooks/useRouterStats';
 import { useSessionAnalytics } from '../../hooks/useSessionAnalytics';
 import {
   AnalyticsEmptyState,
@@ -10,12 +9,10 @@ import {
   ToolDistributionChart,
 } from './AnalyticsDashboardOverview';
 import { SessionDetailPanel, SessionHistoryTable } from './AnalyticsDashboardSessions';
-import { RouterAnalyticsPanel } from './RouterAnalyticsPanel';
 
 export const AnalyticsDashboard = memo(function AnalyticsDashboard(): React.ReactElement {
   const { agents } = useAgentEventsContext();
   const { sessions, aggregate, toolDistribution } = useSessionAnalytics(agents);
-  const { stats: routerStats } = useRouterStats();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const selectedSession = useMemo(
     () => sessions.find((session) => session.sessionId === selectedSessionId) ?? null,
@@ -41,7 +38,6 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard(): React.Reac
       <AnalyticsSummaryGrid aggregate={aggregate} />
       <ToolDistributionChart distribution={toolDistribution} />
       <EfficiencySparkline sessions={sessions} />
-      <RouterAnalyticsPanel stats={routerStats} />
       {selectedSession ? (
         <SessionDetailPanel session={selectedSession} onClose={() => setSelectedSessionId(null)} />
       ) : null}
