@@ -1,7 +1,7 @@
 ---
 status: PLANNED
 created: 2026-05-19
-updated: 2026-05-19
+updated: 2026-05-27
 wave: 100
 slug: chat-surface-removal
 ---
@@ -9,6 +9,8 @@ slug: chat-surface-removal
 # Wave 100 — Architecture Decision Record
 
 Decisions locked by the owner during the triage session (`roadmap/discovery/2026-05-19-de-chat-triage.md`). Most are scope-boundary calls, not best-practice-spectrum decisions, so they use the abbreviated `Context / Pick / Rationale` form.
+
+> **2026-05-27 re-verification:** `wave-100-phase0-reverify-2026-05-27.md` re-grounds every line-number cite and adds material divergences (contextLayer shrank 58 → 34 files; `mainStartupContextLayerTrigger.ts` already removed; Phase A grew to 7 items; new unlisted CUT targets `contextRankerDashboardHandlers.ts` + `routerStats.ts`; Phase D ordering risk for `contextOutcomeObserverResearch.ts`; implicit `hooksShadowTap.ts` cut). The re-verify doc supersedes specific line citations in this ADR's Phase 0 findings section below. Decisions 1-8 remain locked unchanged. **Decision 9 (new)** added below covers the `thread://` deep-link removal surfaced during re-verification.
 
 ## Decision 1: Retire the entire chat surface, including Wave 86
 
@@ -60,13 +62,29 @@ Decisions locked by the owner during the triage session (`roadmap/discovery/2026
 
 **Rationale:** Git history is the complete, zero-cost safety net; an in-repo folder would keep failing build gates. Revive via `git checkout archive/chat-surface-2026-05-19 -- <path>`.
 
-## Decision 7: Semver — minor v2.20.0
+## Decision 7: Semver — minor v2.35.0 (re-versioned 2026-05-27)
 
-**Context:** Removing a whole feature surface.
+**Context:** Removing a whole feature surface. Original target was `v2.20.0` (drafted 2026-05-19) but 180 commits / multiple waves have shipped since then; master is at `v2.34.0`.
 
-**Pick:** Minor bump `v2.20.0`.
+**Pick:** Minor bump `v2.35.0` (next free slot above current `v2.34.0`).
 
-**Rationale:** The surface is already dead (bypassed at startup) and there is no external/public API contract to break; per the development-pipeline semver-judgment grant, feature-surface removal without breaking changes is a minor.
+**Rationale:** Feature-surface removal of an already-dead surface with no external/public API break is a minor bump per the development-pipeline semver-judgment grant. The version increment is mechanical re-numbering against current master; the rationale for "minor" is unchanged.
+
+---
+
+## Decision 9: Remove `thread://` deep-link handling (added 2026-05-27)
+
+**Context:** `src/main/protocolHandler.ts:15` imports `parsePermalink` from `agentChat/permalinks.ts` to route `thread://` deep-links into the chat surface. After Wave 100, there is no chat surface and no chat-thread target. The 2026-05-27 Phase 0 re-verification surfaced this as a new Phase A item (A5) requiring an explicit decision: relocate the parser (preserving the protocol shell) or remove the protocol entirely.
+
+**Options considered:**
+- *Relocate `parsePermalink`/`buildPermalink`* to `src/main/protocolHandler.ts` or `src/main/deepLink.ts` and keep `thread://` URL parsing working as a no-op route.
+- *Remove `thread://` handling entirely* from `protocolHandler.ts`; let any `thread://` URL fall through to the default no-op path.
+
+**Pick:** Remove `thread://` handling entirely.
+
+**Rationale:** A protocol that parses URLs targeting a non-existent surface is dead UX. The deep-link's only consumer was the chat surface; preserving the parser would leave a feature flag with no behind-the-flag feature. Cleaner end-state: the protocol shell honors only routes that point at live surfaces.
+
+**Consequences:** If a future wave re-introduces a chat surface (e.g., via API pathway), `thread://` deep-links would need to be re-implemented from scratch. The chat-surface archive tag `archive/chat-surface-2026-05-19` preserves the original parser source if needed. Phase A item A5 changes from "relocate" to "remove."
 
 ---
 
