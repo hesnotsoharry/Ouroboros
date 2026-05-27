@@ -38,6 +38,7 @@ import { useProject } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
 import { useProjectCRUDActions } from '../useProjectCRUDActions';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
+import { ProjectContextMenu, type ProjectCtxMenuState } from './ProjectContextMenu';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -100,17 +101,6 @@ function MiniChip({ color, initial }: { color: string; initial: string }): React
   );
 }
 
-const ROW_REMOVE_STYLE: React.CSSProperties = {
-  padding: '0 8px',
-  background: 'transparent',
-  border: 'none',
-  color: 'var(--ink-4)',
-  cursor: 'pointer',
-  fontSize: 14,
-  lineHeight: '1',
-  flexShrink: 0,
-};
-
 function rowSelectStyle(active: boolean): React.CSSProperties {
   return {
     display: 'flex',
@@ -130,18 +120,19 @@ function rowSelectStyle(active: boolean): React.CSSProperties {
 
 function ProjectRow({
   project,
+  onContextMenu,
   onSelect,
-  onRemove,
 }: {
   project: WorkbenchProject;
+  onContextMenu: (e: React.MouseEvent, path: string) => void;
   onSelect: (path: string) => void;
-  onRemove: (path: string) => void;
 }): React.ReactElement {
   return (
     <div
       style={{ display: 'flex', alignItems: 'center' }}
       data-testid={`innerrail-project-row-${project.name}`}
       onClick={() => onSelect(project.path)}
+      onContextMenu={(e) => onContextMenu(e, project.path)}
     >
       <button style={rowSelectStyle(project.active)} onClick={() => onSelect(project.path)}>
         <MiniChip color={project.color} initial={project.initial} />
@@ -151,14 +142,6 @@ function ProjectRow({
         {project.active && (
           <span style={{ color: 'var(--interactive-accent)', fontSize: 10, fontWeight: 700 }}>✓</span>
         )}
-      </button>
-      <button
-        aria-label={`Remove ${project.name}`}
-        data-testid={`remove-project-${project.name}`}
-        style={ROW_REMOVE_STYLE}
-        onClick={(e) => { e.stopPropagation(); onRemove(project.path); }}
-      >
-        ×
       </button>
     </div>
   );
@@ -206,6 +189,30 @@ function TriggerButton({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+function useInnerRailContextMenu(removeProject: (path: string) => void): {
+  handleContextMenu: (e: React.MouseEvent, path: string) => void;
+  menuElement: React.ReactElement | null;
+} {
+  const [ctxMenu, setCtxMenu] = useState<ProjectCtxMenuState | null>(null);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, path: string) => {
+      e.preventDefault();
+      setCtxMenu({ x: e.clientX, y: e.clientY, projectPath: path });
+    },
+    [],
+  );
+  const menuElement = ctxMenu ? (
+    <ProjectContextMenu
+      x={ctxMenu.x}
+      y={ctxMenu.y}
+      projectPath={ctxMenu.projectPath}
+      onRemove={removeProject}
+      onDismiss={() => setCtxMenu(null)}
+    />
+  ) : null;
+  return { handleContextMenu, menuElement };
+}
+
 export function InnerRailProjectDropdown(): React.ReactElement {
   const { setActiveProjectRoot } = useProject();
   const { removeProject } = useProjectCRUDActions();
@@ -213,6 +220,8 @@ export function InnerRailProjectDropdown(): React.ReactElement {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const activeProject = projects.find((p) => p.active) ?? projects[0];
+  const { handleContextMenu, menuElement } = useInnerRailContextMenu(removeProject);
+
   const handleSelect = useCallback(
     (path: string) => {
       setActiveProjectRoot(path);
@@ -220,13 +229,7 @@ export function InnerRailProjectDropdown(): React.ReactElement {
     },
     [setActiveProjectRoot],
   );
-  const handleRemove = useCallback(
-    (path: string) => {
-      removeProject(path);
-      setOpen(false);
-    },
-    [removeProject],
-  );
+
   useDropdownDismiss(containerRef, open, setOpen);
 
   return (
@@ -239,10 +242,16 @@ export function InnerRailProjectDropdown(): React.ReactElement {
       {open && (
         <div style={DROPDOWN_STYLE}>
           {projects.map((p) => (
-            <ProjectRow key={p.path} project={p} onSelect={handleSelect} onRemove={handleRemove} />
+            <ProjectRow
+              key={p.path}
+              project={p}
+              onSelect={handleSelect}
+              onContextMenu={handleContextMenu}
+            />
           ))}
         </div>
       )}
+      {menuElement}
     </div>
   );
 }

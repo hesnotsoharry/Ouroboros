@@ -10,6 +10,7 @@ import { useProject } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
 import { useProjectCRUDActions } from '../useProjectCRUDActions';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
+import { ProjectContextMenu, type ProjectCtxMenuState } from './ProjectContextMenu';
 import { UserAvatar } from './ProjectRailAvatar';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -71,6 +72,31 @@ interface ProjectRailProps {
   onCollapse?: () => void;
 }
 
+function useRailContextMenu(removeProject: (path: string) => void): {
+  ctxMenu: ProjectCtxMenuState | null;
+  handleContextMenu: (e: React.MouseEvent, projectPath: string) => void;
+  menuElement: React.ReactElement | null;
+} {
+  const [ctxMenu, setCtxMenu] = useState<ProjectCtxMenuState | null>(null);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, projectPath: string) => {
+      e.preventDefault();
+      setCtxMenu({ x: e.clientX, y: e.clientY, projectPath });
+    },
+    [],
+  );
+  const menuElement = ctxMenu ? (
+    <ProjectContextMenu
+      x={ctxMenu.x}
+      y={ctxMenu.y}
+      projectPath={ctxMenu.projectPath}
+      onRemove={removeProject}
+      onDismiss={() => setCtxMenu(null)}
+    />
+  ) : null;
+  return { ctxMenu, handleContextMenu, menuElement };
+}
+
 export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElement {
   const projects = useWorkbenchProjects();
   const { setActiveProjectRoot, addProjectRoot } = useProject();
@@ -78,6 +104,7 @@ export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElemen
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [layoutLabel, handleLayoutClick] = useLayoutToggle();
   const handleAddProject = useAddProject(addProjectRoot);
+  const { handleContextMenu, menuElement } = useRailContextMenu(removeProject);
 
   return (
     <div data-testid="workbench-projectrail" style={RAIL_STYLE}>
@@ -87,6 +114,7 @@ export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElemen
           key={p.path}
           project={p}
           onClick={() => setActiveProjectRoot(p.path)}
+          onContextMenu={(e) => handleContextMenu(e, p.path)}
           onRemove={() => removeProject(p.path)}
         />
       ))}
@@ -100,6 +128,7 @@ export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElemen
         onToggleMenu={() => setProfileMenuOpen((prev) => !prev)}
         onClose={() => setProfileMenuOpen(false)}
       />
+      {menuElement}
     </div>
   );
 }
@@ -200,13 +229,38 @@ const REMOVE_BTN_STYLE: React.CSSProperties = {
   zIndex: 1,
 };
 
+/** Inline-X shown only on stale chips (exists: false). Wave 14 D1 safety affordance. */
+function StaleRemoveButton({
+  name,
+  onRemove,
+}: {
+  name: string;
+  onRemove: () => void;
+}): React.ReactElement {
+  return (
+    <button
+      aria-label={`Remove ${name}`}
+      data-testid={`remove-project-${name}`}
+      style={REMOVE_BTN_STYLE}
+      onClick={(e) => {
+        e.stopPropagation();
+        onRemove();
+      }}
+    >
+      ×
+    </button>
+  );
+}
+
 function ProjectChip({
   project,
   onClick,
+  onContextMenu,
   onRemove,
 }: {
   project: WorkbenchProject;
   onClick: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
   onRemove: () => void;
 }): React.ReactElement {
   const { name, initial, color, active, exists } = project;
@@ -221,22 +275,18 @@ function ProjectChip({
     ? CHIP_WRAPPER_STYLE
     : { ...CHIP_WRAPPER_STYLE, opacity: 0.5 };
   return (
-    <div style={wrapperStyle} data-testid={`project-chip-${name}`} title={name} onClick={onClick}>
+    <div
+      style={wrapperStyle}
+      data-testid={`project-chip-${name}`}
+      title={name}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+    >
       <button aria-label={name} onClick={onClick} style={innerStyle}>
         {initial}
         {active && <ActiveIndicator color={color} />}
       </button>
-      <button
-        aria-label={`Remove ${name}`}
-        data-testid={`remove-project-${name}`}
-        style={REMOVE_BTN_STYLE}
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-      >
-        ×
-      </button>
+      {!exists && <StaleRemoveButton name={name} onRemove={onRemove} />}
     </div>
   );
 }

@@ -87,22 +87,24 @@ function renderRail(initialRoot: string): void {
 }
 
 describe('Wave 12 Phase 2 — ProjectRail inline remove (X) button', () => {
-  it('renders a remove button with test-id `remove-project-{name}` for each project', async () => {
+  it('renders a remove button with test-id `remove-project-{name}` for stale projects only (Wave 14 D1)', async () => {
+    // alpha is stale (exists: false) → inline X present.
+    // zebra is healthy (exists: true) → inline X absent (right-click path only).
     mockRecents = ['/repos/alpha'];
-    mockPathExistsResults = { '/repos/alpha': true, '/repos/zebra': true };
+    mockPathExistsResults = { '/repos/alpha': false, '/repos/zebra': true };
 
     renderRail('/repos/zebra');
 
-    // The remove button for each project chip should be present.
     await waitFor(() => {
       expect(screen.getByTestId('remove-project-alpha')).toBeTruthy();
-      expect(screen.getByTestId('remove-project-zebra')).toBeTruthy();
     });
+    expect(screen.queryByTestId('remove-project-zebra')).toBeNull();
   });
 
-  it('clicking the remove button invokes removeProjectRoot with the correct path', async () => {
+  it('clicking the stale-chip remove button invokes removeProjectRoot with the correct path', async () => {
+    // alpha is stale → inline X present and clickable (Wave 14 D1 stale affordance).
     mockRecents = ['/repos/alpha'];
-    mockPathExistsResults = { '/repos/alpha': true, '/repos/zebra': true };
+    mockPathExistsResults = { '/repos/alpha': false, '/repos/zebra': true };
 
     renderRail('/repos/zebra');
 
@@ -160,17 +162,18 @@ describe('Wave 12 Phase 2 — ProjectRail inline remove (X) button', () => {
     expect(zebraStyle.replace(/\s+/g, '')).not.toContain('opacity:0.5');
   });
 
-  it('healthy chips also expose the remove button (so user can remove a healthy project)', async () => {
+  it('healthy chips do NOT have an inline remove button (Wave 14 D1: right-click only)', async () => {
     mockRecents = [];
     mockPathExistsResults = { '/repos/zebra': true };
 
     renderRail('/repos/zebra');
 
-    // Healthy chip should still have the remove button discoverable —
-    // visibility can be hover-gated via CSS but the DOM element must exist
-    // so the test can click it (jsdom doesn't simulate :hover).
+    // Wave 14 D1 — healthy chips lose the inline-X entirely; the remove path
+    // for healthy chips is right-click context menu. Stale chips retain the X.
     await waitFor(() => {
-      expect(screen.getByTestId('remove-project-zebra')).toBeTruthy();
+      expect(screen.getByTestId('project-chip-zebra')).toBeTruthy();
     });
+
+    expect(screen.queryByTestId('remove-project-zebra')).toBeNull();
   });
 });
