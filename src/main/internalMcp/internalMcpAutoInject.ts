@@ -99,37 +99,44 @@ async function readJsonTolerant(
 }
 
 // ---------------------------------------------------------------------------
-// Ouroboros entry builder (Wave 60 Phase E)
+// Ouroboros entry builder (Wave 22 Phase 6)
 //
-// Single shape now: spawn the standalone (`out/main/ouroborosMcp.js`) via
-// the IDE's Electron binary in Node mode. Reads the SQLite DB directly,
-// works whether the IDE is running or not. Pre-Wave-60's transport
-// branching (sse vs stdio bridge) is gone.
+// Single shape: spawn the standalone package
+// (`packages/codebase-graph-mcp/dist/index.js`) via plain `node` with
+// `--root <projectRoot>`. The package ships its own better-sqlite3
+// compiled for the system Node ABI, so ELECTRON_RUN_AS_NODE is not needed.
 //
-// Electron-as-Node is required because better-sqlite3's native binding
-// is compiled for Electron's Node ABI (145); system Node (ABI 137) fails
-// module-load. ELECTRON_RUN_AS_NODE=1 sidesteps the mismatch and the IDE
-// installer ships the binary, so it's always on disk.
+// Pre-Wave-22-Phase-6 this used `process.execPath` (the Electron binary)
+// with ELECTRON_RUN_AS_NODE=1 because the old in-tree standalone used the
+// Electron-compiled better-sqlite3. The new package has its own bindings.
+//
+// TODO(Wave 23+): asar packaging — `packages/` is not included in the
+// asar bundle in a packaged Electron build. See:
+// roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md
 // ---------------------------------------------------------------------------
 
 export interface InjectOptions {
   /**
-   * Absolute path to the standalone MCP script (`ouroborosMcp.js`).
+   * Absolute path to the standalone MCP package entry
+   * (`packages/codebase-graph-mcp/dist/index.js`).
    * `buildInjectOptions` resolves this from the IDE's main-out directory.
    */
   standaloneScriptPath?: string;
 }
 
-function buildOuroborosEntry(_serverPort: number, opts: InjectOptions): ServerEntry {
+function buildOuroborosEntry(
+  _serverPort: number,
+  opts: InjectOptions,
+  projectRoot: string,
+): ServerEntry {
   const scriptPath = opts.standaloneScriptPath;
   if (!scriptPath) {
     throw new Error('ouroboros injection requires standaloneScriptPath');
   }
   return {
     type: 'stdio',
-    command: process.execPath,
-    args: [scriptPath],
-    env: { ELECTRON_RUN_AS_NODE: '1' },
+    command: 'node',
+    args: [scriptPath, '--root', projectRoot],
   };
 }
 
@@ -249,7 +256,7 @@ export async function injectIntoProjectSettings(
   serverPort: number,
   options: InjectOptions = {},
 ): Promise<void> {
-  const entry = buildOuroborosEntry(serverPort, options);
+  const entry = buildOuroborosEntry(serverPort, options, projectRoot);
 
   // .mcp.json gets written at the project root, alongside .claude/.
   // Ensure the project root exists (it should — main.ts uses defaultProjectRoot

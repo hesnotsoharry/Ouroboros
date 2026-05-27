@@ -188,10 +188,11 @@ describe('buildScopedMcpConfig downgrades when codemodeAcquireFailed=true', () =
     const entry = data.mcpServers['ouroboros'];
     // Direct-inject + stdio → command/args; not the route-through-codemode omission.
     expect(entry).toBeDefined();
-    // Wave 60 Phase C+ (binding fix): Electron-as-Node runtime.
-    expect(entry.command).toBe(process.execPath);
-    expect(entry.env?.ELECTRON_RUN_AS_NODE).toBe('1');
-    expect(entry.args![0]).toMatch(/ouroborosMcp\.js$/);
+    // Wave 22 Phase 6: plain node, no ELECTRON_RUN_AS_NODE, new package path.
+    expect(entry.command).toBe('node');
+    expect(entry.env).toBeUndefined();
+    expect(entry.args![0]).toMatch(/packages[/\\]codebase-graph-mcp[/\\]dist[/\\]index\.js$/);
+    expect(entry.args![1]).toBe('--root');
     await result!.cleanup();
   });
 
@@ -209,9 +210,10 @@ describe('buildScopedMcpConfig downgrades when codemodeAcquireFailed=true', () =
     expect(result).not.toBeNull();
     expect(result!.routingDecision).toBe('direct-inject');
     const entry = readWrittenConfig(result!.configPath).mcpServers['ouroboros'];
-    // Wave 60 Phase E: standalone shape (Electron-as-Node).
-    expect(entry.command).toBe(process.execPath);
-    expect(entry.args![0]).toMatch(/ouroborosMcp\.js$/);
+    // Wave 22 Phase 6: plain node, new package path.
+    expect(entry.command).toBe('node');
+    expect(entry.args![0]).toMatch(/packages[/\\]codebase-graph-mcp[/\\]dist[/\\]index\.js$/);
+    expect(entry.args![1]).toBe('--root');
     await result!.cleanup();
   });
 

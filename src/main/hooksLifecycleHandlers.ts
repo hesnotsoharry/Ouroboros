@@ -10,7 +10,6 @@
 
 import type { PermissionContext } from '@shared/types/permissionContext';
 
-import { getGraphController } from './codebaseGraph/graphControllerSupport';
 import { getContextLayerController } from './contextLayer/contextLayerController';
 import log from './logger';
 import { getEditProvenanceStore } from './orchestration/editProvenance';
@@ -118,7 +117,6 @@ export function handleFileChanged(payload: {
 }): void {
   if (payload.internal) return;
   getContextLayerController()?.onFileChanged?.();
-  getGraphController()?.onFileChange?.([]);
   const filePath = payload.data?.['file'] as string | undefined;
   if (filePath) {
     setImmediate(() => {

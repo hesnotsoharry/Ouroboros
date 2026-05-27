@@ -14,7 +14,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { SymbolGraphNode } from './MentionAutocomplete';
 
 const DEBOUNCE_MS = 200;
-const MAX_SYMBOL_RESULTS = 15;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -52,13 +51,13 @@ function toSymbolGraphNode(item: {
 // ── Fetch helper (extracted to keep hook under 40 lines) ──────────────────────
 
 function searchAndUpdate(
-  bareName: string,
+  _bareName: string,
   cancelled: { current: boolean },
   setResults: (r: SymbolGraphNode[]) => void,
   setLoading: (v: boolean) => void,
 ): void {
-  window.electronAPI.graph
-    .searchGraph(bareName, MAX_SYMBOL_RESULTS)
+  // graph:searchGraph handler removed in Wave 22 — always returns empty results.
+  Promise.resolve({ success: true as const, results: [] as const })
     .then((result) => {
       if (cancelled.current) return;
       setResults(result.success && result.results ? result.results.map(toSymbolGraphNode) : []);

@@ -18,7 +18,6 @@ import { setGithubTokenForPty } from './ptyEnv';
 import { configureUpdaterChannel, getAutoUpdater, setUpdaterGitHubToken } from './updater';
 
 export { broadcastToActiveWindows };
-export { disposeCodebaseGraph, initCodebaseGraph } from './mainStartupGraph';
 export { initEditProvenance };
 export {
   bootstrapApp,

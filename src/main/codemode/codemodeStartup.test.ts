@@ -113,7 +113,7 @@ describe('enableCodeModeUserLevel — eligibility filter', () => {
         name: 'ouroboros',
         enabled: true,
         scope: 'project',
-        config: { command: 'node', args: ['/path/ouroborosMcp.js'] },
+        config: { command: 'node', args: ['/path/packages/codebase-graph-mcp/dist/index.js', '--root', '/proj'] },
       },
     ]);
     await enableCodeModeUserLevel({ projectRoot: '/proj' });

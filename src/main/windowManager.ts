@@ -8,12 +8,7 @@
 import { BrowserWindow } from 'electron';
 import path from 'path';
 
-import {
-  acquireGraphController,
-  releaseGraphController,
-} from './codebaseGraph/graphControllerSupport';
 import { getConfigValue } from './config';
-import { acquireContextLayer, releaseContextLayer } from './contextLayer/contextLayerController';
 import { registerIpcHandlers } from './ipc';
 import { killPtySessionsForWindow } from './pty';
 import { makeSession } from './session/session';
@@ -202,8 +197,7 @@ function setupWindowCloseHandler(win: BrowserWindow, winId: number): void {
   win.on('closed', () => {
     const managed = windows.get(winId);
     if (managed?.projectRoot) {
-      void releaseContextLayer(managed.projectRoot);
-      void releaseGraphController(managed.projectRoot);
+      // contextLayer/graph acquire-release removed in Wave 22
     }
     clearWindowActiveSession(winId);
     cleanupIpcHandlers(winId);
@@ -289,17 +283,11 @@ export function getWindowInfos(): WindowInfo[] {
 
 export function setWindowProjectRoot(winId: number, projectRoot: string): void {
   const managed = windows.get(winId);
-  const oldRoot = managed?.projectRoot ?? null;
   if (managed) {
     managed.projectRoot = projectRoot;
     managed.projectRoots = [projectRoot];
   }
-  if (oldRoot && oldRoot !== projectRoot) {
-    void releaseContextLayer(oldRoot);
-    void releaseGraphController(oldRoot);
-  }
-  void acquireContextLayer(projectRoot);
-  void acquireGraphController(projectRoot);
+  // contextLayer/graph acquire-release removed in Wave 22
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic require avoids circular import during early startup
     const { startContextRefreshTimer } = require('./ipc-handlers/agentChat');
@@ -311,20 +299,12 @@ export function setWindowProjectRoot(winId: number, projectRoot: string): void {
 
 export function setWindowProjectRoots(winId: number, roots: string[]): void {
   const managed = windows.get(winId);
-  const oldRoot = managed?.projectRoot ?? null;
   const newRoot = roots[0] ?? null;
   if (managed) {
     managed.projectRoots = roots;
     managed.projectRoot = newRoot;
   }
-  if (oldRoot && oldRoot !== newRoot) {
-    void releaseContextLayer(oldRoot);
-    void releaseGraphController(oldRoot);
-  }
-  if (newRoot) {
-    void acquireContextLayer(newRoot);
-    void acquireGraphController(newRoot);
-  }
+  // contextLayer/graph acquire-release removed in Wave 22
   // Wave 64 — eager persist on every mutation. Without this, project root
   // changes only flush to SQLite on a clean window close, so any unclean exit
   // (force-kill, HMR restart, dev-server Ctrl+C, crash) loses the additions

@@ -36,8 +36,7 @@ const mocks = vi.hoisted(() => {
   const getConfigValue: ReturnType<typeof vi.fn> = vi.fn(() => undefined);
   const setConfigValue = vi.fn();
   const killPtySessionsForWindow = vi.fn();
-  const acquireGraphController = vi.fn().mockResolvedValue(undefined);
-  const releaseGraphController = vi.fn().mockResolvedValue(undefined);
+  // acquireGraphController/releaseGraphController removed in Wave 22 (codebaseGraph deleted)
   const acquireContextLayer = vi.fn().mockResolvedValue(undefined);
   const releaseContextLayer = vi.fn().mockResolvedValue(undefined);
   const registerIpcHandlers = vi.fn(() => vi.fn());
@@ -68,8 +67,7 @@ const mocks = vi.hoisted(() => {
     getConfigValue,
     setConfigValue,
     killPtySessionsForWindow,
-    acquireGraphController,
-    releaseGraphController,
+    // acquireGraphController/releaseGraphController removed in Wave 22
     acquireContextLayer,
     releaseContextLayer,
     registerIpcHandlers,
@@ -133,10 +131,7 @@ vi.mock('./pty', () => ({
   killPtySessionsForWindow: mocks.killPtySessionsForWindow,
 }));
 
-vi.mock('./codebaseGraph/graphControllerSupport', () => ({
-  acquireGraphController: mocks.acquireGraphController,
-  releaseGraphController: mocks.releaseGraphController,
-}));
+// codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
 
 vi.mock('./contextLayer/contextLayerController', () => ({
   acquireContextLayer: mocks.acquireContextLayer,
@@ -344,19 +339,20 @@ describe('setWindowProjectRoot', () => {
     expect(managed?.projectRoots[0]).toBe('/new/root');
   });
 
-  it('releases the old context layer when root changes', () => {
+  it('does not call releaseContextLayer (acquire-release removed in Wave 22)', () => {
+    // contextLayer acquire-release calls were removed from setWindowProjectRoot in Wave 22
     const win = wm.createWindow('/old/root');
     vi.clearAllMocks();
     wm.setWindowProjectRoot(win.id, '/new/root');
-    expect(mocks.releaseContextLayer).toHaveBeenCalledWith('/old/root');
+    expect(mocks.releaseContextLayer).not.toHaveBeenCalled();
   });
 
-  it('acquires context layer and graph controller for new root', () => {
+  it('does not call acquireContextLayer (acquire-release removed in Wave 22)', () => {
+    // contextLayer acquire-release calls were removed from setWindowProjectRoot in Wave 22
     const win = wm.createWindow('/old/root');
     vi.clearAllMocks();
     wm.setWindowProjectRoot(win.id, '/new/root');
-    expect(mocks.acquireContextLayer).toHaveBeenCalledWith('/new/root');
-    expect(mocks.acquireGraphController).toHaveBeenCalledWith('/new/root');
+    expect(mocks.acquireContextLayer).not.toHaveBeenCalled();
   });
 
   it('does not release old root if it matches new root', () => {
@@ -364,7 +360,7 @@ describe('setWindowProjectRoot', () => {
     vi.clearAllMocks();
     wm.setWindowProjectRoot(win.id, '/same/root');
     expect(mocks.releaseContextLayer).not.toHaveBeenCalled();
-    expect(mocks.releaseGraphController).not.toHaveBeenCalled();
+    // releaseGraphController removed in Wave 22
   });
 });
 

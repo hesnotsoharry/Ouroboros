@@ -14,7 +14,8 @@ import { closeCostHistoryDb } from './costHistory';
 import { shutdownExtensionHost } from './extensionHost/extensionHostProxy';
 import { cleanupIpcHandlers } from './ipc';
 import log from './logger';
-import { closeEditProvenance, disposeCodebaseGraph } from './mainStartup';
+import { closeEditProvenance } from './mainStartup';
+// disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
 import { closeDecisionWriter } from './orchestration/contextDecisionWriter';
 import { closeOutcomeWriter } from './orchestration/contextOutcomeWriter';
 import { stopContextRetrainTrigger } from './orchestration/contextRetrainStartup';
@@ -52,7 +53,7 @@ function closeSyncStores(): void {
 }
 
 async function disposeSubsystems(): Promise<void> {
-  await tryShutdown('codebase-graph', disposeCodebaseGraph);
+  // codebase-graph shutdown removed in Wave 22 (codebaseGraph deleted)
   await tryShutdown('codex-app-server', shutdownCodexAppServerProcesses);
   await tryShutdown('extension-host', shutdownExtensionHost);
   // Wave 60 Phase E: no legacy MCP host cleanup remains here. The

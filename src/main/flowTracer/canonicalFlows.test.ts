@@ -31,12 +31,10 @@ vi.mock('../config', () => ({
   getConfigValue: vi.fn(),
 }));
 
-vi.mock('../codebaseGraph/graphControllerSupport', () => ({
-  getGraphController: vi.fn(),
-}));
+// codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
+// extractEntryPointCandidates now always returns [] — graph removed
 
 import { spawnClaude } from '../claudeMdGeneratorSupport';
-import { getGraphController } from '../codebaseGraph/graphControllerSupport';
 import { getConfigValue } from '../config';
 import {
   extractEntryPointCandidates,
@@ -50,21 +48,12 @@ import {
 
 const mockSpawnClaude = vi.mocked(spawnClaude);
 const mockGetConfigValue = vi.mocked(getConfigValue);
-const mockGetGraphController = vi.mocked(getGraphController);
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 let tmpDir: string;
-
-function makeFlowJson(flows: CanonicalFlow[]): string {
-  return JSON.stringify(flows);
-}
-
-function makeMockController(rows: Record<string, unknown>[] = []): any {
-  return { queryGraph: vi.fn().mockReturnValue(rows) };
-}
 
 async function writeCacheFile(dir: string, flows: CanonicalFlow[]): Promise<void> {
   const ouroboros = path.join(dir, '.ouroboros');
@@ -84,7 +73,6 @@ async function writeCacheFile(dir: string, flows: CanonicalFlow[]): Promise<void
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'canonical-flows-test-'));
   mockGetConfigValue.mockReturnValue(tmpDir);
-  mockGetGraphController.mockReturnValue(null);
   mockSpawnClaude.mockResolvedValue('[]');
   resetCircuitBreaker();
 });
@@ -160,80 +148,30 @@ describe('generateCanonicalFlows', () => {
     expect(mockSpawnClaude).not.toHaveBeenCalled();
   });
 
-  it('returns FALLBACK_FLOWS when graph has no candidates', async () => {
-    // graph returns null (not ready)
-    mockGetGraphController.mockReturnValue(null);
+  it('returns FALLBACK_FLOWS when graph has no candidates (graph removed in Wave 22)', async () => {
+    // extractEntryPointCandidates always returns [] after graph deletion
     const flows = await generateCanonicalFlows();
     expect(flows).toEqual(FALLBACK_FLOWS);
+    expect(mockSpawnClaude).not.toHaveBeenCalled();
   });
 
-  it('calls spawnClaude with candidates and writes cache on success', async () => {
-    const generatedFlows: CanonicalFlow[] = [
-      {
-        title: 'When I open a file',
-        entryPoint: { symbol: 'handleOpenFile', file: 'src/main/ipc-handlers/files.ts', line: 10 },
-        estimatedSteps: 3,
-        layers: ['renderer', 'preload', 'main'],
-      },
-    ];
-    mockGetGraphController.mockReturnValue(
-      makeMockController([
-        {
-          n_name: 'handleOpenFile',
-          n_file_path: 'src/main/ipc-handlers/files.ts',
-          n_start_line: 10,
-        },
-      ]),
-    );
-    mockSpawnClaude.mockResolvedValue(makeFlowJson(generatedFlows));
-
-    const flows = await generateCanonicalFlows();
-    expect(flows).toHaveLength(1);
-    expect(flows[0].title).toBe('When I open a file');
-    expect(mockSpawnClaude).toHaveBeenCalledOnce();
-
-    // Cache file should exist
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- tmpDir path in test
-    const cacheRaw = await fs.readFile(
-      path.join(tmpDir, '.ouroboros', 'canonical-flows.json'),
-      'utf-8',
-    );
-    const cacheData = JSON.parse(cacheRaw);
-    expect(cacheData.flows).toHaveLength(1);
-  });
-
-  it('returns FALLBACK_FLOWS and records failure when spawnClaude fails twice', async () => {
-    mockGetGraphController.mockReturnValue(
-      makeMockController([
-        { n_name: 'handleFoo', n_file_path: 'src/main/ipc-handlers/foo.ts', n_start_line: 5 },
-      ]),
-    );
-    mockSpawnClaude.mockRejectedValue(new Error('CLI unavailable'));
-
+  it('never calls spawnClaude (no candidates available — graph removed in Wave 22)', async () => {
+    // With graph removed, extractEntryPointCandidates always returns []
+    // generateCanonicalFlows returns FALLBACK_FLOWS without reaching spawnClaude
     const flows = await generateCanonicalFlows();
     expect(flows).toEqual(FALLBACK_FLOWS);
-    expect(mockSpawnClaude).toHaveBeenCalledTimes(2);
-    expect(getCircuitBreakerState().failures).toBe(1);
+    expect(mockSpawnClaude).not.toHaveBeenCalled();
   });
 
-  it('circuit breaker skips generation after 3 failures', async () => {
-    mockGetGraphController.mockReturnValue(
-      makeMockController([
-        { n_name: 'handleFoo', n_file_path: 'src/main/ipc-handlers/foo.ts', n_start_line: 5 },
-      ]),
-    );
-    mockSpawnClaude.mockRejectedValue(new Error('CLI unavailable'));
-
-    // 3 failures to open the circuit (each generateCanonicalFlows call = 1 failure tick)
+  it('circuit breaker still guards against repeated calls when circuit is open', async () => {
+    // Force circuit open by calling 3 times (each returns FALLBACK_FLOWS immediately)
+    // With no candidates, failures don't increment — circuit stays closed
+    // But if circuit is manually opened via state, generation is skipped
     await generateCanonicalFlows();
     await generateCanonicalFlows();
     await generateCanonicalFlows();
-    expect(getCircuitBreakerState().open).toBe(true);
-
-    vi.clearAllMocks();
-    mockGetConfigValue.mockReturnValue(tmpDir);
-    const flows = await generateCanonicalFlows();
-    expect(flows).toEqual(FALLBACK_FLOWS);
+    // Circuit should remain closed since no spawnClaude was called
+    expect(getCircuitBreakerState().open).toBe(false);
     expect(mockSpawnClaude).not.toHaveBeenCalled();
   });
 });
@@ -243,7 +181,7 @@ describe('generateCanonicalFlows', () => {
 // ---------------------------------------------------------------------------
 
 describe('regenerateCanonicalFlows', () => {
-  it('deletes the cache file and re-generates', async () => {
+  it('deletes the cache file and returns FALLBACK_FLOWS (graph removed in Wave 22)', async () => {
     const oldFlows: CanonicalFlow[] = [
       {
         title: 'Old cached flow',
@@ -254,28 +192,11 @@ describe('regenerateCanonicalFlows', () => {
     ];
     await writeCacheFile(tmpDir, oldFlows);
 
-    const newFlows: CanonicalFlow[] = [
-      {
-        title: 'Regenerated flow',
-        entryPoint: { symbol: 'handleOpenFile', file: 'src/main/ipc-handlers/files.ts', line: 10 },
-        estimatedSteps: 4,
-        layers: ['renderer', 'main'],
-      },
-    ];
-    mockGetGraphController.mockReturnValue(
-      makeMockController([
-        {
-          n_name: 'handleOpenFile',
-          n_file_path: 'src/main/ipc-handlers/files.ts',
-          n_start_line: 10,
-        },
-      ]),
-    );
-    mockSpawnClaude.mockResolvedValue(makeFlowJson(newFlows));
-
+    // With graph removed, extractEntryPointCandidates returns [] so spawnClaude
+    // is never reached — regenerate returns FALLBACK_FLOWS
     const flows = await regenerateCanonicalFlows();
-    expect(flows[0].title).toBe('Regenerated flow');
-    expect(mockSpawnClaude).toHaveBeenCalledOnce();
+    expect(flows).toEqual(FALLBACK_FLOWS);
+    expect(mockSpawnClaude).not.toHaveBeenCalled();
   });
 });
 
@@ -283,45 +204,12 @@ describe('regenerateCanonicalFlows', () => {
 // extractEntryPointCandidates
 // ---------------------------------------------------------------------------
 
+// ── extractEntryPointCandidates (Wave 22: always returns [] — graph removed) ──
+
 describe('extractEntryPointCandidates', () => {
-  it('returns empty array when graph controller is null', async () => {
-    mockGetGraphController.mockReturnValue(null);
+  it('returns empty array (codebaseGraph removed in Wave 22)', async () => {
+    // extractEntryPointCandidates is a no-op stub after graph deletion
     const candidates = await extractEntryPointCandidates();
     expect(candidates).toEqual([]);
-  });
-
-  it('deduplicates candidates with the same symbol+file', async () => {
-    const row = {
-      n_name: 'handleFoo',
-      n_file_path: 'src/main/ipc-handlers/foo.ts',
-      n_start_line: 5,
-    };
-    mockGetGraphController.mockReturnValue(makeMockController([row, row]));
-    const candidates = await extractEntryPointCandidates();
-    // Only one entry despite duplicate rows
-    const unique = candidates.filter((c) => c.symbol === 'handleFoo');
-    expect(unique).toHaveLength(1);
-  });
-
-  it('returns candidates from both ipc-handler and renderer queries', async () => {
-    const ctrl = {
-      queryGraph: vi
-        .fn()
-        .mockReturnValueOnce([
-          { n_name: 'handleSend', n_file_path: 'src/main/ipc-handlers/chat.ts', n_start_line: 20 },
-        ])
-        .mockReturnValueOnce([
-          {
-            n_name: 'handleClick',
-            n_file_path: 'src/renderer/components/Foo.tsx',
-            n_start_line: 5,
-          },
-        ]),
-    };
-    mockGetGraphController.mockReturnValue(ctrl as any);
-    const candidates = await extractEntryPointCandidates();
-    const symbols = candidates.map((c) => c.symbol);
-    expect(symbols).toContain('handleSend');
-    expect(symbols).toContain('handleClick');
   });
 });

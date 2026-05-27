@@ -3,8 +3,9 @@
  *
  * Verifies the ordering invariants that matter for clean Electron exit:
  *   - async writers are awaited before sync stores close
- *   - codebase-graph disposal runs and errors are swallowed (tryShutdown)
  *   - a failing subsystem does not abort the shutdown sequence
+ *
+ * codebase-graph disposal removed in Wave 22 (codebaseGraph deleted).
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,7 +29,7 @@ vi.mock('./ipc', () => ({ cleanupIpcHandlers: recorder('cleanupIpcHandlers', tru
 vi.mock('./logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('./mainStartup', () => ({
   closeEditProvenance: recorder('closeEditProvenance'),
-  disposeCodebaseGraph: recorder('disposeCodebaseGraph', true),
+  // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
 }));
 // Wave 60 Phase E: mcpHost subsystem removed alongside internalMcpServer.
 vi.mock('./orchestration/contextDecisionWriter', () => ({
@@ -73,27 +74,32 @@ describe('performWillQuitShutdown', () => {
     expect(calls).toContain('stopClaudeUsagePoller');
     expect(calls).toContain('cleanupIpcHandlers');
     expect(calls).toContain('closeThreadStore');
-    expect(calls).toContain('disposeCodebaseGraph');
+    // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
     expect(calls).toContain('shutdownCodexAppServerProcesses');
     expect(calls).toContain('shutdownExtensionHost');
 
     // Writers run before the sync stores close (telemetry depends on writers being flushed).
     expect(calls.indexOf('closeDecisionWriter')).toBeLessThan(calls.indexOf('closeTelemetryStore'));
-    // IPC cleanup runs before codebase-graph disposal (handlers may hold references).
-    expect(calls.indexOf('cleanupIpcHandlers')).toBeLessThan(calls.indexOf('disposeCodebaseGraph'));
+    // IPC cleanup runs before subsystem disposal.
+    expect(calls.indexOf('cleanupIpcHandlers')).toBeLessThan(calls.indexOf('shutdownCodexAppServerProcesses'));
   });
 
   it('swallows subsystem errors via tryShutdown so later steps still run', async () => {
-    const startup = await import('./mainStartup');
-    (startup.disposeCodebaseGraph as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => {
-      calls.push('disposeCodebaseGraph');
-      throw new Error('graph dispose failed');
-    });
+    // codexAppServer throws; extension host must still run.
+    const codexMod = await import('./orchestration/providers/codexAppServerProcess');
+    (codexMod.shutdownCodexAppServerProcesses as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      async () => {
+        calls.push('shutdownCodexAppServerProcesses');
+        throw new Error('codex dispose failed');
+      },
+    );
 
     const { performWillQuitShutdown } = await import('./mainShutdown');
     await expect(performWillQuitShutdown()).resolves.toBeUndefined();
 
-    // Later subsystems still ran after the graph threw.
-    expect(calls.indexOf('disposeCodebaseGraph')).toBeLessThan(calls.indexOf('shutdownExtensionHost'));
+    // Extension host still ran after codex threw.
+    expect(calls.indexOf('shutdownCodexAppServerProcesses')).toBeLessThan(
+      calls.indexOf('shutdownExtensionHost'),
+    );
   });
 });

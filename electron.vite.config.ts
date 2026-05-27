@@ -68,14 +68,15 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/main/main.ts'),
-          indexingWorker: resolve(__dirname, 'src/main/codebaseGraph/indexingWorker.ts'),
+          // indexingWorker removed in Wave 22 (codebaseGraph deleted)
           contextWorker: resolve(__dirname, 'src/main/orchestration/contextWorker.ts'),
-            repoMapWorker: resolve(__dirname, 'src/main/contextLayer/repoMapWorker.ts'),
+          // repoMapWorker removed in Wave 22 (contextLayer graph files deleted)
+          // ouroborosMcp removed in Wave 22 (old standalone depended on codebaseGraph;
+          //   replaced by packages/codebase-graph-mcp — wired in Phase 6/7)
             ptyHostMain: resolve(__dirname, 'src/main/ptyHost/ptyHostMain.ts'),
             extensionHostMain: resolve(__dirname, 'src/main/extensionHost/extensionHostMain.ts'),
             proxyServer: resolve(__dirname, 'src/main/codemode/proxyServer.ts'),
             context7Proxy: resolve(__dirname, 'src/main/codemode/context7Proxy.ts'),
-            ouroborosMcp: resolve(__dirname, 'src/standalone/ouroborosMcp/ouroborosMcp.ts'),
         }
       }
     } as any,

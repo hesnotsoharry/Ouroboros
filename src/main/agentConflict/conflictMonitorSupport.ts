@@ -5,9 +5,14 @@
 
 import type { AgentConflictReport } from '@shared/types/agentConflict';
 
-import { getGraphControllerForRoot } from '../codebaseGraph/graphControllerSupport';
-import type { GraphNode } from '../codebaseGraph/graphTypes';
-import log from '../logger';
+/** Minimal stub — graph removed in Wave 22. */
+export interface GraphNode {
+  id: string;
+  filePath?: string;
+  line?: number;
+  type?: string;
+  name?: string;
+}
 
 // ── Key helpers ───────────────────────────────────────────────────────────────
 
@@ -38,23 +43,21 @@ export function severityForSymbols(
 // ── Symbol computation ────────────────────────────────────────────────────────
 
 export async function computeSymbols(
-  root: string,
-  sessionId: string,
-  files: string[],
+  _root: string,
+  _sessionId: string,
+  _files: string[],
 ): Promise<GraphNode[]> {
-  const ctrl = getGraphControllerForRoot(root);
-  if (!ctrl?.getStatus().initialized) return [];
-  try {
-    const result = await ctrl.detectChangesForSession(sessionId, files);
-    return result.affectedSymbols;
-  } catch (err) {
-    log.warn('[conflictMonitor] detectChangesForSession failed:', err);
-    return [];
-  }
+  // Graph removed in Wave 22 — symbol detection is a no-op.
+  void _root
+  void _sessionId
+  void _files
+  return [];
 }
 
-export function isGraphHot(root: string): boolean {
-  return Boolean(getGraphControllerForRoot(root)?.getStatus().initialized);
+export function isGraphHot(_root: string): boolean {
+  // Graph removed in Wave 22.
+  void _root
+  return false;
 }
 
 // ── Dismiss helpers ───────────────────────────────────────────────────────────

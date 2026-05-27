@@ -9,16 +9,8 @@ vi.mock('../logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-// ── Stub graph controller ─────────────────────────────────────────────────────
-const mockDetectChangesForSession = vi.fn();
-const mockGetStatus = vi.fn(() => ({ initialized: true }));
-
-vi.mock('../codebaseGraph/graphControllerSupport', () => ({
-  getGraphControllerForRoot: vi.fn(() => ({
-    getStatus: mockGetStatus,
-    detectChangesForSession: mockDetectChangesForSession,
-  })),
-}));
+// codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
+// isGraphHot and computeSymbols are now no-op stubs returning false/[] respectively
 
 import type { RootSessionMap } from './conflictMonitorSupport';
 import {
@@ -174,37 +166,20 @@ describe('buildOverlapSymbols', () => {
   });
 });
 
-// ── isGraphHot ────────────────────────────────────────────────────────────────
+// ── isGraphHot (Wave 22: always returns false — graph removed) ────────────────
 
 describe('isGraphHot', () => {
-  it('returns true when controller is initialized', () => {
-    mockGetStatus.mockReturnValueOnce({ initialized: true });
-    expect(isGraphHot('/root')).toBe(true);
-  });
-
-  it('returns false when controller reports uninitialized', () => {
-    mockGetStatus.mockReturnValueOnce({ initialized: false });
+  it('returns false (codebaseGraph removed in Wave 22)', () => {
+    // isGraphHot is a no-op stub that always returns false after graph deletion
     expect(isGraphHot('/root')).toBe(false);
   });
 });
 
-// ── computeSymbols ────────────────────────────────────────────────────────────
+// ── computeSymbols (Wave 22: always returns [] — graph removed) ───────────────
 
 describe('computeSymbols', () => {
-  it('returns affectedSymbols from controller', async () => {
-    const sym = { id: 'f.ts::fn', filePath: 'f.ts', name: 'fn', type: 'function', line: 1 };
-    mockDetectChangesForSession.mockResolvedValueOnce({
-      changedFiles: ['f.ts'],
-      affectedSymbols: [sym],
-      blastRadius: 1,
-    });
-    const result = await computeSymbols('/root', 'sess1', ['f.ts']);
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('fn');
-  });
-
-  it('returns empty array when controller is cold', async () => {
-    mockGetStatus.mockReturnValueOnce({ initialized: false });
+  it('returns empty array (codebaseGraph removed in Wave 22)', async () => {
+    // computeSymbols is a no-op stub that always returns [] after graph deletion
     const result = await computeSymbols('/root', 'sess1', ['f.ts']);
     expect(result).toHaveLength(0);
   });

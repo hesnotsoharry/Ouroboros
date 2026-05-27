@@ -9,7 +9,6 @@
 
 import type { ApprovalResponse } from './approvalManager';
 import { generateClaudeMd } from './claudeMdGenerator';
-import { getGraphController } from './codebaseGraph/graphControllerSupport';
 import { getConfigValue } from './config';
 import { getContextLayerController } from './contextLayer/contextLayerController';
 import { dispatchActivationEvent } from './extensions';
@@ -101,7 +100,6 @@ export function handleSessionStart(payload: HookPayload): void {
   dispatchActivationEvent('onSessionStart', { sessionId: payload.sessionId }).catch(() => {});
   if (!payload.internal) {
     getContextLayerController()?.onSessionStart();
-    getGraphController()?.onSessionStart();
   }
 }
 
@@ -114,7 +112,6 @@ export function handleSessionEnd(payload: HookPayload): void {
 export function handleSessionStop(payload: HookPayload, sessionCwdMap: Map<string, string>): void {
   if (!payload.internal) {
     getContextLayerController()?.onGitCommit();
-    getGraphController()?.onGitCommit();
     invalidateAgentChatCache();
     triggerClaudeMdGeneration('post-session', payload, sessionCwdMap);
     trackSessionEnd({

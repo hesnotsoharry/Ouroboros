@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Wave 22 — Ouroboros codebase graph: standalone MCP server extraction.** The codebase graph subsystem ships as a standalone Node-process MCP server distributed as `@hesnotsoharry/codebase-graph-mcp`. Consumable from any Claude Code session in any project via `.mcp.json` `mcpServers` block, with stdio transport and a 15-tool surface (the 6 canonical ones: `search_graph`, `query_graph`, `trace_call_path`, `get_code_snippet`, `detect_changes`, `manage_adr`; plus lifecycle/meta/search variants). Walking-skeleton + tool-surface acceptance tests pin the wire contract. Cross-project smoke verified against Agent IDE / Contractor App / Gamify: 3 projects index + query in ~36s combined wall-clock; per-project SQLite graph DBs at `~/.ouroboros-graph/<sha256(rootPath)[:8]>/graph.db`. The in-IDE auto-injection (`src/main/internalMcp/`) was rewired to point at the new package, so fresh Claude Code sessions inside Agent IDE surface `mcp__ouroboros__*` tools that resolve to the standalone server. Full story in `roadmap/wave-22-graph-standalone-mcp/wave-22-result.md`.
+
+### Removed
+
+- **The in-IDE codebase graph subsystem.** `src/main/codebaseGraph/` (~110 files), `src/main/contextLayer/repoMap*`, `src/main/contextLayer/contextInjector*`, `src/main/mainStartupContextLayerTrigger.ts`, `src/main/mainStartupGraph.ts`, `src/main/orchestration/graphSummaryBuilder.ts`, `src/main/contextLayer/repoMapWorkerQueryClient.ts`, plus the pre-Wave-22 in-tree standalone path `src/standalone/ouroborosMcp/` — all deleted. 12 `graph:*` IPC channels removed; `window.electronAPI.graph` removed from the typed surface. Replaced by the standalone `@hesnotsoharry/codebase-graph-mcp` package; see the addition above.
+
+### Changed
+
+- **`src/main/internalMcp/` rewired.** `internalMcpAutoInject` now writes `.mcp.json` entries with `command: 'node'`, `args: ['<path-to-package>/dist/index.js', '--root', '<project-root>']`. Drops the old `ELECTRON_RUN_AS_NODE=1` env (new package uses system Node ABI, not Electron's). Server name preserved as `ouroboros` so tool prefix stays `mcp__ouroboros__*`.
+- **Vestigial subsystems graph-stripped but preserved.** `src/main/agentConflict/`, `src/main/embeddings/`, `src/main/flowTracer/` had graph-using paths stubbed to no-ops; source files retained for future revival. Per Wave 22 Decision 4 Path A (stay scoped — don't absorb Wave 100's full chat-infrastructure removal).
+- **Root `CLAUDE.md` "Codebase Graph" section** rewritten. The in-IDE graph guidance is gone; the new pattern is per-project `.mcp.json` + `mcp__ouroboros__*` tools in fresh Claude Code sessions. Folder Map, Known Issues, and scoped test scripts table updated accordingly. New companion doc at `roadmap/docs/standalone-mcp.md`.
+
+### Lost capabilities (deliberate per Decision 4 A2)
+
+- Terminal Claude Code sessions running INSIDE the IDE no longer receive auto-context injection. They behave like plain Claude Code CLI sessions in any other project — Grep/Read on demand, no pre-built context. The standalone MCP server can be wired in via `.mcp.json` to restore graph queries; the pre-injection pipeline is a future wave's concern.
+
+### Notes
+
+- Version bumped to **`v2.29.0`** (minor) — net effect is cross-project capability addition; breaking removal of the in-IDE graph subsystem is internal-only (no external API consumer exists for the IDE's main-process modules).
+- npm publish of `@hesnotsoharry/codebase-graph-mcp@0.1.0` attempted; failed E404 (scope authentication pending). Follow-up `roadmap/follow-ups/2026-05-26-codebase-graph-mcp-npm-publish.md` filed per Decision 7 fail-soft path. Local tarball preserved.
+- Pre-existing test failure (`channelCatalogCoverage` — `app:getCrashLogCount` + `persist:shared`) remains. Not Wave 22; see `roadmap/follow-ups/2026-05-26-channel-catalog-missing-persist-shared-and-crash-log-count.md`.
+
 - **Wave 21 — Ouroboros codebase graph Tier-2 improvements.** Two substantive items in `src/main/codebaseGraph/`:
   - **IMPLEMENTS + EXTENDS edges via tree-sitter `class_heritage`.** TS/TSX classes' `extends Base implements IA, IB` clauses are now extracted and emitted as graph edges by `definitionPass`. `ExtractedDefinition` gains `implements?: string[]` and `extendsClause?: string | null`. New helper module `indexingPipelineHeritage.ts` resolves heritage targets via the Wave 19 `callResolutionPass.filterEdges` pattern (skip on unresolved) and emits both edge types from one heritage walk. Cypher queries like `MATCH (c:Class)-[:IMPLEMENTS]->(i:Interface)` now return real rows over indexed TS/TSX projects. Boundary-phase acceptance test at `indexingPipeline.heritageEdges.acceptance.test.ts` pins the contract (11 assertions). Other OO languages (Java/Python/C++/Rust/Go) deferred to a future wave.
   - **`testDetectPass` cache** eliminates the per-keystroke full-label scan of Function + Method nodes. Module-level `Map<projectName, FunctionIndexEntry>`, FIFO-capped at 10 projects, invalidated per-file by QN-prefix intersection (and unconditionally on full reindex). New `[trace:testDetectPass.cache]` log line with hit/miss status + durationMs. I/O contract preserved — same TESTS edges in, same TESTS edges out.

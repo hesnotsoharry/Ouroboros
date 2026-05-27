@@ -11,7 +11,6 @@ import fs from 'fs/promises';
 import { tmpdir } from 'os';
 import path from 'path';
 
-import { getGraphController } from '../codebaseGraph/graphControllerSupport';
 import { getContextLayerController } from '../contextLayer/contextLayerController';
 import { dispatchFileOpenEvent } from '../extensions';
 import log from '../logger';
@@ -185,9 +184,6 @@ function flushPendingChanges(): void {
   }
 
   invalidateAgentChatCache();
-
-  const graphCtrl = getGraphController();
-  if (graphCtrl) graphCtrl.onFileChange(changes.map((c) => c.filePath));
 }
 
 function broadcastToWindows(type: string, filePath: string): void {

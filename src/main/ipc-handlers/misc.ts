@@ -4,7 +4,6 @@ import { stopAllServers as lspStopAll } from '../lsp';
 import { registerApprovalHandlers } from './approvalHandlers';
 import { registerCostHandlers } from './costHandlers';
 import { registerCrashLogHandlers } from './crashHandlers';
-import { registerGraphHandlers } from './graphHandlers';
 import { registerLspHandlers } from './lspHandlers';
 import { registerExtensionHandlers, registerWindowHandlers } from './miscRegistrarsHelpers';
 import { registerPerfHandlers } from './perfHandlers';
@@ -32,7 +31,6 @@ export function registerMiscHandlers(senderWindow: SenderWindow, win: BrowserWin
   registerExtensionHandlers(channels);
   registerLspHandlers(channels, win);
   registerApprovalHandlers(channels);
-  registerGraphHandlers(channels);
   registerTrustHandlers(channels);
 
   return channels;

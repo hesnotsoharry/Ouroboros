@@ -9,8 +9,6 @@ import { initClaudeMdGenerator } from './claudeMdGenerator';
 import { startClaudeUsagePoller } from './claudeUsagePoller';
 import { runCodeModeStartupGate } from './codemode/codemodeStartup';
 import { getConfigValue } from './config';
-import { initContextLayer } from './contextLayer/contextLayerController';
-import { getRepoMapWorkerClient } from './contextLayer/repoMapWorkerClient';
 import { initialiseCrashReporter } from './crashReporter';
 import { initExtensions } from './extensionsApi';
 import { installHooks } from './hookInstaller';
@@ -23,14 +21,13 @@ import { startJankDetector, stopJankDetector } from './jankDetector';
 import log from './logger';
 import { performWillQuitShutdown } from './mainShutdown';
 // prettier-ignore
-import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initCodebaseGraph, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
+import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
 import { registerAllTelemetryDrainHandlers } from './mainTelemetryHandlers';
 import { buildApplicationMenu } from './menu';
 import { initDecisionWriter } from './orchestration/contextDecisionWriter';
 import { initOutcomeWriter } from './orchestration/contextOutcomeWriter';
 import { startContextRetrainTriggerIfEnabled } from './orchestration/contextRetrainStartup';
 import { killAllWarm } from './orchestration/providers/claudeWarmProcessManager';
-import { buildRepoIndexSnapshot } from './orchestration/repoIndexer';
 // prettier-ignore
 import { cleanupPerfSubscriber, clearPerfSubscribers, initializePerfMetrics, markStartup, startPerfMetrics as startManagedPerfMetrics, stopPerfMetrics as stopManagedPerfMetrics } from './perfMetrics';
 import { generatePipeTokens, setTokenFilePath } from './pipeAuth';
@@ -99,11 +96,12 @@ async function startIdeTools(): Promise<void> {
 }
 
 /**
- * Wave 60 Phase E: the IDE no longer runs an in-process MCP server. Its
- * job is to write the standalone-MCP entry into `<root>/.mcp.json` so
- * Claude Code (whether spawned by the IDE or a terminal) can find and
- * launch the standalone (`out/main/ouroborosMcp.js`). The standalone
- * reads the SQLite DB directly — no port, no bridge, no HTTP server.
+ * Wave 60 Phase E / Wave 22 Phase 6: the IDE no longer runs an in-process
+ * MCP server. Its job is to write the standalone-MCP entry into
+ * `<root>/.mcp.json` so Claude Code (whether spawned by the IDE or a
+ * terminal) can find and launch the standalone package
+ * (`packages/codebase-graph-mcp/dist/index.js`). The standalone reads the
+ * SQLite DB directly — no port, no bridge, no HTTP server.
  */
 async function injectStandaloneMcpEntry(): Promise<void> {
   if (!getConfigValue('internalMcpEnabled')) {
@@ -172,31 +170,8 @@ function registerWindowLifecycleHandlers(): void {
 }
 
 function startContextLayerAsync(defaultRoot: string | undefined): void {
-  const contextLayerConfig = getConfigValue('contextLayer') ?? {
-    enabled: true,
-    maxModules: 50,
-    maxSizeBytes: 200 * 1024,
-    debounceMs: 5000,
-    autoSummarize: true,
-  };
-  initContextLayer({
-    workspaceRoot: getConfigValue('defaultProjectRoot'),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildRepoIndex: buildRepoIndexSnapshot as any,
-    config: {
-      ...contextLayerConfig,
-      generateRepoMapFn: (opts) => getRepoMapWorkerClient().generateRepoMap(opts),
-    },
-  })
-    .then(() => {
-      log.info('Initialization complete');
-    })
-    .catch((error: unknown) => {
-      log.warn('Initialization failed:', error);
-    });
-  initCodebaseGraph().catch((error) => {
-    log.error('Initialization failed:', error);
-  });
+  // Graph and contextLayer/repoMap removed in Wave 22.
+  // Preserve agentChat context warm-load so chat still functions.
   if (defaultRoot) {
     loadPersistedContextCache();
     startContextRefreshTimer([defaultRoot]);

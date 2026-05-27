@@ -11,7 +11,6 @@ import { sessionMemoryStore } from '../agentChat/sessionMemory';
 import log from '../logger';
 import { buildContextPacket } from '../orchestration/contextPacketBuilder';
 import { injectPinnedContext } from '../orchestration/contextPacketBuilderPins';
-import { formatGraphSummary } from '../orchestration/graphSummaryBuilder';
 import { createClaudeCodeAdapter } from '../orchestration/providers/claudeCodeAdapter';
 import { createCodexAdapter } from '../orchestration/providers/codexAdapter';
 import type {
@@ -104,15 +103,6 @@ function buildEmptyContextPacket(request: TaskRequest): ContextPacket {
   };
 }
 
-function attachGraphSummaryIfMissing(
-  packet: ContextPacket,
-  graphSummary: import('../orchestration/graphSummaryBuilder').GraphSummary,
-): void {
-  if (packet.graphSummary) return;
-  const section = formatGraphSummary(graphSummary);
-  if (section) packet.graphSummary = section;
-}
-
 async function rebuildPacketForModel(
   request: TaskRequest,
   ctx: import('./agentChatContext').CachedContext,
@@ -125,7 +115,6 @@ async function rebuildPacketForModel(
     });
     ctx.cachedPacket = result.packet;
     ctx.cachedPacketModel = request.model;
-    attachGraphSummaryIfMissing(result.packet, ctx.graphSummary);
     return result.packet;
   } catch (err) {
     log.warn('[resolveContextPacket] rebuild failed, falling back to cached packet:', err);
@@ -143,7 +132,6 @@ async function resolveContextPacket(request: TaskRequest): Promise<ContextPacket
   if (!ctx) return undefined;
 
   if (ctx.cachedPacket && ctx.cachedPacketModel === request.model) {
-    attachGraphSummaryIfMissing(ctx.cachedPacket, ctx.graphSummary);
     return ctx.cachedPacket;
   }
   return rebuildPacketForModel(request, ctx);

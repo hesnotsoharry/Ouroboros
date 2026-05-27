@@ -22,7 +22,7 @@ import type { SupplementalApiKey } from './preloadSupplementalApiKeys';
 import { chatStateNewPathApi } from './preloadSupplementalChatStateApis';
 import { flowTracerApi } from './preloadSupplementalFlowTracerApis';
 import { folderCrudApi } from './preloadSupplementalFolderApis';
-import { graphApi } from './preloadSupplementalGraphApis';
+// graphApi removed in Wave 22 (preloadSupplementalGraphApis.ts deleted)
 import { layoutApi } from './preloadSupplementalLayoutApis';
 import { marketplaceApi } from './preloadSupplementalMarketplaceApis';
 import { memoryApi } from './preloadSupplementalMemoryApis';
@@ -300,7 +300,7 @@ export const supplementalApis: SupplementalApis = {
   workspaceReadList: workspaceReadListApi,
   subagent: subagentApi,
   layout: layoutApi,
-  graph: graphApi,
+  // graph API removed in Wave 22
   mobileAccess: {
     generatePairingCode: () => ipcRenderer.invoke('mobileAccess:generatePairingCode'),
     listPairedDevices: () => ipcRenderer.invoke('mobileAccess:listPairedDevices'),

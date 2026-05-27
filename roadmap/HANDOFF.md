@@ -1,4 +1,40 @@
-# Session Handoff — 2026-05-26 (Audit + Cleanup · Wave 100 is the real canon gap)
+# Session Handoff — 2026-05-27 (Wave 22 SHIPPED — codebase-graph standalone)
+
+**Audience:** the next Claude Code session — this is YOUR entry point. Master is at `v2.29.0` post-Wave-22 merge. The standalone codebase-graph package has been extracted out of the Agent IDE repo and now lives at `C:\Web App\codebase-graph-mcp\` as its own git repo.
+
+---
+
+## 🔼 UPDATE 2026-05-27 — Wave 22 SHIPPED + package extracted
+
+### What landed
+
+**Wave 22 — Ouroboros codebase graph extraction.** The IDE's in-process graph subsystem (~110 files under `src/main/codebaseGraph/` plus the `contextLayer/repoMap*` + `contextInjector*` consumer chain) was extracted into a standalone npm package `@hesnotsoharry/codebase-graph-mcp` and the in-IDE copy was deleted. The package ships as a Node-process stdio MCP server consumable via `.mcp.json` in any project. Cross-project smoke verified against Agent IDE / Contractor App / Gamify (3 projects index + query in ~36s combined). The IDE's `internalMcp/` auto-inject was rewired to spawn the new package.
+
+**Post-wave package extraction.** The package was moved out of the Agent IDE monorepo into its own repository at `C:\Web App\codebase-graph-mcp\`. `packages/codebase-graph-mcp/` was deleted from Agent IDE in a cleanup commit. The `internalMcp/index.ts` `resolvePackageEntry()` was updated to point at the new sibling location. All three projects' `.mcp.json` files were updated to point at the new path.
+
+Wave deliverables:
+- `roadmap/wave-22-graph-standalone-mcp/wave-22-result.md` — full wave story.
+- 8 phases shipped (walking skeleton → architect → migration → tool surface → deletion → cross-project smoke → docs → wrap). One mid-wave decision (Path A: stay scoped — don't absorb Wave 100). Two boundary-phase reviews via `sonnet-phase-reviewer`.
+- Tagged `v2.29.0` (minor bump — cross-project capability addition is the headline; in-IDE graph removal is internal-only).
+
+### Lost capabilities (deliberate per Decision 4 A2)
+
+Terminal Claude Code sessions running INSIDE the IDE no longer receive auto-context injection. They behave like plain Claude Code CLI sessions — Grep/Read on demand, no pre-built context. The standalone MCP server is wired in via `.mcp.json` so graph queries work; the pre-injection pipeline (which used to feed terminal sessions automatically) is a future wave's concern.
+
+### Open follow-ups from Wave 22
+
+- `roadmap/follow-ups/2026-05-26-codebase-graph-mcp-npm-publish.md` — npm publish failed E404 pending `npm login` + scope auth.
+- `roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md` — packaged Electron builds need `extraResources`/`asarUnpack` for the package (the package now lives outside the repo entirely, so asar handling changes again — see follow-up).
+- `roadmap/follow-ups/2026-05-26-fix-extensions-mjs-dynamic-imports.md` — latent regex gap in the post-tsc extension fixer.
+- `C:/Web App/meta/roadmap/follow-ups/2026-05-26-mcp-server-config-meta-side.md` — meta-side `.mcp.json` install + `graph-tool-routing.md` rule update; for next meta session.
+
+### Next session: Wave 100 (or other canon gap)
+
+Wave 100 — chat-surface-removal — was the previous canon gap before Wave 22 ran. It's still the next item. Per the mid-wave Path A decision, Wave 22 did NOT absorb Wave 100. `AgentChat/*`, `ChatOnlyShell/*`, agentChat IPC, etc. all still exist in tree (graph-stripped). Wave 100 deletes them as a separate coordinated push.
+
+---
+
+## Prior session: 2026-05-26 (Audit + Cleanup · Wave 100 is the real canon gap)
 
 **Audience:** the next Claude Code session — this is YOUR entry point. Master is clean at `46f419df`. The earlier "Wave 22a" recommendation in prior handoffs was based on a faulty premise (reviving the chat orchestration bridge before realizing the entire chat system is being deleted). It was discarded mid-session. The actual canon gap is **Wave 100 — chat-surface-removal**, currently PAUSED on a local-only branch with Phase A held pending re-scope. Six stale origin branches pruned this session.
 

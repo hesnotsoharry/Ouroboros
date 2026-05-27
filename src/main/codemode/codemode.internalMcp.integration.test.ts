@@ -166,9 +166,11 @@ describe('settings-write shape', () => {
     const entry = data.mcpServers['ouroboros'];
     expect(entry).toBeDefined();
     expect(entry.url).toBeUndefined();
-    expect(entry.command).toBe(process.execPath);
-    expect(entry.env?.ELECTRON_RUN_AS_NODE).toBe('1');
-    expect(entry.args![0]).toMatch(/ouroborosMcp\.js$/);
+    expect(entry.command).toBe('node');
+    expect(entry.env).toBeUndefined();
+    expect(entry.args![0]).toMatch(/packages[/\\]codebase-graph-mcp[/\\]dist[/\\]index\.js$/);
+    expect(entry.args![1]).toBe('--root');
+    expect(entry.args![2]).toBeDefined();
     expect(result!.routingDecision).toBe('direct-inject');
     await result!.cleanup();
   });

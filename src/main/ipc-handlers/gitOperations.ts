@@ -8,7 +8,6 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { getGraphController } from '../codebaseGraph/graphControllerSupport';
 import { getContextLayerController } from '../contextLayer/contextLayerController';
 import { dispatchActivationEvent } from '../extensions';
 import log from '../logger';
@@ -225,7 +224,6 @@ export function gitCommit(root: string, message: string) {
       dispatchActivationEvent('onGitCommit', { root, message }).catch((error) => {
         log.error('Failed to dispatch onGitCommit activation event:', error);
       });
-      getGraphController()?.onGitCommit();
       getContextLayerController()?.onGitCommit();
       invalidateAgentChatCache();
       return {};

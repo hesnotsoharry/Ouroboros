@@ -79,6 +79,7 @@ function configureScope(opts: {
     if (key === 'internalMcpUseStrictConfig') return useStrict;
     if (key === 'internalMcpEnabled') return enabled;
     if (key === 'internalMcpScope') return scope;
+    if (key === 'defaultProjectRoot') return '/test/project';
     return undefined;
   });
 
@@ -129,11 +130,13 @@ describe('buildScopedMcpConfig', () => {
     const data = await readConfigFile(result!.configPath);
     const servers = data.mcpServers as Record<string, unknown>;
     expect(servers).toHaveProperty('ouroboros');
-    // Wave 60 Phase E: standalone shape — Electron-as-Node spawning
-    // out/main/ouroborosMcp.js. URL-based shape removed.
-    const entry = servers['ouroboros'] as { command: string; env?: Record<string, string> };
-    expect(entry.command).toBe(process.execPath);
-    expect(entry.env?.ELECTRON_RUN_AS_NODE).toBe('1');
+    // Wave 22 Phase 6: plain node, packages/codebase-graph-mcp/dist/index.js, --root arg.
+    const entry = servers['ouroboros'] as { command: string; args?: string[]; env?: Record<string, string> };
+    expect(entry.command).toBe('node');
+    expect(entry.env).toBeUndefined();
+    expect(entry.args?.[0]).toMatch(/packages[/\\]codebase-graph-mcp[/\\]dist[/\\]index\.js$/);
+    expect(entry.args?.[1]).toBe('--root');
+    expect(entry.args?.[2]).toBe('/test/project');
     await result!.cleanup();
   });
 
