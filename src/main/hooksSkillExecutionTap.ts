@@ -12,8 +12,8 @@
 
 import type { SkillExecutionRecord } from '@shared/types/ruleActivity';
 
-import type { ActiveStreamContext } from './hooks/types';
 import type { HookPayload } from './hooks';
+import type { ActiveStreamContext } from './hooks/types';
 import log from './logger';
 
 type ActiveSendsMap = Map<string, ActiveStreamContext>;

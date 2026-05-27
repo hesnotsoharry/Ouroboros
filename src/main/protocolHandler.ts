@@ -18,15 +18,15 @@ export function setupThreadProtocol(): void {
   registerThreadProtocol();
 }
 
-export function extractPermalinkFromArgv(_argv: readonly string[]): null {
+export function extractPermalinkFromArgv(_argv: readonly string[]): null {  // eslint-disable-line @typescript-eslint/no-unused-vars
   return null;
 }
 
-export function dispatchPermalink(_url: string): void {
+export function dispatchPermalink(_url: string): void {  // eslint-disable-line @typescript-eslint/no-unused-vars
   // no-op: thread:// deep-link removed
 }
 
-export function dispatchPermalinkFromArgv(_argv: readonly string[]): void {
+export function dispatchPermalinkFromArgv(_argv: readonly string[]): void {  // eslint-disable-line @typescript-eslint/no-unused-vars
   // no-op: thread:// deep-link removed
 }
 

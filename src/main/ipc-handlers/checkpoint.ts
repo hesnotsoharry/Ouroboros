@@ -13,10 +13,9 @@ import type {
   CheckpointListRequest,
   CheckpointRestoreRequest,
 } from '@shared/types/sessionCheckpoint';
+import { execFile } from 'child_process';
 import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from 'electron';
 import path from 'path';
-
-import { execFile } from 'child_process';
 
 import type {
   CheckpointCreateRequest,

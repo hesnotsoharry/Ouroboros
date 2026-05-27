@@ -11,8 +11,8 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
-import { getErrorMessage } from '../utils';
 import { store } from '../config';
+import { getErrorMessage } from '../utils';
 
 type SenderWindow = (event: IpcMainInvokeEvent) => BrowserWindow;
 type McpScope = 'global' | 'project';

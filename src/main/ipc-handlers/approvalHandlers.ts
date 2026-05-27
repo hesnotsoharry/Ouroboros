@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron';
 
-import { getErrorMessage } from '../utils';
 import { addAlwaysAllowRule, respondToApproval } from '../approvalManager';
 import { forget, listAll, rememberAllow, rememberDeny } from '../approvalMemory';
+import { getErrorMessage } from '../utils';
 
 type ChannelList = string[];
 type IpcHandler = Parameters<typeof ipcMain.handle>[1];

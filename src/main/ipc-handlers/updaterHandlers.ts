@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 
-import { getErrorMessage } from '../utils';
 import { getAutoUpdater, getLastOfferedVersion, isVersionRejected } from '../updater';
+import { getErrorMessage } from '../utils';
 
 type ChannelList = string[];
 type IpcHandler = Parameters<typeof ipcMain.handle>[1];

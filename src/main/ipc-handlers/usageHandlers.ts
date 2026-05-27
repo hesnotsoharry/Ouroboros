@@ -1,6 +1,5 @@
 import { ipcMain } from 'electron';
 
-import { getErrorMessage } from '../utils';
 import { getLatestClaudeUsageSnapshot } from '../claudeRateLimits';
 import { getLatestCodexUsageSnapshot } from '../codexRateLimits';
 import { getCostHistory } from '../costHistory';
@@ -10,6 +9,7 @@ import {
   findSessionDetailById,
   getRecentSessionsFromEntries,
 } from '../costHistoryAggregation';
+import { getErrorMessage } from '../utils';
 import { getCoalescedSnapshot } from './usageSnapshotCoalescer';
 
 type ChannelList = string[];
