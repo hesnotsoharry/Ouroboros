@@ -34,9 +34,18 @@ import type {
   WorkspaceLayout,
   WorkspaceSnapshot,
 } from './configTypes';
-import type { ContextLayerConfig } from './contextLayer/contextLayerTypes';
 import type { Session } from './session';
 import type { SessionFolder } from './session/folderStore';
+
+/** Inlined from deleted contextLayer/contextLayerTypes — removed in Wave 100 Phase F; Phase H removes the config key */
+export interface ContextLayerConfig {
+  enabled: boolean;
+  maxModules: number;
+  maxSizeBytes: number;
+  debounceMs: number;
+  autoSummarize: boolean;
+  moduleDepthLimit: number;
+}
 
 export interface AppConfig {
   recentProjects: string[];
