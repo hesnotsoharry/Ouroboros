@@ -5,9 +5,8 @@
  * for the UsageDashboard panel.
  */
 
-import { useCallback, useState } from 'react';
-
 import type { GlobalCostRollupRecord, ThreadCostRollupRecord } from '@shared/types/agentChatResults';
+import { useCallback, useState } from 'react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

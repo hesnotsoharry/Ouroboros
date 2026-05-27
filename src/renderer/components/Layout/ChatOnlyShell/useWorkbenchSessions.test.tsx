@@ -2,10 +2,10 @@
  * @vitest-environment jsdom
  */
 
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import type { SessionRecord } from '../../../types/electron';
 import { useWorkbenchSessions } from './useWorkbenchSessions';
 

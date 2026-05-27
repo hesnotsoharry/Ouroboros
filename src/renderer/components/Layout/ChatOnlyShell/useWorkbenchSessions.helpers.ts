@@ -4,6 +4,7 @@
  */
 
 import type { AgentChatThreadRecord } from '@shared/types/agentChat';
+
 import type { SessionRecord } from '../../../types/electron';
 
 export function projectBasename(root: string): string {

@@ -1,6 +1,6 @@
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import { useCallback, useRef, useState } from 'react';
 
-import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import type { SessionRecord } from '../../../types/electron';
 
 function hasElectronAPI(): boolean {

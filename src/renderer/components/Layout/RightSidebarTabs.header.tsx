@@ -7,11 +7,11 @@
  * via MobileLayoutContext.openSheet().
  */
 
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import React from 'react';
 
 import { useMobileLayout } from '../../contexts/MobileLayoutContext';
 import { useViewportBreakpoint } from '../../hooks/useViewportBreakpoint';
-import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import type { RightSidebarView } from './RightSidebarTabs';
 import { GearIcon, HistoryIcon, PlusIcon } from './RightSidebarTabs.icons';
 import { ViewSwitcherDropdown } from './RightSidebarTabs.panels';

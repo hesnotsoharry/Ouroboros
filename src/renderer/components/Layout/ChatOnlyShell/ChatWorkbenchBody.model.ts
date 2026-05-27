@@ -1,8 +1,8 @@
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import React from 'react';
 
 import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { OPEN_MULTI_SESSION_EVENT } from '../../../hooks/appEventNames';
-import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import type { ApprovalRequest } from '../../../types/electron';
 import {
   createStoredSessionFromPicker,
@@ -114,8 +114,8 @@ export function useWorkbenchHandlers(
     [activation],
   );
   const handleSelectRecentChat = React.useCallback(
-    (_threadId: string) => {
-      // chat threads removed in Wave 100
+    (threadId: string) => {
+      void threadId; // chat threads removed in Wave 100
     },
     [],
   );

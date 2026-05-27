@@ -35,7 +35,8 @@ function AnalyticsSuspense(): React.ReactElement {
 
 // ── AgentSidebarContent ───────────────────────────────────────────────────────
 
-function AgentRightSidebarTabs({ projectRoot: _projectRoot, dispatchEnabled }: { projectRoot: string | null; dispatchEnabled: boolean }): React.ReactElement {
+function AgentRightSidebarTabs({ projectRoot, dispatchEnabled }: { projectRoot: string | null; dispatchEnabled: boolean }): React.ReactElement {
+  void projectRoot;
   return (
     <RightSidebarTabs
       monitorContent={<ErrorBoundary label="Agent Monitor"><React.Suspense fallback={<LazyPanelFallback />}><AgentMonitorManager /></React.Suspense></ErrorBoundary>}

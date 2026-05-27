@@ -1,6 +1,6 @@
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import { useMemo } from 'react';
 
-import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import type { SessionRecord } from '../../../types/electron';
 import { useSessions } from '../../SessionSidebar/useSessions';
 import type { TerminalSession } from '../../Terminal/TerminalTabs';

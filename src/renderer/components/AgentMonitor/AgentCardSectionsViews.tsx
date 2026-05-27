@@ -1,9 +1,9 @@
 import React from 'react';
 
 import { useDispatchJobs } from '../../hooks/useDispatchJobs';
-import { DispatchBadge } from './DispatchBadge';
 import { CompactionIndicator } from './CompactionIndicator';
 import { estimateCost, formatCost, formatTokenCount } from './costCalculator';
+import { DispatchBadge } from './DispatchBadge';
 import type { AgentSession } from './types';
 
 function agentModelName(modelId?: string): string {

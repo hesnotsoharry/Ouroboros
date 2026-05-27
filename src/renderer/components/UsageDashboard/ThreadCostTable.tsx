@@ -5,9 +5,9 @@
  * Click any column header to sort; click again to toggle direction.
  */
 
+import type { ThreadCostRollupRecord } from '@shared/types/agentChatResults';
 import React, { useMemo, useState } from 'react';
 
-import type { ThreadCostRollupRecord } from '@shared/types/agentChatResults';
 import { formatCost, formatTokenCount } from '../AgentMonitor/costCalculator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

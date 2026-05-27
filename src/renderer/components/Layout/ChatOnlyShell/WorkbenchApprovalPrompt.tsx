@@ -1,6 +1,6 @@
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import React, { useMemo, useState } from 'react';
 
-import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import type { ApprovalRequest, SessionRecord } from '../../../types/electron';
 import {
   getApprovalRequestKey,

@@ -1,6 +1,6 @@
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import React, { Suspense } from 'react';
 
-import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import type { ApprovalRequest } from '../../../types/electron';
 import type {
   LayoutState,

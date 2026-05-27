@@ -23,14 +23,16 @@ interface AgentChatStatusHandlerArgs {
 
 // Wave 100: agentChat API removed. These handlers are no-ops.
 export function createResumeLatestAgentChatThreadHandler(
-  _args: AgentChatHandlerArgs,
+  args: AgentChatHandlerArgs,
 ): EventListener {
+  void args;
   return () => { /* no-op: agentChat surface removed in Wave 100 */ };
 }
 
 export function createOpenLatestAgentChatDetailsHandler(
-  _args: AgentChatHandlerArgs,
+  args: AgentChatHandlerArgs,
 ): EventListener {
+  void args;
   return () => { /* no-op: agentChat surface removed in Wave 100 */ };
 }
 
