@@ -69,7 +69,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/main.ts'),
           // indexingWorker removed in Wave 22 (codebaseGraph deleted)
-          contextWorker: resolve(__dirname, 'src/main/orchestration/contextWorker.ts'),
+          // contextWorker removed in Wave 100 Phase F (context-intelligence subsystem cut)
           // repoMapWorker removed in Wave 22 (contextLayer graph files deleted)
           // ouroborosMcp removed in Wave 22 (old standalone depended on codebaseGraph;
           //   replaced by C:\Web App\codebase-graph-mcp — own git repo, Wave 22 post-wrap)

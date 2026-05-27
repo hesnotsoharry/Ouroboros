@@ -24,12 +24,12 @@ export function ensureStore(): Store<AppConfig> {
 }
 
 /**
- * Worker subprocesses (contextWorker, indexingWorker) can race the main
- * process here: main may be mid-write of an unrelated config field at the
- * moment the worker reads the file, and electron-store sees a transiently
- * invalid shape. Run preflight, attempt construction, and on a schema-shaped
- * error retry once after re-running preflight to coerce the file back to a
- * valid shape.
+ * Worker subprocesses (ptyHost, extensionHost, codemode proxies) can race
+ * the main process here: main may be mid-write of an unrelated config field
+ * at the moment the worker reads the file, and electron-store sees a
+ * transiently invalid shape. Run preflight, attempt construction, and on a
+ * schema-shaped error retry once after re-running preflight to coerce the
+ * file back to a valid shape.
  */
 function loadStoreCtor(): typeof Store {
   // Lazy require, NOT a top-level import: electron-store runs
@@ -38,7 +38,7 @@ function loadStoreCtor(): typeof Store {
   // 'electron-store'` crashes any worker that transitively imports config —
   // even though the worker never constructs the store. Deferring construction
   // alone (the original design) was insufficient; the import itself was the
-  // hazard. See contextWorker / indexingWorker electron-in-worker gotcha.
+  // hazard. See electron-in-worker_threads gotcha (no electron module).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const mod = require('electron-store') as { default?: typeof Store };
   return mod.default ?? (mod as unknown as typeof Store);
