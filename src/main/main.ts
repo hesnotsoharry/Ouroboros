@@ -9,8 +9,6 @@ import { initClaudeMdGenerator } from './claudeMdGenerator';
 import { startClaudeUsagePoller } from './claudeUsagePoller';
 import { runCodeModeStartupGate } from './codemode/codemodeStartup';
 import { getConfigValue } from './config';
-import { initContextLayer } from './contextLayer/contextLayerController';
-import { getRepoMapWorkerClient } from './contextLayer/repoMapWorkerClient';
 import { initialiseCrashReporter } from './crashReporter';
 import { initExtensions } from './extensionsApi';
 import { installHooks } from './hookInstaller';
@@ -23,14 +21,13 @@ import { startJankDetector, stopJankDetector } from './jankDetector';
 import log from './logger';
 import { performWillQuitShutdown } from './mainShutdown';
 // prettier-ignore
-import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initCodebaseGraph, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
+import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
 import { registerAllTelemetryDrainHandlers } from './mainTelemetryHandlers';
 import { buildApplicationMenu } from './menu';
 import { initDecisionWriter } from './orchestration/contextDecisionWriter';
 import { initOutcomeWriter } from './orchestration/contextOutcomeWriter';
 import { startContextRetrainTriggerIfEnabled } from './orchestration/contextRetrainStartup';
 import { killAllWarm } from './orchestration/providers/claudeWarmProcessManager';
-import { buildRepoIndexSnapshot } from './orchestration/repoIndexer';
 // prettier-ignore
 import { cleanupPerfSubscriber, clearPerfSubscribers, initializePerfMetrics, markStartup, startPerfMetrics as startManagedPerfMetrics, stopPerfMetrics as stopManagedPerfMetrics } from './perfMetrics';
 import { generatePipeTokens, setTokenFilePath } from './pipeAuth';
@@ -172,31 +169,8 @@ function registerWindowLifecycleHandlers(): void {
 }
 
 function startContextLayerAsync(defaultRoot: string | undefined): void {
-  const contextLayerConfig = getConfigValue('contextLayer') ?? {
-    enabled: true,
-    maxModules: 50,
-    maxSizeBytes: 200 * 1024,
-    debounceMs: 5000,
-    autoSummarize: true,
-  };
-  initContextLayer({
-    workspaceRoot: getConfigValue('defaultProjectRoot'),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    buildRepoIndex: buildRepoIndexSnapshot as any,
-    config: {
-      ...contextLayerConfig,
-      generateRepoMapFn: (opts) => getRepoMapWorkerClient().generateRepoMap(opts),
-    },
-  })
-    .then(() => {
-      log.info('Initialization complete');
-    })
-    .catch((error: unknown) => {
-      log.warn('Initialization failed:', error);
-    });
-  initCodebaseGraph().catch((error) => {
-    log.error('Initialization failed:', error);
-  });
+  // Graph and contextLayer/repoMap removed in Wave 22.
+  // Preserve agentChat context warm-load so chat still functions.
   if (defaultRoot) {
     loadPersistedContextCache();
     startContextRefreshTimer([defaultRoot]);
