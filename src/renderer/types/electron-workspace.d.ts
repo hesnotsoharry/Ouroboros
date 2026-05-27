@@ -30,7 +30,6 @@ import type {
   SymbolAPI,
   UsageAPI,
 } from './electron-observability';
-import type { OrchestrationAPI } from './electron-orchestration';
 import type { PinnedContextAPI } from './electron-pinned-context';
 import type { ProfileAPI } from './electron-profile';
 import type { ResearchAPI } from './electron-research';
@@ -293,7 +292,6 @@ export interface ElectronAPI {
   context: ContextAPI;
   ideTools: IdeToolsAPI;
   codemode: CodeModeAPI;
-  orchestration: OrchestrationAPI;
   contextLayer: ContextLayerAPI;
   claudeMd: ClaudeMdAPI;
   providers: ProvidersAPI;

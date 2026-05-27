@@ -157,7 +157,7 @@ const { extensionStoreAPI, contextAPI, ideToolsAPI } = buildStoreContextApis(tra
 const agentChatBase = buildAgentChatApi(transport);
 const agentChatExt = buildAgentChatExtApi(transport);
 const agentChatAPI = { ...agentChatBase, ...agentChatExt };
-const { codemodeAPI, orchestrationAPI, contextLayerAPI } = buildOrchestrationApis(transport);
+const { codemodeAPI, contextLayerAPI } = buildOrchestrationApis(transport);
 const authAPI = buildAuthApi(transport);
 const providersAPI = buildProvidersApi(transport);
 const claudeMdAPI = buildClaudeMdApi(transport);
@@ -220,7 +220,6 @@ const electronAPI = {
   codemode: codemodeAPI,
   codex: codexAPI,
   agentChat: agentChatAPI,
-  orchestration: orchestrationAPI,
   contextLayer: contextLayerAPI,
   auth: authAPI,
   providers: providersAPI,

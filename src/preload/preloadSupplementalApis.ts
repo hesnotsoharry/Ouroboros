@@ -1,4 +1,3 @@
-import { ORCHESTRATION_INVOKE_CHANNELS } from '@shared/ipc/orchestrationChannels';
 import { ipcRenderer } from 'electron';
 
 import type {
@@ -241,19 +240,6 @@ export const supplementalApis: SupplementalApis = {
     disable: () => ipcRenderer.invoke('codemode:disable'),
     getStatus: () => ipcRenderer.invoke('codemode:status'),
   },
-
-  orchestration: {
-    previewContext: (request: unknown) =>
-      ipcRenderer.invoke(ORCHESTRATION_INVOKE_CHANNELS.previewContext, request),
-    // Alias for previewContext — both channels execute identical logic on the main side.
-    // The renderer only calls previewContext; this alias exists for API symmetry.
-    buildContextPacket: (request: unknown) =>
-      ipcRenderer.invoke(ORCHESTRATION_INVOKE_CHANNELS.previewContext, request),
-    // Routes to agentChat:cancelTask channel (Wave 100: agentChat removed; channel dead).
-    cancelTask: (taskId: string) =>
-      ipcRenderer.invoke('agentChat:cancelTask', taskId),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- orchestration API surface is intentionally partial; full ElectronAPI.orchestration type includes routes handled elsewhere
-  } as any,
 
   contextLayer: {
     onProgress: (callback) => onChannel<ContextLayerProgress>('contextLayer:progress', callback),

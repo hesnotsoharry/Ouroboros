@@ -17,7 +17,6 @@ export type SupplementalApiKey =
   | 'context'
   | 'ideTools'
   | 'codemode'
-  | 'orchestration'
   | 'contextLayer'
   | 'claudeMd'
   | 'router'
