@@ -34,7 +34,6 @@ vi.mock('./web/handlerRegistry', () => ({
 }));
 
 vi.mock('./ipc-handlers', () => ({
-  cleanupAgentChatHandlers: vi.fn().mockResolvedValue(undefined),
   cleanupCompareProvidersHandlers: vi.fn(),
   cleanupConfigWatcher: vi.fn(),
   cleanupContextRankerDashboardHandlers: vi.fn(),
@@ -58,7 +57,6 @@ vi.mock('./ipc-handlers', () => ({
   closeEmbeddingStore: vi.fn(),
   ensureSchedulerInit: vi.fn(),
   lspStopAll: vi.fn().mockResolvedValue(undefined),
-  registerAgentChatHandlers: vi.fn().mockReturnValue([]),
   registerAgentConflictHandlers: vi.fn().mockReturnValue([]),
   registerAiHandlers: vi.fn().mockReturnValue([]),
   registerAiStreamHandlers: vi.fn().mockReturnValue([]),

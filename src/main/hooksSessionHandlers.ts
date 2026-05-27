@@ -19,7 +19,6 @@ import { evaluatePreToolUse as blockSecrets } from './hooks/blockSecretWrites';
 import { evaluateStop } from './hooks/gotchaUpdateNudge';
 import type { HookDecision } from './hooks/hookDecision';
 import { evaluatePreToolUse as warnTestSuite } from './hooks/warnFullTestSuite';
-import { invalidateSnapshotCache as invalidateAgentChatCache } from './ipc-handlers/agentChat';
 import log from './logger';
 import { flushSession } from './orchestration/contextRankerTelemetry';
 import { trackSessionEnd } from './router/qualitySignalCollector';
@@ -112,7 +111,6 @@ export function handleSessionEnd(payload: HookPayload): void {
 export function handleSessionStop(payload: HookPayload, sessionCwdMap: Map<string, string>): void {
   if (!payload.internal) {
     getContextLayerController()?.onGitCommit();
-    invalidateAgentChatCache();
     triggerClaudeMdGeneration('post-session', payload, sessionCwdMap);
     trackSessionEnd({
       type: payload.type,

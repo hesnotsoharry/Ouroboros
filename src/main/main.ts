@@ -15,8 +15,6 @@ import { installHooks } from './hookInstaller';
 import { startHooksServer, stopHooksServer } from './hooks';
 import { startIdeToolServer, stopIdeToolServer } from './ideToolServer';
 import { buildInjectOptions, injectIntoProjectSettings } from './internalMcp';
-// prettier-ignore
-import { loadPersistedContextCache, startContextRefreshTimer, stopContextRefreshTimer, terminateContextWorker } from './ipc-handlers/agentChat';
 import { startJankDetector, stopJankDetector } from './jankDetector';
 import log from './logger';
 import { performWillQuitShutdown } from './mainShutdown';
@@ -170,15 +168,6 @@ function registerWindowLifecycleHandlers(): void {
   });
 }
 
-function startContextLayerAsync(defaultRoot: string | undefined): void {
-  // Graph and contextLayer/repoMap removed in Wave 22.
-  // Preserve agentChat context warm-load so chat still functions.
-  if (defaultRoot) {
-    loadPersistedContextCache();
-    startContextRefreshTimer([defaultRoot]);
-  }
-}
-
 function startWebServerAsync(): void {
   const webPort = (getConfigValue('webAccessPort') as number | undefined) ?? 7890;
   const outMainDir = __dirname.endsWith('chunks') ? path.dirname(__dirname) : __dirname;
@@ -213,7 +202,7 @@ async function initTelemetryAndWriters(ud: string): Promise<void> {
   startContextRetrainTriggerIfEnabled(ud);
 }
 
-async function initWindowsAndServices(defaultRoot: string | undefined): Promise<void> {
+async function initWindowsAndServices(): Promise<void> {
   initializePerfMetrics({ getActiveWindows: getAllActiveWindows });
   const restored = restoreWindowSessions();
   mainWindow = restored[0] ?? createWindow();
@@ -232,7 +221,6 @@ async function initWindowsAndServices(defaultRoot: string | undefined): Promise<
   startTokenRefreshManager();
   registerWindowLifecycleHandlers();
   void seedGithubTokenWithRetry();
-  startContextLayerAsync(defaultRoot);
   startWebServerAsync();
   loadRetrainedWeightsIfAvailable();
   observeDatasetGrowth();
@@ -251,7 +239,7 @@ async function initializeApplication(): Promise<void> {
   setTokenFilePath(ud);
   generatePipeTokens();
   installHandlerCapture();
-  await initWindowsAndServices(defaultRoot);
+  await initWindowsAndServices();
   markStartup('services-ready');
 }
 
@@ -261,8 +249,6 @@ app.whenReady().then(initializeApplication);
 app.on('window-all-closed', async () => {
   stopJankDetector();
   stopTokenRefreshManager();
-  stopContextRefreshTimer();
-  await terminateContextWorker();
   clearPerfSubscribers();
   stopManagedPerfMetrics();
   await stopWebServer();

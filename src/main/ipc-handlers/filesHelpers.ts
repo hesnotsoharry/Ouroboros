@@ -15,7 +15,6 @@ import { getContextLayerController } from '../contextLayer/contextLayerControlle
 import { dispatchFileOpenEvent } from '../extensions';
 import log from '../logger';
 import { broadcastToWebClients } from '../web/webServer';
-import { invalidateSnapshotCache as invalidateAgentChatCache } from './agentChat';
 
 export const MAX_READ_BYTES = 100 * 1024 * 1024;
 
@@ -182,8 +181,6 @@ function flushPendingChanges(): void {
   if (ctrl) {
     for (const c of changes) ctrl.onFileChange(c.type, c.filePath);
   }
-
-  invalidateAgentChatCache();
 }
 
 function broadcastToWindows(type: string, filePath: string): void {

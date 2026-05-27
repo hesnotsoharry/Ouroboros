@@ -10,7 +10,6 @@ import { BrowserWindow, ipcMain, IpcMainInvokeEvent } from 'electron';
 
 import { startApprovalManagerCleanup, stopApprovalManagerCleanup } from './approvalManager';
 import {
-  cleanupAgentChatHandlers,
   cleanupCompareProvidersHandlers,
   cleanupConfigWatcher,
   cleanupContextRankerDashboardHandlers,
@@ -34,14 +33,12 @@ import {
   closeEmbeddingStore,
   ensureSchedulerInit,
   lspStopAll,
-  registerAgentChatHandlers,
   registerAgentConflictHandlers,
   registerAiHandlers,
   registerAiStreamHandlers,
   registerAppHandlers,
   registerAuthHandlers,
   registerBackgroundJobsHandlers,
-  registerChatStateNewPathHandlers,
   registerCheckpointHandlers,
   registerClaudeMdHandlers,
   registerCompareProvidersHandlers,
@@ -115,7 +112,6 @@ function registerCoreDomainHandlers(win: BrowserWindow): string[] {
     ...safeRegister('files', () => registerFileHandlers(senderWindow)),
     ...safeRegister('git', () => registerGitHandlers(senderWindow)),
     ...safeRegister('app', () => registerAppHandlers(senderWindow)),
-    ...safeRegister('agentChat', () => registerAgentChatHandlers()),
     ...safeRegister('sessionCrud', () => registerSessionCrudHandlers()),
     ...safeRegister('folderCrud', () => registerFolderCrudHandlers()),
     ...safeRegister('pinnedContext', () => registerPinnedContextHandlers()),
@@ -162,7 +158,6 @@ function registerAuxDomainHandlers(): string[] {
     ...safeRegister('marketplace', () => registerMarketplaceHandlers()),
     ...safeRegister('memory', () => registerMemoryHandlers()),
     ...safeRegister('flowTracer', () => registerFlowTracerIpcHandlers()),
-    ...safeRegister('chatStateNewPath', () => registerChatStateNewPathHandlers()),
   ];
 }
 
@@ -302,7 +297,6 @@ export function registerIpcHandlers(win: BrowserWindow): () => void {
 export async function cleanupIpcHandlers(): Promise<void> {
   cleanupFileWatchers();
   cleanupConfigWatcher();
-  await cleanupAgentChatHandlers();
   cleanupCompareProvidersHandlers();
   cleanupSessionCrudHandlers();
   cleanupFolderCrudHandlers();

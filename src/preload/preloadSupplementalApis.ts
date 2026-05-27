@@ -17,7 +17,6 @@ import type {
 } from '../renderer/types/electron';
 import { aiApi, embeddingApi, observabilityApi, telemetryApi } from './preloadSupplementalAiApis';
 import type { SupplementalApiKey } from './preloadSupplementalApiKeys';
-import { chatStateNewPathApi } from './preloadSupplementalChatStateApis';
 import { flowTracerApi } from './preloadSupplementalFlowTracerApis';
 import { folderCrudApi } from './preloadSupplementalFolderApis';
 // graphApi removed in Wave 22 (preloadSupplementalGraphApis.ts deleted)
@@ -314,7 +313,6 @@ export const supplementalApis: SupplementalApis = {
   flowTracer: flowTracerApi,
   marketplace: marketplaceApi,
   memory: memoryApi,
-  chatStateNewPath: chatStateNewPathApi,
   // Wave 37 Phase B+C — ecosystem moat: prompt diff push event + usage exporter
   ecosystem: {
     onPromptDiff: (callback) =>

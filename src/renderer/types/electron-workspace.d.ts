@@ -3,7 +3,6 @@ import type { AiAPI } from './electron-ai';
 import type { AiStreamAPI } from './electron-ai-stream';
 import type { AuthAPI } from './electron-auth';
 import type { BackgroundJobsAPI } from './electron-background-jobs';
-import type { ChatStateNewPathAPI } from './electron-chat-state-new-path';
 import type { CheckpointAPI } from './electron-checkpoint';
 import type { ClaudeMdAPI } from './electron-claude-md';
 import type { CompareProvidersAPI } from './electron-compare-providers';
@@ -325,7 +324,6 @@ export interface ElectronAPI {
   mobileAccess: MobileAccessAPI;
   compareProviders: CompareProvidersAPI;
   memory: MemoryAPI;
-  chatStateNewPath: ChatStateNewPathAPI;
 }
 
 export interface WorkspaceAPI {

@@ -12,7 +12,6 @@ import { getContextLayerController } from '../contextLayer/contextLayerControlle
 import { dispatchActivationEvent } from '../extensions';
 import log from '../logger';
 import { gitExec, gitStdout, MB } from '../util/gitExec';
-import { invalidateSnapshotCache as invalidateAgentChatCache } from './agentChat';
 import {
   getChangedFilesBetween,
   nonEmptyLines,
@@ -225,7 +224,6 @@ export function gitCommit(root: string, message: string) {
         log.error('Failed to dispatch onGitCommit activation event:', error);
       });
       getContextLayerController()?.onGitCommit();
-      invalidateAgentChatCache();
       return {};
     },
     { gitError: true },
