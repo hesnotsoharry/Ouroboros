@@ -158,6 +158,7 @@ const UNCLASSIFIED_ALLOWLIST = new Set<string>([
   'provider:model',
   'commands:list', // listed in catalog under rulesAndSkills — alias
   'commands:read',
+  'persist:shared', // Chromium session partition name (BrowserWindow.webPreferences.partition) — not an IPC channel
 ]);
 
 describe('channel catalog coverage', () => {
