@@ -1,6 +1,17 @@
-# Session Handoff — 2026-05-27 (Wave 22 SHIPPED — codebase-graph standalone)
+# Session Handoff — 2026-05-27 (Wave 22 SHIPPED + npm-published + vestigial cleanup queued)
 
-**Audience:** the next Claude Code session — this is YOUR entry point. Master is at `v2.29.0` post-Wave-22 merge. The standalone codebase-graph package has been extracted out of the Agent IDE repo and now lives at `C:\Web App\codebase-graph-mcp\` as its own git repo.
+**Audience:** the next Claude Code session — this is YOUR entry point.
+
+**Master state:**
+- Tagged at `v2.34.0` (the planned v2.29.0 was already taken — see the version-bump commits).
+- `@hesnotsoharry/codebase-graph-mcp` is **npm-published** as of 2026-05-27.
+- The standalone codebase-graph package lives at `C:\Web App\codebase-graph-mcp\` as its own git repo (sibling to Agent IDE, not subdir).
+- A meta agent is wiring the MCP into global access (`~/.claude.json mcpServers.ouroboros`) so fresh Claude Code sessions in any project surface the tools without per-project `.mcp.json` work.
+- `wave-22-graph-standalone-mcp` branch deleted local + on origin.
+
+**Next priority work — vestigial cleanup:** see `roadmap/follow-ups/2026-05-27-vestigial-chat-orchestration-cleanup.md`. The Wave 22 post-wrap trace established that the IDE's `internalMcp/` auto-injection + the entire downstream chat-orchestration chain (scopedMcpConfig → claudeCodeLaunchInputs → claudeCodeLaunch → claudeCodeAdapter → agentChatOrchestration IPC) is behaviorally vestigial in Cole's terminal-only workflow. The catalog lays out three cleanup options (Option A minimum / Option B Wave-100 absorption / Option C status quo) with file lists. Cole's recommendation: **Option A** (delete internalMcpAutoInject + its call sites only; ~30 min single-dispatch task) unless Wave 100 happens soon, in which case skip A and do B as part of that wave.
+
+**Orphan to clean:** `.worktrees/wave-22-graph-standalone-mcp/` still exists on disk (the git worktree was successfully removed from tracking but Windows couldn't delete the directory because my shell's cwd was holding the lock). Fresh session can `rm -rf .worktrees/` from the main checkout.
 
 ---
 

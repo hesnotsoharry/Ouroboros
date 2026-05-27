@@ -1,11 +1,25 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-26
 updated: 2026-05-27
+resolved: 2026-05-27
 source: Wave 22 Phase 8 (per Decision 7 — fail-soft publish)
 severity: LOW
-scope: packages/codebase-graph-mcp
+scope: codebase-graph-mcp (now lives at C:\Web App\codebase-graph-mcp\)
 ---
+
+## Resolution (2026-05-27)
+
+Cole ran `npm login` + `npm publish --access public` from `C:\Web App\codebase-graph-mcp\` after the package was extracted out of the Agent IDE repo into its own location. Publish succeeded. The `@hesnotsoharry/codebase-graph-mcp@0.1.0` package is now installable via `npx @hesnotsoharry/codebase-graph-mcp` from any Node 20+ environment.
+
+A meta agent is wiring the MCP into global access (`~/.claude.json mcpServers.ouroboros`) so fresh Claude Code sessions in any project surface the tools without per-project `.mcp.json` work.
+
+The IDE-side `.mcp.json` auto-injection (`src/main/internalMcp/internalMcpAutoInject.ts`) is now strictly redundant with the meta-level global config and is flagged for cleanup at `2026-05-27-vestigial-chat-orchestration-cleanup.md`.
+
+---
+
+## Original follow-up (preserved for context)
+
 
 # `@hesnotsoharry/codebase-graph-mcp` npm publish
 
