@@ -5,7 +5,6 @@ import type {
   ApprovalResolved,
   ClaudeMdGenerationStatus,
   CompareProvidersEventPayload,
-  ContextLayerProgress,
   ElectronAPI,
   IdeToolQuery,
   LspDiagnostic,
@@ -239,10 +238,6 @@ export const supplementalApis: SupplementalApis = {
       ipcRenderer.invoke('codemode:enable', { serverNames, scope, projectRoot }),
     disable: () => ipcRenderer.invoke('codemode:disable'),
     getStatus: () => ipcRenderer.invoke('codemode:status'),
-  },
-
-  contextLayer: {
-    onProgress: (callback) => onChannel<ContextLayerProgress>('contextLayer:progress', callback),
   },
 
   claudeMd: {

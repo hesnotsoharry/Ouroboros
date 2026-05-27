@@ -7,7 +7,6 @@
  */
 
 import type { DockPersistenceData } from '@shared/config/dockPersistenceSchema';
-import type { AgentChatSettings } from '@shared/types/agentChat';
 
 import type {
   AgentTemplate,
@@ -35,16 +34,6 @@ import type {
 } from './configTypes';
 import type { Session } from './session';
 import type { SessionFolder } from './session/folderStore';
-
-/** Inlined from deleted contextLayer/contextLayerTypes — removed in Wave 100 Phase F; Phase H removes the config key */
-export interface ContextLayerConfig {
-  enabled: boolean;
-  maxModules: number;
-  maxSizeBytes: number;
-  debounceMs: number;
-  autoSummarize: boolean;
-  moduleDepthLimit: number;
-}
 
 export interface AppConfig {
   recentProjects: string[];
@@ -93,7 +82,6 @@ export interface AppConfig {
   claudeCliSettings: ClaudeCliSettings;
   /** Codex CLI launch settings */
   codexCliSettings: CodexCliSettings;
-  agentChatSettings: AgentChatSettings;
   /** Desktop notification preferences for agent events */
   notifications: NotificationSettings;
   /** Pre-configured Claude Code launch profiles */
@@ -138,8 +126,6 @@ export interface AppConfig {
   promptPattern: string;
   /** Format document before saving (requires a formatting provider in Monaco) */
   formatOnSave: boolean;
-  /** Context layer settings for AI-assisted codebase understanding */
-  contextLayer: ContextLayerConfig;
   /** Automated CLAUDE.md generation settings */
   claudeMdSettings: ClaudeMdSettings;
   /** Configured LLM providers (Anthropic-compatible endpoints) */

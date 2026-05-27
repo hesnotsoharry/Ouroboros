@@ -166,7 +166,7 @@ export async function spawnAgentSession(req: SpawnAdapterRequest): Promise<Sessi
   const id = randomUUID();
   const cwd = req.worktreePath ?? req.projectPath;
   const launch = await buildClaudeArgs();
-  const env = buildBaseEnv({ ...buildProviderEnv('agentChat') });
+  const env = buildBaseEnv({ ...buildProviderEnv('terminal') });
   const { cols, rows } = resolveSpawnOptions({ cwd });
 
   const spawnOpts = { id, launch, env, cwd, cols, rows, prompt: req.prompt, win };

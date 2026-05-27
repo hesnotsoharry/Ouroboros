@@ -22,7 +22,6 @@ import type { McpStoreAPI } from './electron-mcp-store';
 import type { MemoryAPI } from './electron-memory';
 import type { MobileAccessAPI } from './electron-mobile-access';
 import type {
-  ContextLayerAPI,
   CostAPI,
   CrashAPI,
   LspAPI,
@@ -273,7 +272,6 @@ export interface ElectronAPI {
   context: ContextAPI;
   ideTools: IdeToolsAPI;
   codemode: CodeModeAPI;
-  contextLayer: ContextLayerAPI;
   claudeMd: ClaudeMdAPI;
   providers: ProvidersAPI;
   codex: CodexAPI;

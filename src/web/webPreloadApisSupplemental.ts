@@ -259,10 +259,7 @@ export function buildOrchestrationApis(t: WebSocketTransport) {
     disable: () => t.invoke('codemode:disable'),
     getStatus: () => t.invoke('codemode:status'),
   };
-  const contextLayerAPI = {
-    onProgress: (cb: (progress: unknown) => void) => t.on('contextLayer:progress', cb),
-  };
-  return { codemodeAPI, contextLayerAPI };
+  return { codemodeAPI };
 }
 
 // ─── Mobile Access API ────────────────────────────────────────────────────────

@@ -34,7 +34,6 @@ const EMPTY_PROVIDERS: ModelProvider[] = [];
 
 const DEFAULT_SLOTS: ModelSlotAssignments = {
   terminal: '',
-  agentChat: '',
   claudeMdGeneration: '',
   inlineCompletion: '',
 };

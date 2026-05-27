@@ -143,8 +143,6 @@ export interface ModelProvider {
 export interface ModelSlotAssignments {
   /** Model for interactive Claude Code terminals (format: 'providerId:modelId') */
   terminal: string;
-  /** Model for agent chat subagent sessions */
-  agentChat: string;
   /** Model for CLAUDE.md generation */
   claudeMdGeneration: string;
   /** Model for inline AI completions (ghost text) */

@@ -1,8 +1,7 @@
-import type { AgentChatSettings } from '@shared/types/agentChat';
 import type { ClaudeCliSettings, CodexCliSettings } from '@shared/types/configSlices';
 
 import type { ClaudeMdSettings } from './electron-claude-md';
-import type { ContextLayerConfig, PlatformConfig } from './electron-config-slices';
+import type { PlatformConfig } from './electron-config-slices';
 
 export type { ClaudeCliSettings, CodexCliSettings } from '@shared/types/configSlices';
 
@@ -98,7 +97,6 @@ export interface ModelProvider {
 
 export interface ModelSlotAssignments {
   terminal: string;
-  agentChat: string;
   claudeMdGeneration: string;
   inlineCompletion: string;
 }
@@ -180,7 +178,6 @@ export interface AppConfig {
   promptPreset: string;
   claudeCliSettings: ClaudeCliSettings;
   codexCliSettings: CodexCliSettings;
-  agentChatSettings: AgentChatSettings;
   notifications: NotificationSettings;
   agentTemplates: AgentTemplate[];
   workspaceLayouts: WorkspaceLayout[];
@@ -224,7 +221,6 @@ export interface AppConfig {
   promptPattern: string;
   /** Format document before saving (requires a formatting provider in Monaco) */
   formatOnSave: boolean;
-  contextLayer: ContextLayerConfig;
   claudeMdSettings: ClaudeMdSettings;
   modelProviders: ModelProvider[];
   modelSlots: ModelSlotAssignments;
@@ -327,7 +323,7 @@ export type {
   HookPayload,
   RawApiTokenUsage,
 } from './electron-agent-events';
-export type { ContextLayerConfig, PlatformConfig } from './electron-config-slices';
+export type { PlatformConfig } from './electron-config-slices';
 export type {
   BufferExcerpt,
   DirEntry,

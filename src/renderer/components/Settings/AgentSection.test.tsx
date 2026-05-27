@@ -11,41 +11,19 @@ import { AgentSection } from './AgentSection';
 
 afterEach(cleanup);
 
-// AgentContextPacketSection calls window.electronAPI — stub it out
-vi.mock('./AgentContextPacketSection', () => ({
-  AgentContextPacketSection: () => null,
-}));
-
 function makeDraft(overrides: Partial<AppConfig> = {}): AppConfig {
   return {
-    agentChatSettings: {
-      defaultProvider: 'claude-code',
-      defaultVerificationProfile: 'default',
-      contextBehavior: 'auto',
-      defaultView: 'chat',
-      showAdvancedControls: false,
-      openDetailsOnFailure: false,
-    },
-    contextLayer: { enabled: false, autoSummarize: false },
     backgroundJobsMaxConcurrent: 2,
     ...overrides,
   } as AppConfig;
 }
 
 describe('AgentSection', () => {
-  it('renders Agent Chat section label', () => {
-    render(<AgentSection draft={makeDraft()} onChange={vi.fn()} />);
-    expect(screen.getByText('Agent Chat')).toBeDefined();
-  });
-
+  // 'renders Agent Chat section label' test removed in Wave 100 Phase H (AgentChatSettingsGroup removed)
   // 'renders Model Router section label' test removed in Wave 100 Phase G (RouterSettingsGroup removed)
+  // 'renders Context Layer section label' test removed in Wave 100 Phase H (ContextLayerSettingsGroup removed)
 
-  it('renders Context Layer section label', () => {
-    render(<AgentSection draft={makeDraft()} onChange={vi.fn()} />);
-    expect(screen.getByText('Context Layer')).toBeDefined();
-  });
-
-  it('renders Inline Edit & Jobs section label', () => {
+  it('renders Inline Edit section label', () => {
     render(<AgentSection draft={makeDraft()} onChange={vi.fn()} />);
     expect(screen.getByText(/Inline Edit/)).toBeDefined();
   });

@@ -35,7 +35,6 @@ export const IMPORTABLE_KEYS: (keyof AppConfig)[] = [
   'multiRoots',
   'customPrompt',
   'promptPreset',
-  'agentChatSettings',
   'notifications',
   'agentTemplates',
   'workspaceLayouts',
@@ -57,5 +56,4 @@ export const IMPORTABLE_KEYS: (keyof AppConfig)[] = [
   'commandBlocksEnabled',
   'promptPattern',
   'formatOnSave',
-  'contextLayer',
 ];

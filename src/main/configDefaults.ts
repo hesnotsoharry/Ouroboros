@@ -6,22 +6,9 @@
  * configSchemaTail.ts and other non-chat consumers can import them without
  * depending on the agentChat module.
  *
- * AGENT_CHAT_PROVIDERS, AGENT_CHAT_VERIFICATION_PROFILES,
- * AGENT_CHAT_CONTEXT_BEHAVIORS, AGENT_CHAT_DEFAULT_VIEWS, and
- * AGENT_CHAT_SETTINGS_DEFAULTS were relocated here in Wave 100 Phase A so that
- * configSchemaTail.ts no longer imports from agentChat/settingsResolver.ts.
- *
- * The resolver functions (resolveClaudeCliSettings, resolveCodexCliSettings)
- * and ResolvedAgentChatSettings remain in agentChat/settingsResolver.ts and
- * will be removed with the agentChat module in Phase D.
+ * Wave 100 Phase H: AGENT_CHAT_* constants removed (agentChatSettings config
+ * key cut along with the chat surface).
  */
-
-import type {
-  AgentChatContextBehavior,
-  AgentChatDefaultView,
-  AgentChatSettings,
-} from '@shared/types/agentChat';
-import type { OrchestrationProvider, VerificationProfileName } from '@shared/types/orchestrationDomain';
 
 import type { ClaudeCliSettings, CodexCliSettings } from './config';
 
@@ -54,35 +41,3 @@ export const CODEX_CLI_SETTINGS_FALLBACK: CodexCliSettings = {
   dangerouslyBypassApprovalsAndSandbox: false,
 };
 
-// ─── Agent chat schema constants (relocated from agentChat/settingsResolver.ts, Wave 100 Phase A) ─
-
-export const AGENT_CHAT_PROVIDERS = [
-  'anthropic-api',
-  'claude-code',
-  'codex',
-] as const satisfies readonly OrchestrationProvider[];
-
-export const AGENT_CHAT_VERIFICATION_PROFILES = [
-  'fast',
-  'default',
-  'full',
-] as const satisfies readonly VerificationProfileName[];
-
-export const AGENT_CHAT_CONTEXT_BEHAVIORS = [
-  'auto',
-  'manual',
-] as const satisfies readonly AgentChatContextBehavior[];
-
-export const AGENT_CHAT_DEFAULT_VIEWS = [
-  'chat',
-  'monitor',
-] as const satisfies readonly AgentChatDefaultView[];
-
-export const AGENT_CHAT_SETTINGS_DEFAULTS: AgentChatSettings = {
-  defaultProvider: 'claude-code',
-  defaultVerificationProfile: 'default',
-  contextBehavior: 'auto',
-  showAdvancedControls: false,
-  openDetailsOnFailure: false,
-  defaultView: 'chat',
-};

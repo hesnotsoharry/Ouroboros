@@ -229,7 +229,7 @@ export function spawnAgentPty(
     rows: options.rows,
   });
   const launch = buildAgentPtyClaudeArgs(options);
-  const env = buildBaseEnv({ ...buildProviderEnv('agentChat'), ...options.env });
+  const env = buildBaseEnv({ ...buildProviderEnv('terminal'), ...options.env });
   const resolved: ResolvedAgentSpawn = {
     id,
     win,

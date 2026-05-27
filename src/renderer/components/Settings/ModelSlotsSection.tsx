@@ -30,11 +30,6 @@ const SLOT_CONFIGS: SlotConfig[] = [
     description: 'Model used for interactive Claude Code terminal sessions.',
   },
   {
-    key: 'agentChat',
-    title: 'Agent Chat Model',
-    description: 'Model used for agent chat subagent sessions.',
-  },
-  {
     key: 'claudeMdGeneration',
     title: 'CLAUDE.md Generation Model',
     description: 'Model used for automated CLAUDE.md generation.',
