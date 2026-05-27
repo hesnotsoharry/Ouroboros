@@ -16,6 +16,9 @@ out/
 .vite/
 *.tsbuildinfo
 
+# npm pack tarballs (Wave 22 — produced for cross-project install + npm publish)
+*.tgz
+
 # Electron-specific
 app-update.yml
 builder-debug.yml
