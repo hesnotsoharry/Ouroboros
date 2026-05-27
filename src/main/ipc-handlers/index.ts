@@ -18,10 +18,6 @@ export {
 } from './compareProvidersHandlers';
 export { cleanupConfigWatcher, registerConfigHandlers } from './config';
 export { registerContextHandlers } from './context';
-export {
-  cleanupContextRankerDashboardHandlers,
-  registerContextRankerDashboardHandlers,
-} from './contextRankerDashboardHandlers';
 export { registerEcosystemHandlers } from './ecosystemHandlers';
 export { closeEmbeddingStore, registerEmbeddingHandlers } from './embeddingHandlers';
 export { registerExtensionStoreHandlers } from './extensionStore';

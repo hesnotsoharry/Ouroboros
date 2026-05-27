@@ -12,7 +12,6 @@ import { startApprovalManagerCleanup, stopApprovalManagerCleanup } from './appro
 import {
   cleanupCompareProvidersHandlers,
   cleanupConfigWatcher,
-  cleanupContextRankerDashboardHandlers,
   cleanupDispatchHandlers,
   cleanupFileWatchers,
   cleanupFlowTracerHandlers,
@@ -44,7 +43,6 @@ import {
   registerCompareProvidersHandlers,
   registerConfigHandlers,
   registerContextHandlers,
-  registerContextRankerDashboardHandlers,
   registerDispatchHandlers,
   registerEcosystemHandlers,
   registerEmbeddingHandlers,
@@ -119,7 +117,6 @@ function registerCoreDomainHandlers(win: BrowserWindow): string[] {
     ...safeRegister('research', () => registerResearchHandlers()),
     ...safeRegister('researchControl', () => registerResearchControlHandlers()),
     ...safeRegister('researchDashboard', () => registerResearchDashboardHandlers()),
-    ...safeRegister('contextRankerDashboard', () => registerContextRankerDashboardHandlers()),
     ...safeRegister('sessions', () => registerSessionHandlers(senderWindow)),
     ...safeRegister('systemPrompt', () => registerSystemPromptHandlers()),
     ...safeRegister('misc', () => registerMiscHandlers(senderWindow, win)),
@@ -174,43 +171,6 @@ async function withCodeModeManager<T>(
   } catch (err: unknown) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
-}
-
-function registerOrchestrationStubHandlers(channels: string[]): void {
-  ipcMain.handle('orchestration:previewContext', async (_event, request: unknown) => {
-    try {
-      const { buildContextPacket } = await import('./orchestration/contextPacketBuilder');
-      const { buildRepoFacts } = await import('./orchestration/repoIndexer');
-      const { buildLspDiagnosticsSummary } = await import('./orchestration/lspDiagnosticsProvider');
-      const req = request as { workspaceRoots: string[] };
-      const repoFacts = await buildRepoFacts(req.workspaceRoots, {
-        diagnosticsProvider: buildLspDiagnosticsSummary,
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return buildContextPacket({ request: req as any, repoFacts });
-    } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
-  });
-
-  ipcMain.handle('orchestration:buildContextPacket', async (_event, request: unknown) => {
-    try {
-      const { buildContextPacket } = await import('./orchestration/contextPacketBuilder');
-      const { buildRepoFacts } = await import('./orchestration/repoIndexer');
-      const { buildLspDiagnosticsSummary } = await import('./orchestration/lspDiagnosticsProvider');
-      const req = request as { workspaceRoots: string[] };
-      const repoFacts = await buildRepoFacts(req.workspaceRoots, {
-        diagnosticsProvider: buildLspDiagnosticsSummary,
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return buildContextPacket({ request: req as any, repoFacts });
-    } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
-  });
-
-  // NOTE: orchestration:cancelTask intentionally removed — see ipc.ts history.
-  channels.push('orchestration:previewContext', 'orchestration:buildContextPacket');
 }
 
 function registerCodeModeHandlers(channels: string[]): void {
@@ -279,7 +239,6 @@ export function registerIpcHandlers(win: BrowserWindow): () => void {
   allChannels = registerDomainHandlers(win);
   registerCodeModeHandlers(allChannels);
   registerProviderHandlers(allChannels);
-  registerOrchestrationStubHandlers(allChannels);
   startApprovalManagerCleanup();
   markStartup('ipc-ready');
 
@@ -305,7 +264,6 @@ export async function cleanupIpcHandlers(): Promise<void> {
   cleanupResearchHandlers();
   cleanupResearchControlHandlers();
   cleanupResearchDashboardHandlers();
-  cleanupContextRankerDashboardHandlers();
   cleanupTelemetryHandlers();
   cleanupWorktreeHandlers();
   cleanupWorkspaceReadListHandlers();
