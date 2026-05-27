@@ -296,7 +296,12 @@ describe('acquireGraphController', () => {
     vi.mocked(systemTwoRegistry.acquire).mockResolvedValue(fakeHandle);
     const pipeline = makePipeline();
     await acquireGraphController('/proj/x', pipeline);
-    expect(systemTwoRegistry.acquire).toHaveBeenCalledWith('/proj/x', expect.anything(), pipeline);
+    expect(systemTwoRegistry.acquire).toHaveBeenCalledWith(
+      '/proj/x',
+      expect.anything(),
+      pipeline,
+      expect.anything(),
+    );
   });
 
   it('returns existing instance without re-acquiring on repeat call', async () => {
