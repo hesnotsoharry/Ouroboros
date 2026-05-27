@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ProjectTerminalsProvider } from '../../../contexts/ProjectTerminalsContext';
 import {
   OPEN_MULTI_SESSION_EVENT,
-  WORKBENCH_OPEN_CHAT_SEARCH_EVENT,
 } from '../../../hooks/appEventNames';
 import { useDiffReviewTrigger } from '../../../hooks/useDiffReviewTrigger';
 import type { UseTerminalSessionsReturn } from '../../../hooks/useTerminalSessions';
@@ -15,7 +14,6 @@ import { ChatOnlySettingsOverlay } from './ChatOnlySettingsOverlay';
 import { ChatOnlyStatusBar } from './ChatOnlyStatusBar';
 import { ChatOnlyTerminalToolBridge } from './ChatOnlyTerminalToolBridge';
 import { ChatOnlyTitleBar } from './ChatOnlyTitleBar';
-import { ChatSearchOverlay } from './ChatSearchOverlay';
 import { ChatWorkbenchBody } from './ChatWorkbenchBody';
 import { KeyboardShortcutCheatSheet } from './KeyboardShortcutCheatSheet';
 import { useChatSidebarMode } from './useChatSidebarMode';
@@ -75,40 +73,6 @@ function MultiSessionOverlay({ onClose }: { onClose: () => void }): React.ReactE
   );
 }
 
-// ── Chat search overlay state ─────────────────────────────────────────────────
-
-function useChatSearchState(projectRoot: string | null): {
-  searchOpen: boolean;
-  closeSearch: () => void;
-  projectRoot: string | null;
-} {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const closeSearch = useCallback((): void => {
-    setSearchOpen(false);
-  }, []);
-
-  useEffect(() => {
-    const handleEvent = (): void => {
-      setSearchOpen(true);
-    };
-    window.addEventListener(WORKBENCH_OPEN_CHAT_SEARCH_EVENT, handleEvent);
-    return () => window.removeEventListener(WORKBENCH_OPEN_CHAT_SEARCH_EVENT, handleEvent);
-  }, []);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent): void => {
-      if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, []);
-
-  return { searchOpen, closeSearch, projectRoot };
-}
-
 // ── ShellOverlays ─────────────────────────────────────────────────────────────
 
 interface ShellOverlaysProps {
@@ -121,9 +85,6 @@ interface ShellOverlaysProps {
   commands: Command[];
   recentIds: string[];
   execute: (command: Command) => Promise<void>;
-  searchOpen: boolean;
-  closeSearch: () => void;
-  projectRoot: string | null;
 }
 
 function ShellOverlays({
@@ -136,9 +97,6 @@ function ShellOverlays({
   commands,
   recentIds,
   execute,
-  searchOpen,
-  closeSearch,
-  projectRoot,
 }: ShellOverlaysProps): React.ReactElement {
   return (
     <>
@@ -153,7 +111,6 @@ function ShellOverlays({
         onExecute={execute}
       />
       {launcherOpen && <MultiSessionOverlay onClose={closeLauncher} />}
-      {searchOpen && <ChatSearchOverlay projectRoot={projectRoot} onClose={closeSearch} />}
     </>
   );
 }
@@ -222,16 +179,14 @@ function useShellState(props: ChatWorkbenchShellProps): {
   dock: ReturnType<typeof useTerminalDockState>;
   launcherOpen: boolean;
   closeLauncher: () => void;
-  searchOpen: boolean;
-  closeSearch: () => void;
   activeDockSessionId: string | null;
   setActiveDockSessionId: (id: string | null) => void;
 } {
+  void props;
   const { mode, cycleMode } = useChatSidebarMode();
   const layout = useChatWorkbenchLayout();
   const dock = useTerminalDockState();
   const { launcherOpen, closeLauncher } = useMultiSessionLauncherState();
-  const { searchOpen, closeSearch } = useChatSearchState(props.projectRoot);
   // Wave 89: active dock session tracked here for tool-bridge routing.
   const [activeDockSessionId, setActiveDockSessionId] = useState<string | null>(null);
   // Wave 82 — wire workbench title-bar menu DOM events to existing handlers.
@@ -245,8 +200,6 @@ function useShellState(props: ChatWorkbenchShellProps): {
     dock,
     launcherOpen,
     closeLauncher,
-    searchOpen,
-    closeSearch,
     activeDockSessionId,
     setActiveDockSessionId,
   };
@@ -257,8 +210,6 @@ function buildOverlaysProps(
   shell: {
     launcherOpen: boolean;
     closeLauncher: () => void;
-    searchOpen: boolean;
-    closeSearch: () => void;
   },
 ): ShellOverlaysProps {
   return {
@@ -271,9 +222,6 @@ function buildOverlaysProps(
     commands: props.commands,
     recentIds: props.recentIds,
     execute: props.execute,
-    searchOpen: shell.searchOpen,
-    closeSearch: shell.closeSearch,
-    projectRoot: props.projectRoot,
   };
 }
 

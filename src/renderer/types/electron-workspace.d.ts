@@ -1,4 +1,3 @@
-import type { AgentChatAPI } from './electron-agent-chat';
 import type { AgentConflictAPI } from './electron-agent-conflict';
 import type { AiAPI } from './electron-ai';
 import type { AiStreamAPI } from './electron-ai-stream';
@@ -295,7 +294,6 @@ export interface ElectronAPI {
   context: ContextAPI;
   ideTools: IdeToolsAPI;
   codemode: CodeModeAPI;
-  agentChat: AgentChatAPI;
   orchestration: OrchestrationAPI;
   contextLayer: ContextLayerAPI;
   claudeMd: ClaudeMdAPI;

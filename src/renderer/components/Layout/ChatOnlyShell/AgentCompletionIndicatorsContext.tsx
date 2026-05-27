@@ -24,7 +24,7 @@ import type { AgentCompletionIndicators } from '../../../hooks/useAgentCompletio
 import { useAgentCompletionIndicators } from '../../../hooks/useAgentCompletionIndicators';
 import { useConfig } from '../../../hooks/useConfig';
 import type { SessionRecord } from '../../../types/electron';
-import { buildTerminalClaudeIdMap } from './useWorkbenchAttention.agentSource';
+import { buildTerminalClaudeIdMap } from './AgentCompletionIndicators.helpers';
 
 // ── Context ────────────────────────────────────────────────────────────────────
 

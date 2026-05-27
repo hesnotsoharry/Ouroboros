@@ -4,7 +4,7 @@ import type { InnerSidebarTab } from './InnerSidebar';
 
 const STORAGE_KEY = 'agent-ide:chat-workbench-layout';
 
-export type ChatWorkbenchUtilityTab = 'activity' | 'approvals' | 'rules' | 'monitor';
+export type ChatWorkbenchUtilityTab = 'activity' | 'approvals' | 'monitor';
 
 // ── Per-project state ─────────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ const DEFAULT_STATE: ChatWorkbenchLayoutState = {
 // ── Persistence ────────────────────────────────────────────────────────────────
 
 function isUtilityTab(value: unknown): value is ChatWorkbenchUtilityTab {
-  return value === 'activity' || value === 'approvals' || value === 'rules' || value === 'monitor';
+  return value === 'activity' || value === 'approvals' || value === 'monitor';
 }
 
 function isMobileViewport(): boolean {

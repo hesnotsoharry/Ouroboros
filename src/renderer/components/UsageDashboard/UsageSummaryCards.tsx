@@ -7,7 +7,7 @@
 
 import React from 'react';
 
-import type { GlobalCostRollupRecord } from '../../types/electron';
+import type { GlobalCostRollupRecord } from '@shared/types/agentChatResults';
 import { formatCost, formatTokenCount } from '../AgentMonitor/costCalculator';
 
 // ─── Card primitive ───────────────────────────────────────────────────────────

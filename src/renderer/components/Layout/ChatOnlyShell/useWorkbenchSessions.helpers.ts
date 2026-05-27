@@ -3,8 +3,8 @@
  * under the 300-line limit. No React; no hooks. Pure data transforms.
  */
 
-import type { AgentChatThreadRecord, SessionRecord } from '../../../types/electron';
-import type { resolveSessionThread } from './useWorkbenchAttention';
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
+import type { SessionRecord } from '../../../types/electron';
 
 export function projectBasename(root: string): string {
   return root.replace(/\\/g, '/').split('/').filter(Boolean).at(-1) ?? root;
@@ -92,7 +92,13 @@ export function buildThreadCounts(
 export function buildThreadIndex(
   threads: AgentChatThreadRecord[],
   activeThreadId: string | null,
-): Parameters<typeof resolveSessionThread>[1] {
+): {
+  activeThread: AgentChatThreadRecord | null;
+  byConversationId: Map<string, AgentChatThreadRecord>;
+  bySessionId: Map<string, AgentChatThreadRecord[]>;
+  byWorkspaceRoot: Map<string, AgentChatThreadRecord[]>;
+  sessionIds: Set<string>;
+} {
   const activeThread = activeThreadId
     ? (threads.find((thread) => thread.id === activeThreadId) ?? null)
     : null;

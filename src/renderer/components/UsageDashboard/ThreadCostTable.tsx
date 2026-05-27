@@ -7,7 +7,7 @@
 
 import React, { useMemo, useState } from 'react';
 
-import type { ThreadCostRollupRecord } from '../../types/electron';
+import type { ThreadCostRollupRecord } from '@shared/types/agentChatResults';
 import { formatCost, formatTokenCount } from '../AgentMonitor/costCalculator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

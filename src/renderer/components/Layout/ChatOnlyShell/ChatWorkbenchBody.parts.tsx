@@ -1,6 +1,7 @@
 import React, { Suspense } from 'react';
 
-import type { AgentChatThreadRecord, ApprovalRequest } from '../../../types/electron';
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
+import type { ApprovalRequest } from '../../../types/electron';
 import type {
   LayoutState,
   SessionsState,
@@ -89,7 +90,6 @@ export function WorkbenchMainColumn({
         activeUtilityTab={layout.activeUtilityTab}
         onSelectUtilityTab={layout.setActiveUtilityTab}
         onCloseUtility={surfacePolicy.closeUtility}
-        activeProject={layout.activeProject}
         overlayWidths={overlayWidths}
       />
     </div>

@@ -1,8 +1,5 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 
-import { OPEN_FILE_EVENT } from '../../../hooks/appEventNames';
-import { useRulesAndSkills } from '../../../hooks/useRulesAndSkills';
-import { RulesTab } from '../../AgentChat/RulesTab';
 import { AgentMonitorManager } from '../../AgentMonitor';
 import type { ChatWorkbenchUtilityTab } from './useChatWorkbenchLayout';
 import { useWorkbenchTimeline } from './useWorkbenchTimeline';
@@ -13,17 +10,10 @@ export interface ChatWorkbenchUtilityDrawerProps {
   activeTab: ChatWorkbenchUtilityTab;
   onSelectTab: (tab: ChatWorkbenchUtilityTab) => void;
   onClose: () => void;
-  /**
-   * Wave 82.1 — the workbench's rail-tracked active project. Used by the
-   * Rules tab so it queries the actual visible project instead of
-   * `ProjectContext.projectRoot` (= multi-root[0], not rail-aware).
-   */
-  activeProject: string | null;
 }
 
 function tabLabel(tab: ChatWorkbenchUtilityTab): string {
   if (tab === 'approvals') return 'Approvals';
-  if (tab === 'rules') return 'Rules';
   if (tab === 'monitor') return 'Monitor';
   return 'Timeline';
 }
@@ -32,7 +22,6 @@ function useTabCounts(): Record<ChatWorkbenchUtilityTab, number> {
   const { counts } = useWorkbenchTimeline();
   return {
     approvals: counts.approvals,
-    rules: 0,
     monitor: counts.monitor,
     activity: counts.activity,
   };
@@ -71,42 +60,12 @@ function TabButton({
   );
 }
 
-function openFileInEditor(filePath: string): void {
-  window.dispatchEvent(new CustomEvent(OPEN_FILE_EVENT, { detail: { filePath } }));
-}
-
-function WorkbenchRulesPanel({ projectRoot }: { projectRoot: string | null }): React.ReactElement {
-  const { rules, createRule } = useRulesAndSkills(projectRoot);
-  const handleCreateRule = useCallback(
-    async (type: 'claude-md' | 'agents-md'): Promise<void> => {
-      await createRule(type);
-    },
-    [createRule],
-  );
-  return (
-    <div
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-      data-testid="workbench-rules-panel"
-    >
-      <RulesTab
-        rules={rules}
-        onOpenFile={openFileInEditor}
-        onCreateRule={handleCreateRule}
-        projectRoot={projectRoot}
-      />
-    </div>
-  );
-}
-
 function DrawerContent({
   activeTab,
-  activeProject,
 }: {
   activeTab: ChatWorkbenchUtilityTab;
-  activeProject: string | null;
 }): React.ReactElement {
   if (activeTab === 'approvals') return <WorkbenchApprovalPanel />;
-  if (activeTab === 'rules') return <WorkbenchRulesPanel projectRoot={activeProject} />;
   if (activeTab === 'monitor')
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -140,13 +99,12 @@ function DrawerHeader({ onClose }: DrawerHeaderProps): React.ReactElement {
   );
 }
 
-const DRAWER_TABS: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'rules', 'monitor'];
+const DRAWER_TABS: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'monitor'];
 
 export function ChatWorkbenchUtilityDrawer({
   activeTab,
   onSelectTab,
   onClose,
-  activeProject,
 }: ChatWorkbenchUtilityDrawerProps): React.ReactElement {
   const counts = useTabCounts();
   return (
@@ -172,7 +130,7 @@ export function ChatWorkbenchUtilityDrawer({
           />
         ))}
       </div>
-      <DrawerContent activeTab={activeTab} activeProject={activeProject} />
+      <DrawerContent activeTab={activeTab} />
     </aside>
   );
 }

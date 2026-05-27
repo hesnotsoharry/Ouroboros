@@ -2,8 +2,8 @@ import React from 'react';
 
 import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { OPEN_MULTI_SESSION_EVENT } from '../../../hooks/appEventNames';
-import type { AgentChatThreadRecord, ApprovalRequest } from '../../../types/electron';
-import { useAgentChatStoreContext } from '../../AgentChat/agentChatStore';
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
+import type { ApprovalRequest } from '../../../types/electron';
 import {
   createStoredSessionFromPicker,
   createStoredSessionInProject,
@@ -60,13 +60,14 @@ function useWorkbenchSurfaceState(layout: LayoutState, approvalCount: number): S
   });
 }
 
+const EMPTY_THREADS: AgentChatThreadRecord[] = [];
+
 export function useWorkbenchContextState(
   layout: LayoutState,
   dock: DockState,
 ): WorkbenchContextState {
   const { requests: approvalRequests } = useApprovalContext();
-  const threads = useAgentChatStoreContext((state) => state.threads);
-  const selectThread = useAgentChatStoreContext((state) => state.onSelectThread);
+  const threads = EMPTY_THREADS;
   const sessionsState = useSessions();
   const workbenchSessions = useWorkbenchListState(sessionsState, threads);
   const compare = useWorkbenchCompare({ items: workbenchSessions.items });
@@ -74,7 +75,7 @@ export function useWorkbenchContextState(
     sessions: sessionsState.sessions,
     threads,
     refreshSessions: sessionsState.refresh,
-    actions: { selectThread },
+    actions: { selectThread: () => undefined },
   });
   const surfacePolicy = useWorkbenchSurfaceState(layout, approvalRequests.length);
 
@@ -90,16 +91,8 @@ export function useWorkbenchContextState(
   };
 }
 
-async function createThreadForSession(projectRoot: string): Promise<string | null> {
-  if (!window.electronAPI?.agentChat) return null;
-  const result = await window.electronAPI.agentChat.createThread({ workspaceRoot: projectRoot });
-  return result.success && result.thread ? result.thread.id : null;
-}
-
 export function useWorkbenchHandlers(
   activation: ActivationState,
-  selectThread: (threadId: string) => void,
-  reloadThreads?: () => Promise<void>,
 ): WorkbenchHandlers {
   const handleCreateSession = React.useCallback(
     async (projectRoot?: string): Promise<void> => {
@@ -107,12 +100,9 @@ export function useWorkbenchHandlers(
         ? await createStoredSessionInProject(projectRoot)
         : await createStoredSessionFromPicker();
       if (!session) return;
-      const threadId = await createThreadForSession(session.projectRoot);
       await activation.activateSession(session.id);
-      if (reloadThreads) await reloadThreads();
-      if (threadId) selectThread(threadId);
     },
-    [activation, selectThread, reloadThreads],
+    [activation],
   );
   const handleLaunchAgent = React.useCallback((): void => {
     window.dispatchEvent(new CustomEvent(OPEN_MULTI_SESSION_EVENT));
@@ -124,10 +114,10 @@ export function useWorkbenchHandlers(
     [activation],
   );
   const handleSelectRecentChat = React.useCallback(
-    (threadId: string) => {
-      selectThread(threadId);
+    (_threadId: string) => {
+      // chat threads removed in Wave 100
     },
-    [selectThread],
+    [],
   );
 
   return { handleCreateSession, handleLaunchAgent, handleSelectRecentChat, handleSelectSession };
@@ -136,11 +126,5 @@ export function useWorkbenchHandlers(
 export function useActiveApprovalSessionIds(
   activeSessionId: string | null,
 ): Array<string | null | undefined> {
-  const activeThread = useAgentChatStoreContext((state) => state.activeThread);
-  return [
-    activeSessionId,
-    activeThread?.latestOrchestration?.sessionId,
-    activeThread?.latestOrchestration?.claudeSessionId,
-    activeThread?.latestOrchestration?.codexThreadId,
-  ];
+  return [activeSessionId];
 }

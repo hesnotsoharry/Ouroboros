@@ -1,6 +1,5 @@
 import type { ElectronAPI } from './electron-workspace';
 
-export * from './electron-agent-chat';
 export * from './electron-agent-conflict';
 export * from './electron-ai-stream';
 export * from './electron-auth';

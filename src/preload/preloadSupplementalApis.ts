@@ -1,4 +1,3 @@
-import { AGENT_CHAT_INVOKE_CHANNELS } from '@shared/ipc/agentChatChannels';
 import { ORCHESTRATION_INVOKE_CHANNELS } from '@shared/ipc/orchestrationChannels';
 import { ipcRenderer } from 'electron';
 
@@ -16,7 +15,6 @@ import type {
   System2IndexProgressEvent,
   UpdaterEvent,
 } from '../renderer/types/electron';
-import { agentChatApi } from './preloadSupplementalAgentChatApis';
 import { aiApi, embeddingApi, observabilityApi, telemetryApi } from './preloadSupplementalAiApis';
 import type { SupplementalApiKey } from './preloadSupplementalApiKeys';
 import { chatStateNewPathApi } from './preloadSupplementalChatStateApis';
@@ -245,8 +243,6 @@ export const supplementalApis: SupplementalApis = {
     getStatus: () => ipcRenderer.invoke('codemode:status'),
   },
 
-  agentChat: agentChatApi,
-
   orchestration: {
     previewContext: (request: unknown) =>
       ipcRenderer.invoke(ORCHESTRATION_INVOKE_CHANNELS.previewContext, request),
@@ -254,11 +250,9 @@ export const supplementalApis: SupplementalApis = {
     // The renderer only calls previewContext; this alias exists for API symmetry.
     buildContextPacket: (request: unknown) =>
       ipcRenderer.invoke(ORCHESTRATION_INVOKE_CHANNELS.previewContext, request),
-    // Routes to agentChat:cancelTask (singleton orchestration) — the old
-    // orchestration:cancelTask handler was removed because it created a fresh
-    // adapter with empty process Maps and could never kill the running process.
+    // Routes to agentChat:cancelTask channel (Wave 100: agentChat removed; channel dead).
     cancelTask: (taskId: string) =>
-      ipcRenderer.invoke(AGENT_CHAT_INVOKE_CHANNELS.cancelTask, taskId),
+      ipcRenderer.invoke('agentChat:cancelTask', taskId),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- orchestration API surface is intentionally partial; full ElectronAPI.orchestration type includes routes handled elsewhere
   } as any,
 

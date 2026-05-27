@@ -5,7 +5,7 @@
 
 import React from 'react';
 
-import type { AgentChatThreadRecord } from '../../types/electron';
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 
 // ── ThreadStatusIcon ──────────────────────────────────────────────────────────
 

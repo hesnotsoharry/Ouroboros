@@ -25,7 +25,6 @@ export interface ChatWorkbenchOverlaysProps {
   activeUtilityTab: ChatWorkbenchUtilityTab;
   onSelectUtilityTab: (tab: ChatWorkbenchUtilityTab) => void;
   onCloseUtility: () => void;
-  activeProject: string | null;
   overlayWidths: UseOverlayDrawerWidthsReturn;
 }
 
@@ -38,7 +37,6 @@ function UtilityOverlay({
   onClose,
   activeTab,
   onSelectTab,
-  activeProject,
 }: {
   open: boolean;
   width: number;
@@ -46,7 +44,6 @@ function UtilityOverlay({
   onClose: () => void;
   activeTab: ChatWorkbenchUtilityTab;
   onSelectTab: (tab: ChatWorkbenchUtilityTab) => void;
-  activeProject: string | null;
 }): React.ReactElement {
   return (
     <OverlayDrawer
@@ -60,7 +57,6 @@ function UtilityOverlay({
         activeTab={activeTab}
         onSelectTab={onSelectTab}
         onClose={onClose}
-        activeProject={activeProject}
       />
     </OverlayDrawer>
   );
@@ -73,7 +69,6 @@ export function ChatWorkbenchOverlays({
   activeUtilityTab,
   onSelectUtilityTab,
   onCloseUtility,
-  activeProject,
   overlayWidths,
 }: ChatWorkbenchOverlaysProps): React.ReactElement {
   const { overlayDrawerWidth, setOverlayDrawerWidth } = overlayWidths;
@@ -86,7 +81,6 @@ export function ChatWorkbenchOverlays({
       onClose={onCloseUtility}
       activeTab={activeUtilityTab}
       onSelectTab={onSelectUtilityTab}
-      activeProject={activeProject}
     />
   );
 }

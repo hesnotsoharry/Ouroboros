@@ -122,7 +122,7 @@ function BackToChatButton({
   return (
     <button
       onClick={() => {
-        onSwitchView('chat');
+        onSwitchView('monitor');
         onClose();
       }}
       className="flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors duration-75 text-interactive-accent"
@@ -134,7 +134,7 @@ function BackToChatButton({
       }}
     >
       <BackArrowIcon />
-      <span>Back to Chat</span>
+      <span>Back to Monitor</span>
     </button>
   );
 }
@@ -171,7 +171,7 @@ export function ViewSwitcherDropdown({
         />
       ))}
       <div className="my-1 border-t border-border-semantic" />
-      {activeView !== 'chat' && <BackToChatButton onSwitchView={onSwitchView} onClose={onClose} />}
+      <BackToChatButton onSwitchView={onSwitchView} onClose={onClose} />
     </div>
   );
 }

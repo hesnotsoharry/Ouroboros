@@ -17,7 +17,6 @@ import { useImmersiveChatFlag } from './hooks/useImmersiveChatFlag';
 import { useInnerAppEffects } from './hooks/useInnerAppEffects';
 import { useLspDiagnosticsSync } from './hooks/useLspDiagnosticsSync';
 import { useNativeStatusBar } from './hooks/useNativeStatusBar';
-import { usePermalinkBridge } from './hooks/usePermalinkBridge';
 import { useProjectManagement } from './hooks/useProjectManagement';
 import { useTerminalSessions } from './hooks/useTerminalSessions';
 import { useTheme } from './hooks/useTheme';
@@ -220,7 +219,6 @@ function useInnerAppHooks(initialRecentProjects: string[], keybindings: Record<s
   useExtensionThemes();
   useLspDiagnosticsSync();
   useFirstLaunchAuth();
-  usePermalinkBridge();
   useInnerAppLifecycle({
     ctx,
     layouts,
