@@ -6,4 +6,4 @@
 
 - `ouroborosMcp/` directory deleted in Wave 22 Phase 5 (depended on deleted codebaseGraph).
 - Replacement: `packages/codebase-graph-mcp/` (new standalone, independent of Electron ABI).
-- `internalMcp/` injection still references `out/main/ouroborosMcp.js` — update to new package path in Phase 6/7.
+- `internalMcp/` injection rewired in Wave 22 Phase 6 to point at `packages/codebase-graph-mcp/dist/index.js` with `--root <projectRoot>`.
