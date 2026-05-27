@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- Version bumped to **`v2.29.0`** (minor) — net effect is cross-project capability addition; breaking removal of the in-IDE graph subsystem is internal-only (no external API consumer exists for the IDE's main-process modules).
+- Version bumped to **`v2.30.0`** (minor) — net effect is cross-project capability addition; breaking removal of the in-IDE graph subsystem is internal-only (no external API consumer exists for the IDE's main-process modules). (Originally planned as v2.29.0; that tag was already taken by Wave 8 / 2026-05-22.)
 - npm publish of `@hesnotsoharry/codebase-graph-mcp@0.1.0` attempted; failed E404 (scope authentication pending). Follow-up `roadmap/follow-ups/2026-05-26-codebase-graph-mcp-npm-publish.md` filed per Decision 7 fail-soft path. Local tarball preserved.
 - Pre-existing test failure (`channelCatalogCoverage` — `app:getCrashLogCount` + `persist:shared`) remains. Not Wave 22; see `roadmap/follow-ups/2026-05-26-channel-catalog-missing-persist-shared-and-crash-log-count.md`.
 
