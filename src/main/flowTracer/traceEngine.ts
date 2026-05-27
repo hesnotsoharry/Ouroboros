@@ -17,77 +17,11 @@
  * flowTracer.maxDepth (default 6, range 3-12).
  */
 
-import type { FlowEdge, FlowStep, FlowTrace, SymbolRef } from '../../shared/types/flowTracer';
-import { getConfigValue } from '../config';
+import type { FlowTrace, SymbolRef } from '../../shared/types/flowTracer';
 import log from '../logger';
-import type { BoundaryRegistry } from './boundaryRegistry';
 import { getBoundaryRegistry } from './boundaryRegistry';
 import { getWalkingSkeletonFallback } from './traceEngineFallback';
-import type { GraphPathNode, TraceAccumulator } from './traceEngineSupport';
-import { ensureMinimalContract, processNode } from './traceEngineSupport';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const DEFAULT_MAX_DEPTH = 6;
-
-// ─── Config ───────────────────────────────────────────────────────────────────
-
-function resolveMaxDepth(): number {
-  try {
-    const cfg = getConfigValue('flowTracer');
-    const d = cfg?.maxDepth;
-    if (typeof d === 'number' && d >= 3 && d <= 12) return d;
-  } catch {
-    // config not available in test environment — use default
-  }
-  return DEFAULT_MAX_DEPTH;
-}
-
-// ─── Graph trace ──────────────────────────────────────────────────────────────
-
-function buildSingleEntryTrace(entry: SymbolRef): { steps: FlowStep[]; edges: FlowEdge[] } {
-  return {
-    steps: [
-      {
-        id: 'entry-0',
-        layer: 'main',
-        symbol: entry.symbol,
-        file: entry.file,
-        line: entry.line,
-        kind: 'ipc-handler',
-        narration: null,
-      },
-    ],
-    edges: [],
-  };
-}
-
-function buildSteps(
-  nodes: GraphPathNode[],
-  maxDepth: number,
-  registry: BoundaryRegistry,
-): { steps: FlowStep[]; edges: FlowEdge[]; depthCapHit: boolean } {
-  const acc: TraceAccumulator = {
-    steps: [],
-    edges: [],
-    visited: new Set(),
-    depthCapHit: false,
-  };
-  const cycleRef = { count: 0 };
-  let i = 0;
-  for (const node of nodes) {
-    const cont = processNode(acc, {
-      node: node as GraphPathNode,
-      index: i,
-      maxDepth,
-      registry,
-      cycleRef,
-    });
-    i += 1;
-    if (!cont) break;
-  }
-  return { steps: acc.steps, edges: acc.edges, depthCapHit: acc.depthCapHit };
-}
+import { ensureMinimalContract } from './traceEngineSupport';
 
 // ─── Fallback path ────────────────────────────────────────────────────────────
 

@@ -19,7 +19,6 @@ import {
 } from './contextSelectorHelpers'
 import {
   isDiffAgentAuthored,
-  isRecentUserEdit,
   resolveEditReasonKind,
 } from './contextSelectorProvenance'
 import { getEditProvenanceStore } from './editProvenance'
@@ -252,4 +251,8 @@ export function tryApplyPageRank(
   _provenanceEnabled: boolean,
 ): void {
   // Graph removed in Wave 22 — PageRank scoring is a no-op.
+  void _candidates
+  void _selection
+  void _workspaceRoots
+  void _provenanceEnabled
 }

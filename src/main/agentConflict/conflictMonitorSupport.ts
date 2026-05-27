@@ -48,11 +48,15 @@ export async function computeSymbols(
   _files: string[],
 ): Promise<GraphNode[]> {
   // Graph removed in Wave 22 — symbol detection is a no-op.
+  void _root
+  void _sessionId
+  void _files
   return [];
 }
 
 export function isGraphHot(_root: string): boolean {
   // Graph removed in Wave 22.
+  void _root
   return false;
 }
 

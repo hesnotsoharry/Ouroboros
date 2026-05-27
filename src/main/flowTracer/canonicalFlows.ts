@@ -147,16 +147,6 @@ export async function extractEntryPointCandidates(): Promise<EntryPointCandidate
   return [];
 }
 
-function deduplicateCandidates(candidates: EntryPointCandidate[]): EntryPointCandidate[] {
-  const seen = new Set<string>();
-  return candidates.filter((c) => {
-    const key = `${c.symbol}|${c.file}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
 // ---------------------------------------------------------------------------
 // CLAUDE.md excerpt reader
 // ---------------------------------------------------------------------------

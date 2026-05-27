@@ -283,7 +283,6 @@ export function getWindowInfos(): WindowInfo[] {
 
 export function setWindowProjectRoot(winId: number, projectRoot: string): void {
   const managed = windows.get(winId);
-  const oldRoot = managed?.projectRoot ?? null;
   if (managed) {
     managed.projectRoot = projectRoot;
     managed.projectRoots = [projectRoot];
@@ -300,7 +299,6 @@ export function setWindowProjectRoot(winId: number, projectRoot: string): void {
 
 export function setWindowProjectRoots(winId: number, roots: string[]): void {
   const managed = windows.get(winId);
-  const oldRoot = managed?.projectRoot ?? null;
   const newRoot = roots[0] ?? null;
   if (managed) {
     managed.projectRoots = roots;

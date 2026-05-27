@@ -6,7 +6,7 @@
  * and correct FlowTrace envelope shape. Graph and config are mocked.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { FlowTrace, SymbolRef } from '../../shared/types/flowTracer';
 

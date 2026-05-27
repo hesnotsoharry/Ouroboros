@@ -211,14 +211,16 @@ class ContextLayerControllerImpl implements ContextLayerController {
 
   async enrichPacket(
     packet: ContextPacket,
-    goalKeywords: string[],
-    model?: string,
+    _goalKeywords: string[],
+    _model?: string,
   ): Promise<{ packet: ContextPacket; injectedModules: string[]; injectedTokens: number }> {
     if (!this.config.enabled) {
       return { packet, injectedModules: [], injectedTokens: 0 };
     }
 
     // contextInjector removed in Wave 22 — pass packet through unchanged.
+    void _goalKeywords
+    void _model
     return { packet, injectedModules: [], injectedTokens: 0 };
   }
 

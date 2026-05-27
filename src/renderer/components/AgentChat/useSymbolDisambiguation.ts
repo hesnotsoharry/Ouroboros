@@ -14,7 +14,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { SymbolGraphNode } from './MentionAutocomplete';
 
 const DEBOUNCE_MS = 200;
-const MAX_SYMBOL_RESULTS = 15;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 

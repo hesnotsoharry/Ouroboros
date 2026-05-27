@@ -127,41 +127,6 @@ async function tryPhase5Extraction(): Promise<CandidateInput[] | null> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Graph-based candidate extraction (fallback)
-// ---------------------------------------------------------------------------
-
-function hitToInput(hit: Record<string, unknown>): CandidateInput | null {
-  if (typeof hit.symbol !== 'string' || typeof hit.file !== 'string') return null;
-  return {
-    symbol: hit.symbol,
-    file: hit.file,
-    line: typeof hit.line === 'number' ? hit.line : 0,
-    layer: inferLayer(hit.file),
-  };
-}
-
-function queryGraphSet(
-  ctrl: { searchGraph: (q: string, limit?: number) => unknown[] },
-  query: string,
-  limit: number,
-): CandidateInput[] {
-  let hits: unknown[] = [];
-  try {
-    hits = ctrl.searchGraph(query, limit);
-  } catch {
-    return [];
-  }
-  const results: CandidateInput[] = [];
-  for (const hit of hits) {
-    if (hit && typeof hit === 'object') {
-      const input = hitToInput(hit as Record<string, unknown>);
-      if (input) results.push(input);
-    }
-  }
-  return results;
-}
-
 /**
  * Extract entry-point candidates from the codebase-memory graph.
  * Queries renderer event handlers + main IPC handlers (~30-80 nodes).
