@@ -58,7 +58,13 @@ function makeLazyPipeline(
 
 /** Constructs a fully-wired GraphToolContext for the given root and DB path. */
 export function buildContext(rootPath: string, dbPath: string): GraphToolContext {
-  const projectName = path.basename(rootPath);
+  // Normalize the same way IndexingPipeline does: indexer writes rows tagged
+  // with the normalized name; QueryEngine must read with the same shape or
+  // every filtered query returns zero rows.
+  const projectName = path
+    .basename(rootPath)
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-');
   const db = new GraphDatabase(dbPath);
   const queryEngine = new QueryEngine(db, projectName, rootPath);
   const cypherEngine = new CypherEngine(db, projectName);
