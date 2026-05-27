@@ -130,11 +130,11 @@ describe('buildScopedMcpConfig', () => {
     const data = await readConfigFile(result!.configPath);
     const servers = data.mcpServers as Record<string, unknown>;
     expect(servers).toHaveProperty('ouroboros');
-    // Wave 22 Phase 6: plain node, packages/codebase-graph-mcp/dist/index.js, --root arg.
+    // Wave 22 post-wrap: plain node, codebase-graph-mcp/dist/index.js (sibling repo), --root arg.
     const entry = servers['ouroboros'] as { command: string; args?: string[]; env?: Record<string, string> };
     expect(entry.command).toBe('node');
     expect(entry.env).toBeUndefined();
-    expect(entry.args?.[0]).toMatch(/packages[/\\]codebase-graph-mcp[/\\]dist[/\\]index\.js$/);
+    expect(entry.args?.[0]).toMatch(/codebase-graph-mcp[/\\]dist[/\\]index\.js$/);
     expect(entry.args?.[1]).toBe('--root');
     expect(entry.args?.[2]).toBe('/test/project');
     await result!.cleanup();

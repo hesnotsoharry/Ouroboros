@@ -19,7 +19,7 @@ Tools surface as `mcp__ouroboros__*` in Claude Code after restart picks up the c
 Claude Code (or any MCP client)
   │  stdio JSON-RPC
   ▼
-packages/codebase-graph-mcp/dist/index.js  (Node.js process)
+C:\Web App\codebase-graph-mcp\dist\index.js  (Node.js process)
   │
   ├── serverBootstrap.ts
   │     buildContext(rootPath, dbPath)
@@ -46,7 +46,7 @@ Drop this in the project root (or merge into an existing `.mcp.json`):
       "type": "stdio",
       "command": "node",
       "args": [
-        "C:/Web App/AgentIDE/packages/codebase-graph-mcp/dist/index.js",
+        "C:/Web App/codebase-graph-mcp/dist/index.js",
         "--root",
         "<absolute-path-to-this-project>"
       ]
@@ -187,14 +187,14 @@ process, not an Electron child.
 If you see `Error: The module was compiled against a different Node.js version`, the prebuilt doesn't
 match your system Node version. Fix:
 ```
-cd packages/codebase-graph-mcp && npm install --build-from-source
+cd "C:/Web App/codebase-graph-mcp" && npm install --build-from-source
 ```
 
 ## Cross-project install recipe
 
-1. Build the package once (from the Agent IDE repo root):
+1. Build the package once (from its own repo):
    ```
-   cd packages/codebase-graph-mcp && npm run build
+   cd "C:/Web App/codebase-graph-mcp" && npm run build
    ```
 
 2. Add or merge `.mcp.json` in the target project root:
@@ -205,7 +205,7 @@ cd packages/codebase-graph-mcp && npm install --build-from-source
          "type": "stdio",
          "command": "node",
          "args": [
-           "C:/Web App/AgentIDE/packages/codebase-graph-mcp/dist/index.js",
+           "C:/Web App/codebase-graph-mcp/dist/index.js",
            "--root",
            "C:/Web App/<your-project>"
          ]

@@ -38,7 +38,6 @@ The full suite consistently exceeds agent timeouts (~1000s / ~17 min on Windows-
 | `test:lexical` | `…/AgentChat/lexicalComposer` | Lexical composer plugins / bridge |
 | `test:layout` | `src/renderer/components/Layout` | App shell, panes, title bar, workbench |
 | `test:filetree` | `src/renderer/components/FileTree` | File tree |
-| `test:codebase-graph-mcp` | `packages/codebase-graph-mcp` | Standalone graph MCP package (tool surface, smoke) |
 | `test:orchestration` | `src/main/orchestration` | Orchestration runtime |
 | `test:ipc` | `src/main/ipc-handlers` | IPC handler implementations |
 | `test:hooks` | `src/main/hookInstaller`, `src/main/hooks` | Hook installer / named pipe server |
@@ -70,7 +69,7 @@ Full suite + lint + typecheck still runs at commit/wave-end. Scoped runs are for
 
 | Path                          | Contents                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| `packages/codebase-graph-mcp/`| Standalone MCP server (npm package) — 14 graph tools + ping, stdio transport, SQLite + tree-sitter |
+| `C:\Web App\codebase-graph-mcp\` | Standalone MCP server (own git repo, post Wave 22 post-wrap) — 14 graph tools + ping, stdio transport, SQLite + tree-sitter |
 | `src/main/`                   | Node.js main process — IPC, PTY, hooks server, config                                           |
 | `src/preload/`                | contextBridge — typed API surface                                                               |
 | `src/renderer/components/`    | Feature folders: Layout, Terminal, FileTree, FileViewer, AgentMonitor, CommandPalette, Settings |
@@ -129,7 +128,7 @@ Each window owns its project roots independently via `ManagedWindow.projectRoots
 - `tokenStorage` localStorage-on-web (MED) — elevate to HIGH only when web mode is exposed beyond trusted networks.
 - `AnyOverrides = Record<string, any>` in Wave 26 profile code — one-line type escape hatch; fix when the surrounding code is next refactored.
 - **Standalone MCP absolute-path install** — `.mcp.json` entries use machine-local absolute paths to `dist/index.js`. Not portable. `npm publish` of `@hesnotsoharry/codebase-graph-mcp` (Wave 22 Decision 7, Phase 8 attempt) enables `npx` invocation and removes the hard path dependency.
-- **Asar packaging for internalMcp** — packaged Electron builds need `extraResources`/`asarUnpack` wiring for `packages/codebase-graph-mcp/dist/` and native modules. Filed: `roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md`.
+- **Asar packaging for internalMcp** — packaged Electron builds need `extraResources`/`asarUnpack` wiring for `C:\Web App\codebase-graph-mcp\dist\` and native modules. Filed: `roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md`.
 - **Capability regression (Wave 22)** — terminal Claude Code sessions launched inside the IDE no longer receive auto-injected graph context. Deliberate per Wave 22 Decision 4 (Path A — stay scoped). Plain `mcp__ouroboros__*` tool calls still work in any fresh session via `.mcp.json`.
 - **`projectName` normalization was broken before commit `78173b64`** — `serverBootstrap.ts` and `IndexingPipeline` derived the project name differently, causing all filtered queries to return empty on projects with uppercase directory names (`AgentIDE`, `ContractorApp`). Fixed in Wave 22 Phase 6 smoke. If filtered queries ever return empty unexpectedly, check whether the normalization in `buildContext()` matches what the DB rows were indexed under.
 

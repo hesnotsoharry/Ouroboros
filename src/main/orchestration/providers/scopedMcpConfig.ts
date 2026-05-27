@@ -6,7 +6,7 @@
  *
  * Wave 60 / Wave 22 Phase 6: the per-spawn ouroboros routing decision now
  * either omits the server entirely or writes the standalone package entry
- * (`packages/codebase-graph-mcp/dist/index.js`). Three outcomes:
+ * (`codebase-graph-mcp/dist/index.js`). Three outcomes:
  *
  *   - 'direct-inject'           : write `{ouroboros: {command,args}}`
  *                                 for the standalone package into the temp
@@ -92,20 +92,34 @@ async function readGlobalMcpServers(): Promise<McpServerMap> {
 }
 
 // ---------------------------------------------------------------------------
-// Ouroboros entry shape (Wave 22 Phase 6)
+// Ouroboros entry shape (Wave 22 Phase 6, updated Wave 22 post-wrap)
 //
 // Single shape: spawn the standalone package
-// (`packages/codebase-graph-mcp/dist/index.js`) via plain `node` with
+// (`codebase-graph-mcp/dist/index.js`) via plain `node` with
 // `--root <projectRoot>`. The package has its own better-sqlite3 compiled
 // for the system Node ABI, so ELECTRON_RUN_AS_NODE is not needed.
 // `projectRoot` defaults to `defaultProjectRoot` config (same source used
 // by `injectStandaloneMcpEntry` in main.ts).
+//
+// Wave 22 post-wrap: the package was extracted from `packages/codebase-graph-mcp/`
+// into its own git repo at `C:\Web App\codebase-graph-mcp\` (sibling of this
+// repo). Resolution walks up three levels from `out/main/` to `C:\Web App\`,
+// then descends into the sibling `codebase-graph-mcp/dist/index.js`.
+//
+// Once `@hesnotsoharry/codebase-graph-mcp` is npm-published (Decision 7
+// follow-up `2026-05-26-codebase-graph-mcp-npm-publish.md`), this should
+// switch to `npx @hesnotsoharry/codebase-graph-mcp` for portability.
+//
+// TODO(Wave 23+): asar packaging — in a packaged Electron build the sibling
+// directory traversal won't work. The package must be shipped as an asar
+// resource (`extraResources`) or installed via `npx`. See:
+// roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md
 // ---------------------------------------------------------------------------
 
 function resolvePackageEntryPath(mainOutDir: string): string {
-  // out/main/ → repo root → packages/codebase-graph-mcp/dist/index.js
-  const repoRoot = path.resolve(mainOutDir, '..', '..');
-  return path.join(repoRoot, 'packages', 'codebase-graph-mcp', 'dist', 'index.js');
+  // out/main/ → ide repo root → C:\Web App\ → codebase-graph-mcp/dist/index.js
+  const webAppRoot = path.resolve(mainOutDir, '..', '..', '..');
+  return path.join(webAppRoot, 'codebase-graph-mcp', 'dist', 'index.js');
 }
 
 function buildOuroborosEntry(mainOutDir: string): McpServerEntry {
@@ -229,8 +243,8 @@ export interface ScopedMcpConfigOptions {
   codemodeAcquireFailed?: boolean;
   /**
    * Absolute directory containing the main process build output. Used to
-   * resolve `packages/codebase-graph-mcp/dist/index.js` for the standalone
-   * entry (walks up two levels to repo root, then down into the package).
+   * resolve `codebase-graph-mcp/dist/index.js` for the standalone entry
+   * (walks up three levels to C:\Web App\, then down into the sibling repo).
    * Defaults to `__dirname` of the calling main module.
    */
   mainOutDir?: string;

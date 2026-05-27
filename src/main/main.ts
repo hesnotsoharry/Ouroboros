@@ -100,8 +100,9 @@ async function startIdeTools(): Promise<void> {
  * MCP server. Its job is to write the standalone-MCP entry into
  * `<root>/.mcp.json` so Claude Code (whether spawned by the IDE or a
  * terminal) can find and launch the standalone package
- * (`packages/codebase-graph-mcp/dist/index.js`). The standalone reads the
- * SQLite DB directly — no port, no bridge, no HTTP server.
+ * (`codebase-graph-mcp/dist/index.js` — sibling repo post Wave 22 post-wrap).
+ * The standalone reads the SQLite DB directly — no port, no bridge, no HTTP
+ * server.
  */
 async function injectStandaloneMcpEntry(): Promise<void> {
   if (!getConfigValue('internalMcpEnabled')) {

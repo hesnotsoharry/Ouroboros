@@ -72,7 +72,7 @@ export default defineConfig({
           contextWorker: resolve(__dirname, 'src/main/orchestration/contextWorker.ts'),
           // repoMapWorker removed in Wave 22 (contextLayer graph files deleted)
           // ouroborosMcp removed in Wave 22 (old standalone depended on codebaseGraph;
-          //   replaced by packages/codebase-graph-mcp — wired in Phase 6/7)
+          //   replaced by C:\Web App\codebase-graph-mcp — own git repo, Wave 22 post-wrap)
             ptyHostMain: resolve(__dirname, 'src/main/ptyHost/ptyHostMain.ts'),
             extensionHostMain: resolve(__dirname, 'src/main/extensionHost/extensionHostMain.ts'),
             proxyServer: resolve(__dirname, 'src/main/codemode/proxyServer.ts'),

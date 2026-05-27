@@ -99,10 +99,10 @@ async function readJsonTolerant(
 }
 
 // ---------------------------------------------------------------------------
-// Ouroboros entry builder (Wave 22 Phase 6)
+// Ouroboros entry builder (Wave 22 Phase 6, updated Wave 22 post-wrap)
 //
 // Single shape: spawn the standalone package
-// (`packages/codebase-graph-mcp/dist/index.js`) via plain `node` with
+// (`codebase-graph-mcp/dist/index.js`) via plain `node` with
 // `--root <projectRoot>`. The package ships its own better-sqlite3
 // compiled for the system Node ABI, so ELECTRON_RUN_AS_NODE is not needed.
 //
@@ -110,15 +110,18 @@ async function readJsonTolerant(
 // with ELECTRON_RUN_AS_NODE=1 because the old in-tree standalone used the
 // Electron-compiled better-sqlite3. The new package has its own bindings.
 //
-// TODO(Wave 23+): asar packaging — `packages/` is not included in the
-// asar bundle in a packaged Electron build. See:
+// Wave 22 post-wrap: moved from `packages/codebase-graph-mcp/` to its own
+// git repo at `C:\Web App\codebase-graph-mcp\` (sibling of this repo).
+//
+// TODO(Wave 23+): asar packaging — the sibling-dir traversal won't work in
+// a packaged Electron build. See:
 // roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md
 // ---------------------------------------------------------------------------
 
 export interface InjectOptions {
   /**
    * Absolute path to the standalone MCP package entry
-   * (`packages/codebase-graph-mcp/dist/index.js`).
+   * (`codebase-graph-mcp/dist/index.js` in the sibling repo).
    * `buildInjectOptions` resolves this from the IDE's main-out directory.
    */
   standaloneScriptPath?: string;
