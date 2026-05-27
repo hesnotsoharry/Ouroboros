@@ -45,14 +45,12 @@ export function InnerRail({ onCollapse, onSelectFile }: InnerRailProps): React.R
     ? (projectRoot.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? '')
     : '';
   const currentSessions = sessions.filter((s) => s.projectId === currentProjectId);
-  const otherSessions = sessions.filter((s) => s.projectId !== currentProjectId);
 
   return (
     <div data-testid="workbench-innerrail" style={RAIL_STYLE}>
       <InnerRailHeader />
       <RunningSection
         currentSessions={currentSessions}
-        otherSessions={otherSessions}
         onCollapse={onCollapse}
       />
       <div style={{ height: 1, background: 'var(--stroke-faint)', margin: '0 10px' }} />
@@ -87,11 +85,9 @@ function InnerRailHeader(): React.ReactElement {
 
 function RunningSection({
   currentSessions,
-  otherSessions,
   onCollapse,
 }: {
   currentSessions: WorkbenchSession[];
-  otherSessions: WorkbenchSession[];
   onCollapse?: () => void;
 }): React.ReactElement {
   return (
@@ -99,10 +95,6 @@ function RunningSection({
       <RunningSectionHeader onCollapse={onCollapse} />
       {currentSessions.map((s) => (
         <SessionRow key={s.id} session={s} isCurrent />
-      ))}
-      {otherSessions.length > 0 && <div style={{ height: 6 }} />}
-      {otherSessions.map((s) => (
-        <SessionRow key={s.id} session={s} isCurrent={false} />
       ))}
     </div>
   );
