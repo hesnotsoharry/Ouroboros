@@ -4,7 +4,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { ActiveStreamContext } from './agentChat/chatOrchestrationBridgeTypes';
+import type { ActiveStreamContext } from './hooks/types';
 import type { HookPayload } from './hooks';
 import { registerActiveSends, tapSkillExecution } from './hooksSkillExecutionTap';
 

@@ -19,7 +19,6 @@ function recorder(name: string, async = false): (() => unknown) {
   return vi.fn(() => { calls.push(name); });
 }
 
-vi.mock('./agentChat/threadStore', () => ({ closeThreadStore: recorder('closeThreadStore') }));
 vi.mock('./claudeUsagePoller', () => ({ stopClaudeUsagePoller: recorder('stopClaudeUsagePoller', true) }));
 vi.mock('./costHistory', () => ({ closeCostHistoryDb: recorder('closeCostHistoryDb') }));
 vi.mock('./extensionHost/extensionHostProxy', () => ({
@@ -73,7 +72,7 @@ describe('performWillQuitShutdown', () => {
     expect(calls).toContain('closeTelemetryStore');
     expect(calls).toContain('stopClaudeUsagePoller');
     expect(calls).toContain('cleanupIpcHandlers');
-    expect(calls).toContain('closeThreadStore');
+    // closeThreadStore removed in Wave 100 Phase D (agentChat deleted)
     // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
     expect(calls).toContain('shutdownCodexAppServerProcesses');
     expect(calls).toContain('shutdownExtensionHost');

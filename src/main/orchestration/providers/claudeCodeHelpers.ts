@@ -11,7 +11,7 @@ import { unlink, writeFile } from 'fs/promises';
 import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 
-import type { ImageAttachment } from '../../agentChat/types';
+import type { ImageAttachment } from '@shared/types/agentChat';
 import type { ClaudeCliSettings } from '../../config';
 import log from '../../logger';
 import { firePostSpawnRestore } from '../../rulesAndSkills/postSpawnRestore';

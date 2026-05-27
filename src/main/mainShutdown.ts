@@ -7,7 +7,6 @@
  * dispose protocol in `codebaseGraph/indexingWorker.ts` for context.
  */
 
-import { closeThreadStore } from './agentChat/threadStore';
 import { stopClaudeUsagePoller } from './claudeUsagePoller';
 import { disableCodeModeUserLevel } from './codemode/codemodeStartup';
 import { closeCostHistoryDb } from './costHistory';
@@ -68,7 +67,6 @@ export async function performWillQuitShutdown(): Promise<void> {
   await stopClaudeUsagePoller();
   await cleanupIpcHandlers();
   closeCostHistoryDb();
-  closeThreadStore();
   deleteTokenFile();
   await disposeSubsystems();
 }

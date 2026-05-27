@@ -13,7 +13,6 @@ vi.mock('./hooksEditTap', () => ({
 vi.mock('./hooksGraphUsageTap', () => ({ tapGraphUsage: vi.fn() }));
 vi.mock('./hooksPreToolResearchTap', () => ({ tapPreToolResearch: vi.fn() }));
 vi.mock('./hooksRankerReadTap', () => ({ tapRankerRead: vi.fn() }));
-vi.mock('./hooksShadowTap', () => ({ tapShadowPath: vi.fn() }));
 vi.mock('./hooksSkillExecutionTap', () => ({ tapSkillExecution: vi.fn() }));
 vi.mock('./hooksSubagentTap', () => ({ tapSubagentTracker: vi.fn() }));
 vi.mock('./hooksDiffReview', () => ({ tapDiffReview: vi.fn() }));
@@ -25,7 +24,6 @@ import { tapConflictMonitor, tapEditProvenance } from './hooksEditTap';
 import { tapGraphUsage } from './hooksGraphUsageTap';
 import { tapPreToolResearch } from './hooksPreToolResearchTap';
 import { tapRankerRead } from './hooksRankerReadTap';
-import { tapShadowPath } from './hooksShadowTap';
 import { tapSkillExecution } from './hooksSkillExecutionTap';
 import { tapSubagentTracker } from './hooksSubagentTap';
 import { runHookTaps } from './hooksTapRunner';
@@ -49,7 +47,6 @@ describe('runHookTaps', () => {
     expect(tapGraphUsage).toHaveBeenCalledWith(payload);
     expect(tapRankerRead).toHaveBeenCalledWith(payload);
     expect(tapSkillExecution).toHaveBeenCalledWith(payload);
-    expect(tapShadowPath).toHaveBeenCalledWith(payload);
     expect(tapDiffReview).toHaveBeenCalledWith(payload, cwdMap);
   });
 });

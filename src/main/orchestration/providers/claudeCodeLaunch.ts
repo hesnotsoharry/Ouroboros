@@ -1,8 +1,5 @@
 // claudeCodeLaunch.ts — Launch coordination for the Claude Code adapter.
 
-import type { TurnId } from '@shared/types/canonicalChatEvent';
-
-import { getShadowTap } from '../../agentChat/shadowTap';
 import { type ClaudeCliSettings, getConfigValue } from '../../config';
 import { resolveModelEnv } from '../../providers';
 import { getSessionStore } from '../../session/sessionStore';
@@ -244,17 +241,6 @@ function scheduleLaunch(opts: ScheduleLaunchOpts): void {
     getNextGlobalBlockIndex: opts.getNextGlobalBlockIndex,
     getCumulativeUsage: opts.getCumulativeUsage,
   };
-  // Shadow tap: forward each stream-json event to the canonical state path in
-  // parallel. getShadowTap() returns null until the tap is initialized at
-  // startup; errors inside the orchestrator are swallowed by DualEmitOrchestrator.
-  const turnId = opts.context.taskId as TurnId;
-  const shadowTap = getShadowTap();
-  const eventHandler = shadowTap
-    ? (event: import('./streamJsonTypes').StreamJsonEvent) => {
-        opts.eventHandler(event);
-        shadowTap.onStreamJsonEvent(event, turnId);
-      }
-    : opts.eventHandler;
   const launchArgs = buildLaunchScheduleArgs({
     context: opts.context,
     cwd: opts.cwd,
@@ -262,7 +248,7 @@ function scheduleLaunch(opts: ScheduleLaunchOpts): void {
     sink: opts.sink,
     resolved: opts.resolved,
     effectiveResumeSessionId: opts.effectiveResumeSessionId,
-    eventHandler,
+    eventHandler: opts.eventHandler,
     getCancelledBeforeLaunch: opts.getCancelledBeforeLaunch,
     invocationTempPaths,
   });

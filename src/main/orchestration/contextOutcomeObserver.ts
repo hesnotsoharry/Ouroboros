@@ -16,7 +16,6 @@
 
 import { getConfigValue } from '../config';
 import log from '../logger';
-import { attributeResearchOutcome } from './contextOutcomeObserverResearch';
 import { buildOutcomeBase } from './contextOutcomeObserverSupport';
 import type { ContextOutcomeWriter } from './contextOutcomeWriter';
 import { getOutcomeWriter } from './contextOutcomeWriter';
@@ -219,10 +218,6 @@ export function observeToolCallBySession(
   const traceId = sessionTraceMap.get(sessionId);
   if (!traceId) return;
   observeToolCall(traceId, toolName, args);
-  if (isFileTouchingTool(toolName)) {
-    const filePath = extractPath(args);
-    if (filePath) attributeResearchOutcome(sessionId, toolName, filePath);
-  }
 }
 
 /**

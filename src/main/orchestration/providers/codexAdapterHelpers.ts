@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 import { unlink, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 
-import type { ImageAttachment } from '../../agentChat/types';
+import type { ImageAttachment } from '@shared/types/agentChat';
 import {
   applyCodexPermissionModeOverride,
   buildCodexCliArgs,

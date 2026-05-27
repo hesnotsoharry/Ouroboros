@@ -12,7 +12,6 @@ import { tapConflictMonitor, tapEditProvenance } from './hooksEditTap';
 import { tapGraphUsage } from './hooksGraphUsageTap';
 import { tapPreToolResearch } from './hooksPreToolResearchTap';
 import { tapRankerRead } from './hooksRankerReadTap';
-import { tapShadowPath } from './hooksShadowTap';
 import { tapSkillExecution } from './hooksSkillExecutionTap';
 import { tapSubagentTracker } from './hooksSubagentTap';
 
@@ -25,6 +24,5 @@ export function runHookTaps(payload: HookPayload, sessionCwdMap: Map<string, str
   tapGraphUsage(payload);
   tapRankerRead(payload);
   tapSkillExecution(payload);
-  tapShadowPath(payload);
   tapDiffReview(payload, sessionCwdMap);
 }

@@ -43,7 +43,7 @@ vi.mock('./folderStore', () => ({
   closeFolderStore: vi.fn(),
 }));
 
-const runSoftDeleteGcMock = vi.fn().mockResolvedValue({ purgedSessions: 0, purgedThreads: 0 });
+const runSoftDeleteGcMock = vi.fn().mockResolvedValue({ purgedSessions: 0 });
 vi.mock('./softDeleteGc', () => ({
   runSoftDeleteGc: (...args: unknown[]) => runSoftDeleteGcMock(...args),
 }));
