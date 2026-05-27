@@ -9,12 +9,11 @@
  * chat-only mode (Wave 42 design).
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
 import { TOGGLE_SESSION_DRAWER_EVENT } from '../../../hooks/appEventNames';
 import type { UseTerminalSessionsReturn } from '../../../hooks/useTerminalSessions';
-import { AgentChatStoreContext, createAgentChatStore } from '../../AgentChat/agentChatStore';
 import type { Command } from '../../CommandPalette/types';
 import { useCommandPalette } from '../../CommandPalette/useCommandPalette';
 import { useCommandRegistry } from '../../CommandPalette/useCommandRegistry';
@@ -160,23 +159,15 @@ export function ChatOnlyShell({ terminal }: ChatOnlyShellProps = {}): React.Reac
   const shell = useShellState(diff);
   useDiffReviewEvents(shell.openDiffOverlay);
 
-  // Wave 43 hotfix: lift AgentChat store above the title bar so controls
-  // outside AgentChatWorkspace share the same model/permission state.
-  const store = useRef(createAgentChatStore()).current;
-
   const { isOpen: paletteOpen, close: closePalette } = useCommandPalette();
   const { commands, recentIds, execute } = useCommandRegistry();
   const filteredCommands = useMemo(() => filterCommandsForChatShell(commands), [commands]);
 
-  return (
-    <AgentChatStoreContext.Provider value={store}>
-      {renderWorkbench({
-        terminal,
-        projectRoot,
-        shell,
-        palette: { open: paletteOpen, close: closePalette },
-        commandApi: { commands: filteredCommands, recentIds, execute },
-      })}
-    </AgentChatStoreContext.Provider>
-  );
+  return renderWorkbench({
+    terminal,
+    projectRoot,
+    shell,
+    palette: { open: paletteOpen, close: closePalette },
+    commandApi: { commands: filteredCommands, recentIds, execute },
+  });
 }

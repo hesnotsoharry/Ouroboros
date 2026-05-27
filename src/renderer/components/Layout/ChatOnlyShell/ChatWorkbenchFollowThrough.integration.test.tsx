@@ -22,7 +22,7 @@
  *
  * WHAT IS NOT MOCKED (real joins exercised):
  * - WorkbenchRail, WorkbenchRailSections, WorkbenchSessionRow
- * - ChatWorkbenchUtilityDrawer (all tabs including rules)
+ * - ChatWorkbenchUtilityDrawer (activity, approvals, monitor tabs)
  * - ChatWorkbenchBody, ChatWorkbenchBody.model, ChatWorkbenchBody.parts
  * - useWorkbenchSurfacePolicy, useWorkbenchArtifacts, useWorkbenchCompare
  * - useChatWorkbenchLayout, useWorkbenchSessions, useWorkbenchAttention
@@ -330,22 +330,6 @@ describe('Utility drawer — real surface policy join', () => {
     expect(screen.getByTestId('chat-workbench-utility-drawer')).toBeDefined();
     // OPEN_SUBAGENT_PANEL_EVENT routes to the monitor tab (useWorkbenchSurfacePolicy)
     expect(screen.getByTestId('chat-workbench-utility-tab-monitor')).toBeDefined();
-  });
-
-  it('shows rules tab in real drawer tab bar', () => {
-    // Force drawer open via localStorage to avoid needing a trigger
-    window.localStorage.setItem(
-      'agent-ide:chat-workbench-layout',
-      JSON.stringify({
-        railOpen: true,
-        artifactOpen: false,
-        utilityOpen: true,
-        activeUtilityTab: 'rules',
-      }),
-    );
-    renderShell();
-    expect(screen.getByTestId('chat-workbench-utility-drawer')).toBeDefined();
-    expect(screen.getByTestId('chat-workbench-utility-tab-rules')).toBeDefined();
   });
 
   it('real close button dismisses the drawer', () => {

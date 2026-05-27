@@ -42,7 +42,6 @@ import {
 import { tapSkillExecution } from './hooksSkillExecutionTap';
 import { runHookTaps } from './hooksTapRunner';
 import log from './logger';
-import { shadowRouteHookEvent } from './router/routerShadow';
 import { getOutcomeObserver, getTelemetryStore } from './telemetry';
 import { broadcastToWebClients } from './web/webServer';
 import { getAllActiveWindows } from './windowManager';
@@ -258,7 +257,6 @@ function dispatchToRenderer(rawPayload: HookPayload): void {
   }
 
   pairCorrelationId(rawPayload);
-  shadowRouteHookEvent(rawPayload);
   const rowId = getTelemetryStore()?.record(rawPayload) ?? '';
   if (rawPayload.type === 'post_tool_use') {
     getOutcomeObserver()?.noteToolUseEvent(

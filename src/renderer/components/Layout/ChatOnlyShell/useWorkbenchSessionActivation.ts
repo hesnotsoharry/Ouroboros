@@ -1,6 +1,7 @@
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import { useCallback, useRef, useState } from 'react';
 
-import type { AgentChatThreadRecord, SessionRecord } from '../../../types/electron';
+import type { SessionRecord } from '../../../types/electron';
 
 function hasElectronAPI(): boolean {
   return typeof window !== 'undefined' && Boolean(window.electronAPI);

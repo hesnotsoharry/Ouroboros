@@ -1,5 +1,3 @@
-import { AGENT_CHAT_INVOKE_CHANNELS } from '@shared/ipc/agentChatChannels';
-import { ORCHESTRATION_INVOKE_CHANNELS } from '@shared/ipc/orchestrationChannels';
 import { ipcRenderer } from 'electron';
 
 import type {
@@ -7,7 +5,6 @@ import type {
   ApprovalResolved,
   ClaudeMdGenerationStatus,
   CompareProvidersEventPayload,
-  ContextLayerProgress,
   ElectronAPI,
   IdeToolQuery,
   LspDiagnostic,
@@ -16,10 +13,8 @@ import type {
   System2IndexProgressEvent,
   UpdaterEvent,
 } from '../renderer/types/electron';
-import { agentChatApi } from './preloadSupplementalAgentChatApis';
 import { aiApi, embeddingApi, observabilityApi, telemetryApi } from './preloadSupplementalAiApis';
 import type { SupplementalApiKey } from './preloadSupplementalApiKeys';
-import { chatStateNewPathApi } from './preloadSupplementalChatStateApis';
 import { flowTracerApi } from './preloadSupplementalFlowTracerApis';
 import { folderCrudApi } from './preloadSupplementalFolderApis';
 // graphApi removed in Wave 22 (preloadSupplementalGraphApis.ts deleted)
@@ -245,27 +240,6 @@ export const supplementalApis: SupplementalApis = {
     getStatus: () => ipcRenderer.invoke('codemode:status'),
   },
 
-  agentChat: agentChatApi,
-
-  orchestration: {
-    previewContext: (request: unknown) =>
-      ipcRenderer.invoke(ORCHESTRATION_INVOKE_CHANNELS.previewContext, request),
-    // Alias for previewContext — both channels execute identical logic on the main side.
-    // The renderer only calls previewContext; this alias exists for API symmetry.
-    buildContextPacket: (request: unknown) =>
-      ipcRenderer.invoke(ORCHESTRATION_INVOKE_CHANNELS.previewContext, request),
-    // Routes to agentChat:cancelTask (singleton orchestration) — the old
-    // orchestration:cancelTask handler was removed because it created a fresh
-    // adapter with empty process Maps and could never kill the running process.
-    cancelTask: (taskId: string) =>
-      ipcRenderer.invoke(AGENT_CHAT_INVOKE_CHANNELS.cancelTask, taskId),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- orchestration API surface is intentionally partial; full ElectronAPI.orchestration type includes routes handled elsewhere
-  } as any,
-
-  contextLayer: {
-    onProgress: (callback) => onChannel<ContextLayerProgress>('contextLayer:progress', callback),
-  },
-
   claudeMd: {
     generate: (projectRoot, options) =>
       ipcRenderer.invoke('claudeMd:generate', projectRoot, options),
@@ -276,7 +250,6 @@ export const supplementalApis: SupplementalApis = {
       onChannel<ClaudeMdGenerationStatus>('claudeMd:statusChange', callback),
   },
 
-  router: { getStats: () => ipcRenderer.invoke('router:getStats') },
   rulesAndSkills: rulesAndSkillsApi,
   ai: aiApi,
   embedding: embeddingApi,
@@ -320,7 +293,6 @@ export const supplementalApis: SupplementalApis = {
   flowTracer: flowTracerApi,
   marketplace: marketplaceApi,
   memory: memoryApi,
-  chatStateNewPath: chatStateNewPathApi,
   // Wave 37 Phase B+C — ecosystem moat: prompt diff push event + usage exporter
   ecosystem: {
     onPromptDiff: (callback) =>

@@ -25,7 +25,6 @@ import type {
   PageRankSeedWeights,
   PairedDeviceRecord,
   PanelSizes,
-  RouterSettings,
   SessionDispatchConfig,
   TerminalSessionSnapshot,
   ThemingConfig,
@@ -136,19 +135,7 @@ describe('configTypes — ModelSlotAssignments', () => {
   });
 });
 
-describe('configTypes — RouterSettings', () => {
-  it('accepts valid RouterSettings', () => {
-    const r: RouterSettings = {
-      enabled: true,
-      layer1Enabled: true,
-      layer2Enabled: true,
-      layer3Enabled: true,
-      layer2ConfidenceThreshold: 0.6,
-      paranoidMode: false,
-    };
-    expect(r.enabled).toBe(true);
-  });
-});
+// RouterSettings describe removed in Wave 100 Phase G (router CUT)
 
 describe('configTypes — AgentTemplate', () => {
   it('accepts minimal AgentTemplate', () => {

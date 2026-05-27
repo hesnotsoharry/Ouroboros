@@ -11,11 +11,9 @@ import fs from 'fs/promises';
 import { tmpdir } from 'os';
 import path from 'path';
 
-import { getContextLayerController } from '../contextLayer/contextLayerController';
 import { dispatchFileOpenEvent } from '../extensions';
 import log from '../logger';
 import { broadcastToWebClients } from '../web/webServer';
-import { invalidateSnapshotCache as invalidateAgentChatCache } from './agentChat';
 
 export const MAX_READ_BYTES = 100 * 1024 * 1024;
 
@@ -174,16 +172,8 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 const DEBOUNCE_MS = 200;
 
 function flushPendingChanges(): void {
-  const changes = pendingChanges;
   pendingChanges = [];
   debounceTimer = null;
-
-  const ctrl = getContextLayerController();
-  if (ctrl) {
-    for (const c of changes) ctrl.onFileChange(c.type, c.filePath);
-  }
-
-  invalidateAgentChatCache();
 }
 
 function broadcastToWindows(type: string, filePath: string): void {

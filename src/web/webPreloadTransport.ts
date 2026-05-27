@@ -106,7 +106,7 @@ const SHORT_PATTERN =
 
 /** Long-class pattern — streaming chat, spec scaffold, retrain, heavy compute. */
 const LONG_PATTERN =
-  /(?:[Cc]hat|spec:|retrain|sessions:dispatchTask|orchestration:buildContextPacket|pty:spawn(?:Claude|Codex)?$|observability:exportTrace)/;
+  /(?:[Cc]hat|spec:|retrain|sessions:dispatchTask|pty:spawn(?:Claude|Codex)?$|observability:exportTrace)/;
 
 /**
  * Derive the timeout class for a channel using the same conventions as

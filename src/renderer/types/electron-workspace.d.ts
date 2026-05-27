@@ -1,10 +1,8 @@
-import type { AgentChatAPI } from './electron-agent-chat';
 import type { AgentConflictAPI } from './electron-agent-conflict';
 import type { AiAPI } from './electron-ai';
 import type { AiStreamAPI } from './electron-ai-stream';
 import type { AuthAPI } from './electron-auth';
 import type { BackgroundJobsAPI } from './electron-background-jobs';
-import type { ChatStateNewPathAPI } from './electron-chat-state-new-path';
 import type { CheckpointAPI } from './electron-checkpoint';
 import type { ClaudeMdAPI } from './electron-claude-md';
 import type { CompareProvidersAPI } from './electron-compare-providers';
@@ -24,7 +22,6 @@ import type { McpStoreAPI } from './electron-mcp-store';
 import type { MemoryAPI } from './electron-memory';
 import type { MobileAccessAPI } from './electron-mobile-access';
 import type {
-  ContextLayerAPI,
   CostAPI,
   CrashAPI,
   LspAPI,
@@ -32,7 +29,6 @@ import type {
   SymbolAPI,
   UsageAPI,
 } from './electron-observability';
-import type { OrchestrationAPI } from './electron-orchestration';
 import type { PinnedContextAPI } from './electron-pinned-context';
 import type { ProfileAPI } from './electron-profile';
 import type { ResearchAPI } from './electron-research';
@@ -245,25 +241,6 @@ export interface WindowBounds {
   isMaximized: boolean;
 }
 
-/* ── Router analytics ─────────────────────────────────────────────── */
-
-export interface RouterStatsResult {
-  tierDistribution: { HAIKU: number; SONNET: number; OPUS: number };
-  bySurface: {
-    chat: { HAIKU: number; SONNET: number; OPUS: number };
-    terminal_shadow: { HAIKU: number; SONNET: number; OPUS: number };
-    agentic: { HAIKU: number; SONNET: number; OPUS: number };
-  };
-  overrideRate: number;
-  overrideDirection: { upgradeCount: number; downgradeCount: number };
-  layerDistribution: { rule: number; classifier: number; llm: number; default_: number };
-  totalDecisions: number;
-  signalCounts: Record<string, number>;
-}
-
-export interface RouterAPI {
-  getStats(): Promise<IpcResult & { data?: RouterStatsResult }>;
-}
 
 export interface ElectronAPI {
   pty: PtyAPI;
@@ -295,13 +272,9 @@ export interface ElectronAPI {
   context: ContextAPI;
   ideTools: IdeToolsAPI;
   codemode: CodeModeAPI;
-  agentChat: AgentChatAPI;
-  orchestration: OrchestrationAPI;
-  contextLayer: ContextLayerAPI;
   claudeMd: ClaudeMdAPI;
   providers: ProvidersAPI;
   codex: CodexAPI;
-  router: RouterAPI;
   rulesAndSkills: RulesAndSkillsAPI;
   ai: AiAPI;
   aiStream: AiStreamAPI;
@@ -327,7 +300,6 @@ export interface ElectronAPI {
   mobileAccess: MobileAccessAPI;
   compareProviders: CompareProvidersAPI;
   memory: MemoryAPI;
-  chatStateNewPath: ChatStateNewPathAPI;
 }
 
 export interface WorkspaceAPI {

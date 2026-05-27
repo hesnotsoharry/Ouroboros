@@ -6,13 +6,12 @@
  * import it without depending on the agentChat module.
  */
 
-import type { SkillExecutionRecord } from '@shared/types/ruleActivity';
-
 import type {
   AgentChatContentBlock,
   AgentChatOrchestrationLink,
   AgentChatStreamChunk,
-} from '../agentChat/types';
+} from '@shared/types/agentChat';
+import type { SkillExecutionRecord } from '@shared/types/ruleActivity';
 
 /**
  * Tracks active streaming sends so that provider event and session update

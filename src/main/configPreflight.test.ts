@@ -139,18 +139,8 @@ describe('runConfigPreflight', () => {
     expect(after.activeTheme).toBe('modern');
   });
 
-  it('strips routerSettings.llmJudgeSampleRate while leaving other router keys', async () => {
-    const dir = makeTmpUserData();
-    const file = writeConfig(dir, {
-      routerSettings: { llmJudgeSampleRate: 0.3, autoRetrainEnabled: true },
-    });
-    const { runConfigPreflight } = await loadModule(dir);
-    runConfigPreflight();
-    const after = readConfig(file);
-    const router = after.routerSettings as Record<string, unknown>;
-    expect('llmJudgeSampleRate' in router).toBe(false);
-    expect(router.autoRetrainEnabled).toBe(true);
-  });
+  // routerSettings.llmJudgeSampleRate stripping test removed in Wave 100 Phase G
+  //   (router CUT — the migration line was removed from configPreflight.ts)
 
   it('strips wave-79 codemode.routeInternalMcp while leaving other codemode keys', async () => {
     const dir = makeTmpUserData();

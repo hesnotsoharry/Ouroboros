@@ -1,10 +1,3 @@
-import {
-  AGENT_CHAT_CONTEXT_BEHAVIORS,
-  AGENT_CHAT_DEFAULT_VIEWS,
-  AGENT_CHAT_PROVIDERS,
-  AGENT_CHAT_SETTINGS_DEFAULTS,
-  AGENT_CHAT_VERIFICATION_PROFILES,
-} from './agentChat/settingsResolver';
 import { tailSchemaExt } from './configSchemaTailExt';
 
 export const tailSchema = {
@@ -41,25 +34,6 @@ export const tailSchema = {
     type: 'boolean',
     default: false,
   },
-  contextLayer: {
-    type: 'object',
-    default: {
-      enabled: true,
-      maxModules: 50,
-      maxSizeBytes: 204800,
-      debounceMs: 5000,
-      autoSummarize: true,
-      moduleDepthLimit: 6,
-    },
-    properties: {
-      enabled: { type: 'boolean', default: true },
-      maxModules: { type: 'number', default: 50 },
-      maxSizeBytes: { type: 'number', default: 204800 },
-      debounceMs: { type: 'number', default: 5000 },
-      autoSummarize: { type: 'boolean', default: true },
-      moduleDepthLimit: { type: 'number', default: 6 },
-    },
-  },
   installedVsxExtensions: {
     type: 'array',
     items: { type: 'object' },
@@ -69,41 +43,6 @@ export const tailSchema = {
     type: 'array',
     items: { type: 'string' },
     default: [],
-  },
-  agentChatSettings: {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      defaultProvider: {
-        type: 'string',
-        enum: [...AGENT_CHAT_PROVIDERS],
-        default: AGENT_CHAT_SETTINGS_DEFAULTS.defaultProvider,
-      },
-      defaultVerificationProfile: {
-        type: 'string',
-        enum: [...AGENT_CHAT_VERIFICATION_PROFILES],
-        default: AGENT_CHAT_SETTINGS_DEFAULTS.defaultVerificationProfile,
-      },
-      contextBehavior: {
-        type: 'string',
-        enum: [...AGENT_CHAT_CONTEXT_BEHAVIORS],
-        default: AGENT_CHAT_SETTINGS_DEFAULTS.contextBehavior,
-      },
-      showAdvancedControls: {
-        type: 'boolean',
-        default: AGENT_CHAT_SETTINGS_DEFAULTS.showAdvancedControls,
-      },
-      openDetailsOnFailure: {
-        type: 'boolean',
-        default: AGENT_CHAT_SETTINGS_DEFAULTS.openDetailsOnFailure,
-      },
-      defaultView: {
-        type: 'string',
-        enum: [...AGENT_CHAT_DEFAULT_VIEWS],
-        default: AGENT_CHAT_SETTINGS_DEFAULTS.defaultView,
-      },
-    },
-    default: { ...AGENT_CHAT_SETTINGS_DEFAULTS },
   },
   webAccessPort: {
     type: 'number',
@@ -150,13 +89,11 @@ export const tailSchema = {
     type: 'object',
     properties: {
       terminal: { type: 'string', default: '' },
-      agentChat: { type: 'string', default: '' },
       claudeMdGeneration: { type: 'string', default: '' },
       inlineCompletion: { type: 'string', default: '' },
     },
     default: {
       terminal: '',
-      agentChat: '',
       claudeMdGeneration: '',
       inlineCompletion: '',
     },
@@ -194,36 +131,6 @@ export const tailSchema = {
       leanMode: true,
       maxLines: 200,
     },
-  },
-  routerSettings: {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      enabled: { type: 'boolean', default: true },
-      layer1Enabled: { type: 'boolean', default: true },
-      layer2Enabled: { type: 'boolean', default: true },
-      layer3Enabled: { type: 'boolean', default: true },
-      layer2ConfidenceThreshold: { type: 'number', default: 0.6 },
-      paranoidMode: { type: 'boolean', default: false },
-      /** Wave 53 — log shadow router decision even when user overrides the model. */
-      shadowMode: { type: 'boolean', default: true },
-      /** Wave 61 — gate the periodic retrain observer; default off (see Wave 61 ADR). */
-      autoRetrainEnabled: { type: 'boolean', default: false },
-    },
-    default: {
-      enabled: true,
-      layer1Enabled: true,
-      layer2Enabled: true,
-      layer3Enabled: true,
-      layer2ConfidenceThreshold: 0.6,
-      paranoidMode: false,
-      shadowMode: true,
-      autoRetrainEnabled: false,
-    },
-  },
-  routerLastRetrainCount: {
-    type: 'number',
-    default: 0,
   },
   internalMcpEnabled: {
     type: 'boolean',

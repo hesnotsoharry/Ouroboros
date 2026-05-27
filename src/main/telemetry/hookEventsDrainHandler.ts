@@ -30,7 +30,6 @@ import type { HookPayload } from '../hooks';
 import { tapEditProvenance } from '../hooksEditTap';
 import { tapGraphUsage } from '../hooksGraphUsageTap';
 import log from '../logger';
-import { trackSessionEnd, trackTaskCompleted } from '../router/qualitySignalCollector';
 import { getTelemetryStore } from '../telemetry';
 import {
   HOOK_EVENTS_SCHEMA_VERSION,
@@ -115,32 +114,6 @@ function routeEditProvenance(payload: HookPayload): void {
   }
 }
 
-function routeSessionEnd(payload: HookPayload): void {
-  try {
-    trackSessionEnd({
-      type: payload.type,
-      sessionId: payload.sessionId,
-      cwd: payload.cwd,
-    });
-  } catch (err) {
-    log.warn('[hook-events-drain] trackSessionEnd error:', err);
-  }
-}
-
-function routeTaskCompleted(payload: HookPayload): void {
-  try {
-    trackTaskCompleted(payload.sessionId);
-  } catch (err) {
-    log.warn('[hook-events-drain] trackTaskCompleted error:', err);
-  }
-}
-
-const SESSION_END_TYPES: ReadonlySet<HookEventType> = new Set([
-  'agent_end',
-  'agent_stop',
-  'session_end',
-]);
-
 function dispatchByType(eventType: HookEventType, payload: HookPayload): void {
   routeToTelemetryStore(payload);
 
@@ -152,15 +125,8 @@ function dispatchByType(eventType: HookEventType, payload: HookPayload): void {
     routeEditProvenance(payload);
     return;
   }
-  if (SESSION_END_TYPES.has(eventType)) {
-    routeSessionEnd(payload);
-    return;
-  }
-  if (eventType === 'task_completed') {
-    routeTaskCompleted(payload);
-    return;
-  }
-  // session_start, user_prompt_submit, agent_start: telemetryStore only.
+  // session_start, user_prompt_submit, agent_start, agent_end, agent_stop,
+  // session_end, task_completed: telemetryStore only.
 }
 
 // ---------------------------------------------------------------------------

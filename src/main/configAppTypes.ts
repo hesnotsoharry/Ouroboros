@@ -8,7 +8,6 @@
 
 import type { DockPersistenceData } from '@shared/config/dockPersistenceSchema';
 
-import type { AgentChatSettings } from './agentChat/types';
 import type {
   AgentTemplate,
   AppEcosystemConfig,
@@ -26,7 +25,6 @@ import type {
   PanelSizes,
   PlatformConfig,
   ResearchSettings,
-  RouterSettings,
   SessionDispatchConfig,
   TerminalSessionSnapshot,
   ThemingConfig,
@@ -34,7 +32,6 @@ import type {
   WorkspaceLayout,
   WorkspaceSnapshot,
 } from './configTypes';
-import type { ContextLayerConfig } from './contextLayer/contextLayerTypes';
 import type { Session } from './session';
 import type { SessionFolder } from './session/folderStore';
 
@@ -85,7 +82,6 @@ export interface AppConfig {
   claudeCliSettings: ClaudeCliSettings;
   /** Codex CLI launch settings */
   codexCliSettings: CodexCliSettings;
-  agentChatSettings: AgentChatSettings;
   /** Desktop notification preferences for agent events */
   notifications: NotificationSettings;
   /** Pre-configured Claude Code launch profiles */
@@ -130,8 +126,6 @@ export interface AppConfig {
   promptPattern: string;
   /** Format document before saving (requires a formatting provider in Monaco) */
   formatOnSave: boolean;
-  /** Context layer settings for AI-assisted codebase understanding */
-  contextLayer: ContextLayerConfig;
   /** Automated CLAUDE.md generation settings */
   claudeMdSettings: ClaudeMdSettings;
   /** Configured LLM providers (Anthropic-compatible endpoints) */
@@ -147,10 +141,6 @@ export interface AppConfig {
   glassOpacity: number;
   /** Wave 45 — material variant (Vapor / Prism / Warp) for the shell. */
   materialVariant: 'vapor' | 'prism' | 'warp';
-  /** Model router settings — automatic tier selection (HAIKU/SONNET/OPUS) */
-  routerSettings: RouterSettings;
-  /** Number of quality signal lines at last retrain — used by retrain trigger. */
-  routerLastRetrainCount: number;
   /** Enable the internal MCP server that exposes IDE tools to Claude Code sessions */
   internalMcpEnabled: boolean;
   /** Wave 48 Phase B — when to inject the Ouroboros MCP entry. Default 'task-gated'. */

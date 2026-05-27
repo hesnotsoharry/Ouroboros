@@ -17,7 +17,6 @@ interface WorkbenchRightPaneProps {
   onSelectUtilityTab: (tab: ChatWorkbenchUtilityTab) => void;
   onSelectView: (view: RightPaneView) => void;
   onClose: () => void;
-  activeProject: string | null;
 }
 
 function CloseIcon(): React.ReactElement {
@@ -62,7 +61,6 @@ export function WorkbenchRightPane({
   activeUtilityTab,
   onSelectUtilityTab,
   onClose,
-  activeProject,
 }: WorkbenchRightPaneProps): React.ReactElement {
   return (
     <aside
@@ -75,7 +73,6 @@ export function WorkbenchRightPane({
           activeTab={activeUtilityTab}
           onSelectTab={onSelectUtilityTab}
           onClose={onClose}
-          activeProject={activeProject}
         />
       </div>
     </aside>

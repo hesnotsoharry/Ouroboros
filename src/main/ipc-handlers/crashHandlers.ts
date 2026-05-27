@@ -2,9 +2,9 @@ import { app, ipcMain, shell } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 
-import { getErrorMessage } from '../agentChat/utils';
 import { getCrashReportDirPath } from '../crashReporterStorage';
 import log from '../logger';
+import { getErrorMessage } from '../utils';
 
 type ChannelList = string[];
 type IpcHandler = Parameters<typeof ipcMain.handle>[1];

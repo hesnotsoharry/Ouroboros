@@ -1,8 +1,12 @@
-import type {
-  OrchestrationAPI as MainOrchestrationAPI,
-  OrchestrationEvent,
-  TaskResult,
-} from '@shared/types/orchestration';
+/**
+ * electron-orchestration.d.ts — Context-packet and task types re-exported from
+ * @shared/types/orchestration for the ContextBuilder renderer component.
+ *
+ * NOTE (Wave 100 Phase F): The OrchestrationAPI interface and orchestration
+ * property on ElectronAPI were removed when the chat orchestration IPC surface
+ * was cut. These type re-exports remain for the live ContextBuilder component.
+ * Full removal is scheduled for Phase H (Settings UI + schema narrowing).
+ */
 
 export type {
   ContextBudgetConstraints,
@@ -65,13 +69,3 @@ export type {
   WorkspaceRootFact,
 } from '@shared/types/orchestration';
 
-export interface OrchestrationAPI extends MainOrchestrationAPI {
-  onTaskResult: (callback: (result: TaskResult) => void) => () => void;
-  onEvent: (callback: (event: OrchestrationEvent) => void) => () => void;
-}
-
-export type {
-  OrchestrationEventChannel,
-  OrchestrationEventType,
-  OrchestrationInvokeChannel,
-} from '@shared/ipc/orchestrationChannels';

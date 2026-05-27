@@ -3,9 +3,8 @@
  * Extracted from RightSidebarTabs.panels.tsx to keep both files under 300 lines.
  */
 
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import React from 'react';
-
-import type { AgentChatThreadRecord } from '../../types/electron';
 
 // ── ThreadStatusIcon ──────────────────────────────────────────────────────────
 

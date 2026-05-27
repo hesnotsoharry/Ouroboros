@@ -263,15 +263,3 @@ export type {
   WindowedUsageResult,
 } from './electron-usage';
 
-export interface ContextLayerProgress {
-  type: 'idle' | 'summarizing';
-  processed: number;
-  failed: number;
-  remaining: number;
-  total: number;
-  currentModule: string | null;
-}
-
-export interface ContextLayerAPI {
-  onProgress: (callback: (progress: ContextLayerProgress) => void) => () => void;
-}

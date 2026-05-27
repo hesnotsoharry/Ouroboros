@@ -105,15 +105,6 @@ describe('AppConfig — structural shape', () => {
       webAccessPassword: '',
       glassOpacity: 0.85,
       materialVariant: 'vapor',
-      routerSettings: {
-        enabled: true,
-        layer1Enabled: true,
-        layer2Enabled: true,
-        layer3Enabled: true,
-        layer2ConfidenceThreshold: 0.6,
-        paranoidMode: false,
-      },
-      routerLastRetrainCount: 0,
       internalMcpEnabled: true,
       usePtyHost: false,
       useExtensionHost: false,
@@ -129,7 +120,7 @@ describe('AppConfig — structural shape', () => {
     expect(cfg.defaultProjectRoot).toBe('/home/user/project');
     expect(cfg.activeTheme).toBe('modern');
     expect(cfg.panelSizes?.leftSidebar).toBe(240);
-    expect(cfg.routerSettings?.enabled).toBe(true);
+    // routerSettings removed in Wave 100 Phase G (router CUT)
     expect(cfg.codebaseGraph?.gcDaysThreshold).toBe(90);
   });
 

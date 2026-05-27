@@ -151,7 +151,8 @@ const NAMESPACES = [
   'auth', 'providers', 'codex', 'window', 'extensions',
   'approval', 'sessions', 'cost', 'usage',
   'mcp', 'mcpStore', 'extensionStore', 'context', 'ideTools',
-  'codemode', 'orchestration', 'contextLayer',
+  // 'orchestration' removed in Wave 100 Phase F (orchestration IPC surface deleted)
+  'codemode', 'contextLayer',
   'claudeMd', 'mobileAccess', 'compareProviders',
 ] as const;
 

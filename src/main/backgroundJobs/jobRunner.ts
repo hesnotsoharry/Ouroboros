@@ -204,7 +204,7 @@ async function spawnJob(
   onEvent: (e: StreamJsonEvent) => void,
 ): Promise<SpawnResult> {
   const launch = await resolveClaudeArgs();
-  const env = buildBaseEnv({ ...buildProviderEnv('agentChat') });
+  const env = buildBaseEnv({ ...buildProviderEnv('terminal') });
   const { cols, rows } = resolveSpawnOptions({});
   const wins = BrowserWindow.getAllWindows();
   const spawnArgs: SpawnArgs = { sessionId, launch, env, cwd, cols, rows, prompt, onEvent };

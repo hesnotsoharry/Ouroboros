@@ -10,7 +10,6 @@
 import type { ApprovalResponse } from './approvalManager';
 import { generateClaudeMd } from './claudeMdGenerator';
 import { getConfigValue } from './config';
-import { getContextLayerController } from './contextLayer/contextLayerController';
 import { dispatchActivationEvent } from './extensions';
 import type { HookPayload } from './hooks';
 import { evaluatePreToolUse as blockLockfiles } from './hooks/blockLockfileEdits';
@@ -19,10 +18,7 @@ import { evaluatePreToolUse as blockSecrets } from './hooks/blockSecretWrites';
 import { evaluateStop } from './hooks/gotchaUpdateNudge';
 import type { HookDecision } from './hooks/hookDecision';
 import { evaluatePreToolUse as warnTestSuite } from './hooks/warnFullTestSuite';
-import { invalidateSnapshotCache as invalidateAgentChatCache } from './ipc-handlers/agentChat';
 import log from './logger';
-import { flushSession } from './orchestration/contextRankerTelemetry';
-import { trackSessionEnd } from './router/qualitySignalCollector';
 
 // ─── PreToolUse enforcement (Wave 50 Phase B) ────────────────────────────────
 
@@ -98,27 +94,15 @@ export function triggerClaudeMdGeneration(
 
 export function handleSessionStart(payload: HookPayload): void {
   dispatchActivationEvent('onSessionStart', { sessionId: payload.sessionId }).catch(() => {});
-  if (!payload.internal) {
-    getContextLayerController()?.onSessionStart();
-  }
 }
 
 export function handleSessionEnd(payload: HookPayload): void {
   dispatchActivationEvent('onSessionEnd', { sessionId: payload.sessionId }).catch(() => {});
-  // Wave 53b Phase B — flush ranker hit-rate summary for this session.
-  flushSession(payload.sessionId);
 }
 
 export function handleSessionStop(payload: HookPayload, sessionCwdMap: Map<string, string>): void {
   if (!payload.internal) {
-    getContextLayerController()?.onGitCommit();
-    invalidateAgentChatCache();
     triggerClaudeMdGeneration('post-session', payload, sessionCwdMap);
-    trackSessionEnd({
-      type: payload.type,
-      sessionId: payload.sessionId,
-      cwd: payload.cwd ?? sessionCwdMap.get(payload.sessionId),
-    });
     try {
       evaluateStop(payload);
     } catch (err) {

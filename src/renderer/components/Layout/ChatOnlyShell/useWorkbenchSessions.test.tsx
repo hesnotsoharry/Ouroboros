@@ -2,12 +2,11 @@
  * @vitest-environment jsdom
  */
 
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import { renderHook } from '@testing-library/react';
-import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AgentChatThreadRecord, SessionRecord } from '../../../types/electron';
-import { AgentChatStoreContext, createAgentChatStore } from '../../AgentChat/agentChatStore';
+import type { SessionRecord } from '../../../types/electron';
 import { useWorkbenchSessions } from './useWorkbenchSessions';
 
 vi.mock('../../SessionSidebar/useSessions', () => ({
@@ -193,39 +192,6 @@ describe('useWorkbenchSessions', () => {
       attention: { kind: 'approval' },
       threadStatus: 'running',
       linkedThreadId: 'thread-a',
-    });
-  });
-
-  it('reads chat-store thread state when thread overrides are not provided', () => {
-    const store = createAgentChatStore();
-    store.setState((state) => ({
-      ...state,
-      threads: [makeThread({ id: 'thread-live' })],
-      activeThread: makeThread({ id: 'thread-live' }),
-    }));
-
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <AgentChatStoreContext.Provider value={store}>{children}</AgentChatStoreContext.Provider>
-    );
-
-    const { result } = renderHook(
-      () =>
-        useWorkbenchSessions({
-          sessions: [
-            makeSession({
-              id: 'session-a',
-              projectRoot: '/workspace/alpha',
-              conversationThreadId: 'thread-live',
-            }),
-          ],
-        }),
-      { wrapper },
-    );
-
-    expect(result.current.items[0]).toMatchObject({
-      chatCount: 1,
-      hasActiveThread: true,
-      linkedThreadId: 'thread-live',
     });
   });
 

@@ -6,9 +6,8 @@
  * configSchemaTail.ts and other non-chat consumers can import them without
  * depending on the agentChat module.
  *
- * The resolver functions (resolveClaudeCliSettings, resolveCodexCliSettings)
- * and ResolvedAgentChatSettings remain in agentChat/settingsResolver.ts and
- * will be removed with the agentChat module in Phase D.
+ * Wave 100 Phase H: AGENT_CHAT_* constants removed (agentChatSettings config
+ * key cut along with the chat surface).
  */
 
 import type { ClaudeCliSettings, CodexCliSettings } from './config';
@@ -41,3 +40,4 @@ export const CODEX_CLI_SETTINGS_FALLBACK: CodexCliSettings = {
   skipGitRepoCheck: false,
   dangerouslyBypassApprovalsAndSandbox: false,
 };
+

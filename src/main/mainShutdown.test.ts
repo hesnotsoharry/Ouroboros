@@ -19,7 +19,6 @@ function recorder(name: string, async = false): (() => unknown) {
   return vi.fn(() => { calls.push(name); });
 }
 
-vi.mock('./agentChat/threadStore', () => ({ closeThreadStore: recorder('closeThreadStore') }));
 vi.mock('./claudeUsagePoller', () => ({ stopClaudeUsagePoller: recorder('stopClaudeUsagePoller', true) }));
 vi.mock('./costHistory', () => ({ closeCostHistoryDb: recorder('closeCostHistoryDb') }));
 vi.mock('./extensionHost/extensionHostProxy', () => ({
@@ -32,15 +31,8 @@ vi.mock('./mainStartup', () => ({
   // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
 }));
 // Wave 60 Phase E: mcpHost subsystem removed alongside internalMcpServer.
-vi.mock('./orchestration/contextDecisionWriter', () => ({
-  closeDecisionWriter: recorder('closeDecisionWriter', true),
-}));
-vi.mock('./orchestration/contextOutcomeWriter', () => ({
-  closeOutcomeWriter: recorder('closeOutcomeWriter', true),
-}));
-vi.mock('./orchestration/providers/codexAppServerProcess', () => ({
-  shutdownCodexAppServerProcesses: recorder('shutdownCodexAppServerProcesses', true),
-}));
+// contextDecisionWriter + contextOutcomeWriter mocks removed in Wave 100 Phase F
+//   (closeDecisionWriter/closeOutcomeWriter removed from mainShutdown during context-intelligence cut)
 vi.mock('./pipeAuth', () => ({ deleteTokenFile: recorder('deleteTokenFile') }));
 vi.mock('./research/correctionWriter', () => ({
   closeCorrectionWriter: recorder('closeCorrectionWriter', true),
@@ -48,8 +40,7 @@ vi.mock('./research/correctionWriter', () => ({
 vi.mock('./research/researchOutcomeWriter', () => ({
   closeResearchOutcomeWriter: recorder('closeResearchOutcomeWriter', true),
 }));
-vi.mock('./router/qualitySignalCollector', () => ({ clearQualityTimers: recorder('clearQualityTimers') }));
-vi.mock('./router/retrainTrigger', () => ({ stopObserving: recorder('stopRetrainObserver') }));
+// router/qualitySignalCollector + router/retrainTrigger mocks removed in Wave 100 Phase G (router CUT)
 vi.mock('./session/sessionStartup', () => ({ closeSessionServices: recorder('closeSessionServices') }));
 vi.mock('./telemetry', () => ({
   closeOutcomeObserver: recorder('closeOutcomeObserver'),
@@ -69,37 +60,36 @@ describe('performWillQuitShutdown', () => {
     await performWillQuitShutdown();
 
     expect(calls).toContain('closeSessionServices');
-    expect(calls).toContain('closeDecisionWriter');
+    // closeDecisionWriter removed in Wave 100 Phase F (context-intelligence cut)
+    expect(calls).toContain('closeResearchOutcomeWriter');
     expect(calls).toContain('closeTelemetryStore');
     expect(calls).toContain('stopClaudeUsagePoller');
     expect(calls).toContain('cleanupIpcHandlers');
-    expect(calls).toContain('closeThreadStore');
+    // closeThreadStore removed in Wave 100 Phase D (agentChat deleted)
     // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
-    expect(calls).toContain('shutdownCodexAppServerProcesses');
+    // shutdownCodexAppServerProcesses removed in Wave 100 Phase E (chat adapters deleted)
     expect(calls).toContain('shutdownExtensionHost');
 
-    // Writers run before the sync stores close (telemetry depends on writers being flushed).
-    expect(calls.indexOf('closeDecisionWriter')).toBeLessThan(calls.indexOf('closeTelemetryStore'));
+    // Research writer runs before the sync stores close (telemetry depends on writers being flushed).
+    expect(calls.indexOf('closeResearchOutcomeWriter')).toBeLessThan(calls.indexOf('closeTelemetryStore'));
     // IPC cleanup runs before subsystem disposal.
-    expect(calls.indexOf('cleanupIpcHandlers')).toBeLessThan(calls.indexOf('shutdownCodexAppServerProcesses'));
+    expect(calls.indexOf('cleanupIpcHandlers')).toBeLessThan(calls.indexOf('shutdownExtensionHost'));
   });
 
   it('swallows subsystem errors via tryShutdown so later steps still run', async () => {
-    // codexAppServer throws; extension host must still run.
-    const codexMod = await import('./orchestration/providers/codexAppServerProcess');
-    (codexMod.shutdownCodexAppServerProcesses as ReturnType<typeof vi.fn>).mockImplementationOnce(
+    // extensionHost throws; shutdown must still complete without throwing.
+    const extMod = await import('./extensionHost/extensionHostProxy');
+    (extMod.shutdownExtensionHost as ReturnType<typeof vi.fn>).mockImplementationOnce(
       async () => {
-        calls.push('shutdownCodexAppServerProcesses');
-        throw new Error('codex dispose failed');
+        calls.push('shutdownExtensionHost');
+        throw new Error('extension host dispose failed');
       },
     );
 
     const { performWillQuitShutdown } = await import('./mainShutdown');
     await expect(performWillQuitShutdown()).resolves.toBeUndefined();
 
-    // Extension host still ran after codex threw.
-    expect(calls.indexOf('shutdownCodexAppServerProcesses')).toBeLessThan(
-      calls.indexOf('shutdownExtensionHost'),
-    );
+    // Shutdown completed despite the extension host throwing.
+    expect(calls).toContain('shutdownExtensionHost');
   });
 });

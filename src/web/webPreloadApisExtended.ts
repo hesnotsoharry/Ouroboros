@@ -1,7 +1,7 @@
 /**
  * webPreloadApisExtended.ts — electronAPI namespace builders (third part).
  * Covers: ecosystem, research, marketplace additions, agentChat additions,
- * agentConflict, system2, router, workspace, backgroundJobs.
+ * agentConflict, system2, workspace, backgroundJobs.
  *
  * Mirrors Electron preload; all calls route through the WS transport.
  * Desktop-only decisions documented in roadmap/docs/mobile-scope.md.
@@ -96,14 +96,6 @@ export function buildSystem2Api(t: WebSocketTransport) {
   return {
     onIndexProgress: (cb: (event: unknown) => void) =>
       t.on('system2:indexProgress', cb as (v: unknown) => void),
-  };
-}
-
-// ─── Router API ───────────────────────────────────────────────────────────────
-
-export function buildRouterApi(t: WebSocketTransport) {
-  return {
-    getStats: () => t.invoke('router:getStats'),
   };
 }
 

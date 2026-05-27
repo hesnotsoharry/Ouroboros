@@ -1,14 +1,11 @@
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import React, { useMemo, useState } from 'react';
 
-import type {
-  AgentChatThreadRecord,
-  ApprovalRequest,
-  SessionRecord,
-} from '../../../types/electron';
+import type { ApprovalRequest, SessionRecord } from '../../../types/electron';
 import {
   getApprovalRequestKey,
   getApprovalRequestPreview,
-} from '../../AgentChat/approvalRequestPreview';
+} from '../../../utils/approvalRequestPreview';
 
 interface WorkbenchApprovalPromptProps {
   requests: ApprovalRequest[];

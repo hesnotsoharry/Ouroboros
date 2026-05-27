@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 
-import { getErrorMessage } from '../agentChat/utils';
 import { clearCostHistory, type CostEntry, getCostHistory, saveCostEntry } from '../costHistory';
+import { getErrorMessage } from '../utils';
 
 type ChannelList = string[];
 type IpcHandler = Parameters<typeof ipcMain.handle>[1];

@@ -5,9 +5,9 @@
  * Uses design tokens exclusively — no hex values.
  */
 
+import type { GlobalCostRollupRecord } from '@shared/types/agentChatResults';
 import React from 'react';
 
-import type { GlobalCostRollupRecord } from '../../types/electron';
 import { formatCost, formatTokenCount } from '../AgentMonitor/costCalculator';
 
 // ─── Card primitive ───────────────────────────────────────────────────────────

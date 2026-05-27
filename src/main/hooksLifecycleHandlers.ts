@@ -10,7 +10,6 @@
 
 import type { PermissionContext } from '@shared/types/permissionContext';
 
-import { getContextLayerController } from './contextLayer/contextLayerController';
 import log from './logger';
 import { getEditProvenanceStore } from './orchestration/editProvenance';
 
@@ -103,7 +102,6 @@ export function handleCwdChanged(
   if (!newCwd) return;
   sessionCwdMap.set(payload.sessionId, newCwd);
   log.info(`[hooks] cwd_changed session=${payload.sessionId} cwd=${newCwd}`);
-  getContextLayerController()?.onCwdChanged?.(newCwd);
 }
 
 /**
@@ -116,7 +114,6 @@ export function handleFileChanged(payload: {
   data?: Record<string, unknown>;
 }): void {
   if (payload.internal) return;
-  getContextLayerController()?.onFileChanged?.();
   const filePath = payload.data?.['file'] as string | undefined;
   if (filePath) {
     setImmediate(() => {

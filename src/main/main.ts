@@ -15,8 +15,6 @@ import { installHooks } from './hookInstaller';
 import { startHooksServer, stopHooksServer } from './hooks';
 import { startIdeToolServer, stopIdeToolServer } from './ideToolServer';
 import { buildInjectOptions, injectIntoProjectSettings } from './internalMcp';
-// prettier-ignore
-import { loadPersistedContextCache, startContextRefreshTimer, stopContextRefreshTimer, terminateContextWorker } from './ipc-handlers/agentChat';
 import { startJankDetector, stopJankDetector } from './jankDetector';
 import log from './logger';
 import { performWillQuitShutdown } from './mainShutdown';
@@ -24,10 +22,6 @@ import { performWillQuitShutdown } from './mainShutdown';
 import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
 import { registerAllTelemetryDrainHandlers } from './mainTelemetryHandlers';
 import { buildApplicationMenu } from './menu';
-import { initDecisionWriter } from './orchestration/contextDecisionWriter';
-import { initOutcomeWriter } from './orchestration/contextOutcomeWriter';
-import { startContextRetrainTriggerIfEnabled } from './orchestration/contextRetrainStartup';
-import { killAllWarm } from './orchestration/providers/claudeWarmProcessManager';
 // prettier-ignore
 import { cleanupPerfSubscriber, clearPerfSubscribers, initializePerfMetrics, markStartup, startPerfMetrics as startManagedPerfMetrics, stopPerfMetrics as stopManagedPerfMetrics } from './perfMetrics';
 import { generatePipeTokens, setTokenFilePath } from './pipeAuth';
@@ -37,7 +31,6 @@ import { killAllPtySessions } from './pty';
 import { initCorrectionWriter } from './research/correctionWriter';
 import { scheduleResearchCachePurge } from './research/researchCacheScheduler';
 import { initResearchOutcomeWriter } from './research/researchOutcomeWriter';
-import { loadRetrainedWeightsIfAvailable, observeDatasetGrowth } from './router/retrainTrigger';
 import { fireBootRestore } from './rulesAndSkills/postSpawnRestore';
 import { initSessionServices } from './session/sessionStartup';
 import { runAllMigrations } from './storage/migrate';
@@ -170,15 +163,6 @@ function registerWindowLifecycleHandlers(): void {
   });
 }
 
-function startContextLayerAsync(defaultRoot: string | undefined): void {
-  // Graph and contextLayer/repoMap removed in Wave 22.
-  // Preserve agentChat context warm-load so chat still functions.
-  if (defaultRoot) {
-    loadPersistedContextCache();
-    startContextRefreshTimer([defaultRoot]);
-  }
-}
-
 function startWebServerAsync(): void {
   const webPort = (getConfigValue('webAccessPort') as number | undefined) ?? 7890;
   const outMainDir = __dirname.endsWith('chunks') ? path.dirname(__dirname) : __dirname;
@@ -197,8 +181,6 @@ async function initTelemetryAndWriters(ud: string): Promise<void> {
   await runStartupStep('[main] telemetry store init', () => initTelemetryStore(ud));
   const store = getTelemetryStore();
   if (store) initOutcomeObserver(store);
-  initDecisionWriter(ud);
-  initOutcomeWriter(ud);
   initResearchOutcomeWriter(ud);
   initCorrectionWriter(ud);
   initEditProvenance(ud);
@@ -206,14 +188,9 @@ async function initTelemetryAndWriters(ud: string): Promise<void> {
   scheduleResearchCachePurge(ud);
   registerAllTelemetryDrainHandlers();
   await runParityQueueDrain();
-  // Wave 70 Phase A2: wire the context-ranker auto-retrain trigger. Default
-  // on; gated by `contextRanker.autoRetrainEnabled`. Required to drive Wave 31's
-  // soak gate forward — the shadow-mode classifier was scoring against frozen
-  // bundled defaults pre-Wave-70.
-  startContextRetrainTriggerIfEnabled(ud);
 }
 
-async function initWindowsAndServices(defaultRoot: string | undefined): Promise<void> {
+async function initWindowsAndServices(): Promise<void> {
   initializePerfMetrics({ getActiveWindows: getAllActiveWindows });
   const restored = restoreWindowSessions();
   mainWindow = restored[0] ?? createWindow();
@@ -232,10 +209,7 @@ async function initWindowsAndServices(defaultRoot: string | undefined): Promise<
   startTokenRefreshManager();
   registerWindowLifecycleHandlers();
   void seedGithubTokenWithRetry();
-  startContextLayerAsync(defaultRoot);
   startWebServerAsync();
-  loadRetrainedWeightsIfAvailable();
-  observeDatasetGrowth();
 }
 
 async function initializeApplication(): Promise<void> {
@@ -251,7 +225,7 @@ async function initializeApplication(): Promise<void> {
   setTokenFilePath(ud);
   generatePipeTokens();
   installHandlerCapture();
-  await initWindowsAndServices(defaultRoot);
+  await initWindowsAndServices();
   markStartup('services-ready');
 }
 
@@ -261,8 +235,6 @@ app.whenReady().then(initializeApplication);
 app.on('window-all-closed', async () => {
   stopJankDetector();
   stopTokenRefreshManager();
-  stopContextRefreshTimer();
-  await terminateContextWorker();
   clearPerfSubscribers();
   stopManagedPerfMetrics();
   await stopWebServer();
@@ -272,7 +244,6 @@ app.on('window-all-closed', async () => {
   // injects the standalone entry; Claude Code spawns the standalone on
   // demand and owns its lifecycle.
   killAllPtySessions();
-  killAllWarm();
   if (process.platform !== 'darwin') app.quit();
 });
 

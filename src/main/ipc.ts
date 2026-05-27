@@ -10,10 +10,8 @@ import { BrowserWindow, ipcMain, IpcMainInvokeEvent } from 'electron';
 
 import { startApprovalManagerCleanup, stopApprovalManagerCleanup } from './approvalManager';
 import {
-  cleanupAgentChatHandlers,
   cleanupCompareProvidersHandlers,
   cleanupConfigWatcher,
-  cleanupContextRankerDashboardHandlers,
   cleanupDispatchHandlers,
   cleanupFileWatchers,
   cleanupFlowTracerHandlers,
@@ -34,20 +32,17 @@ import {
   closeEmbeddingStore,
   ensureSchedulerInit,
   lspStopAll,
-  registerAgentChatHandlers,
   registerAgentConflictHandlers,
   registerAiHandlers,
   registerAiStreamHandlers,
   registerAppHandlers,
   registerAuthHandlers,
   registerBackgroundJobsHandlers,
-  registerChatStateNewPathHandlers,
   registerCheckpointHandlers,
   registerClaudeMdHandlers,
   registerCompareProvidersHandlers,
   registerConfigHandlers,
   registerContextHandlers,
-  registerContextRankerDashboardHandlers,
   registerDispatchHandlers,
   registerEcosystemHandlers,
   registerEmbeddingHandlers,
@@ -72,7 +67,6 @@ import {
   registerResearchControlHandlers,
   registerResearchDashboardHandlers,
   registerResearchHandlers,
-  registerRouterStatsHandlers,
   registerRulesAndSkillsHandlers,
   registerSearchHandlers,
   registerSessionCrudHandlers,
@@ -115,7 +109,6 @@ function registerCoreDomainHandlers(win: BrowserWindow): string[] {
     ...safeRegister('files', () => registerFileHandlers(senderWindow)),
     ...safeRegister('git', () => registerGitHandlers(senderWindow)),
     ...safeRegister('app', () => registerAppHandlers(senderWindow)),
-    ...safeRegister('agentChat', () => registerAgentChatHandlers()),
     ...safeRegister('sessionCrud', () => registerSessionCrudHandlers()),
     ...safeRegister('folderCrud', () => registerFolderCrudHandlers()),
     ...safeRegister('pinnedContext', () => registerPinnedContextHandlers()),
@@ -123,7 +116,6 @@ function registerCoreDomainHandlers(win: BrowserWindow): string[] {
     ...safeRegister('research', () => registerResearchHandlers()),
     ...safeRegister('researchControl', () => registerResearchControlHandlers()),
     ...safeRegister('researchDashboard', () => registerResearchDashboardHandlers()),
-    ...safeRegister('contextRankerDashboard', () => registerContextRankerDashboardHandlers()),
     ...safeRegister('sessions', () => registerSessionHandlers(senderWindow)),
     ...safeRegister('systemPrompt', () => registerSystemPromptHandlers()),
     ...safeRegister('misc', () => registerMiscHandlers(senderWindow, win)),
@@ -144,7 +136,6 @@ function registerAuxDomainHandlers(): string[] {
     ...safeRegister('ai', () => registerAiHandlers()),
     ...safeRegister('aiStream', () => registerAiStreamHandlers()),
     ...safeRegister('embedding', () => registerEmbeddingHandlers(senderWindow)),
-    ...safeRegister('routerStats', () => registerRouterStatsHandlers()),
     ...safeRegister('spec', () => registerSpecHandlers()),
     ...safeRegister('checkpoint', () => registerCheckpointHandlers()),
     ...safeRegister('backgroundJobs', () => registerBackgroundJobsHandlers()),
@@ -162,7 +153,6 @@ function registerAuxDomainHandlers(): string[] {
     ...safeRegister('marketplace', () => registerMarketplaceHandlers()),
     ...safeRegister('memory', () => registerMemoryHandlers()),
     ...safeRegister('flowTracer', () => registerFlowTracerIpcHandlers()),
-    ...safeRegister('chatStateNewPath', () => registerChatStateNewPathHandlers()),
   ];
 }
 
@@ -179,43 +169,6 @@ async function withCodeModeManager<T>(
   } catch (err: unknown) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
-}
-
-function registerOrchestrationStubHandlers(channels: string[]): void {
-  ipcMain.handle('orchestration:previewContext', async (_event, request: unknown) => {
-    try {
-      const { buildContextPacket } = await import('./orchestration/contextPacketBuilder');
-      const { buildRepoFacts } = await import('./orchestration/repoIndexer');
-      const { buildLspDiagnosticsSummary } = await import('./orchestration/lspDiagnosticsProvider');
-      const req = request as { workspaceRoots: string[] };
-      const repoFacts = await buildRepoFacts(req.workspaceRoots, {
-        diagnosticsProvider: buildLspDiagnosticsSummary,
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return buildContextPacket({ request: req as any, repoFacts });
-    } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
-  });
-
-  ipcMain.handle('orchestration:buildContextPacket', async (_event, request: unknown) => {
-    try {
-      const { buildContextPacket } = await import('./orchestration/contextPacketBuilder');
-      const { buildRepoFacts } = await import('./orchestration/repoIndexer');
-      const { buildLspDiagnosticsSummary } = await import('./orchestration/lspDiagnosticsProvider');
-      const req = request as { workspaceRoots: string[] };
-      const repoFacts = await buildRepoFacts(req.workspaceRoots, {
-        diagnosticsProvider: buildLspDiagnosticsSummary,
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return buildContextPacket({ request: req as any, repoFacts });
-    } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) };
-    }
-  });
-
-  // NOTE: orchestration:cancelTask intentionally removed — see ipc.ts history.
-  channels.push('orchestration:previewContext', 'orchestration:buildContextPacket');
 }
 
 function registerCodeModeHandlers(channels: string[]): void {
@@ -284,7 +237,6 @@ export function registerIpcHandlers(win: BrowserWindow): () => void {
   allChannels = registerDomainHandlers(win);
   registerCodeModeHandlers(allChannels);
   registerProviderHandlers(allChannels);
-  registerOrchestrationStubHandlers(allChannels);
   startApprovalManagerCleanup();
   markStartup('ipc-ready');
 
@@ -302,7 +254,6 @@ export function registerIpcHandlers(win: BrowserWindow): () => void {
 export async function cleanupIpcHandlers(): Promise<void> {
   cleanupFileWatchers();
   cleanupConfigWatcher();
-  await cleanupAgentChatHandlers();
   cleanupCompareProvidersHandlers();
   cleanupSessionCrudHandlers();
   cleanupFolderCrudHandlers();
@@ -311,7 +262,6 @@ export async function cleanupIpcHandlers(): Promise<void> {
   cleanupResearchHandlers();
   cleanupResearchControlHandlers();
   cleanupResearchDashboardHandlers();
-  cleanupContextRankerDashboardHandlers();
   cleanupTelemetryHandlers();
   cleanupWorktreeHandlers();
   cleanupWorkspaceReadListHandlers();

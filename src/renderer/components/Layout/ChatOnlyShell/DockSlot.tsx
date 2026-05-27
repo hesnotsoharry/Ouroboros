@@ -3,7 +3,7 @@
  * Wave 89 Phase 4c: per-slot minimize/expand affordance in SlotHeader.
  * Wave 94 Phase C: tab strip replaces label row when sessions exist (ADR Decision 5).
  *
- * slot: 'primary' — top slot; Wave 90 home for interactive claude.
+ * slot: 'primary' — top slot.
  * slot: 'secondary' — bottom slot; dev shell.
  *
  * Phase 4c collapse behavior:

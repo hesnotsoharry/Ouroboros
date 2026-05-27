@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 
-import { getErrorMessage } from '../agentChat/utils';
+import { getErrorMessage } from '../utils';
 import { readShellHistory } from './miscSymbolSearch';
 import { getOrFetchShellHistory } from './shellHistoryCache';
 

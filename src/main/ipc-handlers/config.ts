@@ -10,7 +10,6 @@ import path from 'path';
 
 import { hasSecureKey, setSecureKey } from '../auth/secureKeyStore';
 import { AppConfig, getConfig, getConfigValue, setConfigValue } from '../config';
-import type { ContextLayerConfig } from '../contextLayer/contextLayerTypes';
 import log from '../logger';
 import { broadcastToWebClients } from '../web/webServer';
 import { IMPORTABLE_KEYS } from './configHelpers';
@@ -128,20 +127,6 @@ function handleConfigSet(_event: IpcMainInvokeEvent, key: unknown, value: unknow
     const safeValue = interceptSecrets(key as string, value);
     setConfigValue(key as keyof AppConfig, safeValue as AppConfig[keyof AppConfig]);
     notifyExternalConfigChange(getConfig());
-    if (key === 'contextLayer') {
-      import('../contextLayer/contextLayerController')
-        .then(({ getContextLayerController }) => {
-          const ctrl = getContextLayerController();
-          if (ctrl) {
-            ctrl.onConfigChange(value as ContextLayerConfig).catch((err: unknown) => {
-              log.warn('onConfigChange failed:', err);
-            });
-          }
-        })
-        .catch((err) => {
-          log.warn('failed to import controller:', err);
-        });
-    }
     return { success: true };
   } catch (error) {
     return { success: false, error: toErrorMessage(error) };

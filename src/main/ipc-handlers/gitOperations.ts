@@ -8,11 +8,9 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { getContextLayerController } from '../contextLayer/contextLayerController';
 import { dispatchActivationEvent } from '../extensions';
 import log from '../logger';
 import { gitExec, gitStdout, MB } from '../util/gitExec';
-import { invalidateSnapshotCache as invalidateAgentChatCache } from './agentChat';
 import {
   getChangedFilesBetween,
   nonEmptyLines,
@@ -224,8 +222,6 @@ export function gitCommit(root: string, message: string) {
       dispatchActivationEvent('onGitCommit', { root, message }).catch((error) => {
         log.error('Failed to dispatch onGitCommit activation event:', error);
       });
-      getContextLayerController()?.onGitCommit();
-      invalidateAgentChatCache();
       return {};
     },
     { gitError: true },

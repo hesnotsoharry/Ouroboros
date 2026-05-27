@@ -210,7 +210,8 @@ describe('Layout persistence (useChatWorkbenchLayout)', () => {
 // ── 3. All drawer tabs render without crashing ────────────────────────────────
 describe('Drawer tab content panels — all five tabs mount real components', () => {
   // Wave 95 Phase H: 'review' tab removed — diff review is status-bar pull only.
-  const tabs: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'rules', 'monitor'];
+  // Wave 100: 'rules' tab removed — WorkbenchRulesPanel deleted with AgentChat surface.
+  const tabs: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'monitor'];
 
   it.each(tabs)('tab "%s" mounts without crashing', (tab) => {
     render(<ChatWorkbenchUtilityDrawer activeTab={tab} onSelectTab={vi.fn()} onClose={vi.fn()} />);
@@ -219,13 +220,6 @@ describe('Drawer tab content panels — all five tabs mount real components', ()
     // The active tab button must be highlighted
     const btn = screen.getByTestId(`chat-workbench-utility-tab-${tab}`);
     expect(btn.className).toContain('bg-surface-panel');
-  });
-
-  it('rules tab renders workbench-rules-panel (real WorkbenchRulesPanel)', () => {
-    render(
-      <ChatWorkbenchUtilityDrawer activeTab="rules" onSelectTab={vi.fn()} onClose={vi.fn()} />,
-    );
-    expect(screen.getByTestId('workbench-rules-panel')).toBeDefined();
   });
 
   it('activity tab renders timeline empty state (real WorkbenchTimelinePanel)', () => {

@@ -4,14 +4,12 @@
  */
 
 export { cleanupPairingHandlers, registerPairingHandlers } from '../mobileAccess/pairingHandlers';
-export { cleanupAgentChatHandlers, registerAgentChatHandlers } from './agentChat';
 export { registerAgentConflictHandlers } from './agentConflict';
 export { registerAiHandlers } from './aiHandlers';
 export { registerAiStreamHandlers } from './aiStreamHandler';
 export { registerAppHandlers } from './app';
 export { registerAuthHandlers } from './auth';
 export { ensureSchedulerInit, registerBackgroundJobsHandlers } from './backgroundJobs';
-export { registerChatStateNewPathHandlers } from './chatStateNewPath';
 export { registerCheckpointHandlers } from './checkpoint';
 export { registerClaudeMdHandlers } from './claudeMd';
 export {
@@ -20,10 +18,6 @@ export {
 } from './compareProvidersHandlers';
 export { cleanupConfigWatcher, registerConfigHandlers } from './config';
 export { registerContextHandlers } from './context';
-export {
-  cleanupContextRankerDashboardHandlers,
-  registerContextRankerDashboardHandlers,
-} from './contextRankerDashboardHandlers';
 export { registerEcosystemHandlers } from './ecosystemHandlers';
 export { closeEmbeddingStore, registerEmbeddingHandlers } from './embeddingHandlers';
 export { registerExtensionStoreHandlers } from './extensionStore';
@@ -49,7 +43,6 @@ export {
   cleanupResearchDashboardHandlers,
   registerResearchDashboardHandlers,
 } from './researchDashboardHandlers';
-export { registerRouterStatsHandlers } from './routerStats';
 export { registerRulesAndSkillsHandlers } from './rulesAndSkills';
 export { registerSearchHandlers } from './search';
 export { cleanupSessionCrudHandlers, registerSessionCrudHandlers } from './sessionCrud';

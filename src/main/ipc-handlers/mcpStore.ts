@@ -10,9 +10,9 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
-import { getErrorMessage } from '../agentChat/utils';
 import { store } from '../config';
 import { readSettingsFileWithRetry } from '../shared/settingsFileUtils';
+import { getErrorMessage } from '../utils';
 import {
   type McpRegistryPackage,
   type McpRegistryServer,

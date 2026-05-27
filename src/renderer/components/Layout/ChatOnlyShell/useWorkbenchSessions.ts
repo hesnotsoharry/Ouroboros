@@ -1,12 +1,9 @@
-import { useContext, useMemo } from 'react';
-import { useStore } from 'zustand';
+import type { AgentChatThreadRecord } from '@shared/types/agentChat';
+import { useMemo } from 'react';
 
-import type { AgentChatThreadRecord, SessionRecord } from '../../../types/electron';
-import { AgentChatStoreContext, createAgentChatStore } from '../../AgentChat/agentChatStore';
+import type { SessionRecord } from '../../../types/electron';
 import { useSessions } from '../../SessionSidebar/useSessions';
 import type { TerminalSession } from '../../Terminal/TerminalTabs';
-import type { WorkbenchAttentionState } from './useWorkbenchAttention';
-import { resolveSessionThread } from './useWorkbenchAttention';
 import {
   buildThreadCounts,
   buildThreadIndex,
@@ -16,7 +13,37 @@ import {
   sessionStatus,
 } from './useWorkbenchSessions.helpers';
 
-const FALLBACK_CHAT_STORE = createAgentChatStore();
+// Inlined from deleted useWorkbenchAttention.ts (Wave 100 — attention module removed)
+export interface WorkbenchAttentionState {
+  kind: string;
+  rank: number;
+  label: string | null;
+  tone: 'neutral' | 'accent' | 'warning' | 'error' | 'success';
+  isSticky: boolean;
+}
+
+function resolveSessionThread(
+  session: SessionRecord,
+  index: ReturnType<typeof buildThreadIndex>,
+  activeSessionId: string | null,
+): AgentChatThreadRecord | null {
+  if (session.conversationThreadId) {
+    return index.byConversationId.get(session.conversationThreadId) ?? null;
+  }
+  const linked = index.bySessionId.get(session.id)?.[0];
+  if (linked) return linked;
+  const rooted = index.byWorkspaceRoot.get(session.projectRoot)?.[0];
+  if (rooted) return rooted;
+  if (
+    session.id === activeSessionId &&
+    index.activeThread &&
+    index.activeThread.workspaceRoot === session.projectRoot
+  ) {
+    return index.activeThread;
+  }
+  return null;
+}
+
 const EMPTY_TERMINAL_SESSIONS: TerminalSession[] = [];
 const NONE_ATTENTION: WorkbenchAttentionState = {
   kind: 'none',
@@ -185,12 +212,10 @@ function useSessionsBase(
 function useChatStoreBase(
   options: UseWorkbenchSessionsOptions,
 ): Pick<ResolvedSessionOptions, 'threads' | 'activeThreadId'> {
-  const chatStore = useContext(AgentChatStoreContext) ?? FALLBACK_CHAT_STORE;
-  const storeThreads = useStore(chatStore, (state) => state.threads);
-  const storeActiveThread = useStore(chatStore, (state) => state.activeThread);
+  // Wave 100: AgentChat store removed. Threads always empty; activeThreadId from options only.
   return {
-    threads: options.threads ?? storeThreads,
-    activeThreadId: options.activeThreadId ?? storeActiveThread?.id ?? null,
+    threads: options.threads ?? [],
+    activeThreadId: options.activeThreadId ?? null,
   };
 }
 

@@ -7,7 +7,6 @@
  * dispose protocol in `codebaseGraph/indexingWorker.ts` for context.
  */
 
-import { closeThreadStore } from './agentChat/threadStore';
 import { stopClaudeUsagePoller } from './claudeUsagePoller';
 import { disableCodeModeUserLevel } from './codemode/codemodeStartup';
 import { closeCostHistoryDb } from './costHistory';
@@ -16,15 +15,10 @@ import { cleanupIpcHandlers } from './ipc';
 import log from './logger';
 import { closeEditProvenance } from './mainStartup';
 // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
-import { closeDecisionWriter } from './orchestration/contextDecisionWriter';
-import { closeOutcomeWriter } from './orchestration/contextOutcomeWriter';
-import { stopContextRetrainTrigger } from './orchestration/contextRetrainStartup';
-import { shutdownCodexAppServerProcesses } from './orchestration/providers/codexAppServerProcess';
+// closeDecisionWriter/closeOutcomeWriter/stopContextRetrainTrigger removed in Wave 100 Phase F (context-intelligence cut)
 import { deleteTokenFile } from './pipeAuth';
 import { closeCorrectionWriter } from './research/correctionWriter';
 import { closeResearchOutcomeWriter } from './research/researchOutcomeWriter';
-import { clearQualityTimers } from './router/qualitySignalCollector';
-import { stopObserving as stopRetrainObserver } from './router/retrainTrigger';
 import { closeSessionServices } from './session/sessionStartup';
 import { closeOutcomeObserver, closeTelemetryStore } from './telemetry';
 
@@ -37,8 +31,6 @@ async function tryShutdown(label: string, fn: () => Promise<void>): Promise<void
 }
 
 async function closeWriters(): Promise<void> {
-  await closeDecisionWriter();
-  await closeOutcomeWriter();
   await closeResearchOutcomeWriter();
   await closeCorrectionWriter();
 }
@@ -47,14 +39,11 @@ function closeSyncStores(): void {
   closeOutcomeObserver();
   closeTelemetryStore();
   closeEditProvenance();
-  stopRetrainObserver();
-  stopContextRetrainTrigger();
-  clearQualityTimers();
 }
 
 async function disposeSubsystems(): Promise<void> {
   // codebase-graph shutdown removed in Wave 22 (codebaseGraph deleted)
-  await tryShutdown('codex-app-server', shutdownCodexAppServerProcesses);
+  // codex-app-server shutdown removed in Wave 100 Phase E (chat adapters deleted)
   await tryShutdown('extension-host', shutdownExtensionHost);
   // Wave 60 Phase E: no legacy MCP host cleanup remains here. The
   // standalone server is spawned and owned by Claude Code, not the IDE.
@@ -68,7 +57,6 @@ export async function performWillQuitShutdown(): Promise<void> {
   await stopClaudeUsagePoller();
   await cleanupIpcHandlers();
   closeCostHistoryDb();
-  closeThreadStore();
   deleteTokenFile();
   await disposeSubsystems();
 }

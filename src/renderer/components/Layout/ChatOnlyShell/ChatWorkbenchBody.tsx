@@ -3,7 +3,6 @@ import React, { useEffect } from 'react';
 import { WORKBENCH_NEW_SESSION_EVENT } from '../../../hooks/appEventNames';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import type { UseTerminalSessionsReturn } from '../../../hooks/useTerminalSessions';
-import { useAgentChatStoreContext } from '../../AgentChat/agentChatStore';
 import { AgentCompletionIndicatorsProvider } from './AgentCompletionIndicatorsContext';
 import {
   useActiveApprovalSessionIds,
@@ -39,19 +38,13 @@ type WorkbenchHandlersResult = ReturnType<typeof useWorkbenchHandlers>;
 
 interface RailSlotProps {
   state: WorkbenchState;
-  handlers: WorkbenchHandlersResult;
 }
 
-function RailSlot({ state, handlers }: RailSlotProps): React.ReactElement | null {
+function RailSlot({ state }: RailSlotProps): React.ReactElement | null {
   if (!state.layout.railOpen) return null;
   return (
     <TwoTierRailSurface
       layout={state.layout}
-      sessionsState={state.sessionsState}
-      threads={state.threads}
-      approvalRequests={state.approvalRequests}
-      compare={state.compare}
-      handlers={handlers}
       dock={state.dock}
     />
   );
@@ -125,10 +118,8 @@ function useNewSessionMenuListener(
 }
 
 function useBodyContent(props: ChatWorkbenchBodyProps): BodyContentProps {
-  const selectThread = useAgentChatStoreContext((s) => s.onSelectThread);
-  const reloadThreads = useAgentChatStoreContext((s) => s.reloadThreads);
   const state = useWorkbenchContextState(props.layout, props.dock);
-  const handlers = useWorkbenchHandlers(state.activation, selectThread, reloadThreads);
+  const handlers = useWorkbenchHandlers(state.activation);
   const activeApprovalSessionIds = useActiveApprovalSessionIds(state.sessionsState.activeSessionId);
   const overlayWidths = useOverlayDrawerWidths();
   useNewSessionMenuListener(handlers.handleCreateSession, props.layout.activeProject);
@@ -168,7 +159,7 @@ function DesktopBody({
         sessionsState={state.sessionsState}
         threads={state.threads}
       />
-      <RailSlot state={state} handlers={handlers} />
+      <RailSlot state={state} />
       <WorkbenchMainColumn
         layout={state.layout}
         surfacePolicy={state.surfacePolicy}
@@ -205,18 +196,12 @@ function MobileBody({
         overlayWidths={overlayWidths}
         onActiveSessionChange={onActiveSessionChange}
       />
-      <MobileOverlays state={state} handlers={handlers} />
+      <MobileOverlays state={state} />
     </div>
   );
 }
 
-function MobileOverlays({
-  state,
-  handlers,
-}: {
-  state: WorkbenchState;
-  handlers: WorkbenchHandlersResult;
-}): React.ReactElement {
+function MobileOverlays({ state }: { state: WorkbenchState }): React.ReactElement {
   const closeRail = (): void => state.layout.setRailOpen(false);
   const closeRightPane = (): void => {
     state.surfacePolicy.closeUtility();
@@ -230,7 +215,7 @@ function MobileOverlays({
         label="Workbench rail"
       >
         <div className="flex h-full w-full">
-          <RailSlot state={state} handlers={handlers} />
+          <RailSlot state={state} />
         </div>
       </MobileOverlay>
       <MobileOverlay
@@ -257,7 +242,6 @@ function MobileRightPaneContent({ state }: { state: WorkbenchState }): React.Rea
       onSelectUtilityTab={state.layout.setActiveUtilityTab}
       onSelectView={state.layout.setRightPaneView}
       onClose={handleClose}
-      activeProject={state.layout.activeProject}
     />
   );
 }

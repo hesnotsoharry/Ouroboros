@@ -1,8 +1,5 @@
 export type { ChatOnlyDiffOverlayProps } from './ChatOnlyDiffOverlay';
 export { ChatOnlyDiffOverlay } from './ChatOnlyDiffOverlay';
-export { ChatOnlyHeaderControls } from './ChatOnlyHeaderControls';
-export type { ChatOnlySessionDrawerProps } from './ChatOnlySessionDrawer';
-export { ChatOnlySessionDrawer } from './ChatOnlySessionDrawer';
 export { ChatOnlyShell } from './ChatOnlyShell';
 export { ChatOnlyShellWrapper } from './ChatOnlyShellWrapper';
 export type { ChatOnlyStatusBarProps } from './ChatOnlyStatusBar';

@@ -4,7 +4,9 @@
  *
  * Currently handles:
  * - CLAUDE.md generation (claudeMd:statusChange)
- * - Context layer summarization (contextLayer:progress)
+ *
+ * Wave 100 Phase H: contextLayer:progress subscription removed
+ * (ContextLayerAPI cut along with the context-layer module).
  */
 
 import type { MutableRefObject } from 'react';
@@ -76,54 +78,7 @@ function handleClaudeMdStatus(
   }
 }
 
-function useContextLayerProgress(ctx: ToastCtx): void {
-  const idRef = useRef<string | null>(null);
-  const { startProgress, updateProgress, completeProgress } = ctx;
-  const ctxRef = useRef(ctx);
-  ctxRef.current = ctx;
-  useEffect(() => {
-    const api = window.electronAPI?.contextLayer;
-    if (!api?.onProgress) return;
-    return api.onProgress((payload) => {
-      handleContextLayerPayload(payload, idRef, ctxRef.current);
-    });
-  }, [startProgress, updateProgress, completeProgress]);
-}
-
-function handleContextLayerPayload(
-  payload: {
-    type: string;
-    total: number;
-    processed: number;
-    failed: number;
-    currentModule?: string | null;
-  },
-  idRef: MutableRefObject<string | null>,
-  ctx: ToastCtx,
-): void {
-  if (payload.type === 'summarizing') {
-    if (!idRef.current)
-      idRef.current = ctx.startProgress('Summarizing modules', { total: payload.total });
-    ctx.updateProgress(idRef.current, {
-      completed: payload.processed,
-      total: payload.total,
-      currentItem: payload.currentModule ?? undefined,
-    });
-  } else if (payload.type === 'idle' && idRef.current) {
-    const summary =
-      payload.processed > 0
-        ? payload.failed > 0
-          ? `${payload.processed} modules summarized, ${payload.failed} failed`
-          : `${payload.processed} modules summarized`
-        : 'No modules to summarize';
-    const type = payload.failed > 0 ? 'warning' : 'success';
-    ctx.completeProgress(idRef.current, summary, type);
-    idRef.current = null;
-  }
-}
-
 export function useProgressSubscriptions(): void {
   const ctx = useToastContext();
   useClaudeMdProgress(ctx);
-  useContextLayerProgress(ctx);
 }

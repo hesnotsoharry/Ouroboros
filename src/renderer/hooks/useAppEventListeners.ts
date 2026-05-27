@@ -5,7 +5,7 @@
  * Extracted from InnerApp to reduce complexity.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { clearTerminal } from '../components/Terminal/terminalRegistry';
 import { useToastContext } from '../contexts/ToastContext';
@@ -13,7 +13,6 @@ import type { AppTheme, WorkspaceLayout } from '../types/electron';
 import {
   createOpenLatestAgentChatDetailsHandler,
   createResumeLatestAgentChatThreadHandler,
-  handleAgentChatStatusEvent,
   type ToastFn,
 } from './agentChatUiHelpers';
 import {
@@ -280,7 +279,6 @@ function useDomEventListenerEffect(opts: UseDomEventListenerEffectOptions): void
 
 export function useDomEventListeners(deps: AppEventDeps): void {
   const { toast } = useToastContext();
-  const seenAgentChatStatusesRef = useRef<Set<string>>(new Set());
   const {
     projectRoot,
     setTheme,
@@ -303,18 +301,4 @@ export function useDomEventListeners(deps: AppEventDeps): void {
     setSymbolSearchOpen,
     toast,
   });
-
-  useEffect(() => {
-    if (!hasElectronAPI()) {
-      return undefined;
-    }
-
-    return window.electronAPI.agentChat.onStatusChange((status) => {
-      handleAgentChatStatusEvent({
-        seenStatuses: seenAgentChatStatusesRef.current,
-        status,
-        toast,
-      });
-    });
-  }, [toast]);
 }

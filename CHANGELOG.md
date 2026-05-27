@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.35.0] — 2026-05-27
+
+### Removed
+
+- **Wave 100 — Chat surface removal.** The in-IDE chat surface, context-intelligence subsystem, and auto-router are fully deleted. Removed: `src/renderer/components/AgentChat/` (chat composer, conversation, mentions), chat IPC handlers (`agentChat:*`, `chatCommand:*`, `chatState:*`), `src/main/agentChat/` (minus the must-keep subagent-tracking helpers), the Wave 86 `DualEmitOrchestrator`/`chatStateNewPath` cluster, chat-only provider adapters (`claudeCodeAdapter*`, `codexAdapter*`, `codexAppServer*`, `claudeWarmProcessManager*`), the full context-intelligence pipeline (`contextPacketBuilder`, `contextSelector`, `contextRanker`, `contextClassifier`, `contextLayer/`, `graphSummaryBuilder`, decision/outcome writers, retraining triggers), the auto-router (`src/main/router/`), and all related IPC channels and preload methods. Config keys `agentChatSettings`, `contextLayer`, `modelSlots.agentChat`, `routerSettings` removed from the schema; `migrateChatSurface()` purges them from legacy configs on first launch. Lexical dependencies (`lexical`, `@lexical/react`, `lexical-beautiful-mentions`) uninstalled. The IDE continues to launch terminal Claude Code and Codex sessions, subagent tracking, edit provenance, DiffReview, AgentMonitor, and mobile/web remote access are all untouched.
+
 ## [Unreleased]
 
 ### Added

@@ -167,9 +167,8 @@ export const WRITE_CATALOG: Record<string, CatalogEntry> = {
   'mobileAccess:generatePairingCode': { class: 'paired-write', timeoutClass: 'short' },
   'mobileAccess:revokePairedDevice': { class: 'paired-write', timeoutClass: 'normal' },
 
-  // ── orchestration (write) ───────────────────────────────────────────────────
-  'orchestration:buildContextPacket': { class: 'paired-write', timeoutClass: 'long' },
-  'orchestration:previewContext': { class: 'paired-write', timeoutClass: 'normal' },
+  // orchestration:buildContextPacket + orchestration:previewContext removed in Wave 100 Phase F
+  //   (stub IPC handlers deleted during context-intelligence cut)
 
   // ── pinnedContext (write) ────────────────────────────────────────────────────
   'pinnedContext:add': { class: 'paired-write', timeoutClass: 'normal' },

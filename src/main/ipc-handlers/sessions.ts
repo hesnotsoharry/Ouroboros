@@ -6,8 +6,8 @@ import { app, BrowserWindow, dialog, ipcMain, IpcMainInvokeEvent } from 'electro
 import fs from 'fs/promises';
 import path from 'path';
 
-import { getErrorMessage } from '../agentChat/utils';
 import log from '../logger';
+import { getErrorMessage } from '../utils';
 
 type SenderWindow = (event: IpcMainInvokeEvent) => BrowserWindow;
 type SessionRecord = Record<string, unknown>;

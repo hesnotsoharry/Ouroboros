@@ -250,8 +250,7 @@ export function buildAgentChatApi(t: WebSocketTransport) {
   };
 }
 
-// ─── CodeMode + Orchestration + Context Layer APIs ───────────────────────────
-// Orchestration channel names hardcoded from src/main/orchestration/events.ts
+// ─── CodeMode + Context Layer APIs ───────────────────────────────────────────
 
 export function buildOrchestrationApis(t: WebSocketTransport) {
   const codemodeAPI = {
@@ -260,16 +259,7 @@ export function buildOrchestrationApis(t: WebSocketTransport) {
     disable: () => t.invoke('codemode:disable'),
     getStatus: () => t.invoke('codemode:status'),
   };
-  const orchestrationAPI = {
-    previewContext: (request: unknown) => t.invoke('orchestration:previewContext', request),
-    buildContextPacket: (request: unknown) => t.invoke('orchestration:buildContextPacket', request),
-    // Routes to agentChat:cancelTask (same as Electron preload)
-    cancelTask: (taskId: string) => t.invoke('agentChat:cancelTask', taskId),
-  };
-  const contextLayerAPI = {
-    onProgress: (cb: (progress: unknown) => void) => t.on('contextLayer:progress', cb),
-  };
-  return { codemodeAPI, orchestrationAPI, contextLayerAPI };
+  return { codemodeAPI };
 }
 
 // ─── Mobile Access API ────────────────────────────────────────────────────────

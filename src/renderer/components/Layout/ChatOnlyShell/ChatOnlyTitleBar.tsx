@@ -17,7 +17,6 @@ import React from 'react';
 import ouroborosLogo from '../../../../../public/OUROBOROS.png';
 import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { useProject } from '../../../contexts/ProjectContext';
-import { ChatOnlyHeaderControls } from './ChatOnlyHeaderControls';
 import { WindowControls } from './TitleBarWindowControls';
 import type { ChatSidebarMode } from './useChatSidebarMode';
 import { WorkbenchMenuBar } from './WorkbenchMenuBar';
@@ -126,24 +125,6 @@ function TitleBarLeft({
 }
 
 // ── TitleBarRight ─────────────────────────────────────────────────────────────
-
-/**
- * WorkbenchModelChips — kept but unmounted. Chips were inert (write side wired
- * but no consumer in the slot sessions); removed from render pending a real
- * target-slot wiring decision. Restore the `{<WorkbenchModelChips />}` in
- * TitleBarRight when wiring lands.
- */
-export function WorkbenchModelChips(): React.ReactElement {
-  return (
-    <div
-      className="flex items-center gap-1 shrink-0 overflow-x-auto"
-      style={{ WebkitAppRegion: 'no-drag', scrollbarWidth: 'none' } as React.CSSProperties}
-      data-testid="workbench-model-chips"
-    >
-      <ChatOnlyHeaderControls />
-    </div>
-  );
-}
 
 function TitleBarRight(): React.ReactElement {
   const { pendingCount } = useApprovalContext();

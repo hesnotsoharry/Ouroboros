@@ -1,7 +1,7 @@
 /**
  * webPreloadApisExtended.test.ts — smoke tests for the extended web preload
  * API builders: ecosystem, marketplace, research, agentChat additions,
- * agentConflict, system2, router, workspace, backgroundJobs, and
+ * agentConflict, system2, workspace, backgroundJobs, and
  * desktop-only stubs (ai, aiStream, embedding, telemetry, observability, graph, spec).
  *
  * Each test asserts that t.invoke is called with the correct channel name
@@ -22,7 +22,6 @@ import {
   buildMarketplaceApi,
   buildObservabilityApi,
   buildResearchApi,
-  buildRouterApi,
   buildSpecApi,
   buildSystem2Api,
   buildTelemetryApi,
@@ -181,16 +180,7 @@ describe('buildSystem2Api', () => {
   });
 });
 
-// ─── router ───────────────────────────────────────────────────────────────────
-
-describe('buildRouterApi', () => {
-  it('getStats invokes router:getStats', async () => {
-    const t = makeTransport();
-    const api = buildRouterApi(t);
-    await api.getStats();
-    expect(t.invoke).toHaveBeenCalledWith('router:getStats');
-  });
-});
+// buildRouterApi removed in Wave 100 Phase G (router CUT)
 
 // ─── workspace ────────────────────────────────────────────────────────────────
 

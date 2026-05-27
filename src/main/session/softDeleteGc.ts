@@ -7,7 +7,6 @@
  * Pure function with injected dependencies (no direct Electron imports).
  */
 
-import type { AgentChatThreadStore } from '../agentChat/threadStore';
 import log from '../logger';
 import type { SessionStore } from './sessionStore';
 
@@ -19,7 +18,6 @@ export const THIRTY_DAYS_MS = 30 * 24 * 3600 * 1000;
 
 export interface SoftDeleteGcResult {
   purgedSessions: number;
-  purgedThreads: number;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -27,28 +25,19 @@ export interface SoftDeleteGcResult {
 /**
  * Run the 30-day soft-delete GC pass.
  *
- * @param now         - Current epoch ms.
- * @param store       - Session store instance.
- * @param threadStore - Thread store instance (may be null if not yet initialised).
+ * @param now   - Current epoch ms.
+ * @param store - Session store instance.
  */
 export async function runSoftDeleteGc(
   now: number,
   store: SessionStore | null,
-  threadStore: AgentChatThreadStore | null,
 ): Promise<SoftDeleteGcResult> {
-  const result: SoftDeleteGcResult = { purgedSessions: 0, purgedThreads: 0 };
+  const result: SoftDeleteGcResult = { purgedSessions: 0 };
 
   result.purgedSessions = purgeSessions(store, now);
-  result.purgedThreads = await purgeThreads(threadStore, now);
 
-  if (result.purgedSessions > 0 || result.purgedThreads > 0) {
-    log.info(
-      '[softDeleteGc] purged',
-      result.purgedSessions,
-      'sessions,',
-      result.purgedThreads,
-      'threads',
-    );
+  if (result.purgedSessions > 0) {
+    log.info('[softDeleteGc] purged', result.purgedSessions, 'sessions');
   }
 
   return result;
@@ -73,27 +62,4 @@ function purgeSessions(store: SessionStore | null, now: number): number {
     }
   }
   return expired.length;
-}
-
-async function purgeThreads(
-  threadStore: AgentChatThreadStore | null,
-  now: number,
-): Promise<number> {
-  if (!threadStore) return 0;
-  let count = 0;
-  try {
-    const threads = await threadStore.listThreads();
-    const expired = threads.filter((t) => isExpiredDelete(t.deletedAt, now));
-    for (const t of expired) {
-      try {
-        await threadStore.deleteThread(t.id);
-        count++;
-      } catch (err) {
-        log.error('[softDeleteGc] thread purge failed:', t.id, err);
-      }
-    }
-  } catch (err) {
-    log.error('[softDeleteGc] listThreads failed:', err);
-  }
-  return count;
 }

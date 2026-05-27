@@ -71,6 +71,7 @@ export const DESKTOP_ONLY_CATALOG: Record<string, CatalogEntry> = {
 
   // ── app lifecycle ────────────────────────────────────────────────────────────
   'app:clearCrashLogs': { class: 'desktop-only', timeoutClass: 'normal' },
+  'app:getCrashLogCount': { class: 'desktop-only', timeoutClass: 'short' },
   'app:getCrashLogs': { class: 'desktop-only', timeoutClass: 'normal' },
   'app:logError': { class: 'desktop-only', timeoutClass: 'short' },
   'app:notify': { class: 'desktop-only', timeoutClass: 'short' },

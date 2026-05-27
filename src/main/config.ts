@@ -1,7 +1,7 @@
 // hello from wave-84 repro
 import type Store from 'electron-store';
 
-import { migrateChatPrimary } from './configMigrations';
+import { migrateChatPrimary, migrateChatSurface } from './configMigrations';
 import { ensureStore, lazyStore } from './configStoreLazy';
 
 export type {
@@ -25,7 +25,6 @@ export type {
   PlatformConfig,
   ProviderModel,
   ResearchSettings,
-  RouterSettings,
   SessionDispatchConfig,
   TerminalSessionSnapshot,
   ThemingConfig,
@@ -45,12 +44,18 @@ export const store: Store<AppConfig> = lazyStore;
 let configCache: AppConfig | null = null;
 // Wave 43 Phase A — run migration exactly once per process lifetime.
 let chatPrimaryMigrationDone = false;
+// Wave 100 Phase I — run migration exactly once per process lifetime.
+let chatSurfaceMigrationDone = false;
 
 export function getConfig(): AppConfig {
   if (!configCache) {
     if (!chatPrimaryMigrationDone) {
       chatPrimaryMigrationDone = true;
       migrateChatPrimary(); // sets configCache = null via store write if migration fires
+    }
+    if (!chatSurfaceMigrationDone) {
+      chatSurfaceMigrationDone = true;
+      migrateChatSurface(); // purge retired chat-surface keys
     }
     configCache = ensureStore().store;
   }

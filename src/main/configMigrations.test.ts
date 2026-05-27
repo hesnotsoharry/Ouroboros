@@ -13,12 +13,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGet = vi.fn();
 const mockSet = vi.fn();
+const mockDelete = vi.fn();
+let mockStoreData: Record<string, unknown> = {};
 
 vi.mock('./configStoreLazy', () => ({
-  ensureStore: () => ({ get: mockGet, set: mockSet }),
+  ensureStore: () => ({
+    get: mockGet,
+    set: mockSet,
+    delete: mockDelete,
+    get store() { return mockStoreData; },
+  }),
 }));
 
-import { migrateChatPrimary } from './configMigrations';
+import { migrateChatPrimary, migrateChatSurface } from './configMigrations';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -81,5 +88,59 @@ describe('migrateChatPrimary', () => {
     mockGet.mockReturnValueOnce({ immersiveChat: true });
     migrateChatPrimary();
     expect(mockSet).toHaveBeenCalledOnce(); // still only once total
+  });
+});
+
+describe('migrateChatSurface', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockStoreData = {};
+  });
+
+  it('no-ops when no legacy chat keys are present', () => {
+    mockStoreData = { terminal: true };
+    mockGet.mockReturnValue(undefined);
+    migrateChatSurface();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('deletes agentChatSettings when present', () => {
+    mockStoreData = { agentChatSettings: { defaultProvider: 'claude-code' } };
+    mockGet.mockReturnValue(undefined);
+    migrateChatSurface();
+    expect(mockDelete).toHaveBeenCalledWith('agentChatSettings');
+  });
+
+  it('deletes contextLayer when present', () => {
+    mockStoreData = { contextLayer: { enabled: true } };
+    mockGet.mockReturnValue(undefined);
+    migrateChatSurface();
+    expect(mockDelete).toHaveBeenCalledWith('contextLayer');
+  });
+
+  it('removes agentChat sub-key from modelSlots when present', () => {
+    mockStoreData = {};
+    mockGet.mockReturnValue({ terminal: 'claude-code:sonnet', agentChat: 'claude-code:opus', claudeMdGeneration: '' });
+    migrateChatSurface();
+    const [key, value] = mockSet.mock.calls[0] as [string, Record<string, unknown>];
+    expect(key).toBe('modelSlots');
+    expect(value).not.toHaveProperty('agentChat');
+    expect(value.terminal).toBe('claude-code:sonnet');
+  });
+
+  it('no-ops modelSlots when agentChat sub-key is absent', () => {
+    mockStoreData = {};
+    mockGet.mockReturnValue({ terminal: 'claude-code:sonnet', claudeMdGeneration: '' });
+    migrateChatSurface();
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('is idempotent — already-migrated config produces no writes', () => {
+    mockStoreData = { terminal: true, modelSlots: { terminal: '' } };
+    mockGet.mockReturnValue({ terminal: '' });
+    migrateChatSurface();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockSet).not.toHaveBeenCalled();
   });
 });

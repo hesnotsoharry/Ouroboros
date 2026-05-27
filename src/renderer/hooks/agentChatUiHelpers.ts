@@ -2,7 +2,6 @@
  * agentChatUiHelpers.ts — Agent chat UI helper functions.
  */
 
-import { FOCUS_AGENT_CHAT_EVENT, OPEN_ORCHESTRATION_SESSION_EVENT } from './appEventNames';
 import type { ToastType } from './useToast';
 
 export type ToastFn = (
@@ -22,71 +21,19 @@ interface AgentChatStatusHandlerArgs {
   toast: ToastFn;
 }
 
+// Wave 100: agentChat API removed. These handlers are no-ops.
 export function createResumeLatestAgentChatThreadHandler(
   args: AgentChatHandlerArgs,
 ): EventListener {
-  return () => {
-    if (!args.projectRoot) {
-      args.toast('No project open', 'error');
-      return;
-    }
-
-    void (async () => {
-      try {
-        const result = await window.electronAPI.agentChat.listThreads(args.projectRoot!);
-        const threads = result.threads;
-        if (!threads || threads.length === 0) {
-          args.toast('No agent chat threads found', 'error');
-          return;
-        }
-        const sorted = [...threads].sort((a, b) => b.createdAt - a.createdAt);
-        const thread = sorted[0];
-        window.dispatchEvent(
-          new CustomEvent(FOCUS_AGENT_CHAT_EVENT, { detail: { threadId: thread.id } }),
-        );
-      } catch (err) {
-        args.toast(
-          err instanceof Error ? err.message : 'Failed to resume agent chat thread',
-          'error',
-        );
-      }
-    })();
-  };
+  void args;
+  return () => { /* no-op: agentChat surface removed in Wave 100 */ };
 }
 
-export function createOpenLatestAgentChatDetailsHandler(args: AgentChatHandlerArgs): EventListener {
-  return () => {
-    if (!args.projectRoot) {
-      args.toast('No project open', 'error');
-      return;
-    }
-
-    void (async () => {
-      try {
-        const result = await window.electronAPI.agentChat.listThreads(args.projectRoot!);
-        const threads = result.threads;
-        if (!threads || threads.length === 0) {
-          args.toast('No agent chat threads found', 'error');
-          return;
-        }
-        const sorted = [...threads].sort((a, b) => b.createdAt - a.createdAt);
-        const thread = sorted[0];
-        const sessionId = thread.latestOrchestration?.sessionId;
-        if (sessionId) {
-          window.dispatchEvent(
-            new CustomEvent(OPEN_ORCHESTRATION_SESSION_EVENT, { detail: { sessionId } }),
-          );
-        } else {
-          args.toast('No linked orchestration session found', 'error');
-        }
-      } catch (err) {
-        args.toast(
-          err instanceof Error ? err.message : 'Failed to open agent chat details',
-          'error',
-        );
-      }
-    })();
-  };
+export function createOpenLatestAgentChatDetailsHandler(
+  args: AgentChatHandlerArgs,
+): EventListener {
+  void args;
+  return () => { /* no-op: agentChat surface removed in Wave 100 */ };
 }
 
 export function handleAgentChatStatusEvent(args: AgentChatStatusHandlerArgs): void {
