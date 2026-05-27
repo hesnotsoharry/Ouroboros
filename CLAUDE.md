@@ -38,7 +38,7 @@ The full suite consistently exceeds agent timeouts (~1000s / ~17 min on Windows-
 | `test:lexical` | `…/AgentChat/lexicalComposer` | Lexical composer plugins / bridge |
 | `test:layout` | `src/renderer/components/Layout` | App shell, panes, title bar, workbench |
 | `test:filetree` | `src/renderer/components/FileTree` | File tree |
-| `test:codebasegraph` | `src/main/codebaseGraph` | Graph indexer / queries |
+| `test:codebase-graph-mcp` | `packages/codebase-graph-mcp` | Standalone graph MCP package (tool surface, smoke) |
 | `test:orchestration` | `src/main/orchestration` | Orchestration runtime |
 | `test:ipc` | `src/main/ipc-handlers` | IPC handler implementations |
 | `test:hooks` | `src/main/hookInstaller`, `src/main/hooks` | Hook installer / named pipe server |
@@ -68,27 +68,45 @@ Full suite + lint + typecheck still runs at commit/wave-end. Scoped runs are for
 
 ## Folder Map
 
-| Path                       | Contents                                                                                        |
-| -------------------------- | ----------------------------------------------------------------------------------------------- |
-| `src/main/`                | Node.js main process — IPC, PTY, hooks server, config                                           |
-| `src/preload/`             | contextBridge — typed API surface                                                               |
-| `src/renderer/components/` | Feature folders: Layout, Terminal, FileTree, FileViewer, AgentMonitor, CommandPalette, Settings |
-| `src/renderer/hooks/`      | Shared hooks: useConfig, useTheme, usePty, useAgentEvents, useFileWatcher                       |
-| `src/renderer/contexts/`   | React contexts: ProjectContext                                                                  |
-| `src/renderer/themes/`     | Theme definitions (retro, modern, warp, cursor, kiro, material, light, high-contrast)           |
-| `src/renderer/types/`      | `electron.d.ts` — full IPC type contract                                                        |
+| Path                          | Contents                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `packages/codebase-graph-mcp/`| Standalone MCP server (npm package) — 14 graph tools + ping, stdio transport, SQLite + tree-sitter |
+| `src/main/`                   | Node.js main process — IPC, PTY, hooks server, config                                           |
+| `src/preload/`                | contextBridge — typed API surface                                                               |
+| `src/renderer/components/`    | Feature folders: Layout, Terminal, FileTree, FileViewer, AgentMonitor, CommandPalette, Settings |
+| `src/renderer/hooks/`         | Shared hooks: useConfig, useTheme, usePty, useAgentEvents, useFileWatcher                       |
+| `src/renderer/contexts/`      | React contexts: ProjectContext                                                                  |
+| `src/renderer/themes/`        | Theme definitions (retro, modern, warp, cursor, kiro, material, light, high-contrast)           |
+| `src/renderer/types/`         | `electron.d.ts` — full IPC type contract                                                        |
 
 Each subdirectory has its own `CLAUDE.md` with a subsystem-specific file map.
 
 ## Codebase Graph — use it FIRST
 
-The repo is indexed in the codebase-memory graph (~18.3K nodes, ~13.2K edges, auto-synced on file changes). At this graph size queries are moderately cheap; use them routinely for symbol queries.
+The codebase-graph MCP server is a standalone Node process configured in `.mcp.json` at the repo root
+(gitignored — present on each machine after Wave 22 install). Tools surface as `mcp__ouroboros__*` in
+fresh Claude Code sessions (restart Claude Code after any `.mcp.json` edit to pick up the config).
 
-**Default behavior for symbol queries: graph tools FIRST, Grep is the fallback.** When the question is "who calls X", "where is X defined", "what's the body of X", "what depends on X" — use `trace_call_path`, `search_graph`, `get_code_snippet`, `detect_changes`, or `query_graph` (Cypher) BEFORE reaching for Grep. Grep returns text matches including comments and same-name unrelated occurrences; the graph returns actual structural edges.
+**Default behavior for symbol queries: graph tools FIRST, Grep is the fallback.** When the question is
+"who calls X", "where is X defined", "what's the body of X", "what depends on X" — use
+`mcp__ouroboros__trace_call_path`, `mcp__ouroboros__search_graph`, `mcp__ouroboros__get_code_snippet`,
+`mcp__ouroboros__detect_changes`, or `mcp__ouroboros__query_graph` BEFORE reaching for Grep. Grep
+returns text matches including comments and same-name unrelated occurrences; the graph returns actual
+structural edges.
 
-If you find yourself running a Grep for an identifier and following it with three Reads to disambiguate, you skipped the graph. See `~/.claude/rules/graph-tool-routing.md` for the full prescriptive table.
+If you find yourself running a Grep for an identifier and following it with three Reads to disambiguate,
+you skipped the graph. See `~/.claude/rules-deferred/graph-tool-routing.md` for the full routing table.
 
-Codemode is enabled in this project — graph tools surface as `servers.ouroboros.*` inside `execute_code` (the codemode proxy's single tool). Example: `await servers.ouroboros.trace_call_path({ symbol: 'parseConfig', direction: 'callers' })`.
+Codemode is also enabled — graph tools surface as `servers.ouroboros.*` inside `execute_code`
+(the codemode proxy's single tool). Example:
+`await servers.ouroboros.trace_call_path({ symbol: 'parseConfig', direction: 'callers' })`.
+
+Current graph size (Agent IDE, Wave 22 smoke): ~25.7K nodes / ~55.7K edges.
+
+**Capability regression (Wave 22):** terminal Claude Code sessions running INSIDE the IDE no longer
+receive auto-injected context. They behave like plain Claude Code CLI sessions anywhere else — Grep/Read
+on demand, no pre-built context. Graph queries still work; they just require explicit tool calls instead
+of automatic injection. See `roadmap/docs/standalone-mcp.md` for the full package reference.
 
 ## Key Conventions
 
@@ -109,8 +127,11 @@ Each window owns its project roots independently via `ManagedWindow.projectRoots
 - `refs/ouroboros/checkpoints/<threadId>` refs accumulate over time — GC policy (keep last 50) runs lazily on next checkpoint capture, not on a schedule.
 - `ecosystem.rulesAndSkillsInstallEnabled` defaults false — the rules-and-skills install path is not yet wired end-to-end. Remove flag and default to true when wired.
 - `tokenStorage` localStorage-on-web (MED) — elevate to HIGH only when web mode is exposed beyond trusted networks.
-- Wave 19 PageRank convergence at 10k cyclic nodes — bounded and non-DoS; profile in practice before tuning `maxIterations`.
 - `AnyOverrides = Record<string, any>` in Wave 26 profile code — one-line type escape hatch; fix when the surrounding code is next refactored.
+- **Standalone MCP absolute-path install** — `.mcp.json` entries use machine-local absolute paths to `dist/index.js`. Not portable. `npm publish` of `@hesnotsoharry/codebase-graph-mcp` (Wave 22 Decision 7, Phase 8 attempt) enables `npx` invocation and removes the hard path dependency.
+- **Asar packaging for internalMcp** — packaged Electron builds need `extraResources`/`asarUnpack` wiring for `packages/codebase-graph-mcp/dist/` and native modules. Filed: `roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md`.
+- **Capability regression (Wave 22)** — terminal Claude Code sessions launched inside the IDE no longer receive auto-injected graph context. Deliberate per Wave 22 Decision 4 (Path A — stay scoped). Plain `mcp__ouroboros__*` tool calls still work in any fresh session via `.mcp.json`.
+- **`projectName` normalization was broken before commit `78173b64`** — `serverBootstrap.ts` and `IndexingPipeline` derived the project name differently, causing all filtered queries to return empty on projects with uppercase directory names (`AgentIDE`, `ContractorApp`). Fixed in Wave 22 Phase 6 smoke. If filtered queries ever return empty unexpectedly, check whether the normalization in `buildContext()` matches what the DB rows were indexed under.
 
 ## Further Reading
 
@@ -124,6 +145,7 @@ Each window owns its project roots independently via `ManagedWindow.projectRoots
 - `roadmap/docs/hook-migration.md` — rule-to-hook conversion, rollback, and escalation
 - `roadmap/docs/telemetry-parity.md` — telemetry parity architecture and migration recipe
 - `roadmap/docs/context-ranker.md` — context ranker, weight modes, hit-rate telemetry
+- `roadmap/docs/standalone-mcp.md` — Standalone codebase-graph MCP server: tools, install, storage, debugging
 - `ai/vision.md` — Product vision, design north stars
 - `ai/deferred.md` — Remaining unimplemented features, prioritized by area
 
