@@ -1,3 +1,44 @@
+# Session Handoff — 2026-05-27 (Wave 100 COMPLETE — chat surface removed; merge worktree to master)
+
+**Audience:** the next Claude Code session — this is YOUR entry point.
+
+**Master state:**
+- Wave 100 (chat surface removal) is COMPLETE on branch `wave-100-chat-surface-removal`.
+- Tagged locally at `v2.35.0`.
+- All phases A–I committed; wave wrap commit at `c4604ffe`.
+- **Immediate action: merge worktree to master + delete worktree** (per worktree-merge-and-close discipline).
+- Run `npm run lockfile:sync` (WSL2) after merge to regenerate lockfile without lexical packages.
+
+**Next priority:** After merge + lockfile sync, push. Then decide next wave (Wave 101 or another canon gap).
+
+**Open deferred items from Wave 100 scope correction:**
+- `dockPersistence`, `layout.immersiveChat`, `layout.chatSidebarMode`, `theming.fonts.chat`, `ecosystem.codexAppServerTransport` — NOT removed (ChatOnlyShell still uses them; deferred to whenever ChatOnlyShell is deleted in a future wave).
+- `rankerHitsSchema.ts` in `src/main/orchestration/` — orphaned (its consumer `contextRankerTelemetry.ts` was deleted in Phase F); should be cleaned up in a follow-up.
+
+---
+
+## UPDATE 2026-05-27 — Wave 100 COMPLETE
+
+### What landed
+
+**Wave 100 — Chat surface removal.** The in-IDE chat surface and all supporting infrastructure deleted:
+
+- `src/renderer/components/AgentChat/` — Phase B
+- Chat IPC handlers + preload + Wave 86 cluster — Phase C
+- `src/main/agentChat/` (except subagent tracking helpers) — Phase D
+- Chat-only provider adapters — Phase E
+- Context-intelligence subsystem + `src/main/contextLayer/` + repoIndexer + orchestration types — Phase F
+- Auto-router `src/main/router/` — Phase G
+- Settings UI: AgentSection chat groups, agentChat model slot, ContextLayerAPI surface — Phase H
+- Config schema: `agentChatSettings`, `contextLayer`, `modelSlots.agentChat` removed; `migrateChatSurface()` added — Phase H/I
+- Lexical packages uninstalled from `package.json`; `test:agentchat` + `test:lexical` scripts removed — Phase I
+
+What survived: terminal Claude Code sessions, Codex terminal sessions, subagent tracking, edit provenance, DiffReview, AgentMonitor, telemetry SQLite store, mobile/web remote access, ChatOnlyShell (terminal workbench shell — see scope correction).
+
+Tagged: `v2.35.0` (minor bump — feature surface removal).
+
+---
+
 # Session Handoff — 2026-05-27 (Wave 22 SHIPPED + npm-published + vestigial cleanup queued)
 
 **Audience:** the next Claude Code session — this is YOUR entry point.
