@@ -1,3 +1,36 @@
+# Session Handoff — 2026-05-27 (Wave 14 SHIPPED — Rails UI fix-sweep · v2.36.0)
+
+**Audience:** the next Claude Code session — this is YOUR entry point.
+
+**Master state:**
+- Wave 14 (rails UI fix-sweep) SHIPPED on `master` at tag `v2.36.0`.
+- All 6 phases committed; worktree merged + removed.
+- 4 user-facing bugs closed: project-remove UX (right-click context menu), inner-rail fake sessions, top dock terminal cwd, unified-rail real file tree + working collapse.
+
+**Next priority — Wave 15 cleanup candidate:** bundle pre-existing test failures + Wave 22 GraphPanel cleanup + Wave 100 UsageDashboard collateral + the `Workbench.projectSwitch.wave10` test timeout (Wave 12 era). All filed:
+- `roadmap/follow-ups/2026-05-27-pre-existing-test-failures-surfaced-wave-14.md`
+- `roadmap/follow-ups/2026-05-27-workbench-projectswitch-wave10-test-timeout.md`
+- `roadmap/follow-ups/2026-05-26-channel-catalog-missing-persist-shared-and-crash-log-count.md`
+
+**Cole still owes:** manual smoke checklist at `roadmap/wave-14-rails-ui-fix-sweep/wave-14-smoke-report.md` — walk it once at next launch and flip status to PASS-MANUAL or FLAGGED. Wave 14 has not been re-verified live; per-phase + Phase 6 acceptance tests all GREEN, but Electron-side observation deferred per Wave 11/12/13 precedent.
+
+---
+
+## What Wave 14 shipped (one paragraph)
+
+Cole reported 4 rails + dock defects on 2026-05-27 post-Wave-100. Wave 14 bundled all 4 as a fix-sweep: (1) project-remove UX revision — Wave 12's inline-X replaced with right-click context menu via reused `ContextMenuPanel` primitive on all 3 surfaces, inline-X retained on stale chips only; (2) inner-rail fake sessions — root cause was `buildPersistedSessionFields` missing `cwd` field, restored via 1-LOC fix + defense-in-depth removal of `otherSessions` cross-project leak vector from `InnerRail.tsx`; (3) top dock terminal cwd — bug deeper than entry doc, fixed in `windowManager.ts setWindowProjectRoots` (session-binding override) + `useWorkbenchTabs.ts useTabRestoreInit` (defer auto-spawn until valid cwd); (4) UnifiedRail real file tree + working collapse — `MOCK_FILE_TREE` swap to `<WorkbenchFileTree>` + `useState<string|null>` for expanded project id + thread `onToggle` callback. 6 phases (2 parallel diagnose + 2 parallel implement + 2 sequential implement + wrap). All acceptance tests GREEN; Stryker 31.72% (above 21 floor); merged via worktree-to-master per discipline; tagged `v2.36.0`.
+
+## Lessons captured (full set in `wave-14-result.md`)
+
+1. Diagnose-first paid off doubly — both #2 and #4 root causes were different from bug-doc suspects.
+2. Bug #3 went deeper than entry doc; investigation found the real path.
+3. Phase 4 Tier 2 collateral cleanup (22 pre-existing `Workbench.test.tsx` failures) was sound fix-inline discipline.
+4. `test:layout` scope gap: doesn't cover `src/renderer/components/Workbench/*` despite the workbench being Layout-adjacent.
+5. Wave 100 + Wave 22 left collateral test failures that no wrap caught until now.
+6. Diagnostician empirical bisect on the projectswitch timeout was load-bearing.
+
+---
+
 # Session Handoff — 2026-05-27 (Wave 100 COMPLETE — chat surface removed; merge worktree to master)
 
 **Audience:** the next Claude Code session — this is YOUR entry point.
