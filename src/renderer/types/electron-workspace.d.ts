@@ -17,7 +17,7 @@ import type { FlowTracerAPI } from './electron-flow-tracer';
 import type { FolderCrudAPI } from './electron-folder';
 import type { IpcResult, ModelProvider, ModelSlotAssignments } from './electron-foundation';
 import type { GitAPI, ShellHistoryAPI, UpdaterAPI } from './electron-git';
-import type { GraphAPI } from './electron-graph';
+// GraphAPI import removed in Wave 22 (graph IPC handlers deleted)
 import type { LayoutAPI } from './electron-layout';
 import type { MarketplaceAPI } from './electron-marketplace';
 import type { McpStoreAPI } from './electron-mcp-store';
@@ -322,7 +322,7 @@ export interface ElectronAPI {
   workspaceReadList: WorkspaceReadListAPI;
   subagent: SubagentAPI;
   flowTracer: FlowTracerAPI;
-  graph: GraphAPI;
+  // graph: GraphAPI removed in Wave 22 (IPC handlers deleted; GraphPanel deferred to Wave 100)
   layout: LayoutAPI;
   mobileAccess: MobileAccessAPI;
   compareProviders: CompareProvidersAPI;

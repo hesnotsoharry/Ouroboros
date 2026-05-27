@@ -8,18 +8,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockOnSessionStart,
-  mockGraphOnSessionStart,
+  // mockGraphOnSessionStart removed in Wave 22 (codebaseGraph deleted)
   mockOnGitCommit,
-  mockGraphOnGitCommit,
+  // mockGraphOnGitCommit removed in Wave 22 (codebaseGraph deleted)
   mockDispatchActivation,
   mockInvalidateCache,
   mockGenerateClaudeMd,
   mockGetConfigValue,
 } = vi.hoisted(() => ({
   mockOnSessionStart: vi.fn(),
-  mockGraphOnSessionStart: vi.fn(),
   mockOnGitCommit: vi.fn(),
-  mockGraphOnGitCommit: vi.fn(),
   mockDispatchActivation: vi.fn().mockResolvedValue(undefined),
   mockInvalidateCache: vi.fn(),
   mockGenerateClaudeMd: vi.fn().mockResolvedValue(undefined),
@@ -33,12 +31,7 @@ vi.mock('./contextLayer/contextLayerController', () => ({
   }),
 }));
 
-vi.mock('./codebaseGraph/graphControllerSupport', () => ({
-  getGraphController: () => ({
-    onSessionStart: mockGraphOnSessionStart,
-    onGitCommit: mockGraphOnGitCommit,
-  }),
-}));
+// codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
 
 vi.mock('./extensions', () => ({
   dispatchActivationEvent: mockDispatchActivation,
@@ -95,16 +88,15 @@ describe('handleSessionStart', () => {
     });
   });
 
-  it('notifies context layer and graph for external sessions', () => {
+  it('notifies context layer for external sessions', () => {
+    // graph notification removed in Wave 22 (codebaseGraph deleted)
     handleSessionStart(makePayload({ internal: false }));
     expect(mockOnSessionStart).toHaveBeenCalled();
-    expect(mockGraphOnSessionStart).toHaveBeenCalled();
   });
 
-  it('skips context layer and graph for internal sessions', () => {
+  it('skips context layer for internal sessions', () => {
     handleSessionStart(makePayload({ internal: true }));
     expect(mockOnSessionStart).not.toHaveBeenCalled();
-    expect(mockGraphOnSessionStart).not.toHaveBeenCalled();
   });
 });
 
@@ -126,12 +118,12 @@ describe('handleSessionStop', () => {
     vi.clearAllMocks();
   });
 
-  it('notifies context layer, graph, and invalidates cache for external sessions', () => {
+  it('notifies context layer and invalidates cache for external sessions', () => {
+    // graph notification removed in Wave 22 (codebaseGraph deleted)
     mockGetConfigValue.mockReturnValue(undefined);
     const map = new Map<string, string>();
     handleSessionStop(makePayload({ type: 'session_stop' }), map);
     expect(mockOnGitCommit).toHaveBeenCalled();
-    expect(mockGraphOnGitCommit).toHaveBeenCalled();
     expect(mockInvalidateCache).toHaveBeenCalled();
   });
 

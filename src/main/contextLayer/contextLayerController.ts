@@ -14,7 +14,7 @@ import log from '../logger';
 import type { RepoIndexSnapshot } from '../orchestration/repoIndexer';
 import type { ContextPacket, RepoFacts } from '../orchestration/types';
 import { broadcast } from '../web/broadcast';
-import { injectContextLayer } from './contextInjector';
+// injectContextLayer removed in Wave 22 (contextInjector deleted)
 import {
   createQueueForRepoMap,
   type CreateQueueOptions,
@@ -39,7 +39,7 @@ import {
 } from './contextLayerStore';
 import type { ContextLayerConfig, ContextLayerManifest, RepoMap } from './contextLayerTypes';
 import type { ContextLayerWatcher } from './contextLayerWatcher';
-import { generateRepoMap } from './repoMapGenerator';
+// generateRepoMap removed in Wave 22 (repoMapGenerator deleted)
 import type { SummarizationQueue } from './summarizationQueue';
 
 // ---------------------------------------------------------------------------
@@ -91,9 +91,7 @@ class ContextLayerControllerImpl implements ContextLayerController {
     this.config = options.config;
     this.workspaceRoot = options.workspaceRoot;
     this.buildRepoIndex = options.buildRepoIndex;
-    if (options.config.generateRepoMapFn) {
-      log.info('[context-layer] generateRepoMap routed via worker');
-    }
+    // generateRepoMapFn config option is unused post-Wave-22 (repoMapGenerator deleted)
   }
 
   async initialize(): Promise<void> {
@@ -150,28 +148,18 @@ class ContextLayerControllerImpl implements ContextLayerController {
   private async runFullRebuild(): Promise<void> {
     const snapshot = await this.buildRepoIndexTimed();
     this.snapshot = snapshot;
-    const repoFacts = snapshot.repoFacts;
 
-    const mapFn = this.config.generateRepoMapFn ?? generateRepoMap;
-    let newRepoMap: RepoMap;
-    try {
-      newRepoMap = await mapFn({
-        repoFacts,
-        repoIndex: snapshot,
-        workspaceRoot: this.workspaceRoot,
-      });
-    } catch (err) {
-      if (this.config.generateRepoMapFn) {
-        log.warn('[context-layer] worker generateRepoMap failed — falling back to in-process', err);
-        newRepoMap = await generateRepoMap({
-          repoFacts,
-          repoIndex: snapshot,
-          workspaceRoot: this.workspaceRoot,
-        });
-      } else {
-        throw err;
-      }
-    }
+    // repoMapGenerator removed in Wave 22 — produce an empty RepoMap stub.
+    const newRepoMap: RepoMap = {
+      projectName: '',
+      languages: [],
+      frameworks: [],
+      moduleCount: 0,
+      totalFileCount: 0,
+      modules: [],
+      crossModuleDependencies: [],
+      generatedAt: Date.now(),
+    };
 
     await writeRepoMap(this.workspaceRoot, newRepoMap);
 
@@ -230,19 +218,8 @@ class ContextLayerControllerImpl implements ContextLayerController {
       return { packet, injectedModules: [], injectedTokens: 0 };
     }
 
-    try {
-      const result = await injectContextLayer({
-        packet,
-        workspaceRoot: this.workspaceRoot,
-        goalKeywords,
-        model,
-      });
-      return result;
-    } catch (err) {
-      log.warn('[context-layer] enrichPacket failed:', err);
-      this.health = 'degraded';
-      return { packet, injectedModules: [], injectedTokens: 0 };
-    }
+    // contextInjector removed in Wave 22 — pass packet through unchanged.
+    return { packet, injectedModules: [], injectedTokens: 0 };
   }
 
   onFileChange(type: string, filePath: string): void {

@@ -7,7 +7,7 @@ vi.mock('electron', () => ({
 
 import type { RepoIndexSnapshot } from '../orchestration/repoIndexer';
 import type { ContextPacket } from '../orchestration/types';
-import type { InjectionResult } from './contextInjector';
+// InjectionResult removed in Wave 22 (contextInjector deleted)
 import type { GCResult } from './contextLayerGC';
 import type { ContextLayerConfig, ContextLayerManifest, RepoMap } from './contextLayerTypes';
 
@@ -17,17 +17,16 @@ import type { ContextLayerConfig, ContextLayerManifest, RepoMap } from './contex
 
 vi.mock('./contextLayerStore');
 vi.mock('./contextLayerWatcher');
-vi.mock('./repoMapGenerator');
+// repoMapGenerator removed in Wave 22 (deleted)
 vi.mock('./moduleDetector');
 vi.mock('./summarizationQueue');
-vi.mock('./contextInjector');
+// contextInjector removed in Wave 22 (deleted)
 vi.mock('./contextLayerGC');
 vi.mock('../web/broadcast', () => ({
   broadcast: vi.fn(),
 }));
 
-// Import mocked modules
-import { injectContextLayer } from './contextInjector';
+// injectContextLayer removed in Wave 22 (contextInjector deleted)
 // Import the module under test AFTER mocks are set up
 import * as controllerModule from './contextLayerController';
 
@@ -48,7 +47,7 @@ import {
   buildModuleStructuralSummaries,
   detectModules,
 } from './moduleDetector';
-import { generateRepoMap } from './repoMapGenerator';
+// generateRepoMap removed in Wave 22 (repoMapGenerator deleted)
 import { createSummarizationQueue } from './summarizationQueue';
 
 // ---------------------------------------------------------------------------
@@ -319,12 +318,12 @@ const mockedWriteRepoMap = vi.mocked(writeRepoMap);
 const mockedWriteModuleEntry = vi.mocked(writeModuleEntry);
 const mockedWriteManifest = vi.mocked(writeManifest);
 const mockedCreateContextLayerWatcher = vi.mocked(createContextLayerWatcher);
-const mockedGenerateRepoMap = vi.mocked(generateRepoMap);
+// mockedGenerateRepoMap removed in Wave 22 (repoMapGenerator deleted)
 const mockedDetectModules = vi.mocked(detectModules);
 const mockedBuildModuleStructuralSummaries = vi.mocked(buildModuleStructuralSummaries);
 const mockedBuildCrossModuleDependencies = vi.mocked(buildCrossModuleDependencies);
 const mockedCreateSummarizationQueue = vi.mocked(createSummarizationQueue);
-const mockedInjectContextLayer = vi.mocked(injectContextLayer);
+// mockedInjectContextLayer removed in Wave 22 (contextInjector deleted)
 const mockedRunContextLayerGC = vi.mocked(runContextLayerGC);
 
 let mockWatcher: ReturnType<typeof createMockWatcher>;
@@ -347,7 +346,7 @@ function setupDefaultMocks(): void {
   mockedWriteManifest.mockResolvedValue(undefined);
 
   mockedCreateContextLayerWatcher.mockReturnValue(mockWatcher);
-  mockedGenerateRepoMap.mockReturnValue(createMockRepoMap());
+  // generateRepoMap removed in Wave 22 — controller produces empty RepoMap stub
   mockedDetectModules.mockReturnValue([
     { id: 'module-a', label: 'Module A', rootPath: 'src/a', pattern: 'feature-folder' },
     { id: 'module-b', label: 'Module B', rootPath: 'src/b', pattern: 'feature-folder' },
@@ -363,13 +362,7 @@ function setupDefaultMocks(): void {
     reclaimedBytes: 0,
   };
   mockedRunContextLayerGC.mockResolvedValue(defaultGCResult);
-
-  const defaultInjectionResult: InjectionResult = {
-    packet: createMockContextPacket(),
-    injectedModules: ['module-a'],
-    injectedTokens: 500,
-  };
-  mockedInjectContextLayer.mockResolvedValue(defaultInjectionResult);
+  // injectContextLayer removed in Wave 22 — enrichPacket is a no-op pass-through
 }
 
 // ---------------------------------------------------------------------------
@@ -446,9 +439,9 @@ describe('contextLayerController', () => {
       config: createMockConfig(),
     });
 
-    // Full rebuild path: buildRepoIndex → generateRepoMap (which calls detectModules internally) → write
+    // Full rebuild path: buildRepoIndex → empty RepoMap stub → write
+    // (repoMapGenerator removed in Wave 22)
     expect(mockBuildRepoIndex).toHaveBeenCalledWith(['/workspace']);
-    expect(mockedGenerateRepoMap).toHaveBeenCalled();
     expect(mockedWriteRepoMap).toHaveBeenCalled();
     expect(mockedWriteManifest).toHaveBeenCalled();
 
@@ -484,7 +477,7 @@ describe('contextLayerController', () => {
   // 6. enrichPacket delegates to injector
   // -----------------------------------------------------------------------
 
-  it('enrichPacket delegates to injector', async () => {
+  it('enrichPacket returns pass-through result when enabled (contextInjector removed in Wave 22)', async () => {
     mockedReadManifest.mockResolvedValue(null);
 
     await initContextLayer({
@@ -499,40 +492,19 @@ describe('contextLayerController', () => {
 
     const result = await ctrl.enrichPacket(packet, goalKeywords);
 
-    expect(mockedInjectContextLayer).toHaveBeenCalledWith({
-      packet,
-      workspaceRoot: '/workspace',
-      goalKeywords,
-    });
-    expect(result.injectedModules).toEqual(['module-a']);
-    expect(result.injectedTokens).toBe(500);
+    // contextInjector removed in Wave 22 — enrichPacket is always a pass-through
+    expect(result.packet).toBe(packet);
+    expect(result.injectedModules).toEqual([]);
+    expect(result.injectedTokens).toBe(0);
   });
 
   // -----------------------------------------------------------------------
   // 7. enrichPacket returns unenriched on error
   // -----------------------------------------------------------------------
 
-  it('enrichPacket returns unenriched packet on error', async () => {
-    mockedReadManifest.mockResolvedValue(null);
-
-    await initContextLayer({
-      workspaceRoot: '/workspace',
-      buildRepoIndex: mockBuildRepoIndex,
-      config: createMockConfig(),
-    });
-
-    mockedInjectContextLayer.mockRejectedValueOnce(new Error('injection failed'));
-
-    const ctrl = getContextLayerController()!;
-    const packet = createMockContextPacket();
-
-    const result = await ctrl.enrichPacket(packet, ['keyword']);
-
-    expect(result.packet).toBe(packet);
-    expect(result.injectedModules).toEqual([]);
-    expect(result.injectedTokens).toBe(0);
-    expect(ctrl.getStatus().health).toBe('degraded');
-  });
+  // Test 7 removed in Wave 22: enrichPacket error path (injectContextLayer rejection
+  // → 'degraded' health) no longer exists since contextInjector was deleted.
+  // The enabled-but-pass-through case is covered by test 6 above.
 
   // -----------------------------------------------------------------------
   // 8. enrichPacket returns unenriched when disabled
@@ -550,7 +522,7 @@ describe('contextLayerController', () => {
 
     const result = await ctrl.enrichPacket(packet, ['keyword']);
 
-    expect(mockedInjectContextLayer).not.toHaveBeenCalled();
+    // contextInjector removed in Wave 22 — no injector to assert on
     expect(result.packet).toBe(packet);
     expect(result.injectedModules).toEqual([]);
     expect(result.injectedTokens).toBe(0);
@@ -633,14 +605,14 @@ describe('contextLayerController', () => {
 
     // Clear call counts from initial rebuild
     mockBuildRepoIndex.mockClear();
-    mockedGenerateRepoMap.mockClear();
+    // generateRepoMap removed in Wave 22 — no mock to clear
     mockedWriteRepoMap.mockClear();
 
     const ctrl = getContextLayerController()!;
     await ctrl.forceRebuild();
 
     expect(mockBuildRepoIndex).toHaveBeenCalledWith(['/workspace']);
-    expect(mockedGenerateRepoMap).toHaveBeenCalled();
+    // repoMapGenerator removed in Wave 22 — controller writes empty RepoMap stub
     expect(mockedWriteRepoMap).toHaveBeenCalled();
   });
 
@@ -750,19 +722,8 @@ describe('contextLayerController', () => {
   // -----------------------------------------------------------------------
 
   it('getStatus returns accurate counts', async () => {
-    const repoMap = createMockRepoMap();
-    // Add an AI summary to one module
-    repoMap.modules[0].ai = {
-      description: 'Test module',
-      keyResponsibilities: ['testing'],
-      gotchas: [],
-      generatedAt: Date.now(),
-      generatedFrom: 'hash-a',
-      tokenCount: 100,
-    };
-
+    // repoMapGenerator removed in Wave 22 — controller always produces empty RepoMap stub
     mockedReadManifest.mockResolvedValue(null);
-    mockedGenerateRepoMap.mockReturnValue(repoMap);
 
     await initContextLayer({
       workspaceRoot: '/workspace',
@@ -775,8 +736,9 @@ describe('contextLayerController', () => {
 
     expect(status.enabled).toBe(true);
     expect(status.workspaceRoot).toBe('/workspace');
-    expect(status.moduleCount).toBe(2);
-    expect(status.summaryCount).toBe(1);
+    // Empty RepoMap stub — 0 modules, 0 summaries
+    expect(status.moduleCount).toBe(0);
+    expect(status.summaryCount).toBe(0);
     expect(status.health).toBe('healthy');
     expect(status.repoMapAge).not.toBeNull();
   });
@@ -794,8 +756,9 @@ describe('contextLayerController', () => {
     });
 
     // Should have triggered a full rebuild despite manifest existing
+    // (repoMapGenerator removed in Wave 22 — no mock to assert)
     expect(mockBuildRepoIndex).toHaveBeenCalled();
-    expect(mockedGenerateRepoMap).toHaveBeenCalled();
+    expect(mockedWriteRepoMap).toHaveBeenCalled();
   });
 
   it('recent manifest with missing repo map triggers rebuild', async () => {
@@ -810,8 +773,9 @@ describe('contextLayerController', () => {
     });
 
     // Should have triggered a full rebuild because repo map was missing
+    // (repoMapGenerator removed in Wave 22)
     expect(mockBuildRepoIndex).toHaveBeenCalled();
-    expect(mockedGenerateRepoMap).toHaveBeenCalled();
+    expect(mockedWriteRepoMap).toHaveBeenCalled();
   });
 
   it('autoSummarize creates queue and enqueues modules on rebuild', async () => {
@@ -823,8 +787,9 @@ describe('contextLayerController', () => {
       config: createMockConfig({ autoSummarize: true }),
     });
 
+    // repoMapGenerator removed in Wave 22 — controller produces empty RepoMap stub with 0 modules
     expect(mockedCreateSummarizationQueue).toHaveBeenCalled();
-    expect(mockQueue.enqueue).toHaveBeenCalledWith(['module-a', 'module-b']);
+    expect(mockQueue.enqueue).toHaveBeenCalledWith([]);
   });
 
   it('event delegation methods are safe when watcher is null', async () => {
@@ -891,64 +856,7 @@ describe('contextLayerController', () => {
     expect(getContextLayerController()).not.toBeNull();
   });
 
-  // -----------------------------------------------------------------------
-  // generateRepoMapFn injection — default, override, soft-fallback
-  // -----------------------------------------------------------------------
-
-  it('runFullRebuild uses default generateRepoMap when generateRepoMapFn is omitted', async () => {
-    mockedReadManifest.mockResolvedValue(null);
-
-    await initContextLayer({
-      workspaceRoot: '/workspace',
-      buildRepoIndex: mockBuildRepoIndex,
-      config: createMockConfig(), // no generateRepoMapFn
-    });
-
-    expect(mockedGenerateRepoMap).toHaveBeenCalledTimes(1);
-    expect(mockedGenerateRepoMap).toHaveBeenCalledWith(
-      expect.objectContaining({ workspaceRoot: '/workspace' }),
-    );
-  });
-
-  it('runFullRebuild calls override generateRepoMapFn instead of default when provided', async () => {
-    mockedReadManifest.mockResolvedValue(null);
-    const overrideMap = createMockRepoMap({ projectName: 'from-worker' });
-    const overrideFn = vi.fn<Parameters<typeof generateRepoMap>, ReturnType<typeof generateRepoMap>>()
-      .mockResolvedValue(overrideMap);
-
-    await initContextLayer({
-      workspaceRoot: '/workspace',
-      buildRepoIndex: mockBuildRepoIndex,
-      config: createMockConfig({ generateRepoMapFn: overrideFn }),
-    });
-
-    expect(overrideFn).toHaveBeenCalledTimes(1);
-    expect(overrideFn).toHaveBeenCalledWith(
-      expect.objectContaining({ workspaceRoot: '/workspace' }),
-    );
-    // The in-process default must NOT have been called
-    expect(mockedGenerateRepoMap).not.toHaveBeenCalled();
-    // The repo map stored is the one returned by the override
-    expect(getContextLayerController()!.getRepoMap()?.projectName).toBe('from-worker');
-  });
-
-  it('runFullRebuild soft-falls-back to in-process generateRepoMap when override rejects', async () => {
-    mockedReadManifest.mockResolvedValue(null);
-    const workerError = new Error('worker crashed');
-    const failingOverride = vi.fn<Parameters<typeof generateRepoMap>, ReturnType<typeof generateRepoMap>>()
-      .mockRejectedValue(workerError);
-
-    await initContextLayer({
-      workspaceRoot: '/workspace',
-      buildRepoIndex: mockBuildRepoIndex,
-      config: createMockConfig({ generateRepoMapFn: failingOverride }),
-    });
-
-    // Override was attempted
-    expect(failingOverride).toHaveBeenCalledTimes(1);
-    // In-process fallback fired
-    expect(mockedGenerateRepoMap).toHaveBeenCalledTimes(1);
-    // Controller is still healthy — soft-fallback succeeded
-    expect(getContextLayerController()!.getStatus().health).toBe('healthy');
-  });
+  // generateRepoMapFn injection tests removed in Wave 22: repoMapGenerator was
+  // deleted and the config.generateRepoMapFn option is now a no-op. The
+  // runFullRebuild method produces an empty RepoMap stub directly.
 });

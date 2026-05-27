@@ -57,8 +57,8 @@ function searchAndUpdate(
   setResults: (r: SymbolGraphNode[]) => void,
   setLoading: (v: boolean) => void,
 ): void {
-  window.electronAPI.graph
-    .searchGraph(bareName, MAX_SYMBOL_RESULTS)
+  // graph:searchGraph handler removed in Wave 22 — always returns empty results.
+  Promise.resolve({ success: true as const, results: [] as const })
     .then((result) => {
       if (cancelled.current) return;
       setResults(result.success && result.results ? result.results.map(toSymbolGraphNode) : []);

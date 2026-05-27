@@ -20,15 +20,8 @@ vi.mock('../config', () => ({
   getConfigValue: vi.fn().mockReturnValue({ maxDepth: 6, saveSharedFlows: false }),
 }));
 
-const mockTraceCallPath = vi.fn();
-const mockGetStatus = vi.fn().mockReturnValue({ nodeCount: 1234 });
-
-vi.mock('../codebaseGraph/graphControllerSupport', () => ({
-  getGraphController: vi.fn(() => ({
-    traceCallPath: mockTraceCallPath,
-    getStatus: mockGetStatus,
-  })),
-}));
+// codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
+// traceEngine now always uses the walking-skeleton fallback path
 
 vi.mock('./boundaryRegistry', () => ({
   getBoundaryRegistry: vi.fn(async () => ({
@@ -48,15 +41,9 @@ const ENTRY: SymbolRef = {
   line: 163,
 };
 
-const EMPTY_PATH = { path: [] };
-
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('traceFlow — envelope shape', () => {
-  beforeEach(() => {
-    mockTraceCallPath.mockReturnValue(EMPTY_PATH);
-  });
-
   afterEach(() => {
     vi.clearAllMocks();
   });
@@ -84,28 +71,24 @@ describe('traceFlow — envelope shape', () => {
 describe('traceFlow — minimal contract enforcement', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('always returns ≥2 steps when graph returns empty path', async () => {
-    mockTraceCallPath.mockReturnValue(EMPTY_PATH);
+  it('always returns ≥2 steps (walking-skeleton fallback — graph removed in Wave 22)', async () => {
     const flow = await traceFlow(ENTRY);
     expect(flow.steps.length).toBeGreaterThanOrEqual(2);
   });
 
   it('always returns ≥2 distinct layers', async () => {
-    mockTraceCallPath.mockReturnValue(EMPTY_PATH);
     const flow = await traceFlow(ENTRY);
     const layers = new Set(flow.steps.map((s) => s.layer));
     expect(layers.size).toBeGreaterThanOrEqual(2);
   });
 
   it('always returns ≥1 boundary edge', async () => {
-    mockTraceCallPath.mockReturnValue(EMPTY_PATH);
     const flow = await traceFlow(ENTRY);
     const boundary = flow.edges.filter((e) => e.kind === 'boundary');
     expect(boundary.length).toBeGreaterThanOrEqual(1);
   });
 
   it('boundary edges carry a boundaryChannel string', async () => {
-    mockTraceCallPath.mockReturnValue(EMPTY_PATH);
     const flow = await traceFlow(ENTRY);
     for (const edge of flow.edges.filter((e) => e.kind === 'boundary')) {
       expect(typeof edge.boundaryChannel).toBe('string');
@@ -113,43 +96,33 @@ describe('traceFlow — minimal contract enforcement', () => {
   });
 });
 
-describe('traceFlow — graph-unavailable fallback', () => {
-  it('uses walking-skeleton fallback when getGraphController returns null', async () => {
-    const { getGraphController } = await import('../codebaseGraph/graphControllerSupport');
-    vi.mocked(getGraphController).mockReturnValueOnce(null);
+// ── graph-unavailable fallback (Wave 22: graph removed — always uses fallback) ─
+
+describe('traceFlow — walking-skeleton fallback (graph removed in Wave 22)', () => {
+  it('always returns graphVersion containing "fallback"', async () => {
     const flow = await traceFlow(ENTRY);
     expect(flow.graphVersion).toContain('fallback');
     expect(flow.steps.length).toBeGreaterThanOrEqual(2);
     expect(flow.edges.some((e) => e.kind === 'boundary')).toBe(true);
   });
 
-  it('uses fallback when traceCallPath throws', async () => {
-    mockTraceCallPath.mockImplementationOnce(() => {
-      throw new Error('graph error');
-    });
+  it('returns valid FlowTrace on every call', async () => {
     const flow = await traceFlow(ENTRY);
     expect(flow.graphVersion).toContain('fallback');
     expect(flow.steps.length).toBeGreaterThanOrEqual(2);
   });
 });
 
+// ── depth cap (Wave 22: graph removed — fallback path ignores maxDepth) ────────
+
 describe('traceFlow — depth cap', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('respects opts.maxDepth override', async () => {
-    // Provide nodes at depths 0–9; with maxDepth=3 should stop early.
-    const manyNodes = Array.from({ length: 10 }, (_, i) => ({
-      id: `n${i}`,
-      name: `fn${i}`,
-      filePath: 'src/main/x.ts',
-      startLine: i + 1,
-      depth: i,
-    }));
-    mockTraceCallPath.mockReturnValue({ path: manyNodes });
+  it('depthCapHit is false — fallback path does not apply depth limiting', async () => {
+    // With graph removed, traceFlow always uses walking-skeleton fallback which
+    // sets depthCapHit: false unconditionally (maxDepth opts are ignored).
     const flow = await traceFlow(ENTRY, { maxDepth: 3 });
-    expect(flow.metadata.depthCapHit).toBe(true);
-    // Steps should not exceed maxDepth + 1 (cap step itself).
-    expect(flow.steps.length).toBeLessThanOrEqual(5);
+    expect(flow.metadata.depthCapHit).toBe(false);
   });
 });
 
@@ -157,7 +130,6 @@ describe('traceFlow — every step has valid shape', () => {
   afterEach(() => vi.clearAllMocks());
 
   it('all steps have required fields with correct types', async () => {
-    mockTraceCallPath.mockReturnValue(EMPTY_PATH);
     const flow = await traceFlow(ENTRY);
     for (const step of flow.steps) {
       expect(typeof step.id).toBe('string');
@@ -169,7 +141,6 @@ describe('traceFlow — every step has valid shape', () => {
   });
 
   it('all edges reference existing step ids', async () => {
-    mockTraceCallPath.mockReturnValue(EMPTY_PATH);
     const flow = await traceFlow(ENTRY);
     const stepIds = new Set(flow.steps.map((s) => s.id));
     for (const edge of flow.edges) {

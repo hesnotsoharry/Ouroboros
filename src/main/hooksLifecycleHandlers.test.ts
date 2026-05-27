@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockOnCwdChanged = vi.fn();
 const mockOnFileChanged = vi.fn();
-const mockGraphOnFileChange = vi.fn();
+// mockGraphOnFileChange removed in Wave 22 (codebaseGraph deleted)
 
 vi.mock('./contextLayer/contextLayerController', () => ({
   getContextLayerController: () => ({
@@ -17,11 +17,7 @@ vi.mock('./contextLayer/contextLayerController', () => ({
   }),
 }));
 
-vi.mock('./codebaseGraph/graphControllerSupport', () => ({
-  getGraphController: () => ({
-    onFileChange: mockGraphOnFileChange,
-  }),
-}));
+// codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
 
 vi.mock('./logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -76,16 +72,15 @@ describe('handleFileChanged', () => {
     vi.clearAllMocks();
   });
 
-  it('notifies context layer and graph on external file changes', () => {
+  it('notifies context layer on external file changes', () => {
+    // graph notification removed in Wave 22 (codebaseGraph deleted)
     handleFileChanged({});
     expect(mockOnFileChanged).toHaveBeenCalled();
-    expect(mockGraphOnFileChange).toHaveBeenCalled();
   });
 
   it('skips notification for internal sessions', () => {
     handleFileChanged({ internal: true });
     expect(mockOnFileChanged).not.toHaveBeenCalled();
-    expect(mockGraphOnFileChange).not.toHaveBeenCalled();
   });
 });
 

@@ -56,21 +56,7 @@ export const DESKTOP_ONLY_CATALOG: Record<string, CatalogEntry> = {
   'flowTracer:get-flow-why': { class: 'desktop-only', timeoutClass: 'long' },
   'flowTracer:resolve-natural-language': { class: 'desktop-only', timeoutClass: 'long' },
 
-  // ── graph:* (full codebase knowledge graph; requires local index) ─────────────
-  // All graph channels are desktop-only. The index is built from the local
-  // filesystem and requires the full project to be available on disk.
-  'graph:detectChanges': { class: 'desktop-only', timeoutClass: 'normal' },
-  'graph:getArchitecture': { class: 'desktop-only', timeoutClass: 'normal' },
-  'graph:getBlastRadius': { class: 'desktop-only', timeoutClass: 'normal' },
-  'graph:getCodeSnippet': { class: 'desktop-only', timeoutClass: 'short' },
-  'graph:getGraphSchema': { class: 'desktop-only', timeoutClass: 'short' },
-  'graph:getNeighbourhood': { class: 'desktop-only', timeoutClass: 'normal' },
-  'graph:getStatus': { class: 'desktop-only', timeoutClass: 'short' },
-  'graph:queryGraph': { class: 'desktop-only', timeoutClass: 'normal' },
-  'graph:reindex': { class: 'desktop-only', timeoutClass: 'long' },
-  'graph:searchCode': { class: 'desktop-only', timeoutClass: 'normal' },
-  'graph:searchGraph': { class: 'desktop-only', timeoutClass: 'normal' },
-  'graph:traceCallPath': { class: 'desktop-only', timeoutClass: 'normal' },
+  // graph:* entries removed in Wave 22 (graph IPC handlers deleted; deferred to Wave 100)
 
   // ── observability:exportTrace (writes to arbitrary path) ──────────────────────
   'observability:exportTrace': { class: 'desktop-only', timeoutClass: 'long' },
