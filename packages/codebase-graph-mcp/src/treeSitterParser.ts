@@ -8,6 +8,8 @@
  * (no retry noise) and parseFile returns null for those files.
  */
 
+import { createRequire } from 'node:module';
+
 import path from 'path';
 import { Language, type Node, Parser } from 'web-tree-sitter';
 
@@ -40,6 +42,10 @@ import type {
   ParsedFileResult,
 } from './treeSitterTypes';
 
+// ESM-compatible require — works in both Node CJS contexts (Vitest, Electron-vite)
+// and standalone Node ESM contexts (the standalone MCP server running from dist/).
+const _require = createRequire(import.meta.url);
+
 /** Maximum length for extracted signatures before truncation. */
 const MAX_SIGNATURE_LENGTH = 200;
 
@@ -52,12 +58,11 @@ const TS_JS_LANGUAGES = new Set<LanguageId>(['typescript', 'tsx', 'javascript', 
  * tree-sitter-wasms@0.1.13 remains as a fallback for unlisted languages.
  */
 function resolveGrammarPaths(wasmFile: string): string[] {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const fs = require('fs') as typeof import('fs');
+  const fs = _require('fs') as typeof import('fs');
   const vscodeFile = wasmFile.replace('tree-sitter-c_sharp', 'tree-sitter-c-sharp');
   const tryResolve = (pkg: string, sub: string, file: string): string | null => {
     try {
-      const dir = path.dirname(require.resolve(`${pkg}/package.json`));
+      const dir = path.dirname(_require.resolve(`${pkg}/package.json`));
       const p = path.join(dir, sub, file);
       return fs.existsSync(p) ? p : null;
     } catch {
@@ -87,7 +92,7 @@ export class TreeSitterParser {
         try {
           // web-tree-sitter@0.26+ exports './web-tree-sitter.wasm' explicitly.
           // Resolve via the wasm export key so it works in both CJS and ESM.
-          const wasmPath = require.resolve('web-tree-sitter/web-tree-sitter.wasm');
+          const wasmPath = _require.resolve('web-tree-sitter/web-tree-sitter.wasm');
           return path.join(path.dirname(wasmPath), scriptName);
         } catch {
           return scriptName;
