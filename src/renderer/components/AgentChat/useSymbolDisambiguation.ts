@@ -52,7 +52,7 @@ function toSymbolGraphNode(item: {
 // ── Fetch helper (extracted to keep hook under 40 lines) ──────────────────────
 
 function searchAndUpdate(
-  bareName: string,
+  _bareName: string,
   cancelled: { current: boolean },
   setResults: (r: SymbolGraphNode[]) => void,
   setLoading: (v: boolean) => void,
