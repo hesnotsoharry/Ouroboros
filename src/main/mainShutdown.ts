@@ -18,7 +18,6 @@ import { closeEditProvenance } from './mainStartup';
 import { closeDecisionWriter } from './orchestration/contextDecisionWriter';
 import { closeOutcomeWriter } from './orchestration/contextOutcomeWriter';
 import { stopContextRetrainTrigger } from './orchestration/contextRetrainStartup';
-import { shutdownCodexAppServerProcesses } from './orchestration/providers/codexAppServerProcess';
 import { deleteTokenFile } from './pipeAuth';
 import { closeCorrectionWriter } from './research/correctionWriter';
 import { closeResearchOutcomeWriter } from './research/researchOutcomeWriter';
@@ -53,7 +52,7 @@ function closeSyncStores(): void {
 
 async function disposeSubsystems(): Promise<void> {
   // codebase-graph shutdown removed in Wave 22 (codebaseGraph deleted)
-  await tryShutdown('codex-app-server', shutdownCodexAppServerProcesses);
+  // codex-app-server shutdown removed in Wave 100 Phase E (chat adapters deleted)
   await tryShutdown('extension-host', shutdownExtensionHost);
   // Wave 60 Phase E: no legacy MCP host cleanup remains here. The
   // standalone server is spawned and owned by Claude Code, not the IDE.

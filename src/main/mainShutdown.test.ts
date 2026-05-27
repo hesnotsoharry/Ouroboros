@@ -37,9 +37,6 @@ vi.mock('./orchestration/contextDecisionWriter', () => ({
 vi.mock('./orchestration/contextOutcomeWriter', () => ({
   closeOutcomeWriter: recorder('closeOutcomeWriter', true),
 }));
-vi.mock('./orchestration/providers/codexAppServerProcess', () => ({
-  shutdownCodexAppServerProcesses: recorder('shutdownCodexAppServerProcesses', true),
-}));
 vi.mock('./pipeAuth', () => ({ deleteTokenFile: recorder('deleteTokenFile') }));
 vi.mock('./research/correctionWriter', () => ({
   closeCorrectionWriter: recorder('closeCorrectionWriter', true),
@@ -74,31 +71,29 @@ describe('performWillQuitShutdown', () => {
     expect(calls).toContain('cleanupIpcHandlers');
     // closeThreadStore removed in Wave 100 Phase D (agentChat deleted)
     // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
-    expect(calls).toContain('shutdownCodexAppServerProcesses');
+    // shutdownCodexAppServerProcesses removed in Wave 100 Phase E (chat adapters deleted)
     expect(calls).toContain('shutdownExtensionHost');
 
     // Writers run before the sync stores close (telemetry depends on writers being flushed).
     expect(calls.indexOf('closeDecisionWriter')).toBeLessThan(calls.indexOf('closeTelemetryStore'));
     // IPC cleanup runs before subsystem disposal.
-    expect(calls.indexOf('cleanupIpcHandlers')).toBeLessThan(calls.indexOf('shutdownCodexAppServerProcesses'));
+    expect(calls.indexOf('cleanupIpcHandlers')).toBeLessThan(calls.indexOf('shutdownExtensionHost'));
   });
 
   it('swallows subsystem errors via tryShutdown so later steps still run', async () => {
-    // codexAppServer throws; extension host must still run.
-    const codexMod = await import('./orchestration/providers/codexAppServerProcess');
-    (codexMod.shutdownCodexAppServerProcesses as ReturnType<typeof vi.fn>).mockImplementationOnce(
+    // extensionHost throws; shutdown must still complete without throwing.
+    const extMod = await import('./extensionHost/extensionHostProxy');
+    (extMod.shutdownExtensionHost as ReturnType<typeof vi.fn>).mockImplementationOnce(
       async () => {
-        calls.push('shutdownCodexAppServerProcesses');
-        throw new Error('codex dispose failed');
+        calls.push('shutdownExtensionHost');
+        throw new Error('extension host dispose failed');
       },
     );
 
     const { performWillQuitShutdown } = await import('./mainShutdown');
     await expect(performWillQuitShutdown()).resolves.toBeUndefined();
 
-    // Extension host still ran after codex threw.
-    expect(calls.indexOf('shutdownCodexAppServerProcesses')).toBeLessThan(
-      calls.indexOf('shutdownExtensionHost'),
-    );
+    // Shutdown completed despite the extension host throwing.
+    expect(calls).toContain('shutdownExtensionHost');
   });
 });

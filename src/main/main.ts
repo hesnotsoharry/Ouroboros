@@ -25,7 +25,6 @@ import { buildApplicationMenu } from './menu';
 import { initDecisionWriter } from './orchestration/contextDecisionWriter';
 import { initOutcomeWriter } from './orchestration/contextOutcomeWriter';
 import { startContextRetrainTriggerIfEnabled } from './orchestration/contextRetrainStartup';
-import { killAllWarm } from './orchestration/providers/claudeWarmProcessManager';
 // prettier-ignore
 import { cleanupPerfSubscriber, clearPerfSubscribers, initializePerfMetrics, markStartup, startPerfMetrics as startManagedPerfMetrics, stopPerfMetrics as stopManagedPerfMetrics } from './perfMetrics';
 import { generatePipeTokens, setTokenFilePath } from './pipeAuth';
@@ -258,7 +257,6 @@ app.on('window-all-closed', async () => {
   // injects the standalone entry; Claude Code spawns the standalone on
   // demand and owns its lifecycle.
   killAllPtySessions();
-  killAllWarm();
   if (process.platform !== 'darwin') app.quit();
 });
 
