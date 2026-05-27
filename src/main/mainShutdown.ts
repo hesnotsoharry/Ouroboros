@@ -15,9 +15,7 @@ import { cleanupIpcHandlers } from './ipc';
 import log from './logger';
 import { closeEditProvenance } from './mainStartup';
 // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
-import { closeDecisionWriter } from './orchestration/contextDecisionWriter';
-import { closeOutcomeWriter } from './orchestration/contextOutcomeWriter';
-import { stopContextRetrainTrigger } from './orchestration/contextRetrainStartup';
+// closeDecisionWriter/closeOutcomeWriter/stopContextRetrainTrigger removed in Wave 100 Phase F (context-intelligence cut)
 import { deleteTokenFile } from './pipeAuth';
 import { closeCorrectionWriter } from './research/correctionWriter';
 import { closeResearchOutcomeWriter } from './research/researchOutcomeWriter';
@@ -35,8 +33,6 @@ async function tryShutdown(label: string, fn: () => Promise<void>): Promise<void
 }
 
 async function closeWriters(): Promise<void> {
-  await closeDecisionWriter();
-  await closeOutcomeWriter();
   await closeResearchOutcomeWriter();
   await closeCorrectionWriter();
 }
@@ -46,7 +42,6 @@ function closeSyncStores(): void {
   closeTelemetryStore();
   closeEditProvenance();
   stopRetrainObserver();
-  stopContextRetrainTrigger();
   clearQualityTimers();
 }
 

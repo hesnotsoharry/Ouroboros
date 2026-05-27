@@ -22,9 +22,6 @@ import { performWillQuitShutdown } from './mainShutdown';
 import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
 import { registerAllTelemetryDrainHandlers } from './mainTelemetryHandlers';
 import { buildApplicationMenu } from './menu';
-import { initDecisionWriter } from './orchestration/contextDecisionWriter';
-import { initOutcomeWriter } from './orchestration/contextOutcomeWriter';
-import { startContextRetrainTriggerIfEnabled } from './orchestration/contextRetrainStartup';
 // prettier-ignore
 import { cleanupPerfSubscriber, clearPerfSubscribers, initializePerfMetrics, markStartup, startPerfMetrics as startManagedPerfMetrics, stopPerfMetrics as stopManagedPerfMetrics } from './perfMetrics';
 import { generatePipeTokens, setTokenFilePath } from './pipeAuth';
@@ -185,8 +182,6 @@ async function initTelemetryAndWriters(ud: string): Promise<void> {
   await runStartupStep('[main] telemetry store init', () => initTelemetryStore(ud));
   const store = getTelemetryStore();
   if (store) initOutcomeObserver(store);
-  initDecisionWriter(ud);
-  initOutcomeWriter(ud);
   initResearchOutcomeWriter(ud);
   initCorrectionWriter(ud);
   initEditProvenance(ud);
@@ -194,11 +189,6 @@ async function initTelemetryAndWriters(ud: string): Promise<void> {
   scheduleResearchCachePurge(ud);
   registerAllTelemetryDrainHandlers();
   await runParityQueueDrain();
-  // Wave 70 Phase A2: wire the context-ranker auto-retrain trigger. Default
-  // on; gated by `contextRanker.autoRetrainEnabled`. Required to drive Wave 31's
-  // soak gate forward — the shadow-mode classifier was scoring against frozen
-  // bundled defaults pre-Wave-70.
-  startContextRetrainTriggerIfEnabled(ud);
 }
 
 async function initWindowsAndServices(): Promise<void> {

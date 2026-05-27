@@ -8,7 +8,6 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { getContextLayerController } from '../contextLayer/contextLayerController';
 import { dispatchActivationEvent } from '../extensions';
 import log from '../logger';
 import { gitExec, gitStdout, MB } from '../util/gitExec';
@@ -223,7 +222,6 @@ export function gitCommit(root: string, message: string) {
       dispatchActivationEvent('onGitCommit', { root, message }).catch((error) => {
         log.error('Failed to dispatch onGitCommit activation event:', error);
       });
-      getContextLayerController()?.onGitCommit();
       return {};
     },
     { gitError: true },
