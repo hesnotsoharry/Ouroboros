@@ -6,8 +6,9 @@
  * paths remain unchanged.
  */
 
-import type { AgentChatSettings } from '@shared/types/agentChat';
 import type { DockPersistenceData } from '@shared/config/dockPersistenceSchema';
+import type { AgentChatSettings } from '@shared/types/agentChat';
+
 import type {
   AgentTemplate,
   AppEcosystemConfig,

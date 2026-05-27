@@ -4,8 +4,8 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { ActiveStreamContext } from './hooks/types';
 import type { HookPayload } from './hooks';
+import type { ActiveStreamContext } from './hooks/types';
 import { registerActiveSends, tapSkillExecution } from './hooksSkillExecutionTap';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

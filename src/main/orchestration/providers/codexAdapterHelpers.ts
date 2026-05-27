@@ -4,12 +4,12 @@
  * Isolated here to keep codexAdapter.ts under 300 lines.
  */
 
+import type { ImageAttachment } from '@shared/types/agentChat';
 import { spawnSync } from 'child_process';
 import { randomUUID } from 'crypto';
 import { unlink, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 
-import type { ImageAttachment } from '@shared/types/agentChat';
 import {
   applyCodexPermissionModeOverride,
   buildCodexCliArgs,
