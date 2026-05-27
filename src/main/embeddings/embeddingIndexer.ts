@@ -9,8 +9,15 @@
 import fs from 'fs';
 import path from 'path';
 
-import type { GraphNode } from '../codebaseGraph/graphTypes';
 import log from '../logger';
+
+/** Minimal stub — graph removed in Wave 22. */
+interface GraphNode {
+  type: string;
+  line: number;
+  endLine?: number;
+  name?: string;
+}
 import { chunkFile } from './embeddingChunker';
 import type {
   ChunkCandidate,

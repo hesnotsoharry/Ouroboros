@@ -11,11 +11,6 @@ import path from 'path';
 import { Worker } from 'worker_threads';
 
 import log from '../logger';
-import {
-  buildGraphSummary,
-  formatGraphSummary,
-  type GraphSummary,
-} from '../orchestration/graphSummaryBuilder';
 import type { RepoIndexSnapshot } from '../orchestration/repoIndexer';
 import type { ContextPacket } from '../orchestration/types';
 import { buildWorkerPipeAuthSeed } from '../pipeAuth';
@@ -29,7 +24,6 @@ import { buildWorkerPipeAuthSeed } from '../pipeAuth';
  */
 export interface CachedContext {
   snapshot: RepoIndexSnapshot;
-  graphSummary: GraphSummary;
   builtAt: number;
   /** Pre-built context packet — avoids rebuilding on every createTask. */
   cachedPacket?: ContextPacket;
@@ -68,7 +62,7 @@ function persistContextCache(): void {
     for (const [key, entry] of contextCache) {
       entries.push([
         key,
-        { snapshot: entry.snapshot, graphSummary: entry.graphSummary, builtAt: entry.builtAt },
+        { snapshot: entry.snapshot, builtAt: entry.builtAt },
       ]);
     }
     const data = JSON.stringify(entries);
@@ -155,33 +149,6 @@ function handleContextWorkerMessage(msg: WorkerMessage): void {
   }
 }
 
-function attachGraphSummary(entry: CachedContext, key: string): void {
-  const snapshotFileCount = entry.snapshot.roots.reduce((n, r) => n + r.files.length, 0);
-  log.info(
-    `[trace:worker-handoff] attachGraphSummary start — key=${key}` +
-      ` snapshotFiles=${snapshotFileCount}` +
-      ` packetPresent=${!!entry.cachedPacket}` +
-      ` heapMB=${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}`,
-  );
-  const t0 = Date.now();
-  void buildGraphSummary()
-    .catch(() => ({ hotspots: [], blastRadius: [], builtAt: 0 }) as GraphSummary)
-    .then((gs) => {
-      log.info(`[trace:worker-handoff] buildGraphSummary resolved in ${Date.now() - t0}ms`);
-      const tPatch = Date.now();
-      entry.graphSummary = gs;
-      if (entry.cachedPacket) {
-        const section = formatGraphSummary(gs);
-        if (section) entry.cachedPacket.graphSummary = section;
-      }
-      log.info(`[trace:worker-handoff] patch-entry done in ${Date.now() - tPatch}ms`);
-    })
-    .finally(() => {
-      log.info(`[trace:worker-handoff] attachGraphSummary fully settled in ${Date.now() - t0}ms`);
-      contextBuildInFlight.delete(key);
-    });
-}
-
 function onContextReady(
   id: string,
   snapshot: RepoIndexSnapshot,
@@ -192,14 +159,13 @@ function onContextReady(
   const key = cacheKey(roots);
   const entry: CachedContext = {
     snapshot,
-    graphSummary: { hotspots: [], blastRadius: [], builtAt: 0 },
     builtAt: Date.now(),
     cachedPacket: packet,
   };
   contextCache.set(key, entry);
   log.info('Context cache built via worker in', durationMs, 'ms for key:', key);
   persistContextCache();
-  attachGraphSummary(entry, key);
+  contextBuildInFlight.delete(key);
 }
 
 /** Trigger a background build of repo snapshot in a worker thread. */

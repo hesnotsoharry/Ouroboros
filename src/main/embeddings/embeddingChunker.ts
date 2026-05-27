@@ -9,8 +9,15 @@
 import crypto from 'crypto';
 import fs from 'fs';
 
-import type { GraphNode } from '../codebaseGraph/graphTypes';
 import type { ChunkCandidate } from './embeddingTypes';
+
+/** Minimal stub — graph removed in Wave 22. */
+interface GraphNode {
+  type: string;
+  line: number;
+  endLine?: number;
+  name?: string;
+}
 
 const MAX_CHUNK_LINES = 100;
 const FALLBACK_WINDOW_LINES = 50;

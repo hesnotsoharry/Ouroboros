@@ -18,8 +18,6 @@
  */
 
 import type { FlowEdge, FlowStep, FlowTrace, SymbolRef } from '../../shared/types/flowTracer';
-import type { GraphControllerLike } from '../codebaseGraph/graphControllerSupport';
-import { getGraphController } from '../codebaseGraph/graphControllerSupport';
 import { getConfigValue } from '../config';
 import log from '../logger';
 import type { BoundaryRegistry } from './boundaryRegistry';
@@ -91,32 +89,6 @@ function buildSteps(
   return { steps: acc.steps, edges: acc.edges, depthCapHit: acc.depthCapHit };
 }
 
-async function traceWithGraph(
-  entry: SymbolRef,
-  maxDepth: number,
-  ctrl: GraphControllerLike,
-  registry: BoundaryRegistry,
-): Promise<{ steps: FlowStep[]; edges: FlowEdge[]; depthCapHit: boolean }> {
-  const result = ctrl.traceCallPath(entry.symbol, '', maxDepth);
-  const nodes = (result?.path as GraphPathNode[] | undefined) ?? [];
-  if (nodes.length === 0) {
-    const single = buildSingleEntryTrace(entry);
-    return { steps: single.steps, edges: single.edges, depthCapHit: false };
-  }
-  return buildSteps(nodes, maxDepth, registry);
-}
-
-// ─── Graph version string ─────────────────────────────────────────────────────
-
-function graphVersionString(ctrl: GraphControllerLike): string {
-  try {
-    const status = ctrl.getStatus();
-    return status?.nodeCount ? `nodes:${status.nodeCount}` : 'graph';
-  } catch {
-    return 'graph';
-  }
-}
-
 // ─── Fallback path ────────────────────────────────────────────────────────────
 
 function getFallbackTrace(
@@ -139,26 +111,11 @@ export async function traceFlow(
   entry: SymbolRef,
   opts: { maxDepth?: number } = {},
 ): Promise<FlowTrace> {
-  const maxDepth = opts.maxDepth ?? resolveMaxDepth();
-  const ctrl = getGraphController();
+  void opts; // maxDepth unused — graph removed in Wave 22; fallback path doesn't use depth
   const registry = await getBoundaryRegistry();
 
-  let steps: FlowStep[], edges: FlowEdge[], depthCapHit: boolean, graphVersion: string;
-
-  if (!ctrl) {
-    ({ steps, edges, depthCapHit, graphVersion } = getFallbackTrace(entry, 'no-graph'));
-  } else {
-    try {
-      const traced = await traceWithGraph(entry, maxDepth, ctrl, registry);
-      steps = traced.steps;
-      edges = traced.edges;
-      depthCapHit = traced.depthCapHit;
-      graphVersion = graphVersionString(ctrl);
-    } catch (err) {
-      log.warn('[traceEngine] graph trace error:', err);
-      ({ steps, edges, depthCapHit, graphVersion } = getFallbackTrace(entry, 'graph-error'));
-    }
-  }
+  // Graph removed in Wave 22 — always use walking-skeleton fallback.
+  const { steps, edges, depthCapHit, graphVersion } = getFallbackTrace(entry, 'no-graph');
 
   ensureMinimalContract(entry, steps, edges, registry);
 

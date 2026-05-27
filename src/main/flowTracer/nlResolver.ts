@@ -173,25 +173,8 @@ function queryGraphSet(
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function extractCandidatesFromGraph(_workspaceRoot: string): Promise<CandidateInput[]> {
-  try {
-    const { getGraphController } = await import('../codebaseGraph/graphControllerSupport');
-    const ctrl = getGraphController();
-    if (!ctrl) return [];
-    const rendererHits = queryGraphSet(
-      ctrl,
-      'event handler submit send click keyboard input renderer',
-      50,
-    );
-    const mainHits = queryGraphSet(ctrl, 'ipcMain handle ipc handler main process channel', 50);
-    const seen = new Set(rendererHits.map((r) => `${r.file}:${r.line}`));
-    const merged = [...rendererHits];
-    for (const hit of mainHits) {
-      if (!seen.has(`${hit.file}:${hit.line}`)) merged.push(hit);
-    }
-    return merged.slice(0, 80); // cap per ADR Decision 4
-  } catch {
-    return [];
-  }
+  // Graph removed in Wave 22 — fallback candidate extraction is unavailable.
+  return [];
 }
 
 async function getCandidates(workspaceRoot: string): Promise<CandidateInput[]> {

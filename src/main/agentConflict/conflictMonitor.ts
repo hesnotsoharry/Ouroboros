@@ -12,9 +12,8 @@
 import type { AgentConflictReport, AgentConflictSnapshot } from '@shared/types/agentConflict';
 import { EventEmitter } from 'events';
 
-import type { GraphNode } from '../codebaseGraph/graphTypes';
 import log from '../logger';
-import type { DismissEntry, RootSessionMap } from './conflictMonitorSupport';
+import type { DismissEntry, GraphNode, RootSessionMap } from './conflictMonitorSupport';
 import {
   buildOverlapSymbols,
   computeSymbols,

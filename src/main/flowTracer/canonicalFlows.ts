@@ -22,7 +22,6 @@ import path from 'path';
 
 import type { CanonicalFlow, LayerKind } from '../../shared/types/flowTracer';
 import { spawnClaude } from '../claudeMdGeneratorSupport';
-import { getGraphController } from '../codebaseGraph/graphControllerSupport';
 import { getConfigValue } from '../config';
 import log from '../logger';
 import {
@@ -42,10 +41,6 @@ const CACHE_FILENAME = 'canonical-flows.json';
 const CLAUDE_MD_PATH = 'CLAUDE.md';
 const MAX_CLAUDE_MD_CHARS = 1500;
 
-// IPC-handler paths to scan for candidates
-const IPC_HANDLER_PREFIX = 'src/main/ipc-handlers/';
-// Renderer event-handler paths
-const RENDERER_PREFIX = 'src/renderer/';
 
 // ---------------------------------------------------------------------------
 // FALLBACK_FLOWS — moved from walkingSkeletonStub.ts
@@ -144,112 +139,12 @@ async function writeCache(workspaceRoot: string, flows: CanonicalFlow[]): Promis
 // ---------------------------------------------------------------------------
 
 /**
- * Query the codebase graph for UI event handlers (renderer) and IPC handlers
- * (main/ipc-handlers). Returns up to ~80 candidates for the gallery prompt.
+ * Graph removed in Wave 22 — returns empty candidate list.
+ * Gallery generation falls back to FALLBACK_FLOWS.
  */
 export async function extractEntryPointCandidates(): Promise<EntryPointCandidate[]> {
-  const ctrl = getGraphController();
-  if (!ctrl) {
-    log.info('[canonicalFlows] graph not ready — returning empty candidate list');
-    return [];
-  }
-
-  const results: EntryPointCandidate[] = [];
-  extractIpcHandlerCandidates(ctrl, results);
-  extractRendererEventCandidates(ctrl, results);
-  return deduplicateCandidates(results);
-}
-
-function escapeCypher(value: string): string {
-  return value.replaceAll("'", "''");
-}
-
-function extractIpcHandlerCandidates(
-  ctrl: ReturnType<typeof getGraphController>,
-  out: EntryPointCandidate[],
-): void {
-  if (!ctrl) return;
-  const escaped = escapeCypher(IPC_HANDLER_PREFIX);
-  const cypher =
-    `MATCH (n) WHERE n.file_path STARTS WITH '${escaped}'` +
-    ` AND labels(n) IN ['Function', 'Method']` +
-    ` RETURN n.name, n.file_path, n.start_line LIMIT 60`;
-  let rows: Array<Record<string, unknown>>;
-  try {
-    rows = ctrl.queryGraph(cypher);
-  } catch (err) {
-    log.info('[canonicalFlows] ipc-handler query failed:', err);
-    return;
-  }
-  for (const row of rows) {
-    const candidate = rowToCandidate(row, 'ipc-handler');
-    if (candidate) out.push(candidate);
-  }
-}
-
-function extractRendererEventCandidates(
-  ctrl: ReturnType<typeof getGraphController>,
-  out: EntryPointCandidate[],
-): void {
-  if (!ctrl) return;
-  // The compat queryGraph engine supports only single-condition WHERE clauses
-  // and labels()/IN. Run three name-pattern queries and dedupe the merged set.
-  const patterns: Array<{ op: 'STARTS WITH' | 'ENDS WITH'; value: string }> = [
-    { op: 'STARTS WITH', value: 'handle' },
-    { op: 'STARTS WITH', value: 'on' },
-    { op: 'ENDS WITH', value: 'Handler' },
-  ];
-  const seen = new Set<string>();
-  let added = 0;
-  for (const { op, value } of patterns) {
-    if (added >= 40) break;
-    const rows = runRendererEventQuery(ctrl, op, value);
-    for (const row of rows) {
-      if (added >= 40) break;
-      const candidate = rowToCandidate(row, 'renderer-event');
-      if (!candidate) continue;
-      const dedupeKey = `${candidate.symbol}|${candidate.file}|${candidate.line}`;
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-      out.push(candidate);
-      added += 1;
-    }
-  }
-}
-
-function runRendererEventQuery(
-  ctrl: NonNullable<ReturnType<typeof getGraphController>>,
-  op: 'STARTS WITH' | 'ENDS WITH',
-  value: string,
-): Array<Record<string, unknown>> {
-  const escaped = escapeCypher(RENDERER_PREFIX);
-  const cypher =
-    `MATCH (n) WHERE n.file_path STARTS WITH '${escaped}'` +
-    ` AND labels(n) IN ['Function', 'Method']` +
-    ` AND n.name ${op} '${value}'` +
-    ` RETURN n.name, n.file_path, n.start_line LIMIT 20`;
-  try {
-    const rows = ctrl.queryGraph(cypher);
-    return Array.isArray(rows) ? rows : [];
-  } catch (err) {
-    log.info('[canonicalFlows] renderer-event query failed:', err);
-    return [];
-  }
-}
-
-function rowToCandidate(
-  row: Record<string, unknown>,
-  category: EntryPointCandidate['category'],
-): EntryPointCandidate | null {
-  const name = row['n_name'] ?? row['name'];
-  const filePath = row['n_file_path'] ?? row['file_path'];
-  const startLine = row['n_start_line'] ?? row['start_line'];
-
-  if (typeof name !== 'string' || !name.trim()) return null;
-  if (typeof filePath !== 'string' || !filePath.trim()) return null;
-  const line = typeof startLine === 'number' ? startLine : 1;
-
-  return { symbol: name.trim(), file: filePath.trim(), line, category };
+  log.info('[canonicalFlows] graph removed — returning empty candidate list');
+  return [];
 }
 
 function deduplicateCandidates(candidates: EntryPointCandidate[]): EntryPointCandidate[] {

@@ -1,9 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
 
-import { getGraphController } from '../codebaseGraph/graphControllerSupport'
-import { computePageRank, normalizePageRankScores } from '../codebaseGraph/graphPageRank'
-import { store } from '../config'
 import {
   type ContextFileSnapshot,
   loadContextFileSnapshotFast,
@@ -46,7 +43,6 @@ const REASON_WEIGHTS = new Map<ContextReasonKind, number>([
 ])
 
 const AGENT_DIFF_WEIGHT = 12
-const PAGERANK_SCALE = 40
 
 export const STOP_WORDS = new Set([
   'a',
@@ -249,59 +245,11 @@ export async function addTestCompanions(
   }
 }
 
-function buildPageRankSeeds(
-  selection: NormalizedSelection,
-  candidates: Map<string, MutableCandidate>,
-  provenanceEnabled: boolean,
-): Array<{ id: string; weight: number }> {
-  const cfg = store.get('context')
-  const sw = cfg?.pagerankSeeds ?? { pinned: 0.5, symbol: 0.3, user_edit: 0.2 }
-  const getProv = makeGetProv(provenanceEnabled)
-  const seeds: Array<{ id: string; weight: number }> = []
-  for (const f of selection.pinnedFiles) seeds.push({ id: f, weight: sw.pinned })
-  for (const c of candidates.values()) {
-    if (c.reasons.some((r) => r.kind === 'keyword_match'))
-      seeds.push({ id: c.filePath, weight: sw.symbol })
-    if (isRecentUserEdit(c.filePath, getProv)) seeds.push({ id: c.filePath, weight: sw.user_edit })
-  }
-  return seeds
-}
-
-function applyPageRankScores(
-  candidates: Map<string, MutableCandidate>,
-  normalized: Map<string, number>,
-): void {
-  for (const [filePath, score] of normalized) {
-    if (score <= 0) continue
-    const weight = Math.round(score * PAGERANK_SCALE)
-    const candidate = getOrCreateCandidate(candidates, filePath)
-    candidate.pagerank_score = score
-    if (weight > 0) addReason(candidate, 'pagerank', `PageRank score: ${score.toFixed(3)}`, weight)
-  }
-}
-
 export function tryApplyPageRank(
-  candidates: Map<string, MutableCandidate>,
-  selection: NormalizedSelection,
-  workspaceRoots: string[],
-  provenanceEnabled: boolean,
+  _candidates: Map<string, MutableCandidate>,
+  _selection: NormalizedSelection,
+  _workspaceRoots: string[],
+  _provenanceEnabled: boolean,
 ): void {
-  const gc = getGraphController()
-  if (!gc) return
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- access internal db from compat shim
-    const db = (gc as any)._db ?? (gc as any).db
-    if (!db) return
-    const seeds = buildPageRankSeeds(selection, candidates, provenanceEnabled)
-    const project = workspaceRoots[0] ?? ''
-    const tPR = Date.now()
-    const prResult = computePageRank(db, { project, seeds, graphVersion: String(Date.now()) })
-
-    console.warn(
-      `[trace:computePageRank] ${Date.now() - tPR}ms fromCache=${prResult.fromCache ?? false} iters=${prResult.iterations ?? 0} seeds=${seeds.length}`,
-    )
-    applyPageRankScores(candidates, normalizePageRankScores(prResult.scores))
-  } catch {
-    // PageRank is best-effort — never fail context selection
-  }
+  // Graph removed in Wave 22 — PageRank scoring is a no-op.
 }
