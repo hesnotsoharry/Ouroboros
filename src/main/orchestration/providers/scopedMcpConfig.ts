@@ -4,12 +4,13 @@
  * Wave 48 Phase D: each headless spawn gets a temp JSON file listing only the
  * MCP servers it should see, replacing the global settings inheritance model.
  *
- * Wave 60: the per-spawn ouroboros routing decision now either omits the
- * server entirely or writes the standalone `ouroborosMcp.js` entry. Three
- * outcomes:
+ * Wave 60 / Wave 22 Phase 6: the per-spawn ouroboros routing decision now
+ * either omits the server entirely or writes the standalone package entry
+ * (`packages/codebase-graph-mcp/dist/index.js`). Three outcomes:
  *
- *   - 'direct-inject'           : write `{ouroboros: {command,args,env}}`
- *                                 for the standalone into the temp config.
+ *   - 'direct-inject'           : write `{ouroboros: {command,args}}`
+ *                                 for the standalone package into the temp
+ *                                 config.
  *   - 'route-through-codemode'  : omit `ouroboros`; the `__codemode_proxy`
  *                                 entry that codemodeManager added to
  *                                 `~/.claude.json mcpServers` flows through
@@ -91,19 +92,28 @@ async function readGlobalMcpServers(): Promise<McpServerMap> {
 }
 
 // ---------------------------------------------------------------------------
-// Ouroboros entry shape (Wave 60 Phase E)
+// Ouroboros entry shape (Wave 22 Phase 6)
 //
-// Single shape now: standalone (`ouroborosMcp.js`) launched via Electron
-// binary in Node mode. No port, no bridge, no transport branching, no live
-// URL dependency — the standalone resolves DB path itself from %APPDATA%.
+// Single shape: spawn the standalone package
+// (`packages/codebase-graph-mcp/dist/index.js`) via plain `node` with
+// `--root <projectRoot>`. The package has its own better-sqlite3 compiled
+// for the system Node ABI, so ELECTRON_RUN_AS_NODE is not needed.
+// `projectRoot` defaults to `defaultProjectRoot` config (same source used
+// by `injectStandaloneMcpEntry` in main.ts).
 // ---------------------------------------------------------------------------
 
+function resolvePackageEntryPath(mainOutDir: string): string {
+  // out/main/ → repo root → packages/codebase-graph-mcp/dist/index.js
+  const repoRoot = path.resolve(mainOutDir, '..', '..');
+  return path.join(repoRoot, 'packages', 'codebase-graph-mcp', 'dist', 'index.js');
+}
+
 function buildOuroborosEntry(mainOutDir: string): McpServerEntry {
-  const standalonePath = path.join(mainOutDir, 'ouroborosMcp.js');
+  const packageEntry = resolvePackageEntryPath(mainOutDir);
+  const projectRoot = (getConfigValue('defaultProjectRoot') as string | undefined) ?? process.cwd();
   return {
-    command: process.execPath,
-    args: [standalonePath],
-    env: { ELECTRON_RUN_AS_NODE: '1' },
+    command: 'node',
+    args: [packageEntry, '--root', projectRoot],
   };
 }
 
@@ -219,7 +229,8 @@ export interface ScopedMcpConfigOptions {
   codemodeAcquireFailed?: boolean;
   /**
    * Absolute directory containing the main process build output. Used to
-   * resolve `ouroborosMcp.js` for the standalone entry.
+   * resolve `packages/codebase-graph-mcp/dist/index.js` for the standalone
+   * entry (walks up two levels to repo root, then down into the package).
    * Defaults to `__dirname` of the calling main module.
    */
   mainOutDir?: string;

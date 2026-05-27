@@ -96,11 +96,12 @@ async function startIdeTools(): Promise<void> {
 }
 
 /**
- * Wave 60 Phase E: the IDE no longer runs an in-process MCP server. Its
- * job is to write the standalone-MCP entry into `<root>/.mcp.json` so
- * Claude Code (whether spawned by the IDE or a terminal) can find and
- * launch the standalone (`out/main/ouroborosMcp.js`). The standalone
- * reads the SQLite DB directly — no port, no bridge, no HTTP server.
+ * Wave 60 Phase E / Wave 22 Phase 6: the IDE no longer runs an in-process
+ * MCP server. Its job is to write the standalone-MCP entry into
+ * `<root>/.mcp.json` so Claude Code (whether spawned by the IDE or a
+ * terminal) can find and launch the standalone package
+ * (`packages/codebase-graph-mcp/dist/index.js`). The standalone reads the
+ * SQLite DB directly — no port, no bridge, no HTTP server.
  */
 async function injectStandaloneMcpEntry(): Promise<void> {
   if (!getConfigValue('internalMcpEnabled')) {
