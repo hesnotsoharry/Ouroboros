@@ -31,12 +31,8 @@ vi.mock('./mainStartup', () => ({
   // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
 }));
 // Wave 60 Phase E: mcpHost subsystem removed alongside internalMcpServer.
-vi.mock('./orchestration/contextDecisionWriter', () => ({
-  closeDecisionWriter: recorder('closeDecisionWriter', true),
-}));
-vi.mock('./orchestration/contextOutcomeWriter', () => ({
-  closeOutcomeWriter: recorder('closeOutcomeWriter', true),
-}));
+// contextDecisionWriter + contextOutcomeWriter mocks removed in Wave 100 Phase F
+//   (closeDecisionWriter/closeOutcomeWriter removed from mainShutdown during context-intelligence cut)
 vi.mock('./pipeAuth', () => ({ deleteTokenFile: recorder('deleteTokenFile') }));
 vi.mock('./research/correctionWriter', () => ({
   closeCorrectionWriter: recorder('closeCorrectionWriter', true),
@@ -65,7 +61,8 @@ describe('performWillQuitShutdown', () => {
     await performWillQuitShutdown();
 
     expect(calls).toContain('closeSessionServices');
-    expect(calls).toContain('closeDecisionWriter');
+    // closeDecisionWriter removed in Wave 100 Phase F (context-intelligence cut)
+    expect(calls).toContain('closeResearchOutcomeWriter');
     expect(calls).toContain('closeTelemetryStore');
     expect(calls).toContain('stopClaudeUsagePoller');
     expect(calls).toContain('cleanupIpcHandlers');
@@ -74,8 +71,8 @@ describe('performWillQuitShutdown', () => {
     // shutdownCodexAppServerProcesses removed in Wave 100 Phase E (chat adapters deleted)
     expect(calls).toContain('shutdownExtensionHost');
 
-    // Writers run before the sync stores close (telemetry depends on writers being flushed).
-    expect(calls.indexOf('closeDecisionWriter')).toBeLessThan(calls.indexOf('closeTelemetryStore'));
+    // Research writer runs before the sync stores close (telemetry depends on writers being flushed).
+    expect(calls.indexOf('closeResearchOutcomeWriter')).toBeLessThan(calls.indexOf('closeTelemetryStore'));
     // IPC cleanup runs before subsystem disposal.
     expect(calls.indexOf('cleanupIpcHandlers')).toBeLessThan(calls.indexOf('shutdownExtensionHost'));
   });

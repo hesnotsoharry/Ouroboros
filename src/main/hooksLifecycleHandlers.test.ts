@@ -6,18 +6,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-const mockOnCwdChanged = vi.fn();
-const mockOnFileChanged = vi.fn();
+// mockOnCwdChanged + mockOnFileChanged + contextLayerController mock removed in Wave 100 Phase F
+// (contextLayer calls were deleted from hooksLifecycleHandlers)
 // mockGraphOnFileChange removed in Wave 22 (codebaseGraph deleted)
-
-vi.mock('./contextLayer/contextLayerController', () => ({
-  getContextLayerController: () => ({
-    onCwdChanged: mockOnCwdChanged,
-    onFileChanged: mockOnFileChanged,
-  }),
-}));
-
 // codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
+
+const mockMarkUserEdit = vi.fn();
+
+vi.mock('./orchestration/editProvenance', () => ({
+  getEditProvenanceStore: () => ({ markUserEdit: mockMarkUserEdit }),
+}));
 
 vi.mock('./logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -44,10 +42,11 @@ describe('handleCwdChanged', () => {
     vi.clearAllMocks();
   });
 
+  // contextLayer onCwdChanged notification removed in Wave 100 Phase F
+
   it('updates sessionCwdMap from payload.cwd', () => {
     handleCwdChanged(sessionCwdMap, { sessionId: 'abc', cwd: '/foo/bar' });
     expect(sessionCwdMap.get('abc')).toBe('/foo/bar');
-    expect(mockOnCwdChanged).toHaveBeenCalledWith('/foo/bar');
   });
 
   it('prefers data.cwd over payload.cwd', () => {
@@ -57,13 +56,11 @@ describe('handleCwdChanged', () => {
       data: { cwd: '/new' },
     });
     expect(sessionCwdMap.get('abc')).toBe('/new');
-    expect(mockOnCwdChanged).toHaveBeenCalledWith('/new');
   });
 
   it('does nothing when no cwd is available', () => {
     handleCwdChanged(sessionCwdMap, { sessionId: 'abc' });
     expect(sessionCwdMap.size).toBe(0);
-    expect(mockOnCwdChanged).not.toHaveBeenCalled();
   });
 });
 
@@ -72,15 +69,19 @@ describe('handleFileChanged', () => {
     vi.clearAllMocks();
   });
 
-  it('notifies context layer on external file changes', () => {
-    // graph notification removed in Wave 22 (codebaseGraph deleted)
-    handleFileChanged({});
-    expect(mockOnFileChanged).toHaveBeenCalled();
+  // contextLayer onFileChanged notification removed in Wave 100 Phase F
+  // (graph notification already removed in Wave 22 when codebaseGraph was deleted)
+
+  it('schedules edit provenance marking for external file changes with a file path', async () => {
+    handleFileChanged({ data: { file: '/some/file.ts' } });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(mockMarkUserEdit).toHaveBeenCalledWith('/some/file.ts');
   });
 
-  it('skips notification for internal sessions', () => {
-    handleFileChanged({ internal: true });
-    expect(mockOnFileChanged).not.toHaveBeenCalled();
+  it('skips provenance marking for internal sessions', async () => {
+    handleFileChanged({ internal: true, data: { file: '/some/file.ts' } });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(mockMarkUserEdit).not.toHaveBeenCalled();
   });
 });
 

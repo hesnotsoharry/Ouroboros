@@ -7,39 +7,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ── Hoisted mocks (must use vi.hoisted so factories run before vi.mock) ───────
 
 const {
-  mockOnSessionStart,
   // mockGraphOnSessionStart removed in Wave 22 (codebaseGraph deleted)
-  mockOnGitCommit,
   // mockGraphOnGitCommit removed in Wave 22 (codebaseGraph deleted)
+  // mockOnSessionStart + mockOnGitCommit + mockInvalidateCache removed in Wave 100 Phase F
+  //   (contextLayer and agentChat snapshot cache calls were deleted from hooksSessionHandlers)
   mockDispatchActivation,
-  mockInvalidateCache,
   mockGenerateClaudeMd,
   mockGetConfigValue,
+  mockTrackSessionEnd,
+  mockEvaluateStop,
 } = vi.hoisted(() => ({
-  mockOnSessionStart: vi.fn(),
-  mockOnGitCommit: vi.fn(),
   mockDispatchActivation: vi.fn().mockResolvedValue(undefined),
-  mockInvalidateCache: vi.fn(),
   mockGenerateClaudeMd: vi.fn().mockResolvedValue(undefined),
   mockGetConfigValue: vi.fn(),
+  mockTrackSessionEnd: vi.fn(),
+  mockEvaluateStop: vi.fn(),
 }));
 
-vi.mock('./contextLayer/contextLayerController', () => ({
-  getContextLayerController: () => ({
-    onSessionStart: mockOnSessionStart,
-    onGitCommit: mockOnGitCommit,
-  }),
-}));
-
+// contextLayer/contextLayerController mock removed in Wave 100 Phase F
 // codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
 
 vi.mock('./extensions', () => ({
   dispatchActivationEvent: mockDispatchActivation,
 }));
 
-vi.mock('./ipc-handlers/agentChat', () => ({
-  invalidateSnapshotCache: mockInvalidateCache,
-}));
+// ipc-handlers/agentChat invalidateSnapshotCache mock removed in Wave 100 Phase F
 
 vi.mock('./claudeMdGenerator', () => ({
   generateClaudeMd: mockGenerateClaudeMd,
@@ -47,6 +39,14 @@ vi.mock('./claudeMdGenerator', () => ({
 
 vi.mock('./config', () => ({
   getConfigValue: mockGetConfigValue,
+}));
+
+vi.mock('./router/qualitySignalCollector', () => ({
+  trackSessionEnd: mockTrackSessionEnd,
+}));
+
+vi.mock('./hooks/gotchaUpdateNudge', () => ({
+  evaluateStop: mockEvaluateStop,
 }));
 
 vi.mock('./logger', () => ({
@@ -88,16 +88,8 @@ describe('handleSessionStart', () => {
     });
   });
 
-  it('notifies context layer for external sessions', () => {
-    // graph notification removed in Wave 22 (codebaseGraph deleted)
-    handleSessionStart(makePayload({ internal: false }));
-    expect(mockOnSessionStart).toHaveBeenCalled();
-  });
-
-  it('skips context layer for internal sessions', () => {
-    handleSessionStart(makePayload({ internal: true }));
-    expect(mockOnSessionStart).not.toHaveBeenCalled();
-  });
+  // contextLayer onSessionStart notifications removed in Wave 100 Phase F
+  // (graph notification already removed in Wave 22 when codebaseGraph was deleted)
 });
 
 describe('handleSessionEnd', () => {
@@ -118,20 +110,22 @@ describe('handleSessionStop', () => {
     vi.clearAllMocks();
   });
 
-  it('notifies context layer and invalidates cache for external sessions', () => {
-    // graph notification removed in Wave 22 (codebaseGraph deleted)
-    mockGetConfigValue.mockReturnValue(undefined);
+  // contextLayer onGitCommit + agentChat invalidateSnapshotCache calls removed in Wave 100 Phase F
+
+  it('tracks session end and triggers CLAUDE.md generation for external sessions', () => {
+    mockGetConfigValue.mockReturnValue({ enabled: true, triggerMode: 'post-session' });
     const map = new Map<string, string>();
-    handleSessionStop(makePayload({ type: 'session_stop' }), map);
-    expect(mockOnGitCommit).toHaveBeenCalled();
-    expect(mockInvalidateCache).toHaveBeenCalled();
+    handleSessionStop(makePayload({ type: 'session_stop', cwd: '/project' }), map);
+    expect(mockTrackSessionEnd).toHaveBeenCalled();
+    expect(mockGenerateClaudeMd).toHaveBeenCalledWith('/project');
   });
 
   it('skips all side effects for internal sessions', () => {
+    mockGetConfigValue.mockReturnValue({ enabled: true, triggerMode: 'post-session' });
     const map = new Map<string, string>();
     handleSessionStop(makePayload({ type: 'session_stop', internal: true }), map);
-    expect(mockOnGitCommit).not.toHaveBeenCalled();
-    expect(mockInvalidateCache).not.toHaveBeenCalled();
+    expect(mockTrackSessionEnd).not.toHaveBeenCalled();
+    expect(mockGenerateClaudeMd).not.toHaveBeenCalled();
   });
 });
 

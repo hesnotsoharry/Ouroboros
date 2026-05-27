@@ -120,10 +120,10 @@ const UNCLASSIFIED_ALLOWLIST = new Set<string>([
   'workspaceReadList:changed',
 
   // ── B. Dead channel constants (no live ipcMain.handle registration) ────────
-  // Defined in src/shared/ipc/orchestrationChannels.ts for type safety.
   // The full orchestration task system was removed as dead code (Wave ~35).
-  // Only orchestration:previewContext and orchestration:buildContextPacket
-  // remain wired (they ARE in the catalog).
+  // orchestrationChannels.ts (src/shared/ipc/) was deleted in Wave 100 Phase F.
+  // orchestration:previewContext and orchestration:buildContextPacket were also
+  // removed from the catalog and from ipc.ts in Wave 100 Phase F (context-intelligence cut).
   'orchestration:createTask',
   'orchestration:event',
   'orchestration:loadLatestSession',

@@ -72,9 +72,7 @@ describe('channelTimeoutClass', () => {
     expect(channelTimeoutClass('sessions:dispatchTask')).toBe('long');
   });
 
-  it('returns long for orchestration:buildContextPacket', () => {
-    expect(channelTimeoutClass('orchestration:buildContextPacket')).toBe('long');
-  });
+  // orchestration:buildContextPacket removed in Wave 100 Phase F (stub IPC handlers deleted)
 
   it('returns long for pty:spawn', () => {
     expect(channelTimeoutClass('pty:spawn')).toBe('long');
