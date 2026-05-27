@@ -1,32 +1,94 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
+/**
+ * codebaseGraph/index.ts -- Barrel export for the codebase graph subsystem.
+ */
 
-const server = new McpServer({
-  name: 'codebase-graph-mcp',
-  version: '0.1.0',
-});
+// ---- Controller registry ----------------------------------------------------
+export type { GraphControllerLike } from './graphControllerSupport';
+export {
+  acquireGraphController,
+  getGraphController,
+  getGraphControllerForRoot,
+  releaseGraphController,
+} from './graphControllerSupport';
 
-server.registerTool(
-  'ping',
-  {
-    description: 'Health-check tool — returns pong',
-    inputSchema: z.object({}),
-  },
-  async () => {
-    return {
-      content: [{ type: 'text' as const, text: 'pong' }],
-    };
-  },
-);
+// ---- Database (Phase 1) -----------------------------------------------------
+export { GraphDatabase } from './graphDatabase';
+export type {
+  ADRRecord,
+  ADRSection,
+  BaseNodeProps,
+  ClassProps,
+  EdgeType,
+  EnumProps,
+  FileHashRecord,
+  FileProps,
+  FolderProps,
+  FunctionProps,
+  GraphEdge,
+  GraphNode,
+  InterfaceProps,
+  MethodProps,
+  ModuleProps,
+  NodeFilter,
+  NodeLabel,
+  NodeSearchResult,
+  PackageProps,
+  ProjectProps,
+  ProjectRecord,
+  RouteProps,
+  TypeProps,
+} from './graphDatabaseTypes';
 
-async function main(): Promise<void> {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error('[trace:graph-mcp.server.start] codebase-graph-mcp server listening on stdio');
-}
+// ---- Tree-sitter parser (Phase 2) ------------------------------------------
+export { getLanguageConfig, getSupportedExtensions } from './treeSitterLanguageConfigs';
+export { TreeSitterParser } from './treeSitterParser';
+export type {
+  ExtractedCall,
+  ExtractedDefinition,
+  ExtractedImport,
+  ExtractedRoute,
+  ImportSpecifier,
+  LanguageConfig,
+  LanguageId,
+  ParsedFileResult,
+  RoutePattern,
+} from './treeSitterTypes';
 
-main().catch((err: unknown) => {
-  console.error('[trace:graph-mcp.server.error] fatal error during startup', err);
-  process.exit(1);
-});
+// ---- Indexing pipeline (Phase 3) --------------------------------------------
+export { IndexingPipeline } from './indexingPipeline';
+export type {
+  DiscoveredFile,
+  IndexedFile,
+  IndexingOptions,
+  IndexingProgress,
+  IndexingResult,
+} from './indexingPipelineTypes';
+
+// ---- Query engines (Phase 5) ------------------------------------------------
+export { CypherEngine } from './cypherEngine';
+export { QueryEngine } from './queryEngine';
+export type {
+  ArchitectureAspect,
+  ArchitectureResult,
+  ChangedFileInfo,
+  ChangedSymbol,
+  ChangeScope,
+  CodeSearchOptions,
+  CodeSearchResult,
+  DetectChangesOptions,
+  DetectChangesResult,
+  GraphSchemaResult,
+  ImpactedCaller,
+  RiskLevel,
+  TraceCallPathOptions,
+  TraceEdge,
+  TraceNode,
+  TraceResult,
+} from './queryEngineTypes';
+
+// ---- MCP tool handlers (Phase 6) --------------------------------------------
+export type { GraphToolContext } from './mcpToolHandlers';
+export { createGraphMcpTools } from './mcpToolHandlers';
+
+// ---- Auto-sync watcher (Phase 7) --------------------------------------------
+export { AutoSyncWatcher } from './autoSync';
