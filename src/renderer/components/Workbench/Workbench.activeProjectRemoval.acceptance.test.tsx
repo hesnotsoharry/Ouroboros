@@ -93,11 +93,13 @@ describe('Wave 12 Phase 2 — Workbench active-project-removal', () => {
   it('removing the active project switches active to the next ALPHABETICAL remaining project', async () => {
     // Projects (sorted alphabetically by useWorkbenchProjects): alpha, middle, zebra.
     // zebra is initially active (initialRoot).
+    // Wave 14 D1: inline-X only on stale chips — mark all stale so the X
+    // buttons are present for click interactions in this test.
     mockRecents = ['/repos/alpha', '/repos/middle'];
     mockPathExistsResults = {
-      '/repos/alpha': true,
-      '/repos/middle': true,
-      '/repos/zebra': true,
+      '/repos/alpha': false,
+      '/repos/middle': false,
+      '/repos/zebra': false,
     };
 
     renderWith('/repos/zebra');
@@ -119,8 +121,9 @@ describe('Wave 12 Phase 2 — Workbench active-project-removal', () => {
   });
 
   it('removing the only remaining project clears activeProjectRoot to null', async () => {
+    // Wave 14 D1: inline-X only on stale chips.
     mockRecents = [];
-    mockPathExistsResults = { '/repos/solo': true };
+    mockPathExistsResults = { '/repos/solo': false };
 
     renderWith('/repos/solo');
 
@@ -140,11 +143,12 @@ describe('Wave 12 Phase 2 — Workbench active-project-removal', () => {
   it('removing a NON-active project leaves activeProjectRoot unchanged', async () => {
     // Regression check: removing a non-active project must NOT shuffle the
     // active state — only the removed entry disappears.
+    // Wave 14 D1: inline-X only on stale chips.
     mockRecents = ['/repos/alpha', '/repos/middle'];
     mockPathExistsResults = {
-      '/repos/alpha': true,
-      '/repos/middle': true,
-      '/repos/zebra': true,
+      '/repos/alpha': false,
+      '/repos/middle': false,
+      '/repos/zebra': false,
     };
 
     renderWith('/repos/zebra');
@@ -168,10 +172,11 @@ describe('Wave 12 Phase 2 — Workbench active-project-removal', () => {
   it('removing the active when only one OTHER project remains promotes that other to active', async () => {
     // Edge case: N==2, remove active → only one candidate, it becomes active.
     // (No alphabetical tie-breaking needed since there's only one option.)
+    // Wave 14 D1: inline-X only on stale chips.
     mockRecents = ['/repos/alpha'];
     mockPathExistsResults = {
-      '/repos/alpha': true,
-      '/repos/zebra': true,
+      '/repos/alpha': false,
+      '/repos/zebra': false,
     };
 
     renderWith('/repos/zebra');

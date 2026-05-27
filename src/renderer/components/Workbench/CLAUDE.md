@@ -98,10 +98,10 @@ Wave 1 shipped static-only. The constraint is being lifted region by region:
   `Rails/WorkbenchFileTree.tsx` (canon §07: indent depth×12px+6 base, dir icon `--accent-hi`, file
   `--ink-3`) over `Rails/useWorkbenchFileTree.ts` → `useFileWatcher` + `window.electronAPI.files.readDir`
   (lazy dir expansion on click; reuses `FileNode` for rows). M/A status badges still deferred
-  (`follow-ups/2026-05-21-workbench-live-git-diff-stats.md`). `MOCK_FILE_TREE` is NOT yet dead — the
-  `UnifiedRail.parts` collapsed-rail body still uses it.
-- **Still static (→ later waves):** `UnifiedRail.parts` file-tree body (`MOCK_FILE_TREE`);
-  the terminal tab-bar labels (`MOCK_TERM_TABS_*`, single-tab affordance); `StatusBar` testsPassing;
+  (`follow-ups/2026-05-21-workbench-live-git-diff-stats.md`). `MOCK_FILE_TREE` is dead — Wave 14
+  Phase 5 replaced the `UnifiedRail.parts` accordion body with `<WorkbenchFileTree rootPath={project.id} />`.
+- **Still static (→ later waves):** the terminal tab-bar labels (`MOCK_TERM_TABS_*`, single-tab
+  affordance); `StatusBar` testsPassing;
   git +adds/−dels + per-project dirty (`roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md`).
 
 Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.tsx` mount

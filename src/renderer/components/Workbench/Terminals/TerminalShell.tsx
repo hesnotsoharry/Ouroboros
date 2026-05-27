@@ -80,7 +80,7 @@ export function TerminalShell({
 }: TerminalShellProps): React.ReactElement {
   const thisFrame: ActiveWorkbenchFrame = kind === 'cc' ? 'upper' : 'lower';
   const { setActiveFrame } = useActiveWorkbenchFrame();
-  const projectRoot = useProjectOptional()?.projectRoot ?? '__no-project__';
+  const projectRoot = useProjectOptional()?.projectRoot ?? null;
   const { tabs, activeTabId, addTab, closeTab, renameTab, setActiveTab } = useWorkbenchTabs(
     thisFrame,
     projectRoot,

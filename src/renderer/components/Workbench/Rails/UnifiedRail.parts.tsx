@@ -6,8 +6,8 @@
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
-import { MOCK_FILE_TREE, type MockProject, type MockSession } from '../workbenchMockData';
-import { FileNode } from './FileNode';
+import { type MockProject, type MockSession } from '../workbenchMockData';
+import { WorkbenchFileTree } from './WorkbenchFileTree';
 
 // ── shared ─────────────────────────────────────────────────────────────────────
 
@@ -112,15 +112,17 @@ interface AccordionHeaderProps {
   project: MockProject;
   expanded: boolean;
   hasRunning: boolean;
+  onToggle: (id: string) => void;
 }
 
 export function AccordionHeader({
   project,
   expanded,
   hasRunning,
+  onToggle,
 }: AccordionHeaderProps): React.ReactElement {
   return (
-    <div onClick={() => undefined} style={accordionRowStyle(expanded)}>
+    <div onClick={() => onToggle(project.id)} style={accordionRowStyle(expanded)}>
       <Icon
         name={expanded ? 'ChevronDown' : 'Chevron'}
         size={11}
@@ -268,9 +270,7 @@ export function AccordionBody({ project, sessions }: AccordionBodyProps): React.
         />
       ))}
       <BodyLabel style={{ paddingTop: 8 }}>Files</BodyLabel>
-      {MOCK_FILE_TREE.slice(0, 10).map((node, i) => (
-        <FileNode key={`${node.name}-${String(i)}`} node={node} />
-      ))}
+      <WorkbenchFileTree rootPath={project.id} />
     </div>
   );
 }
@@ -283,19 +283,26 @@ interface ProjectAccordionProps {
   /** Live sessions to filter for this project. Callers that wire live data pass
    *  these; legacy/test renders that rely on mock data may omit them. */
   sessions: MockSession[];
+  onToggle: (id: string) => void;
 }
 
 export function ProjectAccordion({
   project,
   expanded,
   sessions,
+  onToggle,
 }: ProjectAccordionProps): React.ReactElement {
   const projectSessions = sessions.filter((s) => s.projectId === project.id);
   const hasRunning = projectSessions.some((s) => s.status === 'live');
 
   return (
     <div style={{ marginBottom: 6 }}>
-      <AccordionHeader project={project} expanded={expanded} hasRunning={hasRunning} />
+      <AccordionHeader
+        project={project}
+        expanded={expanded}
+        hasRunning={hasRunning}
+        onToggle={onToggle}
+      />
       {expanded && <AccordionBody project={project} sessions={projectSessions} />}
     </div>
   );

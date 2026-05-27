@@ -303,6 +303,19 @@ export function setWindowProjectRoots(winId: number, roots: string[]): void {
   if (managed) {
     managed.projectRoots = roots;
     managed.projectRoot = newRoot;
+    // Wave 14: keep the active session in sync with the active project root so
+    // resolveClaudeCwd always spawns Claude in the correct directory.
+    // Without this, the session registered at window creation (which points to
+    // the IDE's own root) overrides any cwd the renderer sends on every
+    // spawnClaude call, causing the top dock terminal to launch in AgentIDE.
+    if (newRoot) {
+      const store = getSessionStore();
+      const existing = store?.listByProjectRoot(newRoot).find((s) => !s.archivedAt);
+      const session = existing ?? makeSession(newRoot);
+      if (!existing) store?.upsert(session);
+      managed.activeSessionId = session.id;
+      setWindowActiveSession(winId, session.id);
+    }
   }
   // contextLayer/graph acquire-release removed in Wave 22
   // Wave 64 — eager persist on every mutation. Without this, project root

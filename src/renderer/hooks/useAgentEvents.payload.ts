@@ -220,6 +220,7 @@ function buildPersistedSessionFields(raw: Record<string, unknown>): Partial<Agen
   return {
     completedAt: getNumberValue(raw, 'completedAt'),
     toolCalls: Array.isArray(raw.toolCalls) ? (raw.toolCalls as ToolCallEvent[]) : [],
+    cwd: getStringValue(raw, 'cwd'),
     error: getStringValue(raw, 'error'),
     parentSessionId: getStringValue(raw, 'parentSessionId'),
     inputTokens: getNumberValue(raw, 'inputTokens') ?? 0,

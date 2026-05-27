@@ -14,7 +14,7 @@
  * Footer: branch icon · name (live from useGitBranch).
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
 import { useGitBranch } from '../../../hooks/useGitBranch';
@@ -83,6 +83,14 @@ export function UnifiedRail({ onExpand }: UnifiedRailProps): React.ReactElement 
   const sessions = liveSessions.map(adaptSession);
   const activeProject = projects.find((p) => p.active) ?? projects[0];
 
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(
+    activeProject?.id ?? null,
+  );
+
+  const handleToggle = (id: string): void => {
+    setExpandedProjectId((prev) => (prev === id ? null : id));
+  };
+
   return (
     <div data-testid="workbench-unifiedrail" style={RAIL_STYLE}>
       <UnifiedHeader onExpand={onExpand} />
@@ -91,8 +99,9 @@ export function UnifiedRail({ onExpand }: UnifiedRailProps): React.ReactElement 
           <ProjectAccordion
             key={p.id}
             project={p}
-            expanded={activeProject ? p.id === activeProject.id : false}
+            expanded={p.id === expandedProjectId}
             sessions={sessions}
+            onToggle={handleToggle}
           />
         ))}
       </div>

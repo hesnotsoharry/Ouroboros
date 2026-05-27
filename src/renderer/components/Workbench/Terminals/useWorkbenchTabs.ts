@@ -191,7 +191,11 @@ function useTabRestoreInit(
   const hasInitializedRef = useRef(false);
 
   useEffect(() => {
-    if (!isReady || hasInitializedRef.current) return;
+    // Defer spawn until both isReady AND a valid project cwd are available.
+    // cwd is undefined when projectRoot is null (no project loaded yet) —
+    // setting hasInitializedRef too early would prevent re-entry once the
+    // correct root arrives, causing the CC terminal to launch in the wrong dir.
+    if (!isReady || hasInitializedRef.current || cwd === undefined) return;
     hasInitializedRef.current = true;
     if (restoredCollection && restoredCollection.tabs.length > 0) {
       // Restored session — overwrite the default tab with the persisted collection.

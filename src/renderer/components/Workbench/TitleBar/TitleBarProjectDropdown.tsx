@@ -7,9 +7,13 @@
  * D4: separate from InnerRailProjectDropdown — title bar has wider layout constraints.
  */
 
-import React, { type RefObject, useCallback, useEffect, useRef } from 'react';
+import React, { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
+import {
+  ProjectContextMenu,
+  type ProjectCtxMenuState,
+} from '../Rails/ProjectContextMenu';
 import { useProjectCRUDActions } from '../useProjectCRUDActions';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
 
@@ -104,32 +108,21 @@ function miniChipStyle(color: string): React.CSSProperties {
   };
 }
 
-const REMOVE_BTN_STYLE: React.CSSProperties = {
-  marginLeft: 'auto',
-  padding: '0 4px',
-  background: 'transparent',
-  border: 'none',
-  color: 'var(--ink-4)',
-  cursor: 'pointer',
-  fontSize: 14,
-  lineHeight: '1',
-  flexShrink: 0,
-};
-
 function ProjectRow({
   project,
+  onContextMenu,
   onSelect,
-  onRemove,
 }: {
   project: WorkbenchProject;
+  onContextMenu: (e: React.MouseEvent, path: string) => void;
   onSelect: (path: string) => void;
-  onRemove: (path: string) => void;
 }): React.ReactElement {
   return (
     <div
       style={{ display: 'flex', alignItems: 'center' }}
       data-testid={`titlebar-project-row-${project.name}`}
       onClick={() => onSelect(project.path)}
+      onContextMenu={(e) => onContextMenu(e, project.path)}
     >
       <button
         style={{ ...rowStyle(project.active), flex: 1 }}
@@ -139,22 +132,35 @@ function ProjectRow({
         <span style={NAME_STYLE}>{project.name}</span>
         {project.active && <span style={CHECK_STYLE}>✓</span>}
       </button>
-      <button
-        aria-label={`Remove ${project.name}`}
-        data-testid={`remove-project-${project.name}`}
-        style={REMOVE_BTN_STYLE}
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove(project.path);
-        }}
-      >
-        ×
-      </button>
     </div>
   );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+
+function useDropdownContextMenu(removeProject: (path: string) => void): {
+  handleContextMenu: (e: React.MouseEvent, path: string) => void;
+  menuElement: React.ReactElement | null;
+} {
+  const [ctxMenu, setCtxMenu] = useState<ProjectCtxMenuState | null>(null);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, path: string) => {
+      e.preventDefault();
+      setCtxMenu({ x: e.clientX, y: e.clientY, projectPath: path });
+    },
+    [],
+  );
+  const menuElement = ctxMenu ? (
+    <ProjectContextMenu
+      x={ctxMenu.x}
+      y={ctxMenu.y}
+      projectPath={ctxMenu.projectPath}
+      onRemove={removeProject}
+      onDismiss={() => setCtxMenu(null)}
+    />
+  ) : null;
+  return { handleContextMenu, menuElement };
+}
 
 interface TitleBarProjectDropdownProps {
   onClose: () => void;
@@ -167,6 +173,7 @@ export function TitleBarProjectDropdown({
   const { removeProject } = useProjectCRUDActions();
   const projects = useWorkbenchProjects();
   const containerRef = useRef<HTMLDivElement>(null);
+  const { handleContextMenu, menuElement } = useDropdownContextMenu(removeProject);
 
   const handleSelect = useCallback(
     (path: string) => {
@@ -176,21 +183,19 @@ export function TitleBarProjectDropdown({
     [setActiveProjectRoot, onClose],
   );
 
-  const handleRemove = useCallback(
-    (path: string) => {
-      removeProject(path);
-      onClose();
-    },
-    [removeProject, onClose],
-  );
-
   useDismiss(containerRef, onClose);
 
   return (
     <div ref={containerRef} style={DROPDOWN_STYLE} data-testid="titlebar-project-dropdown">
       {projects.map((p) => (
-        <ProjectRow key={p.path} project={p} onSelect={handleSelect} onRemove={handleRemove} />
+        <ProjectRow
+          key={p.path}
+          project={p}
+          onSelect={handleSelect}
+          onContextMenu={handleContextMenu}
+        />
       ))}
+      {menuElement}
     </div>
   );
 }

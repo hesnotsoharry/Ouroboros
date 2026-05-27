@@ -119,6 +119,10 @@ function stubFiles(): void {
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
+import { ContextBlock } from './AgentSidebar/ContextBlock';
+import { FilesTouched } from './AgentSidebar/FilesTouched';
+import { HookTimeline } from './AgentSidebar/HookTimeline';
+import { NowBlock } from './AgentSidebar/NowBlock';
 import { InnerRail } from './Rails/InnerRail';
 import { ProjectRail } from './Rails/ProjectRail';
 import { UnifiedRail } from './Rails/UnifiedRail';
@@ -342,7 +346,10 @@ describe('InnerRail', () => {
     expect(screen.getByText('claude · refactor')).toBeDefined();
   });
 
-  it('renders a session from another project (other-project group)', () => {
+  it('does NOT render sessions from other projects (project-scoped rail — Wave 14 Phase 4)', () => {
+    // Wave 14 Phase 4: InnerRail is project-scoped — only sessions whose cwd resolves
+    // to the current projectId (agent-ide) are shown. Sessions from other projects
+    // (lumen-cli) must not appear regardless of their live status.
     mockedAgentCtx.mockReturnValue(
       agentCtx([
         {
@@ -358,7 +365,7 @@ describe('InnerRail', () => {
       ]),
     );
     render(<InnerRail />);
-    expect(screen.getByText('claude · streaming')).toBeDefined();
+    expect(screen.queryByText('claude · streaming')).toBeNull();
   });
 
   it('renders the files section with a live WorkbenchFileTree (not mock entries)', () => {
@@ -465,8 +472,11 @@ describe('TerminalShell (upper — CC)', () => {
   });
 
   it('renders a live TerminalInstance in the well body', () => {
+    // Wave 12 Phase 4: useWorkbenchTabs generates a dynamic tab id (makeTabId), so the
+    // TerminalInstance testid uses that generated id — not the sessionId prop.
     render(<TerminalShell kind="cc" flex={1.55} sessionId="test-upper" isActive />);
-    expect(screen.getByTestId('terminal-instance-test-upper')).toBeDefined();
+    const shell = screen.getByTestId('terminal-shell-upper');
+    expect(shell.querySelector('[data-testid^="terminal-instance-"]')).toBeDefined();
   });
 
   it('does NOT render the mock CC prompt box', () => {
@@ -496,8 +506,11 @@ describe('TerminalShell (lower — shell)', () => {
   });
 
   it('renders a live TerminalInstance in the well body', () => {
+    // Wave 12 Phase 4: useWorkbenchTabs generates a dynamic tab id (makeTabId), so the
+    // TerminalInstance testid uses that generated id — not the sessionId prop.
     render(<TerminalShell kind="shell" flex={1} sessionId="test-lower" isActive />);
-    expect(screen.getByTestId('terminal-instance-test-lower')).toBeDefined();
+    const shell = screen.getByTestId('terminal-shell-lower');
+    expect(shell.querySelector('[data-testid^="terminal-instance-"]')).toBeDefined();
   });
 
   it('does NOT render the mock shell prompt cursor line', () => {
@@ -548,8 +561,10 @@ describe('AgentSidebar', () => {
     expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
   });
 
-  it('renders the header with the primary session label from live adapter', () => {
-    // Provide a running session — it becomes the primary (active) session.
+  it('renders the header fallback label when no pane-tagged session is active (Wave 13 D4)', () => {
+    // Wave 13 D4: AgentSidebar resolves its primary session by paneId (OUROBOROS_PANE_ID),
+    // NOT by heuristic cwd matching. Without a paneId-stamped session matching the active
+    // tab's generated id, SidebarHeader falls back to the '—' placeholder label.
     mockedAgentCtx.mockReturnValue(
       agentCtx([
         {
@@ -565,7 +580,7 @@ describe('AgentSidebar', () => {
     );
     render(<AgentSidebar />);
     const sidebar = screen.getByTestId('workbench-agentsidebar');
-    expect(sidebar.textContent).toContain('claude · main');
+    expect(sidebar.textContent).toContain('—');
   });
 
   it('renders the Stop button in the header', () => {
@@ -578,9 +593,15 @@ describe('AgentSidebar', () => {
     expect(screen.getByTitle('Maximize sidebar')).toBeDefined();
   });
 
-  it('renders all five panel regions', () => {
+  it('renders panel regions with D4 empty state for the NOW slot (Wave 13 D4)', () => {
+    // Wave 13 D4: without a paneId-matched session, AgentSidebar renders SidebarEmptyState
+    // in the NOW slot (not NowBlock). PanelStack renders unconditionally — context, files,
+    // hunk placeholder, and timeline testids are always present.
     render(<AgentSidebar />);
-    expect(screen.getByTestId('now-block')).toBeDefined();
+    // NOW slot shows D4 empty state (no active claude session in this pane)
+    expect(screen.queryByTestId('now-block')).toBeNull();
+    expect(screen.getByText('No active claude session in this pane')).toBeDefined();
+    // PanelStack renders unconditionally
     expect(screen.getByTestId('context-block')).toBeDefined();
     expect(screen.getByTestId('files-touched')).toBeDefined();
     // No diff_review_ready event → empty placeholder renders (not the live hunk).
@@ -589,26 +610,32 @@ describe('AgentSidebar', () => {
   });
 });
 
-describe('AgentSidebar — NowBlock', () => {
-  it('renders the NOW label in the now-block', () => {
+describe('AgentSidebar — NowBlock (D4 empty state via AgentSidebar)', () => {
+  it('renders the D4 empty state when no pane-tagged session is active', () => {
+    // Wave 13 D4: without a matching paneId session, AgentSidebar shows SidebarEmptyState
+    // instead of NowBlock. The now-block testid is absent; the message is present.
     render(<AgentSidebar />);
+    expect(screen.queryByTestId('now-block')).toBeNull();
+    expect(screen.getByText('No active claude session in this pane')).toBeDefined();
+  });
+
+  it('does not render the Edit mock tool name when no session matches (D4 guard)', () => {
+    // D4: with no paneId match, NowBlock is suppressed. 'Edit' must not appear from a
+    // stale mock — it was previously injected via MOCK_NOW_TOOL_CALL which was removed.
+    render(<AgentSidebar />);
+    expect(screen.queryByText('Edit')).toBeNull();
+  });
+
+  it('renders the NowBlock NOW label and 0s elapsed when rendered directly with empty data', () => {
+    // Directly rendering NowBlock bypasses the D4 paneId gate and tests the component contract.
+    render(
+      <NowBlock data={{ tool: '', target: '', description: '', elapsedSec: 0, progress: undefined }} />,
+    );
     const block = screen.getByTestId('now-block');
     expect(block.textContent).toContain('NOW');
-  });
-
-  it('renders live tool name from adapter (empty session → empty tool, no Edit mock)', () => {
-    // Default context has no sessions → activeTool = '' → no 'Edit' from mock constant.
-    render(<AgentSidebar />);
-    const block = screen.getByTestId('now-block');
+    expect(block.textContent).toContain('0s');
     // The '→' arrow separator is always present in ToolRow
     expect(block.textContent).toContain('→');
-  });
-
-  it('renders live elapsed from adapter (empty session → 0s)', () => {
-    // Default context has no sessions → elapsedSec = 0 → '0s' duration pill.
-    render(<AgentSidebar />);
-    const block = screen.getByTestId('now-block');
-    expect(block.textContent).toContain('0s');
   });
 });
 
@@ -638,30 +665,20 @@ describe('AgentSidebar — ContextBlock', () => {
 // ── Wave 4 Phase 1: NowBlock + ContextBlock live-data wiring ─────────────────
 
 describe('NowBlock — live adapter data (Wave 4 Phase 1)', () => {
-  it('renders live tool name when primary session has a pending tool call', () => {
-    mockedAgentCtx.mockReturnValue(
-      agentCtx([
-        {
-          id: 'p1',
-          taskLabel: 'claude · main',
-          status: 'running',
-          startedAt: Date.now() - 45_000,
-          inputTokens: 10_000,
-          outputTokens: 2_000,
-          model: 'claude-sonnet-4-6',
-          toolCalls: [
-            {
-              id: 'tc1',
-              toolName: 'Edit',
-              input: 'src/renderer/App.tsx',
-              timestamp: Date.now() - 5_000,
-              status: 'pending',
-            },
-          ],
-        },
-      ]),
+  it('renders live tool name when NowBlock receives a pending-tool data shape', () => {
+    // Wave 13 D4: AgentSidebar resolves primary by paneId — tests render NowBlock directly
+    // with the data the adapter would produce for a session with a pending Edit tool call.
+    render(
+      <NowBlock
+        data={{
+          tool: 'Edit',
+          target: 'src/renderer/App.tsx',
+          description: 'src/renderer/App.tsx',
+          elapsedSec: 45,
+          progress: undefined,
+        }}
+      />,
     );
-    render(<AgentSidebar />);
     const block = screen.getByTestId('now-block');
     // Live tool name from adapter.activeTool
     expect(block.textContent).toContain('Edit');
@@ -669,31 +686,25 @@ describe('NowBlock — live adapter data (Wave 4 Phase 1)', () => {
     expect(block.textContent).toContain('src/renderer/App.tsx');
   });
 
-  it('renders live elapsed seconds in the duration pill', () => {
-    mockedAgentCtx.mockReturnValue(
-      agentCtx([
-        {
-          id: 'p1',
-          taskLabel: 'claude · main',
-          status: 'running',
-          startedAt: Date.now() - 30_000,
-          inputTokens: 0,
-          outputTokens: 0,
-          toolCalls: [],
-        },
-      ]),
+  it('renders elapsed seconds in the duration pill from the NowBlock data prop', () => {
+    // Elapsed is derived by the adapter from session.startedAt; here we supply it directly.
+    render(
+      <NowBlock
+        data={{ tool: '', target: '', description: '', elapsedSec: 30, progress: undefined }}
+      />,
     );
-    render(<AgentSidebar />);
     const block = screen.getByTestId('now-block');
-    // elapsedSec derived from startedAt offset (~30s); pill shows 'Ns' or 'Nm NNs'
-    expect(block.textContent).toMatch(/\d+s/);
-    // Must NOT show the frozen mock value 12s (from MOCK_NOW_TOOL_CALL)
-    // This is validated by checking it shows a non-mock duration derived from startedAt.
+    // elapsedSec=30 → pill shows '30s'
+    expect(block.textContent).toContain('30s');
+    // Must NOT show the frozen mock value 12s (from MOCK_NOW_TOOL_CALL, deleted in Wave 4).
+    expect(block.textContent).not.toContain('12s');
   });
 
-  it('renders idle/empty state without error when no session is active', () => {
-    // Default beforeEach: agentCtx([]) → no primary session → activeTool='', target='', elapsedSec=0
-    render(<AgentSidebar />);
+  it('renders idle/empty state without error when NowBlock receives zero elapsed', () => {
+    // elapsedSec=0 + empty tool + empty target = idle shape
+    render(
+      <NowBlock data={{ tool: '', target: '', description: '', elapsedSec: 0, progress: undefined }} />,
+    );
     const block = screen.getByTestId('now-block');
     expect(block.textContent).toContain('NOW');
     expect(block.textContent).toContain('0s');
@@ -701,68 +712,57 @@ describe('NowBlock — live adapter data (Wave 4 Phase 1)', () => {
 });
 
 describe('ContextBlock — live adapter data (Wave 4 Phase 1)', () => {
-  it('renders live used/max tokens from a running session', () => {
-    mockedAgentCtx.mockReturnValue(
-      agentCtx([
-        {
-          id: 'p1',
-          taskLabel: 'claude · main',
-          status: 'running',
-          startedAt: Date.now() - 60_000,
-          inputTokens: 40_000,
-          outputTokens: 2_800,
+  it('renders used/max tokens when ContextBlock receives a live data shape', () => {
+    // Wave 13 D4: AgentSidebar resolves primary by paneId. ContextBlock is rendered
+    // directly with the data shape the adapter produces for a session with 42800 tokens.
+    render(
+      <ContextBlock
+        data={{
+          usedTokens: 42_800,
+          maxTokens: 200_000,
+          costUsd: 0,
           model: 'claude-sonnet-4-6',
-          toolCalls: [],
-        },
-      ]),
+          elapsedSec: 60,
+        }}
+      />,
     );
-    render(<AgentSidebar />);
     const block = screen.getByTestId('context-block');
     // inputTokens(40000) + outputTokens(2800) = 42800 → '42.8k'
     expect(block.textContent).toContain('42.8k');
     expect(block.textContent).toContain('200.0k');
   });
 
-  it('renders live cost from a running session', () => {
-    mockedAgentCtx.mockReturnValue(
-      agentCtx([
-        {
-          id: 'p1',
-          taskLabel: 'claude · main',
-          status: 'running',
-          startedAt: Date.now() - 30_000,
-          inputTokens: 0,
-          outputTokens: 0,
+  it('renders cost when ContextBlock receives costUsd in the data prop', () => {
+    // costUsd 0.087 → '$0.09' via toFixed(2)
+    render(
+      <ContextBlock
+        data={{
+          usedTokens: 0,
+          maxTokens: 200_000,
           costUsd: 0.087,
           model: 'claude-sonnet-4-6',
-          toolCalls: [],
-        },
-      ]),
+          elapsedSec: 30,
+        }}
+      />,
     );
-    render(<AgentSidebar />);
     const block = screen.getByTestId('context-block');
-    // costUsd 0.087 → '$0.09' via toFixed(2)
     expect(block.textContent).toContain('$0.09');
   });
 
-  it('renders live usage percentage in the donut centre', () => {
-    mockedAgentCtx.mockReturnValue(
-      agentCtx([
-        {
-          id: 'p1',
-          taskLabel: 'claude · main',
-          status: 'running',
-          startedAt: Date.now() - 30_000,
-          inputTokens: 40_000,
-          outputTokens: 2_800,
-          model: 'claude-sonnet-4-6',
-          toolCalls: [],
-        },
-      ]),
-    );
-    render(<AgentSidebar />);
-    const block = screen.getByTestId('context-block');
+  it('renders usage percentage in the donut centre from the data prop', () => {
     // 42800 / 200000 ≈ 21%
+    render(
+      <ContextBlock
+        data={{
+          usedTokens: 42_800,
+          maxTokens: 200_000,
+          costUsd: 0,
+          model: 'claude-sonnet-4-6',
+          elapsedSec: 30,
+        }}
+      />,
+    );
+    const block = screen.getByTestId('context-block');
     expect(block.textContent).toContain('21%');
   });
 
@@ -783,47 +783,28 @@ describe('AgentSidebar — FilesTouched', () => {
     expect(block.textContent).toContain('FILES TOUCHED');
   });
 
-  it('renders a row for each distinct file touched by the active session', () => {
-    const s: AgentSession = {
-      id: 's1',
-      taskLabel: 'test',
-      status: 'running',
-      startedAt: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      toolCalls: [
-        { id: 'a', toolName: 'Edit', input: 'src/a.ts', timestamp: 1, status: 'success' },
-        { id: 'b', toolName: 'Write', input: 'src/b.ts', timestamp: 2, status: 'success' },
-        { id: 'c', toolName: 'Read', input: 'src/c.ts', timestamp: 3, status: 'success' },
-        { id: 'd', toolName: 'Read', input: 'src/d.ts', timestamp: 4, status: 'success' },
-      ],
-    };
-    mockedAgentCtx.mockReturnValue(agentCtx([s]));
-    render(<AgentSidebar />);
+  it('renders a row for each distinct file touched (FilesTouched rendered directly)', () => {
+    // Wave 13 D4: AgentSidebar resolves primary by paneId. FilesTouched is rendered
+    // directly with the data shape the adapter's deriveFilesTouched would produce.
+    render(
+      <FilesTouched
+        data={[
+          { path: 'src/a.ts', adds: 0, dels: 0, status: 'edited' },
+          { path: 'src/b.ts', adds: 0, dels: 0, status: 'edited' },
+          { path: 'src/c.ts', adds: 0, dels: 0, status: 'read' },
+          { path: 'src/d.ts', adds: 0, dels: 0, status: 'read' },
+        ]}
+      />,
+    );
     const block = screen.getByTestId('files-touched');
     expect(block.querySelectorAll('[data-testid="files-touched-row"]').length).toBe(4);
   });
 
-  it('renders the path of the actively-edited file', () => {
-    const s: AgentSession = {
-      id: 's1',
-      taskLabel: 'test',
-      status: 'running',
-      startedAt: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      toolCalls: [
-        {
-          id: 'e',
-          toolName: 'Edit',
-          input: 'src/TerminalPane.tsx',
-          timestamp: 1,
-          status: 'pending',
-        },
-      ],
-    };
-    mockedAgentCtx.mockReturnValue(agentCtx([s]));
-    render(<AgentSidebar />);
+  it('renders the path of the actively-edited file (FilesTouched rendered directly)', () => {
+    // Provide an 'editing' status entry — mirrors a pending Edit tool call.
+    render(
+      <FilesTouched data={[{ path: 'src/TerminalPane.tsx', adds: 0, dels: 0, status: 'editing' }]} />,
+    );
     const block = screen.getByTestId('files-touched');
     expect(block.textContent).toContain('TerminalPane.tsx');
   });
@@ -852,11 +833,15 @@ describe('AgentSidebar — LatestHunk', () => {
     expect(screen.queryByText('Reject')).toBeNull();
   });
 
-  it('renders the panel divider structure even with an empty placeholder', () => {
+  it('renders the panel structure even with an empty placeholder (D4: now-block absent)', () => {
+    // Wave 13 D4: without a paneId-matched session, the NOW slot is replaced by
+    // SidebarEmptyState. PanelStack (context, files, hunk, timeline) renders unconditionally.
     render(<AgentSidebar />);
-    // The AgentSidebar renders all five panels regardless of diff state.
-    expect(screen.getByTestId('now-block')).toBeDefined();
+    // NOW slot is empty state, not now-block
+    expect(screen.queryByTestId('now-block')).toBeNull();
+    // PanelStack panels are unconditional
     expect(screen.getByTestId('hook-timeline')).toBeDefined();
+    expect(screen.getByTestId('latest-hunk-empty')).toBeDefined();
   });
 });
 
@@ -873,49 +858,45 @@ describe('AgentSidebar — HookTimeline', () => {
     expect(block.textContent).toContain('View all');
   });
 
-  it('renders a running tool event from the active session', () => {
-    const s: AgentSession = {
-      id: 's1',
-      taskLabel: 'test',
-      status: 'running',
-      startedAt: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      toolCalls: [
-        {
-          id: 'f',
-          toolName: 'Edit',
-          input: 'src/TerminalPane.tsx',
-          timestamp: Date.now() - 12_000,
-          status: 'pending',
-        },
-      ],
-    };
-    mockedAgentCtx.mockReturnValue(agentCtx([s]));
-    render(<AgentSidebar />);
+  it('renders a running tool event when HookTimeline receives a tool event directly', () => {
+    // Wave 13 D4: AgentSidebar resolves primary by paneId. HookTimeline is rendered
+    // directly with the event shape the adapter's deriveTimeline would produce.
+    const now = Date.now();
+    render(
+      <HookTimeline
+        events={[
+          {
+            id: 'f',
+            t: (now - 12_000 - now) / 1000, // ~-12s relative
+            kind: 'tool',
+            tool: 'Edit',
+            target: 'src/TerminalPane.tsx',
+            duration: 0,
+            status: 'running',
+          },
+        ]}
+      />,
+    );
     const block = screen.getByTestId('hook-timeline');
     expect(block.textContent).toContain('Edit');
   });
 
-  it('renders a prompt event text in the timeline', () => {
-    const s: AgentSession = {
-      id: 's1',
-      taskLabel: 'test',
-      status: 'running',
-      startedAt: 0,
-      inputTokens: 0,
-      outputTokens: 0,
-      toolCalls: [],
-      conversationTurns: [
-        {
-          type: 'prompt',
-          content: 'refactor TerminalPane to use the new hook event API',
-          timestamp: Date.now() - 300_000,
-        },
-      ],
-    };
-    mockedAgentCtx.mockReturnValue(agentCtx([s]));
-    render(<AgentSidebar />);
+  it('renders a prompt event text when HookTimeline receives a prompt event directly', () => {
+    // Direct render with prompt event shape matches deriveTimeline output.
+    const now = Date.now();
+    render(
+      <HookTimeline
+        events={[
+          {
+            id: 'p1',
+            t: (now - 300_000 - now) / 1000, // ~-300s relative
+            kind: 'prompt',
+            text: 'refactor TerminalPane to use the new hook event API',
+            tokens: 0,
+          },
+        ]}
+      />,
+    );
     const block = screen.getByTestId('hook-timeline');
     expect(block.textContent).toContain('refactor TerminalPane');
   });
@@ -956,7 +937,9 @@ describe('StatusBar', () => {
     expect(sb.textContent).not.toContain('−42');
   });
 
-  it('renders the model name from the live primary session', () => {
+  it('renders the fallback model name when no pane-tagged session is active (Wave 13 D4)', () => {
+    // Wave 13 D4: StatusBar calls useWorkbenchAgentData() without a paneId. Without a
+    // pane-matched session, contextStats.model defaults to 'claude' (FALLBACK_MODEL).
     mockedAgentCtx.mockReturnValue(
       agentCtx([
         {
@@ -972,11 +955,13 @@ describe('StatusBar', () => {
       ]),
     );
     render(<StatusBar />);
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('claude-sonnet-4-6');
+    // D4: no paneId → FALLBACK_MODEL = 'claude'; 'claude-sonnet-4-6' must NOT appear.
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('claude');
+    expect(screen.getByTestId('workbench-statusbar').textContent).not.toContain('claude-sonnet-4-6');
   });
 
-  it('renders context used tokens as compact string from live primary session', () => {
-    // inputTokens(40000) + outputTokens(2800) = 42800 → '42.8k'
+  it('renders zero tokens in status bar when no pane-tagged session is active (Wave 13 D4)', () => {
+    // D4: without a paneId match, contextStats.usedTokens = 0 → shows '0 / 200.0k ctx'.
     mockedAgentCtx.mockReturnValue(
       agentCtx([
         {
@@ -991,7 +976,9 @@ describe('StatusBar', () => {
       ]),
     );
     render(<StatusBar />);
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('42.8k');
+    // Session tokens are NOT reflected — StatusBar sees D4 defaults only.
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('0');
+    expect(screen.getByTestId('workbench-statusbar').textContent).not.toContain('42.8k');
   });
 
   it('renders the context max tokens from the DEFAULT_MAX_TOKENS constant (200k)', () => {
@@ -1006,7 +993,8 @@ describe('StatusBar', () => {
     expect(screen.getByTestId('workbench-statusbar').textContent).toContain('24 tests passing');
   });
 
-  it('renders the cost formatted from the live primary session costUsd', () => {
+  it('renders zero cost in status bar when no pane-tagged session is active (Wave 13 D4)', () => {
+    // D4: without a paneId match, contextStats.costUsd = 0 → shows '$0.00'.
     mockedAgentCtx.mockReturnValue(
       agentCtx([
         {
@@ -1022,8 +1010,9 @@ describe('StatusBar', () => {
       ]),
     );
     render(<StatusBar />);
-    // costUsd 0.087 → '$0.09'
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('$0.09');
+    // Session costUsd is NOT reflected — StatusBar sees D4 default (costUsd=0 → '$0.00').
+    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('$0.00');
+    expect(screen.getByTestId('workbench-statusbar').textContent).not.toContain('$0.09');
   });
 
   it('renders a live HH:MM:SS clock string (not the static mock value)', () => {

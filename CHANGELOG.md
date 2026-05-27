@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.36.0] — 2026-05-27
+
+### Fixed
+
+- **Wave 14 — Rails UI fix-sweep.** Closes 4 user-facing defects on the canon Workbench rails + dock terminals: (1) project-remove UX revision from Wave 12 inline-X to right-click context menu via reused `ContextMenuPanel` primitive on all 3 switcher surfaces (inline-X retained always-visible on stale chips as safety affordance); (2) inner rail fake/UUID-keyed sessions across all projects — `buildPersistedSessionFields` was missing `cwd` from SQLite restore round-trip, causing `deriveProjectId` to return `'unknown'` for all restored sessions; 1-LOC fix plus defense-in-depth removal of the `otherSessions` cross-project leak vector; (3) top dock terminal cwd defaulted to AgentIDE — `windowManager.setWindowProjectRoots` now keeps active session in sync with active project root (was overriding renderer-sent cwd on every spawnClaude), and `useWorkbenchTabs.useTabRestoreInit` defers auto-spawn until both `isReady` AND `cwd !== undefined`; (4) UnifiedRail accordion collapse non-functional + placeholder file trees — swapped `MOCK_FILE_TREE` for `<WorkbenchFileTree rootPath={project.id} />`, added `useState<string | null>` for expanded project id in `UnifiedRail.tsx`, threaded `onToggle: (id) => void` prop through `ProjectAccordion → AccordionHeader`. 6 phases (2 parallel diagnose + 2 parallel implement + 2 sequential implement + wrap). Full story in `roadmap/wave-14-rails-ui-fix-sweep/wave-14-result.md`.
+
+### Changed
+
+- **Wave 12 acceptance test fixtures** minimally adjusted for Wave 14 D1 hybrid (stale-chip data for X-button click interactions). Business logic unchanged.
+- **`Workbench.test.tsx` 22 pre-existing failures fixed** as Tier 2 collateral cleanup (Wave 12 Phase 4 dynamic tab testids + Wave 13 D4 paneId resolution behavior).
+
 ## [2.35.0] — 2026-05-27
 
 ### Removed
