@@ -43,6 +43,7 @@
     "test:layout": "vitest run src/renderer/components/Layout",
     "test:filetree": "vitest run src/renderer/components/FileTree",
     "test:codebasegraph": "vitest run src/main/codebaseGraph",
+    "test:codebase-graph-mcp": "vitest run --root packages/codebase-graph-mcp",
     "test:orchestration": "vitest run src/main/orchestration",
     "test:ipc": "vitest run src/main/ipc-handlers",
     "test:hooks": "vitest run src/main/hookInstaller src/main/hooks",
