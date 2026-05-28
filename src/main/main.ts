@@ -22,6 +22,7 @@ import { performWillQuitShutdown } from './mainShutdown';
 import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
 import { registerAllTelemetryDrainHandlers } from './mainTelemetryHandlers';
 import { buildApplicationMenu } from './menu';
+import { runStaleRootsMigration } from './migrateStaleRoots';
 // prettier-ignore
 import { cleanupPerfSubscriber, clearPerfSubscribers, initializePerfMetrics, markStartup, startPerfMetrics as startManagedPerfMetrics, stopPerfMetrics as stopManagedPerfMetrics } from './perfMetrics';
 import { generatePipeTokens, setTokenFilePath } from './pipeAuth';
@@ -216,6 +217,10 @@ async function initializeApplication(): Promise<void> {
   markStartup('app-ready');
   const defaultRoot = getConfigValue('defaultProjectRoot') as string | undefined;
   runAllMigrations(defaultRoot);
+  // Phase 2 stale-roots cleanup: drop persisted entries pointing at paths that
+  // no longer exist on disk. Must run BEFORE restoreWindowSessions (called from
+  // initWindowsAndServices) so the restore pass reads already-cleaned data.
+  runStaleRootsMigration();
   await fireBootRestore(defaultRoot);
   const ud = app.getPath('userData');
   await initTelemetryAndWriters(ud);
