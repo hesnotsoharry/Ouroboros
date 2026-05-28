@@ -33,6 +33,7 @@ import {
   validateBounds,
   type WindowCreationState,
 } from './windowManagerHelpers';
+import { syncRailRootsToStore } from './windowManagerRailSync';
 import { persistWindowSessions, wireSessionHelpers } from './windowManagerSessions';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -299,31 +300,34 @@ export function setWindowProjectRoot(winId: number, projectRoot: string): void {
 
 export function setWindowProjectRoots(winId: number, roots: string[]): void {
   const managed = windows.get(winId);
-  const newRoot = roots[0] ?? null;
-  if (managed) {
-    managed.projectRoots = roots;
-    managed.projectRoot = newRoot;
-    // Wave 14: keep the active session in sync with the active project root so
-    // resolveClaudeCwd always spawns Claude in the correct directory.
-    // Without this, the session registered at window creation (which points to
-    // the IDE's own root) overrides any cwd the renderer sends on every
-    // spawnClaude call, causing the top dock terminal to launch in AgentIDE.
-    if (newRoot) {
-      const store = getSessionStore();
-      const existing = store?.listByProjectRoot(newRoot).find((s) => !s.archivedAt);
-      const session = existing ?? makeSession(newRoot);
-      if (!existing) store?.upsert(session);
-      managed.activeSessionId = session.id;
-      setWindowActiveSession(winId, session.id);
-    }
+  if (!managed) {
+    persistWindowSessions();
+    return;
   }
+
+  // Capture old roots BEFORE overwriting — used to compute removals (DEFECT 1 fix).
+  const oldRoots = managed.projectRoots;
+  managed.projectRoots = roots;
+  managed.projectRoot = roots[0] ?? null;
+
+  const store = getSessionStore();
+  if (store) {
+    syncRailRootsToStore({
+      winId,
+      oldRoots,
+      newRoots: roots,
+      store,
+      windows,
+      makeSession,
+      setActiveSession: (sessionId) => {
+        managed.activeSessionId = sessionId;
+        setWindowActiveSession(winId, sessionId);
+      },
+    });
+  }
+
   // contextLayer/graph acquire-release removed in Wave 22
-  // Wave 64 — eager persist on every mutation. Without this, project root
-  // changes only flush to SQLite on a clean window close, so any unclean exit
-  // (force-kill, HMR restart, dev-server Ctrl+C, crash) loses the additions
-  // and the rail comes back empty on relaunch. Project root changes are
-  // user-initiated and infrequent — no debounce needed (unlike bounds, which
-  // fire hundreds of events per drag and use a timer-based debounce).
+  // Wave 64 — eager persist on every mutation.
   persistWindowSessions();
 }
 

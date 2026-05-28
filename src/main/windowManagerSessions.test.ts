@@ -87,6 +87,40 @@ describe('wireSessionHelpers + persistWindowSessions', () => {
   });
 });
 
+describe('persistWindowSessions — window-close guard: does NOT prune records', () => {
+  it('leaves all sessionsData records intact (never deletes) when called on window close', async () => {
+    // Seed two session records in the config store.
+    const { setConfigValue, getConfigValue } = await import('./config');
+    const initial = [
+      { id: 's1', projectRoot: '/root/a', bounds: undefined },
+      { id: 's2', projectRoot: '/root/b', bounds: undefined },
+    ];
+    setConfigValue('sessionsData' as never, initial as never);
+
+    // Wire a window with /root/a so byRoot.size > 0 triggers a write.
+    const fakeWin = {
+      id: 1,
+      isDestroyed: () => false,
+      isMaximized: () => false,
+      getBounds: () => ({ x: 0, y: 0, width: 1280, height: 800 }),
+    } as unknown as BrowserWindow;
+
+    wireSessionHelpers(
+      () => [{ win: fakeWin, projectRoot: '/root/a' }],
+      () => fakeWin,
+      () => undefined,
+    );
+
+    persistWindowSessions();
+
+    // Both records must still be present — persistWindowSessions is bounds-only.
+    const written = getConfigValue('sessionsData' as never) as Array<{ id: string }>;
+    const ids = written?.map((s) => s.id) ?? [];
+    expect(ids).toContain('s1');
+    expect(ids).toContain('s2');
+  });
+});
+
 describe('restoreWindowSessions', () => {
   it('returns empty array when sessionsData is undefined', () => {
     wireSessionHelpers(
