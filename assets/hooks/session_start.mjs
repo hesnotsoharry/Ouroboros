@@ -27,6 +27,7 @@ if (stdinData.trim()) {
 }
 
 const sessionId = parsed?.session_id || process.env.CLAUDE_SESSION_ID || 'unknown';
+const paneId = process.env.OUROBOROS_PANE_ID;
 
 const payload = {
   type: 'session_start',
@@ -34,6 +35,7 @@ const payload = {
   cwd: process.cwd(),
   timestamp: Date.now(),
 };
+if (paneId) payload.paneId = paneId;
 if (process.env.OUROBOROS_INTERNAL === '1') payload.internal = true;
 if (process.env.OUROBOROS_IDE_SESSION === '1') payload.ideSpawned = true;
 
