@@ -2,7 +2,7 @@ import type { MutableRefObject } from 'react';
 import { useEffect } from 'react';
 
 import type { TerminalSession } from '../components/Terminal/TerminalTabs';
-import { hasElectronAPI, persistRunningSessions, restoreSessions } from './useSessionManager.core';
+import { hasElectronAPI, restoreSessions } from './useSessionManager.core';
 import type { SessionManagerActionArgs, SessionManagerActions } from './useSessionManager.helpers';
 
 /** Spawns the correct PTY process type for a restarted session. */
@@ -34,14 +34,4 @@ export function useRestoreSessionsEffect(args: {
     hasRestoredSessionsRef.current = true;
     void restoreSessions({ ...actionArgs, spawnSession });
   }, [actionArgs, hasRestoredSessionsRef, spawnSession]);
-}
-
-export function usePersistenceEffect(sessionsRef: MutableRefObject<TerminalSession[]>): void {
-  useEffect(() => {
-    if (!hasElectronAPI()) return;
-    const interval = setInterval(() => {
-      void persistRunningSessions(sessionsRef.current);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [sessionsRef]);
 }

@@ -11,7 +11,7 @@
  */
 
 import type { AppConfig, ModelProvider } from '../config';
-import { getConfigValue, setConfigValue } from '../config';
+import { getConfigValue, setConfigValueImmediate } from '../config';
 import log from '../logger';
 import { isSecureStorageAvailable, migrateFromPlaintext, warmCache } from './secureKeyStore';
 
@@ -39,7 +39,7 @@ export async function migrateSecretsIfNeeded(): Promise<void> {
   migrated += await migrateWebToken();
   migrated += await migrateWebPassword();
 
-  setConfigValue(MIGRATION_MARKER_KEY as keyof AppConfig, true as never);
+  setConfigValueImmediate(MIGRATION_MARKER_KEY as keyof AppConfig, true as never);
   log.info(`[SecretMigration] Complete. ${migrated} secret(s) migrated.`);
 }
 
@@ -53,7 +53,7 @@ async function migrateProviderKeys(): Promise<number> {
   const cleaned = providers.map((p) =>
     toMigrate.some((m) => m.id === p.id) ? { ...p, apiKey: '' } : p,
   );
-  setConfigValue('modelProviders', cleaned as never);
+  setConfigValueImmediate('modelProviders', cleaned as never);
   log.info(`[SecretMigration] Migrated ${toMigrate.length} provider key(s)`);
   return toMigrate.length;
 }
@@ -63,7 +63,7 @@ async function migrateWebToken(): Promise<number> {
   if (!token) return 0;
 
   await migrateFromPlaintext('web-access-token', token);
-  setConfigValue('webAccessToken', '' as never);
+  setConfigValueImmediate('webAccessToken', '' as never);
   log.info('[SecretMigration] Migrated webAccessToken');
   return 1;
 }
@@ -73,7 +73,7 @@ async function migrateWebPassword(): Promise<number> {
   if (!password) return 0;
 
   await migrateFromPlaintext('web-access-password', password);
-  setConfigValue('webAccessPassword', '' as never);
+  setConfigValueImmediate('webAccessPassword', '' as never);
   log.info('[SecretMigration] Migrated webAccessPassword');
   return 1;
 }

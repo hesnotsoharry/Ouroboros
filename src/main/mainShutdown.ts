@@ -9,6 +9,7 @@
 
 import { stopClaudeUsagePoller } from './claudeUsagePoller';
 import { disableCodeModeUserLevel } from './codemode/codemodeStartup';
+import { flushPendingWritesSync } from './configWriteBuffer';
 import { closeCostHistoryDb } from './costHistory';
 import { shutdownExtensionHost } from './extensionHost/extensionHostProxy';
 import { cleanupIpcHandlers } from './ipc';
@@ -50,6 +51,10 @@ async function disposeSubsystems(): Promise<void> {
 }
 
 export async function performWillQuitShutdown(): Promise<void> {
+  // Flush any buffered config writes FIRST — before any subsystem shuts down
+  // and before we delete the token file. This is the data-safety crux: if the
+  // debounce timer hasn't fired yet, pending writes would otherwise be lost.
+  flushPendingWritesSync();
   await tryShutdown('codemode-user-level', disableCodeModeUserLevel);
   closeSessionServices();
   await closeWriters();

@@ -6,6 +6,8 @@ const mockSetConfigValue = vi.fn();
 vi.mock('./config', () => ({
   getConfigValue: (...args: unknown[]) => mockGetConfigValue(...args),
   setConfigValue: (...args: unknown[]) => mockSetConfigValue(...args),
+  // Immediate path uses the same spy in tests — behaviour is identical here
+  setConfigValueImmediate: (...args: unknown[]) => mockSetConfigValue(...args),
 }));
 
 vi.mock('./logger', () => ({

@@ -13,7 +13,7 @@
 
 import path from 'path';
 
-import { getConfigValue, setConfigValue } from './config';
+import { getConfigValue, setConfigValueImmediate } from './config';
 import log from './logger';
 
 /**
@@ -63,7 +63,7 @@ export function trustWorkspace(workspacePath: string): void {
   if (current.includes(normalized)) return;
 
   const raw = getConfigValue('trustedWorkspaces') ?? [];
-  setConfigValue('trustedWorkspaces', [...raw, workspacePath]);
+  setConfigValueImmediate('trustedWorkspaces', [...raw, workspacePath]);
   log.info(`[WorkspaceTrust] Trusted: ${workspacePath}`);
 }
 
@@ -72,7 +72,7 @@ export function untrustWorkspace(workspacePath: string): void {
   const normalized = normalizePath(workspacePath);
   const raw = getConfigValue('trustedWorkspaces') ?? [];
   const filtered = raw.filter((p) => normalizePath(p) !== normalized);
-  setConfigValue('trustedWorkspaces', filtered);
+  setConfigValueImmediate('trustedWorkspaces', filtered);
   log.info(`[WorkspaceTrust] Untrusted: ${workspacePath}`);
 }
 

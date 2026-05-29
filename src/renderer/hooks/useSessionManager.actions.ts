@@ -22,11 +22,7 @@ import type {
   SessionManagerActionArgs,
   SessionManagerActions,
 } from './useSessionManager.helpers';
-import {
-  spawnBySessionType,
-  usePersistenceEffect,
-  useRestoreSessionsEffect,
-} from './useSessionManager.spawn';
+import { spawnBySessionType, useRestoreSessionsEffect } from './useSessionManager.spawn';
 
 interface SessionManagerRefs {
   sessionsRef: MutableRefObject<TerminalSession[]>;
@@ -309,7 +305,6 @@ export function useSessionManagerActions(args: SessionManagerActionArgs): Sessio
     hasRestoredSessionsRef: refs.hasRestoredSessionsRef,
     spawnSession,
   });
-  usePersistenceEffect(refs.sessionsRef);
   useRecordingStateEffect(args.sessions, args.setRecordingSessions);
 
   return {
