@@ -11,6 +11,7 @@ import path from 'path';
 import { dispatchActivationEvent } from '../extensions';
 import log from '../logger';
 import { gitExec, gitStdout, MB } from '../util/gitExec';
+import { getOrFetchBranch, invalidateBranchCache } from './gitBranchCache';
 import {
   getChangedFilesBetween,
   nonEmptyLines,
@@ -130,7 +131,9 @@ export function gitStatus(root: string) {
 
 export function gitBranch(root: string) {
   return respond(async () => ({
-    branch: await gitTrimmed(root, ['rev-parse', '--abbrev-ref', 'HEAD']),
+    branch: await getOrFetchBranch(root, () =>
+      gitTrimmed(root, ['rev-parse', '--abbrev-ref', 'HEAD']),
+    ),
   }));
 }
 
@@ -182,6 +185,7 @@ export function gitCheckout(root: string, branch: string) {
   return respond(
     async () => {
       await gitExec(['checkout', branch], { cwd: root });
+      invalidateBranchCache(root);
       return {};
     },
     { gitError: true },
@@ -219,6 +223,7 @@ export function gitCommit(root: string, message: string) {
   return respond(
     async () => {
       await gitExec(['commit', '-m', message], { cwd: root });
+      invalidateBranchCache(root);
       dispatchActivationEvent('onGitCommit', { root, message }).catch((error) => {
         log.error('Failed to dispatch onGitCommit activation event:', error);
       });
