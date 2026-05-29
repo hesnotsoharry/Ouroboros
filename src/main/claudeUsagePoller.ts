@@ -182,13 +182,18 @@ function handlePtyData(state: PtySessionState, data: string, term: pty.IPty): vo
   tryDismissUsageTui(state, clean, term);
 }
 
-function spawnPty(shellArgs: { shell: string; args: string[] }): pty.IPty {
+export function spawnPty(shellArgs: { shell: string; args: string[] }): pty.IPty {
   log.info('[claude-usage-poller] spawning:', shellArgs.shell, shellArgs.args);
   return pty.spawn(shellArgs.shell, shellArgs.args, {
     name: 'xterm-256color',
     cols: 120,
     rows: 30,
     cwd: os.homedir(),
+    // Suppress hook scripts: session_start.mjs and agent_end.mjs both do
+    // `if (process.env.OUROBOROS_CHAT_SESSION === '1') process.exit(0)`.
+    // This prevents the poller's headless claude from registering a ghost
+    // session that makes the globe/sidebar show "running" with no real work.
+    env: { ...process.env, OUROBOROS_CHAT_SESSION: '1' },
   });
 }
 

@@ -1,6 +1,63 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { parseUsageText } from './claudeUsagePoller';
+import { parseUsageText, spawnPty } from './claudeUsagePoller';
+
+// ── spawnPty env-suppression tests ────────────────────────────────────────
+//
+// Mock node-pty at the module boundary so spawnPty never touches a real PTY.
+// We only assert on the options object passed to pty.spawn.
+
+vi.mock('node-pty', () => ({
+  spawn: vi.fn(() => ({
+    onData: vi.fn(() => ({ dispose: vi.fn() })),
+    onExit: vi.fn(() => ({ dispose: vi.fn() })),
+    write: vi.fn(),
+    kill: vi.fn(),
+  })),
+}));
+
+describe('spawnPty — hook suppression env', () => {
+  it('passes OUROBOROS_CHAT_SESSION=1 in the env to suppress hook scripts', async () => {
+    const pty = await import('node-pty');
+    const mockSpawn = vi.mocked(pty.spawn);
+    mockSpawn.mockClear();
+
+    spawnPty({ shell: 'claude', args: [] });
+
+    expect(mockSpawn).toHaveBeenCalledOnce();
+    const opts = mockSpawn.mock.calls[0][2] as Record<string, unknown>;
+    expect((opts['env'] as Record<string, string>)['OUROBOROS_CHAT_SESSION']).toBe('1');
+  });
+
+  it('inherits process.env entries alongside the suppression flag', async () => {
+    const pty = await import('node-pty');
+    const mockSpawn = vi.mocked(pty.spawn);
+    mockSpawn.mockClear();
+
+    spawnPty({ shell: 'claude', args: [] });
+
+    const opts = mockSpawn.mock.calls[0][2] as Record<string, unknown>;
+    const env = opts['env'] as Record<string, string | undefined>;
+    // process.env.PATH should be present (spread of process.env)
+    expect(env).toMatchObject({ OUROBOROS_CHAT_SESSION: '1' });
+    // Verify the env is an object (not undefined), proving process.env was spread
+    expect(typeof env).toBe('object');
+  });
+
+  it('preserves all other spawn options (name, cols, rows, cwd)', async () => {
+    const pty = await import('node-pty');
+    const mockSpawn = vi.mocked(pty.spawn);
+    mockSpawn.mockClear();
+
+    spawnPty({ shell: 'powershell.exe', args: ['-NoLogo'] });
+
+    const opts = mockSpawn.mock.calls[0][2] as Record<string, unknown>;
+    expect(opts['name']).toBe('xterm-256color');
+    expect(opts['cols']).toBe(120);
+    expect(opts['rows']).toBe(30);
+    expect(typeof opts['cwd']).toBe('string');
+  });
+});
 
 // ── parseUsageText unit tests ──────────────────────────────────────────────
 

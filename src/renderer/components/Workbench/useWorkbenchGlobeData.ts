@@ -40,10 +40,13 @@ function lastActivityOf(session: AgentSession): number {
   return Math.max(session.completedAt ?? 0, toolTs, session.startedAt);
 }
 
-function selectPrimarySession(sessions: AgentSession[]): AgentSession | null {
-  if (sessions.length === 0) return null;
-  const running = sessions.filter((s) => s.status === 'running');
-  const pool = running.length > 0 ? running : sessions;
+export function selectPrimarySession(sessions: AgentSession[]): AgentSession | null {
+  // Exclude internal sessions (IDE-spawned: usage poller, summarizer, CLAUDE.md generator)
+  // so they never appear as the globe's displayed session.
+  const visible = sessions.filter((s) => !s.internal);
+  if (visible.length === 0) return null;
+  const running = visible.filter((s) => s.status === 'running');
+  const pool = running.length > 0 ? running : visible;
   return pool.reduce((best, s) => (lastActivityOf(s) > lastActivityOf(best) ? s : best));
 }
 
