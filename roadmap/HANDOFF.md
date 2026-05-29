@@ -1,51 +1,38 @@
 ---
 project: agent-ide
 updated: 2026-05-29
-active-focus: jank/freeze investigation (main-thread block on cold-start restore)
+active-focus: wave-101 telemetry-pipeline-removal (scaffolded, ready to execute)
 last-wave: wave-14-rails-ui-fix-sweep
 last-wave-status: SHIPPED-PENDING-MANUAL-SMOKE
 ---
 
 ## Current state
 
-- Branch: master · HEAD `6e41dbfc` (jank instrumentation — **local only, NOT pushed**) on top of `66369791`.
-- **Active focus: severe main-process freeze.** "Mini-freezes for months"; one episode blocked the main thread ~73s and froze the whole machine ~4 min. Investigation in progress — see below.
-- Prior session, pushed to master: lag fix, trust/restricted-mode fix, git:branch cache+dedupe, stale-path migration, paneId hook, restore instrumentation, phantom-session fix.
-- **HELD — local commit `66369791` (Thing 3, windowGroups multi-root persistence), NOT pushed.** It expands the exact cold-start restore path implicated in the freeze; push only after restore is verified in the launched multi-window app.
-- Product: terminal workbench shell only (chat removed Wave 100 / v2.35.0).
-
-## Jank investigation (active)
-
-**Symptom:** event loop blocked up to 73s on cold-start; heap flat ~22MB (NOT GC/leak). During the block: git:branch 65s, files:mkdir 36s, files:pathExists 10s (×30), files:saveFile 16s; 91 sockets / 46 MessagePorts.
-
-**Confirmed:** trigger is the cold-start file-watcher fan-out — N windows × M project roots each calling `files:watchDir` → many concurrent `@parcel/watcher.subscribe()`. Diagnostician REFUTED the sync-fs / execSync hypothesis (all hot handlers are async).
-
-**Open — needs one launched-app repro:** the exact mechanism. The jank watchdog is `setInterval`-based, so a 73s reading means a TRUE main-thread block (pure libuv-threadpool starvation would NOT trip a timer). Instrumentation (`6e41dbfc`) splits `watcher.subscribe()` syncMs (main-thread) vs totalMs and logs in-flight ops at each block.
-
-**First data point (dev single-window repro, 2026-05-29):** subscribe `syncMs=1 totalMs=27` (small dir) — does NOT block the main thread. **Storm did NOT reproduce under `npm run dev`:** dev clamps to ONE window, and project-root watchers mount lazily with the file tree (NOT at session-restore — only the agent-memory dir got watched). Reproducing the freeze needs the **launched/built multi-window app with file trees mounting**, not `npm run dev`.
-
-**Planned architecture ("fix jank forever", 3 layers):**
-1. Universal runtime net — upgrade jankDetector (monitorEventLoopDelay + block attribution) into a dev/CI regression gate. Catches all jank, any mechanism.
-2. Architectural pattern — single-flight dedup + concurrency-cap for cross-window expensive ops (watcher subscribe, git); if main-thread block confirmed → file-watching to a `UtilityProcess` (VS Code model). User chose "watch immediately" (no deferring watcher start).
-3. Static hygiene — ESLint `n/no-sync` + ban `execSync`/`spawnSync` scoped to `src/main/**` (good hygiene; would NOT have caught this freeze).
-
-Reports this session: `sonnet-diagnostician` (root cause), `sonnet-architect` (external best-practice + enforcement blueprint) — both in conversation, not yet filed.
+- Branch: **`freeze-fix-and-wave-101-scaffold`** off master. Track A committed (`c2bfa902`). **Nothing pushed this session.**
+- **The freeze is SOLVED and stopgapped.** Root cause: the **telemetry SQLite store** — a 100 ms `flushEvents` synchronous `better-sqlite3` write + a forced WAL checkpoint against a **689 MB `telemetry.db`** blocked the main thread up to **193 s** (whole machine froze). It was NOT the watcher fan-out (prior session's lead was wrong) and NOT the deferred purge. Note: the prior static pass *ruled telemetry out* as O(1); the live launch proved it was the cause — runtime data beat static analysis here.
+- **Stopgap applied:** `telemetry.db` (+`-wal`/`-shm`) moved to `AppData/Roaming/ouroboros/telemetry/_stopgap-backup-20260529-165653/`. Confirmed by relaunch — worst event-loop block **193 s → 2 s**, `services-ready` **6.4 s → 3.2 s**. Freeze gone; the fresh DB regrows slowly until wave-101 deletes the writers.
+- **Telemetry pipeline confirmed fully orphaned** (two explorer passes, verified against code): feeds only removed consumers — router (gone), chat (Wave 100), the never-mounted `Observability/OrchestrationInspector` panel; graph went standalone-MCP, auto-inject removed (Wave 22). **The live workbench `AgentSidebar` uses the live `hooks.ts`→renderer stream, NOT the SQLite store** — this is the load-bearing constraint for the removal.
+- HELD: `66369791` (Thing 3, windowGroups multi-root persistence), still not pushed. Instrumentation (`main.ts`, `migrateStaleRoots.ts` `[trace:startup]`) intentionally **uncommitted** — still useful (it confirmed the stopgap). Product: terminal workbench shell only (chat removed Wave 100 / v2.35.0).
 
 ## Next steps
 
-1. **Repro the freeze in the launched multi-window app** (build + launch, restore the 3-window × 5-root layout, let file trees mount). Capture `[trace:watcher-subscribe] timing` (big-repo syncMs/totalMs) + `[jank] active ops at block`. Large syncMs → UtilityProcess isolation; small syncMs + large totalMs → coalescing + caps. (UI repro — deferred per user.)
-2. Lock the jank wave plan around the confirmed mechanism, then build (Lane A wave: nativeWatcher.ts, files.ts, bootstrap.ts, jankDetector.ts, ipc.ts, eslint config, doctrine).
-3. Verify restore in launched app → then push Thing 3 (`66369791`) and the instrumentation (`6e41dbfc`).
+1. **Execute wave-101** — `roadmap/wave-101-telemetry-pipeline-removal.md` (PLANNED, 7 phases, ~80–100 files). Wholesale deletion of the telemetry persistence/analytics layer. **CRITICAL:** Phase 1 (read-only) maps the `hooks.ts` seam — live renderer-emission (KEEP) vs persistence calls `store.record`/`tapEditProvenance`/`tapGraphUsage` (REMOVE) — before any deletion. AgentSidebar is the live canary checked at every phase. Do NOT `rm -rf src/main/telemetry` and chase compile errors.
+2. Commit the wave-101 scaffold + this HANDOFF (currently pending in the working tree, this branch).
+3. After wave-101 ships: clean `~/.ouroboros/telemetry/` (queue/processed/jsonl + the stopgap backup); decide on the held instrumentation + Thing 3 (`66369791`).
 
-## Deferred — UI (untouched, per "nothing UI")
+## Track A — residual micro-lag (committed `c2bfa902`, separate root cause)
+
+Uncached `git:status`/`git:statusDetailed` + undebounced `useGitStatusDetailed` fired one `git status` subprocess per `files:change` per root (3 roots × N inner Claude Code sessions) → subprocess storm, repeated sub-2 s jank, `git:branch` 4–26 s under load. Fix: new `gitStatusCache.ts` (5 s TTL + dogpile coalescing, mirrors `gitBranchCache`) on both channels; 150 ms debounce + in-flight guard on the detailed hook; poll 3 s→8 s. Deferred (noted in commit): `directoryWatchRegistry` listener-multiplexer consolidation, subprocess concurrency cap.
+
+## Deferred — UI (untouched)
 
 - Right-click menu z-index (renders behind rail) · inner rail showing only "Running" with no sessions · globe re-scope to project.
 - Wave 14 manual smoke: `_archived/wave-14-rails-ui-fix-sweep/wave-14-smoke-report.md`.
 
-## Backlog (pre-jank)
+## Backlog
 
 - Wave 15 cleanup seeds: pre-existing-test-failures, workbench-projectswitch-timeout, channel-catalog-persist.
-- Follow-ups: internalmcp-asar-packaging, vestigial-chat-orchestration-cleanup. Bugs: chatstatenewpath-dynamic-require, silent-buildrepoindex-hang, e2e-teardown-hang.
+- Follow-ups: internalmcp-asar-packaging. (`vestigial-chat-orchestration-cleanup` is now subsumed by wave-101's `src/main/research/` deletion; telemetry-retention LATENT bug is moot once wave-101 deletes the store.) Bugs: chatstatenewpath-dynamic-require, silent-buildrepoindex-hang, e2e-teardown-hang.
 
 ## Reference index
 
