@@ -22,6 +22,7 @@ import {
 } from './gitParsers';
 import { applyPatch, stagePatch } from './gitPatch';
 import { getOrFetchRepoStatus } from './gitRepoStatusCache';
+import { gitStatusCache, gitStatusDetailedCache } from './gitStatusCache';
 
 // Re-export types and parsers consumed by git.ts
 export type {
@@ -125,7 +126,9 @@ export async function gitIsRepo(root: string) {
 
 export function gitStatus(root: string) {
   return respond(async () => ({
-    files: toRecord(parseStatusSnapshot(await gitStdout(root, ['status', '--porcelain=v1'])).files),
+    files: await gitStatusCache.getOrFetch(root, async () =>
+      toRecord(parseStatusSnapshot(await gitStdout(root, ['status', '--porcelain=v1'])).files),
+    ),
   }));
 }
 
@@ -213,10 +216,12 @@ export function gitUnstage(root: string, filePath: string) {
 }
 
 export function gitStatusDetailed(root: string) {
-  return respond(async () => {
-    const snapshot = parseStatusSnapshot(await gitStdout(root, ['status', '--porcelain=v1']));
-    return { staged: toRecord(snapshot.staged), unstaged: toRecord(snapshot.unstaged) };
-  });
+  return respond(async () =>
+    gitStatusDetailedCache.getOrFetch(root, async () => {
+      const snapshot = parseStatusSnapshot(await gitStdout(root, ['status', '--porcelain=v1']));
+      return { staged: toRecord(snapshot.staged), unstaged: toRecord(snapshot.unstaged) };
+    }),
+  );
 }
 
 export function gitCommit(root: string, message: string) {

@@ -14,7 +14,8 @@ export interface UseGitStatusDetailedReturn {
   refresh: () => void;
 }
 
-const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_MS = 8000;
+const FILE_CHANGE_DEBOUNCE_MS = 150;
 
 const EMPTY_STATUS: DetailedGitStatus = {
   staged: new Map(),
@@ -45,15 +46,26 @@ function resetDetailedState(
   isRepoRef.current = false;
 }
 
+interface DetailedWatcherOptions {
+  timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  scheduleDetailedRefresh: (root: string) => void;
+}
+
 function setupDetailedFileWatcher(
   projectRoot: string,
   isRepoRef: React.MutableRefObject<boolean>,
   activeRef: { current: boolean },
-  fetchStatus: (root: string) => Promise<void>,
+  opts: DetailedWatcherOptions,
 ): (() => void) | null {
+  const { timeoutRef, scheduleDetailedRefresh } = opts;
   try {
     return window.electronAPI.files.onFileChange(() => {
-      if (activeRef.current && isRepoRef.current) void fetchStatus(projectRoot);
+      if (!activeRef.current || !isRepoRef.current) return;
+      if (timeoutRef.current !== null) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = null;
+        scheduleDetailedRefresh(projectRoot);
+      }, FILE_CHANGE_DEBOUNCE_MS);
     });
   } catch {
     return null;
@@ -66,11 +78,16 @@ interface UseGitStatusEffectOptions {
   setIsRepo: React.Dispatch<React.SetStateAction<boolean>>;
   isRepoRef: React.MutableRefObject<boolean>;
   intervalRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>;
+  timeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
   fetchStatus: (root: string) => Promise<void>;
+  scheduleDetailedRefresh: (root: string) => void;
 }
 
 function useGitStatusEffect(options: UseGitStatusEffectOptions): void {
-  const { projectRoot, setStatus, setIsRepo, isRepoRef, intervalRef, fetchStatus } = options;
+  const {
+    projectRoot, setStatus, setIsRepo, isRepoRef,
+    intervalRef, timeoutRef, fetchStatus, scheduleDetailedRefresh,
+  } = options;
   useEffect(() => {
     if (!projectRoot) {
       resetDetailedState(setStatus, setIsRepo, isRepoRef);
@@ -91,43 +108,83 @@ function useGitStatusEffect(options: UseGitStatusEffectOptions): void {
       }
     });
 
-    const cleanupWatcher = setupDetailedFileWatcher(projectRoot, isRepoRef, activeRef, fetchStatus);
+    const cleanupWatcher = setupDetailedFileWatcher(
+      projectRoot, isRepoRef, activeRef, { timeoutRef, scheduleDetailedRefresh },
+    );
     return () => {
       activeRef.current = false;
       if (intervalRef.current !== null) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       cleanupWatcher?.();
     };
-  }, [projectRoot, fetchStatus, setStatus, setIsRepo, isRepoRef, intervalRef]);
+  }, [projectRoot, fetchStatus, scheduleDetailedRefresh, setStatus, setIsRepo, isRepoRef, intervalRef, timeoutRef]);
+}
+
+type FetchStatusFn = (root: string) => Promise<void>;
+
+interface DetailedFetchArgs {
+  root: string;
+  isRepoRef: React.MutableRefObject<boolean>;
+  inFlightRef: React.MutableRefObject<boolean>;
+  pendingRef: React.MutableRefObject<boolean>;
+  rootRef: React.MutableRefObject<string | null>;
+  setStatus: React.Dispatch<React.SetStateAction<DetailedGitStatus>>;
+  fetchStatus: FetchStatusFn;
+}
+
+async function executeDetailedFetch(args: DetailedFetchArgs): Promise<void> {
+  const { root, isRepoRef, inFlightRef, pendingRef, rootRef, setStatus, fetchStatus } = args;
+  inFlightRef.current = true;
+  try {
+    const result = await window.electronAPI.git.statusDetailed(root);
+    if (isRepoRef.current && rootRef.current === root && result.success)
+      setStatus({ staged: toMap(result.staged), unstaged: toMap(result.unstaged) });
+  } catch {
+    /* silently ignore */
+  } finally {
+    inFlightRef.current = false;
+    if (pendingRef.current && isRepoRef.current && rootRef.current === root) {
+      pendingRef.current = false;
+      void fetchStatus(root);
+    }
+  }
 }
 
 export function useGitStatusDetailed(projectRoot: string | null): UseGitStatusDetailedReturn {
   const [status, setStatus] = useState<DetailedGitStatus>(EMPTY_STATUS);
   const [isRepo, setIsRepo] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRepoRef = useRef(false);
+  const inFlightRef = useRef(false);
+  const pendingRef = useRef(false);
   const rootRef = useRef(projectRoot);
   rootRef.current = projectRoot;
 
-  const fetchStatus = useCallback(async (root: string): Promise<void> => {
+  const fetchStatus: FetchStatusFn = useCallback(async (root) => {
     if (!isRepoRef.current) return;
-    try {
-      const result = await window.electronAPI.git.statusDetailed(root);
-      if (result.success)
-        setStatus({ staged: toMap(result.staged), unstaged: toMap(result.unstaged) });
-    } catch {
-      /* silently ignore */
-    }
-  }, []);
+    if (inFlightRef.current) { pendingRef.current = true; return; }
+    await executeDetailedFetch({ root, isRepoRef, inFlightRef, pendingRef, rootRef, setStatus, fetchStatus });
+  }, []); // refs and setStatus are stable — empty dep array is correct
 
-  const refresh = useCallback(() => {
-    const root = rootRef.current;
-    if (root && isRepoRef.current) void fetchStatus(root);
+  const scheduleDetailedRefresh = useCallback((root: string): void => {
+    if (isRepoRef.current && rootRef.current === root) void fetchStatus(root);
   }, [fetchStatus]);
 
-  useGitStatusEffect({ projectRoot, setStatus, setIsRepo, isRepoRef, intervalRef, fetchStatus });
+  const refresh = useCallback(() => {
+    if (rootRef.current && isRepoRef.current) void fetchStatus(rootRef.current);
+  }, [fetchStatus]);
+
+  useGitStatusEffect({
+    projectRoot, setStatus, setIsRepo, isRepoRef,
+    intervalRef, timeoutRef, fetchStatus, scheduleDetailedRefresh,
+  });
 
   return { status, isRepo, refresh };
 }
