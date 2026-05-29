@@ -53,6 +53,8 @@ import {
   getCascadeOffset,
   getInitialWindowPlacement,
   getInitialWindowSize,
+  legacySessionsDataToWindowSessions,
+  sessionsDataToWindowSessions,
   validateBounds,
 } from './windowManagerHelpers';
 
@@ -188,6 +190,147 @@ describe('getInitialWindowPlacement', () => {
     const bounds = { width: 1280, height: 800, isMaximized: false };
     const placement = getInitialWindowPlacement(bounds, false, 1);
     expect(placement).toEqual(getCascadeOffset(1));
+  });
+});
+
+// ── sessionsDataToWindowSessions ──────────────────────────────────────────────
+
+type FakeSession = {
+  projectRoot: string;
+  bounds?: { x: number; y: number; width: number; height: number; isMaximized: boolean };
+  archivedAt?: string;
+  deletedAt?: string;
+};
+
+describe('sessionsDataToWindowSessions — new path (windowGroups provided)', () => {
+  beforeEach(() => {
+    vi.stubEnv('OUROBOROS_SINGLE_WINDOW', '0');
+    vi.stubEnv('npm_lifecycle_event', '');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('returns a WindowSession per group with full projectRoots rail', () => {
+    const groups = [
+      { projectRoots: ['/a', '/b', '/c'], bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = sessionsDataToWindowSessions([], groups);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/a', '/b', '/c']);
+  });
+
+  it('filters groups without bounds', () => {
+    const groups = [
+      { projectRoots: ['/a'], bounds: undefined },
+      { projectRoots: ['/b'], bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = sessionsDataToWindowSessions([], groups);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/b']);
+  });
+
+  it('clamp: singleWindow keeps only first GROUP but preserves its full projectRoots', () => {
+    vi.stubEnv('OUROBOROS_SINGLE_WINDOW', '1');
+    const groups = [
+      { projectRoots: ['/a', '/b'], bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+      { projectRoots: ['/c'], bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = sessionsDataToWindowSessions([], groups);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/a', '/b']);
+  });
+
+  it('dev-mode clamp: npm_lifecycle_event=dev restricts to first group', () => {
+    vi.unstubAllEnvs();
+    vi.stubEnv('npm_lifecycle_event', 'dev');
+    vi.stubEnv('OUROBOROS_SINGLE_WINDOW', '');
+    const groups = [
+      { projectRoots: ['/x'], bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+      { projectRoots: ['/y'], bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = sessionsDataToWindowSessions([], groups);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/x']);
+  });
+});
+
+describe('sessionsDataToWindowSessions — legacy fallback (windowGroups empty)', () => {
+  beforeEach(() => {
+    vi.stubEnv('OUROBOROS_SINGLE_WINDOW', '0');
+    vi.stubEnv('npm_lifecycle_event', '');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('falls back to per-root sessionsData when windowGroups is empty', () => {
+    const sessions: FakeSession[] = [
+      { projectRoot: '/legacy', bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = sessionsDataToWindowSessions(sessions as never, []);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/legacy']);
+  });
+
+  it('falls back to per-root sessionsData when windowGroups is undefined', () => {
+    const sessions: FakeSession[] = [
+      { projectRoot: '/legacy', bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = sessionsDataToWindowSessions(sessions as never);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/legacy']);
+  });
+});
+
+describe('legacySessionsDataToWindowSessions', () => {
+  beforeEach(() => {
+    vi.stubEnv('OUROBOROS_SINGLE_WINDOW', '0');
+    vi.stubEnv('npm_lifecycle_event', '');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('projects a session with bounds into a single-root WindowSession', () => {
+    const sessions: FakeSession[] = [
+      { projectRoot: '/p', bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = legacySessionsDataToWindowSessions(sessions as never);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/p']);
+  });
+
+  it('excludes sessions without bounds', () => {
+    const sessions: FakeSession[] = [
+      { projectRoot: '/a' },
+      { projectRoot: '/b', bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = legacySessionsDataToWindowSessions(sessions as never);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/b']);
+  });
+
+  it('excludes archived sessions', () => {
+    const sessions: FakeSession[] = [
+      { projectRoot: '/a', bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false }, archivedAt: '2024-01-01' },
+    ];
+    const result = legacySessionsDataToWindowSessions(sessions as never);
+    expect(result).toHaveLength(0);
+  });
+
+  it('clamps to one session when OUROBOROS_SINGLE_WINDOW=1', () => {
+    vi.stubEnv('OUROBOROS_SINGLE_WINDOW', '1');
+    const sessions: FakeSession[] = [
+      { projectRoot: '/a', bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+      { projectRoot: '/b', bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false } },
+    ];
+    const result = legacySessionsDataToWindowSessions(sessions as never);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRoots).toEqual(['/a']);
   });
 });
 

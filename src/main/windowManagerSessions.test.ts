@@ -22,11 +22,19 @@ vi.mock('./config', () => {
   };
 });
 
+const { mockSessDataToWindowSessions } = vi.hoisted(() => ({
+  mockSessDataToWindowSessions: vi.fn(
+    (data: unknown[]) =>
+      (data as Array<{ projectRoots?: string[] }>)
+        .filter((s) => s.projectRoots?.length)
+        .map((s) => s as { projectRoots: string[] }),
+  ),
+}));
+
 vi.mock('./windowManagerHelpers', () => ({
   captureWindowBounds: () => ({ width: 1280, height: 800, isMaximized: false }),
   mergeBoundsIntoSessions: (sessions: unknown[]) => sessions,
-  sessionsDataToWindowSessions: (data: unknown[]) =>
-    data.map((s: unknown) => s as { projectRoots: string[] }),
+  sessionsDataToWindowSessions: mockSessDataToWindowSessions,
   applyPersistedBounds: vi.fn(),
 }));
 
@@ -49,6 +57,8 @@ function makeFakeWin(destroyed = false): BrowserWindow {
   } as unknown as BrowserWindow;
 }
 
+type ManagedEntry = { win: BrowserWindow; projectRoot: string | null; projectRoots: string[] };
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('wireSessionHelpers + persistWindowSessions', () => {
@@ -57,8 +67,9 @@ describe('wireSessionHelpers + persistWindowSessions', () => {
   });
 
   it('does nothing when no windows have a projectRoot', () => {
+    const entry: ManagedEntry = { win: makeFakeWin(), projectRoot: null, projectRoots: [] };
     wireSessionHelpers(
-      () => [{ win: makeFakeWin(), projectRoot: null }],
+      () => [entry],
       () => makeFakeWin(),
       () => undefined,
     );
@@ -77,12 +88,13 @@ describe('wireSessionHelpers + persistWindowSessions', () => {
 
   it('skips destroyed windows when building bounds map', () => {
     const destroyed = makeFakeWin(true);
+    const entry: ManagedEntry = { win: destroyed, projectRoot: '/project', projectRoots: ['/project'] };
     wireSessionHelpers(
-      () => [{ win: destroyed, projectRoot: '/project' }],
+      () => [entry],
       () => makeFakeWin(),
       () => undefined,
     );
-    // byRoot.size === 0 → early return, no throw
+    // boundsByRoot.size === 0 → early return, no throw
     expect(() => persistWindowSessions()).not.toThrow();
   });
 });
@@ -97,7 +109,7 @@ describe('persistWindowSessions — window-close guard: does NOT prune records',
     ];
     setConfigValue('sessionsData' as never, initial as never);
 
-    // Wire a window with /root/a so byRoot.size > 0 triggers a write.
+    // Wire a window with /root/a so boundsByRoot.size > 0 triggers a write.
     const fakeWin = {
       id: 1,
       isDestroyed: () => false,
@@ -105,8 +117,9 @@ describe('persistWindowSessions — window-close guard: does NOT prune records',
       getBounds: () => ({ x: 0, y: 0, width: 1280, height: 800 }),
     } as unknown as BrowserWindow;
 
+    const entry: ManagedEntry = { win: fakeWin, projectRoot: '/root/a', projectRoots: ['/root/a'] };
     wireSessionHelpers(
-      () => [{ win: fakeWin, projectRoot: '/root/a' }],
+      () => [entry],
       () => fakeWin,
       () => undefined,
     );
@@ -182,5 +195,91 @@ describe('restoreWindowSessions', () => {
 
     restoreWindowSessions();
     expect(createCalled).toBe(false);
+  });
+});
+
+// ── windowGroups persist + restore (new path) ─────────────────────────────────
+
+describe('persistWindowSessions — writes windowGroups', () => {
+  it('writes windowGroups with the full rail from a window with multiple roots', async () => {
+    const { setConfigValue, getConfigValue } = await import('./config');
+    setConfigValue('sessionsData' as never, [
+      { id: 's1', projectRoot: '/root/a', bounds: undefined },
+    ] as never);
+
+    const fakeWin = {
+      id: 1,
+      isDestroyed: () => false,
+      isMaximized: () => false,
+      getBounds: () => ({ x: 10, y: 20, width: 1440, height: 900 }),
+    } as unknown as BrowserWindow;
+
+    const entry: ManagedEntry = {
+      win: fakeWin,
+      projectRoot: '/root/a',
+      projectRoots: ['/root/a', '/root/b', '/root/c'],
+    };
+    wireSessionHelpers(
+      () => [entry],
+      () => fakeWin,
+      () => undefined,
+    );
+
+    persistWindowSessions();
+
+    const groups = getConfigValue('windowGroups' as never) as Array<{
+      projectRoots: string[];
+      bounds: unknown;
+    }>;
+    expect(groups).toHaveLength(1);
+    expect(groups[0].projectRoots).toEqual(['/root/a', '/root/b', '/root/c']);
+    expect(groups[0].bounds).toBeDefined();
+  });
+});
+
+describe('restoreWindowSessions — windowGroups new path', () => {
+  it('passes windowGroups to sessionsDataToWindowSessions when present', async () => {
+    const { setConfigValue } = await import('./config');
+    const groups = [
+      {
+        projectRoots: ['/root/a', '/root/b', '/root/c'],
+        bounds: { x: 0, y: 0, width: 1280, height: 800, isMaximized: false },
+      },
+    ];
+    setConfigValue('sessionsData' as never, [] as never);
+    setConfigValue('windowGroups' as never, groups as never);
+
+    mockSessDataToWindowSessions.mockClear();
+    wireSessionHelpers(
+      () => [],
+      () => makeFakeWin(),
+      () => undefined,
+    );
+
+    restoreWindowSessions();
+
+    expect(mockSessDataToWindowSessions).toHaveBeenCalledWith([], groups);
+  });
+});
+
+describe('restoreWindowSessions — legacy fallback when windowGroups empty', () => {
+  it('falls back to sessionsData when windowGroups is empty', async () => {
+    const { setConfigValue } = await import('./config');
+    setConfigValue('sessionsData' as never, [
+      { projectRoots: ['/legacy/root'], bounds: undefined },
+    ] as never);
+    setConfigValue('windowGroups' as never, [] as never);
+
+    const created: BrowserWindow[] = [];
+    const fakeWin = makeFakeWin();
+    wireSessionHelpers(
+      () => [],
+      () => { created.push(fakeWin); return fakeWin; },
+      () => undefined,
+    );
+
+    restoreWindowSessions();
+    // sessionsDataToWindowSessions mock maps data→sessions; sessionsData had one entry
+    expect(created.length).toBeGreaterThanOrEqual(1);
   });
 });

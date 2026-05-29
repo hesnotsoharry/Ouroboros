@@ -7,7 +7,7 @@
 
 import { BrowserWindow } from 'electron';
 
-import { getConfigValue, setConfigValue, type WindowSession } from './config';
+import { getConfigValue, setConfigValue, type WindowGroup, type WindowSession } from './config';
 import log from './logger';
 import type { Session } from './session';
 import {
@@ -19,7 +19,11 @@ import {
 
 // ── Internal window state accessor (injected by windowManager.ts) ─────────────
 
-type WindowValuesGetter = () => Iterable<{ win: BrowserWindow; projectRoot: string | null }>;
+type WindowValuesGetter = () => Iterable<{
+  win: BrowserWindow;
+  projectRoot: string | null;
+  projectRoots: string[];
+}>;
 type WindowCreator = (projectRoot?: string) => BrowserWindow;
 type WindowSetter = (id: number, key: 'projectRoots' | 'projectRoot', val: unknown) => void;
 
@@ -39,24 +43,35 @@ export function wireSessionHelpers(
 
 // ── Session persistence ───────────────────────────────────────────────────────
 
-function buildLiveBoundsByRoot(): Map<string, Session['bounds']> {
-  const map = new Map<string, Session['bounds']>();
+interface LiveWindowData {
+  boundsByRoot: Map<string, Session['bounds']>;
+  groups: WindowGroup[];
+}
+
+function buildLiveWindowData(): LiveWindowData {
+  const boundsByRoot = new Map<string, Session['bounds']>();
+  const groups: WindowGroup[] = [];
   for (const managed of _getAllValues()) {
     if (managed.win.isDestroyed()) continue;
     if (!managed.projectRoot) continue;
-    map.set(managed.projectRoot, captureWindowBounds(managed.win));
+    const bounds = captureWindowBounds(managed.win);
+    boundsByRoot.set(managed.projectRoot, bounds);
+    if (managed.projectRoots.length > 0) {
+      groups.push({ projectRoots: managed.projectRoots, bounds });
+    }
   }
-  return map;
+  return { boundsByRoot, groups };
 }
 
-/** Persist current window bounds into sessionsData (canonical store). */
+/** Persist current window bounds into sessionsData AND windowGroups. */
 export function persistWindowSessions(): void {
   try {
     const existing = (getConfigValue('sessionsData') as Session[] | undefined) ?? [];
     if (!Array.isArray(existing)) return;
-    const byRoot = buildLiveBoundsByRoot();
-    if (byRoot.size === 0) return;
-    setConfigValue('sessionsData', mergeBoundsIntoSessions(existing, byRoot) as never);
+    const { boundsByRoot, groups } = buildLiveWindowData();
+    if (boundsByRoot.size === 0) return;
+    setConfigValue('sessionsData', mergeBoundsIntoSessions(existing, boundsByRoot) as never);
+    setConfigValue('windowGroups', groups as never);
   } catch {
     /* best-effort */
   }
@@ -75,12 +90,15 @@ function restoreOneSession(session: WindowSession): BrowserWindow | null {
   return win;
 }
 
-/** Restore windows on startup from sessionsData (canonical store). */
+/** Restore windows on startup from windowGroups (preferred) or sessionsData (legacy). */
 export function restoreWindowSessions(): BrowserWindow[] {
   const sessionsData = (getConfigValue('sessionsData') as Session[] | undefined) ?? [];
+  const windowGroups = (getConfigValue('windowGroups') as WindowGroup[] | undefined) ?? [];
   const total = Array.isArray(sessionsData) ? sessionsData.length : 0;
-  log.info('[trace:restore] sessionsData count', { total });
-  const source = Array.isArray(sessionsData) ? sessionsDataToWindowSessions(sessionsData) : [];
+  log.info('[trace:restore] sessionsData count', { total, windowGroups: windowGroups.length });
+  const source = Array.isArray(sessionsData)
+    ? sessionsDataToWindowSessions(sessionsData, windowGroups)
+    : [];
   if (source.length === 0) return [];
   return source.map(restoreOneSession).filter((w): w is BrowserWindow => w !== null);
 }

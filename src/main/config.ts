@@ -36,6 +36,7 @@ export type {
   TerminalSessionSnapshot,
   ThemingConfig,
   WindowBounds,
+  WindowGroup,
   WindowSession,
   WorkspaceLayout,
   WorkspaceSnapshot,

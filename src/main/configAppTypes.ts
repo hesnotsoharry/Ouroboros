@@ -182,6 +182,8 @@ export interface AppConfig {
     retentionDays?: number;
     parityQueue?: { enabled?: boolean };
   };
+  /** Window groups — full per-window rail snapshots for multi-root restore (Option A). */
+  windowGroups?: import('./configTypes').WindowGroup[];
   /** Wave 16 — persisted Session records */
   sessionsData?: Session[];
   /** Wave 16 — session feature flags */

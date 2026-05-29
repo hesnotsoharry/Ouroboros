@@ -650,6 +650,29 @@ describe('persistWindowSessions', () => {
     expect(legacyCall).toBeUndefined();
   });
 
+  it('writes windowGroups with full projectRoots rail alongside sessionsData', () => {
+    type SessionLike = { projectRoot: string; id?: string; bounds?: Record<string, unknown> };
+    mocks.getConfigValue.mockImplementation((key: string) => {
+      if (key === 'sessionsData') {
+        return [{ projectRoot: '/root/a', id: 's1' }] as SessionLike[];
+      }
+      return undefined;
+    });
+    const win = wm.createWindow('/root/a');
+    // setWindowProjectRoots to give the window a multi-root rail
+    wm.setWindowProjectRoots(win.id, ['/root/a', '/root/b', '/root/c']);
+    mocks.isDestroyed.mockReturnValue(false);
+    mocks.setConfigValue.mockClear();
+
+    wm.persistWindowSessions();
+
+    const groupsCall = mocks.setConfigValue.mock.calls.find((c) => c[0] === 'windowGroups');
+    expect(groupsCall).toBeDefined();
+    const groups = groupsCall![1] as Array<{ projectRoots: string[] }>;
+    expect(groups).toHaveLength(1);
+    expect(groups[0].projectRoots).toEqual(['/root/a', '/root/b', '/root/c']);
+  });
+
   it('does not write sessionsData when no live windows have projectRoot', () => {
     wm.createWindow();
     mocks.isDestroyed.mockReturnValue(false);

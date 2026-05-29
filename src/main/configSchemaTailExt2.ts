@@ -83,4 +83,18 @@ export const tailSchemaExt2 = {
     },
     default: { scrollback: 50000 },
   },
+  /** Window groups — each entry captures the full ordered project-root rail for one
+   *  window, enabling multi-root rails to be restored as a single window on relaunch.
+   *  Default [] (empty → legacy per-root sessionsData fallback is used instead). */
+  windowGroups: {
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        projectRoots: { type: 'array', items: { type: 'string' } },
+        bounds: { type: 'object' },
+      },
+    },
+    default: [],
+  },
 };

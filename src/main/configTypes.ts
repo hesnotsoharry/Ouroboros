@@ -85,6 +85,14 @@ export interface WindowSession {
   bounds?: WindowBounds;
 }
 
+/** Window group — persists the full ordered rail of project roots for one window.
+ *  [0] is the active/primary root. Used by windowGroups config key (Option A). */
+export interface WindowGroup {
+  /** Full ordered rail of project roots; [0] is active/primary. */
+  projectRoots: string[];
+  bounds?: WindowBounds;
+}
+
 export interface TerminalSessionSnapshot {
   cwd: string;
   title: string;

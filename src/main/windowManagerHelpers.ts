@@ -7,7 +7,7 @@
 import { BrowserWindow, screen, session } from 'electron';
 import path from 'path';
 
-import type { WindowBounds, WindowSession } from './config';
+import type { WindowBounds, WindowGroup, WindowSession } from './config';
 import { getConfigValue, setConfigValue } from './config';
 import { describeFdPressure } from './fdPressureDiagnostics';
 import log from './logger';
@@ -297,46 +297,69 @@ export function mergeBoundsIntoSessions(
   });
 }
 
+/** Derive the singleWindow flag from environment variables (shared logic). */
+function isSingleWindowMode(): boolean {
+  const explicit = process.env.OUROBOROS_SINGLE_WINDOW;
+  const isDev = process.env.npm_lifecycle_event === 'dev';
+  return explicit === '1' || (isDev && explicit !== '0');
+}
+
 /**
- * Project active Session records that have bounds into WindowSession shape
- * for use by the window restore path.
+ * Legacy path: project active Session records that have bounds into WindowSession shape.
+ * Called by sessionsDataToWindowSessions when windowGroups is empty (graceful migration).
  *
- * Lifecycle exclusion: archived (`archivedAt`) and soft-deleted (`deletedAt`)
- * sessions are never restored — they would produce ghost windows.
- *
- * Single-window clamp: restores at most one window (the first qualifying
- * session in store order) when EITHER:
- *   1. `OUROBOROS_SINGLE_WINDOW=1` is explicitly set, OR
- *   2. The process is running under `npm run dev` (detected via
- *      `npm_lifecycle_event === 'dev'`, which npm sets automatically).
- *
- * Explicit `OUROBOROS_SINGLE_WINDOW=0` always wins — it forces multi-window
- * restoration even under dev mode (useful for testing multi-window behavior
- * during development).
- *
- * Production / packaged builds are not affected: `npm_lifecycle_event` is
- * undefined when the app is launched standalone, so multi-window restore
- * works as before.
+ * Lifecycle exclusion: archived/soft-deleted sessions are never restored.
+ * Single-window clamp: at most one window when OUROBOROS_SINGLE_WINDOW=1 or npm run dev.
  */
-export function sessionsDataToWindowSessions(sessionsData: Session[]): WindowSession[] {
+export function legacySessionsDataToWindowSessions(sessionsData: Session[]): WindowSession[] {
   const active = sessionsData.filter(
     (s) => s.projectRoot && s.bounds && !s.archivedAt && !s.deletedAt,
   );
   const droppedNoBounds = sessionsData.filter(
     (s) => s.projectRoot && (!s.bounds || s.archivedAt || s.deletedAt),
   ).length;
-  const explicit = process.env.OUROBOROS_SINGLE_WINDOW;
-  const isDev = process.env.npm_lifecycle_event === 'dev';
-  const singleWindow = explicit === '1' || (isDev && explicit !== '0');
+  const singleWindow = isSingleWindowMode();
   const clamped = singleWindow ? active.slice(0, 1) : active;
-  log.info('[trace:restore] qualifying sessions', {
+  log.info('[trace:restore] qualifying sessions (legacy)', {
     total: sessionsData.length,
     qualifying: active.length,
     droppedNoBounds,
     singleWindow,
     clamped: clamped.length,
-    OUROBOROS_SINGLE_WINDOW: explicit ?? '(unset)',
+    OUROBOROS_SINGLE_WINDOW: process.env.OUROBOROS_SINGLE_WINDOW ?? '(unset)',
     npm_lifecycle_event: process.env.npm_lifecycle_event ?? '(unset)',
   });
   return clamped.map((s) => ({ projectRoots: [s.projectRoot], bounds: s.bounds }));
+}
+
+/**
+ * Project session records into WindowSession shape for the window restore path.
+ *
+ * New path: when windowGroups has entries, restore each group as one window with its
+ * full projectRoots rail. The singleWindow clamp applies to the GROUP array (at most
+ * one group), NOT to the projectRoots inside a group — so a multi-root rail is always
+ * preserved intact.
+ *
+ * Legacy fallback: when windowGroups is empty (first run after migration, or pre-existing
+ * install), falls back to the per-root sessionsData path (preserves prior behavior).
+ */
+export function sessionsDataToWindowSessions(
+  sessionsData: Session[],
+  windowGroups: WindowGroup[] = [],
+): WindowSession[] {
+  if (windowGroups.length > 0) {
+    const valid = windowGroups.filter((g) => g.projectRoots.length > 0 && g.bounds);
+    const singleWindow = isSingleWindowMode();
+    const clamped = singleWindow ? valid.slice(0, 1) : valid;
+    log.info('[trace:restore] qualifying window groups', {
+      total: windowGroups.length,
+      valid: valid.length,
+      singleWindow,
+      clamped: clamped.length,
+      OUROBOROS_SINGLE_WINDOW: process.env.OUROBOROS_SINGLE_WINDOW ?? '(unset)',
+      npm_lifecycle_event: process.env.npm_lifecycle_event ?? '(unset)',
+    });
+    return clamped.map((g) => ({ projectRoots: g.projectRoots, bounds: g.bounds }));
+  }
+  return legacySessionsDataToWindowSessions(sessionsData);
 }
