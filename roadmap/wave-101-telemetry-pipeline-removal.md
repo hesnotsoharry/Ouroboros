@@ -21,7 +21,8 @@ After this wave, the orphaned telemetry **persistence/analytics** pipeline is de
 
 - `src/main/telemetry/` — entire dir (~21 files): `telemetryStore.ts`, `telemetryStoreHelpers.ts`, `telemetryStoreQueries.ts`, `telemetryStoreWriters.ts`, `traceBatcher.ts`, `telemetryDrain.ts`, `telemetryDrainStartup.ts`, `telemetryQueue.ts`, `queueRotation.ts`, `telemetryJsonlMirror.ts`, `hookEventsDrainHandler.ts`, `spawnTraceDrainHandler.ts`, `outcomeObserver.ts`, `hookEventsSchema.ts`, + colocated tests
 - `src/main/orchestration/providers/spawnCostDrainHandler.ts`, `src/main/orchestration/providers/mcpSpawnCostTelemetry.ts`
-- `src/main/orchestration/editProvenance.ts`, `src/main/hooksEditTap.ts`, `hooksTapRunner.ts`, `hooksGraphUsageTap.ts` (dead tap pipeline — write-only, no live consumer)
+- `src/main/orchestration/editProvenance.ts`, `src/main/hooksGraphUsageTap.ts`, `src/main/hooksPreToolResearchTap.ts` (fully-dead tap modules — write-only, no live consumer)
+- **RESTRUCTURE (not delete) — Phase-1 seam correction:** `src/main/hooksTapRunner.ts` runs 7 taps; remove only the 3 dead ones (`tapEditProvenance`, `tapPreToolResearch`, `tapGraphUsage`) and keep the 4 live ones (`tapConflictMonitor`, `tapSubagentTracker`, `tapSkillExecution`, `tapDiffReview`). `src/main/hooksEditTap.ts` holds both `tapConflictMonitor` (KEEP — live) and `tapEditProvenance` (REMOVE — dead JSONL); delete only the latter + its `getEditProvenanceStore` import. In `hooks.ts` the cut is Sites 3a/3b + 5a/5b only (`store.record` + coupled `noteToolUseEvent`, ~16 lines); `tapSkillExecution` is intentionally called twice (line 251 inline for the suppression path + via `runHookTaps`) — do NOT consolidate. `main.ts`/`mainStartup.ts` `initEditProvenance` import+call+re-export must be removed.
 - `src/main/research/` — entire dir (40+ files, incl. `researchOutcomeWriter.ts`, `correctionWriter.ts`, `researchSubagent.ts`, cache-purge scheduler) — fed the removed chat; zero active callers
 - `src/main/ipc-handlers/telemetry.ts` (`telemetry:queryEvents/Outcomes/Traces/record`, `observability:exportTrace`)
 - `src/main/mainTelemetryHandlers.ts` (registers the three drain handlers)
@@ -98,7 +99,9 @@ First step: verify the `## Locked decisions` section below has its three decisio
 
 ## Status
 
-<per-phase rows added as work progresses: Phase | Dispatched | Completed | Commit SHA | Observation point hit>
+| Phase | Dispatched | Completed | Commit SHA | Observation point hit |
+|---|---|---|---|---|
+| 1 — Boundary safety pin | 2026-05-29 | 2026-05-29 | (read-only; no commit) | Seam mapped: 6 call sites in `hooks.ts` (Sites 3a/3b/5a/5b REMOVE, 1/2 KEEP) + 7-tap split in `hooksTapRunner.ts` (4 KEEP / 3 REMOVE). Live path confirmed via graph trace: `hooks.ts`→`sendPayload`→`hooks:event` IPC→`useAgentEvents`→`AgentEventsContext`→`useWorkbenchAgentData`→`AgentSidebar`, fully independent of SQLite store. Guard test designed. 6 risk callouts captured (rowId coupling, double tapSkillExecution, hooksEditTap dual-tap, hooksTapRunner survives, research ordering, mainStartup re-export). |
 
 ## Follow-up candidates
 
