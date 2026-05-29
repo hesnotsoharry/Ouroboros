@@ -322,9 +322,21 @@ export function sessionsDataToWindowSessions(sessionsData: Session[]): WindowSes
   const active = sessionsData.filter(
     (s) => s.projectRoot && s.bounds && !s.archivedAt && !s.deletedAt,
   );
+  const droppedNoBounds = sessionsData.filter(
+    (s) => s.projectRoot && (!s.bounds || s.archivedAt || s.deletedAt),
+  ).length;
   const explicit = process.env.OUROBOROS_SINGLE_WINDOW;
   const isDev = process.env.npm_lifecycle_event === 'dev';
   const singleWindow = explicit === '1' || (isDev && explicit !== '0');
   const clamped = singleWindow ? active.slice(0, 1) : active;
+  log.info('[trace:restore] qualifying sessions', {
+    total: sessionsData.length,
+    qualifying: active.length,
+    droppedNoBounds,
+    singleWindow,
+    clamped: clamped.length,
+    OUROBOROS_SINGLE_WINDOW: explicit ?? '(unset)',
+    npm_lifecycle_event: process.env.npm_lifecycle_event ?? '(unset)',
+  });
   return clamped.map((s) => ({ projectRoots: [s.projectRoot], bounds: s.bounds }));
 }

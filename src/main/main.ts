@@ -1,6 +1,7 @@
 import './bootstrap';
 
 import { app, BrowserWindow } from 'electron';
+import fs from 'fs';
 import path from 'path';
 
 import { migrateSecretsIfNeeded } from './auth/secretMigration';
@@ -41,7 +42,7 @@ import { startWebServer, stopWebServer } from './web';
 import { installHandlerCapture } from './web/handlerRegistry';
 import { getOrCreateWebToken } from './web/webAuth';
 import { createWindow, getAllActiveWindows, restoreWindowSessions } from './windowManager';
-import { isWorkspaceTrusted } from './workspaceTrust';
+import { ensureRootTrusted, isWorkspaceTrusted } from './workspaceTrust';
 
 // ---------------------------------------------------------------------------
 // Bootstrap — must run synchronously before app.whenReady() resolves.
@@ -221,6 +222,12 @@ async function initializeApplication(): Promise<void> {
   // no longer exist on disk. Must run BEFORE restoreWindowSessions (called from
   // initWindowsAndServices) so the restore pass reads already-cleaned data.
   runStaleRootsMigration();
+  // Auto-trust the configured defaultProjectRoot if it exists on disk but is
+  // not yet trusted. This handles the folder-rename case where the path is no
+  // longer in trustedWorkspaces, which would otherwise silently lock the app
+  // into restricted mode with no UI escape hatch. Must run BEFORE
+  // initWindowsAndServices → startBackgroundServices where the trust check fires.
+  ensureRootTrusted(defaultRoot, fs.existsSync);
   await fireBootRestore(defaultRoot);
   const ud = app.getPath('userData');
   await initTelemetryAndWriters(ud);

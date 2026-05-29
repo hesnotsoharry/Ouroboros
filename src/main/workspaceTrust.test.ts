@@ -13,6 +13,7 @@ vi.mock('./logger', () => ({
 }));
 
 import {
+  ensureRootTrusted,
   getWindowTrustLevel,
   getWorkspaceTrustLevel,
   isWorkspaceTrusted,
@@ -75,6 +76,36 @@ describe('workspaceTrust', () => {
       mockGetConfigValue.mockReturnValue(['C:\\Projects\\a', 'C:\\Projects\\b']);
       untrustWorkspace('C:\\Projects\\a');
       expect(mockSetConfigValue).toHaveBeenCalledWith('trustedWorkspaces', ['C:\\Projects\\b']);
+    });
+  });
+
+  describe('ensureRootTrusted', () => {
+    it('trusts an untrusted root that exists on disk', () => {
+      mockGetConfigValue.mockReturnValue([]);
+      const result = ensureRootTrusted('C:\\Projects\\myapp', () => true);
+      expect(result).toBe(true);
+      expect(mockSetConfigValue).toHaveBeenCalledWith('trustedWorkspaces', ['C:\\Projects\\myapp']);
+    });
+
+    it('returns false and does not call setConfigValue when root is already trusted', () => {
+      mockGetConfigValue.mockReturnValue(['C:\\Projects\\myapp']);
+      const result = ensureRootTrusted('C:\\Projects\\myapp', () => true);
+      expect(result).toBe(false);
+      expect(mockSetConfigValue).not.toHaveBeenCalled();
+    });
+
+    it('returns false and does not trust when root does not exist on disk', () => {
+      mockGetConfigValue.mockReturnValue([]);
+      const result = ensureRootTrusted('C:\\Projects\\missing', () => false);
+      expect(result).toBe(false);
+      expect(mockSetConfigValue).not.toHaveBeenCalled();
+    });
+
+    it('returns false and does not trust when root is undefined', () => {
+      mockGetConfigValue.mockReturnValue([]);
+      const result = ensureRootTrusted(undefined, () => true);
+      expect(result).toBe(false);
+      expect(mockSetConfigValue).not.toHaveBeenCalled();
     });
   });
 

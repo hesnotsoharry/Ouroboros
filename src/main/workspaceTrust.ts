@@ -16,6 +16,24 @@ import path from 'path';
 import { getConfigValue, setConfigValue } from './config';
 import log from './logger';
 
+/**
+ * Pure helper: if `root` exists on disk and is not yet trusted, trust it and
+ * return `true`. Returns `false` for undefined/missing roots or already-trusted.
+ * The `exists` parameter is injected so this function is unit-testable without
+ * touching the real filesystem.
+ */
+export function ensureRootTrusted(
+  root: string | undefined,
+  exists: (p: string) => boolean,
+): boolean {
+  if (!root) return false;
+  if (isWorkspaceTrusted(root)) return false;
+  if (!exists(root)) return false;
+  trustWorkspace(root);
+  log.info('[main] Auto-trusted defaultProjectRoot:', root);
+  return true;
+}
+
 export type TrustLevel = 'trusted' | 'restricted';
 
 function normalizePath(p: string): string {

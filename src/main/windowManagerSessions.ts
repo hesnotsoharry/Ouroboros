@@ -8,6 +8,7 @@
 import { BrowserWindow } from 'electron';
 
 import { getConfigValue, setConfigValue, type WindowSession } from './config';
+import log from './logger';
 import type { Session } from './session';
 import {
   applyPersistedBounds,
@@ -67,12 +68,18 @@ function restoreOneSession(session: WindowSession): BrowserWindow | null {
   _setManaged(win.id, 'projectRoots', session.projectRoots);
   _setManaged(win.id, 'projectRoot', session.projectRoots[0] ?? null);
   applyPersistedBounds(win, session.bounds);
+  log.info('[trace:restore] restoring session', {
+    projectRoot: session.projectRoots[0],
+    projectRoots: session.projectRoots,
+  });
   return win;
 }
 
 /** Restore windows on startup from sessionsData (canonical store). */
 export function restoreWindowSessions(): BrowserWindow[] {
   const sessionsData = (getConfigValue('sessionsData') as Session[] | undefined) ?? [];
+  const total = Array.isArray(sessionsData) ? sessionsData.length : 0;
+  log.info('[trace:restore] sessionsData count', { total });
   const source = Array.isArray(sessionsData) ? sessionsDataToWindowSessions(sessionsData) : [];
   if (source.length === 0) return [];
   return source.map(restoreOneSession).filter((w): w is BrowserWindow => w !== null);
