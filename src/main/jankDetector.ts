@@ -6,8 +6,10 @@
  * was stalled — log the duration so we can correlate with other activity.
  */
 
+import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
 import v8 from 'node:v8';
 
+import { snapshotActiveOps } from './activeOps';
 import { describeFdPressure } from './fdPressureDiagnostics';
 import log from './logger';
 
@@ -24,6 +26,9 @@ let lastTickAt = 0;
 let lastHeapLogAt = 0;
 let jankCount = 0;
 
+// Event-loop-delay histogram (10 ms resolution, Node ≥ v11.10)
+const eldHistogram = monitorEventLoopDelay({ resolution: 10 });
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 function formatMB(bytes: number): string {
@@ -38,6 +43,14 @@ function logHeapSnapshot(): void {
       ` limit=${formatMB(heap.heap_size_limit)}` +
       ` external=${formatMB(heap.external_memory)}`,
   );
+}
+
+function logBlockDetails(blockedMs: number, now: number): void {
+  const ops = snapshotActiveOps(now);
+  const eldP99Ms = Math.round(eldHistogram.percentile(99) / 1e6);
+  log.warn('[jank] active ops at block', { blockedMs, eldP99Ms, ops });
+  logHeapSnapshot();
+  log.warn(`[jank] ${describeFdPressure()}`);
 }
 
 function onTick(): void {
@@ -57,8 +70,7 @@ function onTick(): void {
         ` (tick expected after ${CHECK_INTERVAL_MS}ms, arrived after ${elapsed}ms)` +
         ` — total janks this session: ${jankCount}`,
     );
-    logHeapSnapshot();
-    log.warn(`[jank] ${describeFdPressure()}`);
+    logBlockDetails(jank, performance.now());
   }
 
   if (now - lastHeapLogAt > HEAP_LOG_INTERVAL_MS) {
@@ -73,6 +85,7 @@ export function startJankDetector(): void {
   if (timerId) return;
   lastTickAt = 0; // Reset so first tick is skipped (avoids false positive from startup overhead)
   lastHeapLogAt = Date.now();
+  eldHistogram.enable();
   timerId = setInterval(onTick, CHECK_INTERVAL_MS);
   // Prevent the interval from keeping the process alive during shutdown
   if (timerId && typeof timerId === 'object' && 'unref' in timerId) {
@@ -86,5 +99,6 @@ export function stopJankDetector(): void {
   if (!timerId) return;
   clearInterval(timerId);
   timerId = null;
+  eldHistogram.disable();
   log.info(`[jank] detector stopped — total janks: ${jankCount}`);
 }

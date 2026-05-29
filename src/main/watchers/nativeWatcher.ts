@@ -7,8 +7,11 @@
  * FD explosion that chokidar's pure-JS implementation suffers from.
  */
 
+import { performance } from 'node:perf_hooks';
+
 import watcher from '@parcel/watcher';
 
+import { beginOp } from '../activeOps';
 import log from '../logger';
 import type { WatchCallback, WatchOptions, WatchSubscription } from './nativeWatcher.types';
 
@@ -33,6 +36,33 @@ function defaultBackend(): 'windows' | 'fs-events' | 'inotify' | 'brute-force' {
   }
 }
 
+/**
+ * Issue the watcher.subscribe() call, measuring the synchronous portion
+ * (main-thread work until the native call returns a promise) separately from
+ * the total async duration. Registers in activeOps for the jank detector.
+ */
+async function subscribeWithTiming(
+  rootPath: string,
+  cb: Parameters<typeof watcher.subscribe>[1],
+  opts: Parameters<typeof watcher.subscribe>[2],
+): Promise<Awaited<ReturnType<typeof watcher.subscribe>>> {
+  log.info('[trace:watcher-subscribe] start', { dir: rootPath });
+  const endOp = beginOp(`watcher-subscribe:${rootPath}`);
+  const t0 = performance.now();
+  // Capture WITHOUT awaiting to measure main-thread-sync cost before native call yields.
+  const subPromise = watcher.subscribe(rootPath, cb, opts);
+  const syncMs = Math.round(performance.now() - t0);
+  let subscription: Awaited<typeof subPromise>;
+  try {
+    subscription = await subPromise;
+  } finally {
+    endOp();
+  }
+  const totalMs = Math.round(performance.now() - t0);
+  log.info('[trace:watcher-subscribe] timing', { dir: rootPath, syncMs, totalMs });
+  return subscription;
+}
+
 export async function watchRecursive(
   rootPath: string,
   opts: WatchOptions,
@@ -42,7 +72,7 @@ export async function watchRecursive(
     backend: defaultBackend(),
     ...(opts.ignore ? { ignore: opts.ignore } : {}),
   };
-  const subscription = await watcher.subscribe(
+  const subscription = await subscribeWithTiming(
     rootPath,
     (err, events) => {
       if (err) {
@@ -53,7 +83,6 @@ export async function watchRecursive(
     },
     subscribeOpts,
   );
-
   return {
     close: async () => {
       try {
