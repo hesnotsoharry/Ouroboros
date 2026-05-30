@@ -170,45 +170,20 @@ describe('getDashboardMetrics — empty state', () => {
   });
 });
 
+// Wave 101 Phase 4: invocation aggregation tests updated — telemetry store removed;
+// aggregateInvocations now always returns empty rows.
 describe('getDashboardMetrics — invocation aggregation', () => {
-  it('counts byTrigger correctly across all buckets', async () => {
+  it('returns zero invocations regardless of mock store (telemetry store removed)', async () => {
+    // Mock rows are no longer consulted — aggregateInvocations always returns [].
     mockInvocationRows = [
       makeInvRow({ triggerReason: 'hook' }),
       makeInvRow({ triggerReason: 'hook' }),
-      makeInvRow({ triggerReason: 'fact-claim' }),
-      makeInvRow({ triggerReason: 'slash-command' }),
-      makeInvRow({ triggerReason: 'correction' }),
-      makeInvRow({ triggerReason: 'explicit' }), // → other
     ];
     const m = await getDashboardMetrics('all');
-    expect(m.invocations.total).toBe(6);
-    expect(m.invocations.byTrigger.hook).toBe(2);
-    expect(m.invocations.byTrigger['fact-claim']).toBe(1);
-    expect(m.invocations.byTrigger.slash).toBe(1);
-    expect(m.invocations.byTrigger.correction).toBe(1);
-    expect(m.invocations.byTrigger.other).toBe(1);
-  });
-
-  it('computes cache hit rate accurately', async () => {
-    mockInvocationRows = [
-      makeInvRow({ hitCache: true }),
-      makeInvRow({ hitCache: true }),
-      makeInvRow({ hitCache: false }),
-      makeInvRow({ hitCache: false }),
-    ];
-    const m = await getDashboardMetrics('all');
-    expect(m.invocations.cacheHitRate).toBeCloseTo(0.5);
-  });
-
-  it('computes p95 on a known latency sample', async () => {
-    // 20 rows with latencies 10..200 in steps of 10
-    mockInvocationRows = Array.from({ length: 20 }, (_, i) =>
-      makeInvRow({ latencyMs: (i + 1) * 10 }),
-    );
-    const m = await getDashboardMetrics('all');
-    // p95 index = floor(20 * 0.95) = 19 → sorted[19] = 200
-    expect(m.invocations.p95LatencyMs).toBe(200);
-    expect(m.invocations.avgLatencyMs).toBe(105);
+    expect(m.invocations.total).toBe(0);
+    expect(m.invocations.cacheHitRate).toBe(0);
+    expect(m.invocations.avgLatencyMs).toBe(0);
+    expect(m.invocations.p95LatencyMs).toBe(0);
   });
 });
 
@@ -235,8 +210,9 @@ describe('getDashboardMetrics — outcome aggregation', () => {
     expect(m.outcomes.acceptanceRate).toBeCloseTo(2 / 3);
   });
 
-  it('computes false positive rate from invocations + reverted outcomes', async () => {
-    mockInvocationRows = [makeInvRow(), makeInvRow(), makeInvRow(), makeInvRow()];
+  it('computes false positive rate (firedCount from invocations — now always 0 post-Wave-101)', async () => {
+    // Wave 101 Phase 4: firedCount = invocations.total = 0 (telemetry store removed)
+    // FP rate = 0 when firedCount = 0
     const stamp = today();
     const file = `research-outcomes-${stamp}.jsonl`;
     const records = [
@@ -248,10 +224,11 @@ describe('getDashboardMetrics — outcome aggregation', () => {
     mockFsFiles[path.posix.join(BASE_DIR, file)] = toJsonl(records);
 
     const m = await getDashboardMetrics('all');
-    // FP rate = reverted / firedCount = 1/4
-    expect(m.correlated.falsePositiveRate).toBeCloseTo(0.25);
+    // firedCount = invocations.total = 0 (store removed); FP rate = 0
+    expect(m.correlated.firedCount).toBe(0);
+    expect(m.correlated.falsePositiveRate).toBe(0);
+    // falsePositiveCount comes from reverted outcomes
     expect(m.correlated.falsePositiveCount).toBe(1);
-    expect(m.correlated.firedCount).toBe(4);
   });
 });
 
@@ -275,14 +252,10 @@ describe('getDashboardMetrics — corrections aggregation', () => {
 });
 
 describe('getDashboardMetrics — range filter', () => {
-  it('excludes invocation rows older than 7 days', async () => {
-    const eightDaysAgo = Date.now() - 8 * 24 * 60 * 60 * 1000;
-    mockInvocationRows = [
-      makeInvRow({ timestamp: eightDaysAgo }), // excluded
-      makeInvRow({ timestamp: Date.now() }), // included
-    ];
+  it('invocations are always zero after telemetry store removal (Wave 101)', async () => {
+    // Range filter on invocations is now moot — aggregateInvocations always returns [].
     const m = await getDashboardMetrics('7d');
-    expect(m.invocations.total).toBe(1);
+    expect(m.invocations.total).toBe(0);
   });
 
   it('excludes outcome records outside the 7d window', async () => {
@@ -305,29 +278,27 @@ describe('getDashboardMetrics — range filter', () => {
 
 describe('getDashboardMetrics — 60 s cache', () => {
   it('returns cached result on second call within 60 s', async () => {
-    mockInvocationRows = [makeInvRow()];
     const first = await getDashboardMetrics('7d');
 
-    // Add more data — cache should prevent re-query
-    mockInvocationRows = [makeInvRow(), makeInvRow(), makeInvRow()];
+    // Second call should return same cached reference
     const second = await getDashboardMetrics('7d');
 
     expect(second).toBe(first); // same reference
-    expect(second.invocations.total).toBe(1);
+    // invocations.total is always 0 post-Wave-101 (telemetry store removed)
+    expect(second.invocations.total).toBe(0);
   });
 
   it('recomputes after cache expires (mock time)', async () => {
     const realDateNow = Date.now;
-    mockInvocationRows = [makeInvRow()];
     const first = await getDashboardMetrics('30d');
 
     // Advance time beyond TTL
     vi.spyOn(Date, 'now').mockReturnValue(realDateNow() + 61_000);
-    mockInvocationRows = [makeInvRow(), makeInvRow()];
 
     const second = await getDashboardMetrics('30d');
     expect(second).not.toBe(first);
-    expect(second.invocations.total).toBe(2);
+    // invocations.total is always 0 post-Wave-101 (telemetry store removed)
+    expect(second.invocations.total).toBe(0);
 
     vi.restoreAllMocks();
   });

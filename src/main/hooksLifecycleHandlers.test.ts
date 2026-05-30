@@ -10,12 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // (contextLayer calls were deleted from hooksLifecycleHandlers)
 // mockGraphOnFileChange removed in Wave 22 (codebaseGraph deleted)
 // codebaseGraph/graphControllerSupport mock removed in Wave 22 (codebaseGraph deleted)
-
-const mockMarkUserEdit = vi.fn();
-
-vi.mock('./orchestration/editProvenance', () => ({
-  getEditProvenanceStore: () => ({ markUserEdit: mockMarkUserEdit }),
-}));
+// editProvenance mock removed in Wave 101 Phase 4 (provenance store deleted)
 
 vi.mock('./logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -65,23 +60,15 @@ describe('handleCwdChanged', () => {
 });
 
 describe('handleFileChanged', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  // editProvenance.markUserEdit removed in Wave 101 Phase 4 (provenance store deleted)
+  // handleFileChanged is now a no-op; kept for future extension.
+
+  it('runs without throwing for an external file change', () => {
+    expect(() => handleFileChanged({ data: { file: '/some/file.ts' } })).not.toThrow();
   });
 
-  // contextLayer onFileChanged notification removed in Wave 100 Phase F
-  // (graph notification already removed in Wave 22 when codebaseGraph was deleted)
-
-  it('schedules edit provenance marking for external file changes with a file path', async () => {
-    handleFileChanged({ data: { file: '/some/file.ts' } });
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(mockMarkUserEdit).toHaveBeenCalledWith('/some/file.ts');
-  });
-
-  it('skips provenance marking for internal sessions', async () => {
-    handleFileChanged({ internal: true, data: { file: '/some/file.ts' } });
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(mockMarkUserEdit).not.toHaveBeenCalled();
+  it('runs without throwing for an internal file change', () => {
+    expect(() => handleFileChanged({ internal: true, data: { file: '/some/file.ts' } })).not.toThrow();
   });
 });
 

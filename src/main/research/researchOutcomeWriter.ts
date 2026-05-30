@@ -18,7 +18,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import log from '../logger';
-import type { ResearchToolKind } from '../telemetry/toolKindMap';
+// ResearchToolKind moved inline — telemetry/toolKindMap deleted in Wave 101 Phase 4 (research/ deleted in Phase 5)
+type ResearchToolKind = string;
 
 // ─── Wire format ──────────────────────────────────────────────────────────────
 

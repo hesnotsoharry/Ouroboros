@@ -14,14 +14,13 @@ import { closeCostHistoryDb } from './costHistory';
 import { shutdownExtensionHost } from './extensionHost/extensionHostProxy';
 import { cleanupIpcHandlers } from './ipc';
 import log from './logger';
-import { closeEditProvenance } from './mainStartup';
 // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
 // closeDecisionWriter/closeOutcomeWriter/stopContextRetrainTrigger removed in Wave 100 Phase F (context-intelligence cut)
+// closeEditProvenance/closeOutcomeObserver/closeTelemetryStore removed in Wave 101 Phase 4 (telemetry pipeline removed)
 import { deleteTokenFile } from './pipeAuth';
 import { closeCorrectionWriter } from './research/correctionWriter';
 import { closeResearchOutcomeWriter } from './research/researchOutcomeWriter';
 import { closeSessionServices } from './session/sessionStartup';
-import { closeOutcomeObserver, closeTelemetryStore } from './telemetry';
 
 async function tryShutdown(label: string, fn: () => Promise<void>): Promise<void> {
   try {
@@ -36,11 +35,7 @@ async function closeWriters(): Promise<void> {
   await closeCorrectionWriter();
 }
 
-function closeSyncStores(): void {
-  closeOutcomeObserver();
-  closeTelemetryStore();
-  closeEditProvenance();
-}
+// closeSyncStores removed in Wave 101 Phase 4 (telemetry pipeline + editProvenance removed)
 
 async function disposeSubsystems(): Promise<void> {
   // codebase-graph shutdown removed in Wave 22 (codebaseGraph deleted)
@@ -58,7 +53,6 @@ export async function performWillQuitShutdown(): Promise<void> {
   await tryShutdown('codemode-user-level', disableCodeModeUserLevel);
   closeSessionServices();
   await closeWriters();
-  closeSyncStores();
   await stopClaudeUsagePoller();
   await cleanupIpcHandlers();
   closeCostHistoryDb();

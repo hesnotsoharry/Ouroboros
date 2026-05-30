@@ -1,43 +1,25 @@
-import { randomUUID } from 'node:crypto';
+/**
+ * sessionLifecycle.ts — Session lifecycle event emission hooks.
+ *
+ * Wave 101 Phase 4: telemetry store calls removed (telemetry pipeline deleted).
+ * Functions are retained as no-ops so callers compile without changes.
+ */
 
-import type { HookEventType, HookPayload } from '../hooks';
-import { getTelemetryStore } from '../telemetry';
 import type { Session } from './session';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-// session.created / session.activated / session.archived are internal IDE
-// lifecycle events not present in the wire-format HookEventType union.
-// We cast through unknown so the telemetry store accepts them.
-type LifecycleEventType = 'session.created' | 'session.activated' | 'session.archived';
-
-function emitLifecycleEvent(session: Session, eventType: LifecycleEventType): void {
-  const store = getTelemetryStore();
-  if (!store) return;
-  const payload: HookPayload = {
-    type: eventType as unknown as HookEventType,
-    sessionId: session.id,
-    correlationId: randomUUID(),
-    timestamp: Date.now(),
-    data: {
-      projectRoot: session.projectRoot,
-      worktree: session.worktree,
-      worktreePath: session.worktreePath,
-    },
-  };
-  store.record(payload);
-}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-export function emitSessionCreated(session: Session): void {
-  emitLifecycleEvent(session, 'session.created');
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function emitSessionCreated(_session: Session): void {
+  // Wave 101 Phase 4: telemetry store.record removed
 }
 
-export function emitSessionActivated(session: Session): void {
-  emitLifecycleEvent(session, 'session.activated');
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function emitSessionActivated(_session: Session): void {
+  // Wave 101 Phase 4: telemetry store.record removed
 }
 
-export function emitSessionArchived(session: Session): void {
-  emitLifecycleEvent(session, 'session.archived');
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function emitSessionArchived(_session: Session): void {
+  // Wave 101 Phase 4: telemetry store.record removed
 }

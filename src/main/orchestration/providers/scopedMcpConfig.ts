@@ -46,7 +46,7 @@ import {
   downgradeOnCodemodeFailure,
   type RoutingDecision,
 } from './internalMcpRoutingPolicy';
-import { computeMcpCostFields, emitMcpSpawnCost } from './mcpSpawnCostTelemetry';
+// mcpSpawnCostTelemetry import removed in Wave 101 Phase 4 (telemetry pipeline deleted)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -272,33 +272,7 @@ export async function buildScopedMcpConfig(
   await writeTempConfig(configPath, servers);
 
   log.info('[scoped-mcp] wrote config to', configPath, '— servers:', Object.keys(servers));
-  emitSpawnCostTelemetry({ opts, decision, servers });
   return { configPath, cleanup: makeCleanup(configPath), routingDecision: decision };
-}
-
-/**
- * Wave 51 Phase D — emit per-spawn MCP cost telemetry. Non-blocking; the
- * underlying writer swallows I/O failures and only warn-logs.
- */
-function emitSpawnCostTelemetry(args: {
-  opts: ScopedMcpConfigOptions;
-  decision: RoutingDecision;
-  servers: McpServerMap;
-}): void {
-  try {
-    const flags = readCodemodeFlags();
-    const cost = computeMcpCostFields(args.servers);
-    emitMcpSpawnCost({
-      ts: Date.now(),
-      spawnId: args.opts.sessionId,
-      routingDecision: args.decision,
-      internalMcpScope: readScopeFromConfig(),
-      codemodeEnabled: flags.enabled,
-      ...cost,
-    });
-  } catch (err) {
-    log.warn('[scoped-mcp] cost telemetry emit failed:', err);
-  }
 }
 
 export interface ResolveMcpConfigOptions {

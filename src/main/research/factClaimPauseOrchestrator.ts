@@ -13,13 +13,13 @@
  *     → fires research (per-session aggressive opt-in overrides the global flag).
  */
 
-import crypto from 'node:crypto';
+// crypto import removed in Wave 101 Phase 4 (telemetry store calls that used it are deleted)
 
 import { app } from 'electron';
 import path from 'path';
 
 import { getConfigValue } from '../config';
-import { getTelemetryStore } from '../telemetry';
+// getTelemetryStore import removed in Wave 101 Phase 4 (telemetry pipeline deleted; research/ deleted in Phase 5)
 import { detectFactClaims } from './factClaimDetector';
 import type { FactClaimPattern } from './factClaimPatterns';
 import { getModelCutoffDate } from './modelTrainingCutoffs';
@@ -119,19 +119,10 @@ function recordTraceSafe(
   payload: Record<string, unknown>,
   sessionId: string,
 ): void {
-  try {
-    const store = getTelemetryStore();
-    if (!store) return;
-    store.recordTrace({
-      id: crypto.randomUUID(),
-      traceId: crypto.randomUUID(),
-      sessionId,
-      phase: eventType,
-      payload,
-    });
-  } catch {
-    // Telemetry must never affect the stream pipeline
-  }
+  // Wave 101 Phase 4: telemetry store.recordTrace removed (store deleted; research/ deleted in Phase 5)
+  void eventType;
+  void payload;
+  void sessionId;
 }
 
 // ─── Per-match handler ────────────────────────────────────────────────────────

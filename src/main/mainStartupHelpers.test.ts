@@ -11,14 +11,12 @@ const {
   mockCrashReporterStart,
   mockAppSetName,
   mockAppCommandLineAppendSwitch,
-  mockCloseEP,
   mockMigrateLegacyJsonl,
   mockPurgeOlderThan,
 } = vi.hoisted(() => ({
   mockCrashReporterStart: vi.fn(),
   mockAppSetName: vi.fn(),
   mockAppCommandLineAppendSwitch: vi.fn(),
-  mockCloseEP: vi.fn(),
   mockMigrateLegacyJsonl: vi.fn().mockResolvedValue(undefined),
   mockPurgeOlderThan: vi.fn().mockResolvedValue(0),
 }));
@@ -34,10 +32,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('./orchestration/editProvenance', () => ({
-  closeEditProvenance: mockCloseEP,
-  initEditProvenance: vi.fn(),
-}));
+// editProvenance mock removed in Wave 101 Phase 4 (provenance store deleted)
 
 vi.mock('./orchestration/jsonlRetention', () => ({
   migrateLegacyJsonl: mockMigrateLegacyJsonl,
@@ -53,7 +48,6 @@ vi.mock('./logger', () => ({
 import {
   bootstrapApp,
   bootstrapCrashReporter,
-  closeEditProvenance,
   scheduleJsonlRetentionPurge,
 } from './mainStartupHelpers';
 
@@ -99,16 +93,7 @@ describe('bootstrapApp', () => {
   });
 });
 
-// ─── closeEditProvenance ──────────────────────────────────────────────────────
-
-describe('closeEditProvenance', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('delegates to the editProvenance closeEditProvenance function', () => {
-    closeEditProvenance();
-    expect(mockCloseEP).toHaveBeenCalledOnce();
-  });
-});
+// closeEditProvenance test removed in Wave 101 Phase 4 (provenance store deleted)
 
 // ─── scheduleJsonlRetentionPurge ──────────────────────────────────────────────
 

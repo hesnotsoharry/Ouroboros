@@ -3,14 +3,11 @@
 // Spawns `claude -p --output-format stream-json` and parses NDJSON output.
 // ---------------------------------------------------------------------------
 
-import crypto from 'node:crypto';
-
 import { type ChildProcess, exec, spawn } from 'child_process';
 
 import log from '../../logger';
 import { buildBaseEnv } from '../../ptyEnv';
-import { getOutcomeObserver } from '../../telemetry';
-import { enqueueTrace, redactArgv, redactHead } from '../../telemetry/traceBatcher';
+// getOutcomeObserver + enqueueTrace/redactArgv/redactHead imports removed in Wave 101 Phase 4 (telemetry pipeline deleted)
 import type {
   StreamJsonEvent,
   StreamJsonProcessHandle,
@@ -160,8 +157,6 @@ interface StreamSessionState {
   resultEvent: StreamJsonResultEvent | null;
   stdoutBuf: string;
   stderrBuf: string;
-  traceId: string;
-  telemetrySessionId: string;
 }
 
 // ---- Stdout data handler ---------------------------------------------------
@@ -175,16 +170,7 @@ interface StdoutHandlerArgs {
 
 function handleStdoutData(chunk: Buffer, args: StdoutHandlerArgs): void {
   const { state, child, onEvent, reject } = args;
-  enqueueTrace({
-    traceId: state.traceId,
-    sessionId: state.telemetrySessionId,
-    kind: 'stdout',
-    payload: {
-      bytes: chunk.byteLength,
-      head: redactHead(chunk.toString('utf8', 0, 120)),
-      timestamp: Date.now(),
-    },
-  });
+  // enqueueTrace removed in Wave 101 Phase 4 (telemetry pipeline deleted)
   state.stdoutBuf += chunk.toString();
   if (state.stdoutBuf.length > MAX_BUFFER_BYTES) {
     log.error(`stdout buffer exceeded ${MAX_BUFFER_BYTES} bytes — killing process`);
@@ -251,39 +237,7 @@ function handleProcessClose(code: number | null, args: CloseHandlerArgs): void {
   }
 }
 
-// ---- Spawn trace helpers ---------------------------------------------------
-
-interface SpawnTraceArgs {
-  traceId: string;
-  sessionId: string;
-  command: string;
-  cliArgs: string[];
-  cwd: string;
-  prompt: string;
-  hasStdin: boolean;
-}
-
-function emitSpawnTraces(opts: SpawnTraceArgs): void {
-  const cwdHash = crypto.createHash('sha256').update(opts.cwd).digest('hex').slice(0, 16);
-  enqueueTrace({
-    traceId: opts.traceId,
-    sessionId: opts.sessionId,
-    kind: 'spawn',
-    payload: { argv: redactArgv([opts.command, ...opts.cliArgs]), cwdHash, timestamp: Date.now() },
-  });
-  if (!opts.hasStdin) return;
-  const promptBuf = Buffer.from(opts.prompt, 'utf8');
-  enqueueTrace({
-    traceId: opts.traceId,
-    sessionId: opts.sessionId,
-    kind: 'stdin',
-    payload: {
-      bytes: promptBuf.byteLength,
-      head: redactHead(opts.prompt.slice(0, 120)),
-      timestamp: Date.now(),
-    },
-  });
-}
+// emitSpawnTraces / SpawnTraceArgs removed in Wave 101 Phase 4 (telemetry pipeline deleted)
 
 interface AttachListenersArgs {
   child: ChildProcess;
@@ -303,7 +257,7 @@ function attachStreamListeners(opts: AttachListenersArgs): void {
     // Security: cap stderr buffer to prevent OOM from verbose error output.
     if (state.stderrBuf.length > MAX_BUFFER_BYTES)
       state.stderrBuf = state.stderrBuf.slice(-MAX_BUFFER_BYTES);
-    getOutcomeObserver()?.appendStderr(state.telemetrySessionId, text);
+    // getOutcomeObserver()?.appendStderr removed in Wave 101 Phase 4 (telemetry pipeline deleted)
   });
   const closeArgs: CloseHandlerArgs = { state, onEvent, resolve, reject };
   child.on('close', (code) => handleProcessClose(code, closeArgs));
@@ -314,20 +268,17 @@ function attachStreamListeners(opts: AttachListenersArgs): void {
 
 export function spawnStreamJsonProcess(options: StreamJsonSpawnOptions): StreamJsonProcessHandle {
   const { command, args } = buildStreamJsonArgs(options);
-  const traceId = options.traceId ?? crypto.randomUUID();
-  const telemetrySessionId = options.telemetrySessionId ?? 'unknown';
   const child: ChildProcess = spawn(command, args, {
     cwd: options.cwd,
     env: buildProcessEnv(options.env),
     stdio: ['pipe', 'pipe', 'pipe'],
   });
-  emitSpawnTraces({ traceId, sessionId: telemetrySessionId, command, cliArgs: args, cwd: options.cwd, prompt: options.prompt, hasStdin: !!child.stdin });
   if (child.stdin) {
     child.stdin.write(options.prompt);
     child.stdin.end();
   }
   const state: StreamSessionState = {
-    sessionId: null, resultEvent: null, stdoutBuf: '', stderrBuf: '', traceId, telemetrySessionId,
+    sessionId: null, resultEvent: null, stdoutBuf: '', stderrBuf: '',
   };
   const handle: StreamJsonProcessHandle = {
     result: null as unknown as Promise<StreamJsonResultEvent>,

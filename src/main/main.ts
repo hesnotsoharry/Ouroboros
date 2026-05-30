@@ -20,7 +20,7 @@ import { startJankDetector, stopJankDetector } from './jankDetector';
 import log from './logger';
 import { performWillQuitShutdown } from './mainShutdown';
 // prettier-ignore
-import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
+import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
 import { buildApplicationMenu } from './menu';
 import { runStaleRootsMigration } from './migrateStaleRoots';
 // prettier-ignore
@@ -35,8 +35,6 @@ import { initResearchOutcomeWriter } from './research/researchOutcomeWriter';
 import { fireBootRestore } from './rulesAndSkills/postSpawnRestore';
 import { initSessionServices } from './session/sessionStartup';
 import { runAllMigrations } from './storage/migrate';
-import { getTelemetryStore, initOutcomeObserver, initTelemetryStore } from './telemetry';
-import { runParityQueueDrain } from './telemetry/telemetryDrainStartup';
 import { startWebServer, stopWebServer } from './web';
 import { installHandlerCapture } from './web/handlerRegistry';
 import { getOrCreateWebToken } from './web/webAuth';
@@ -179,15 +177,12 @@ function startWebServerAsync(): void {
 }
 
 async function initTelemetryAndWriters(ud: string): Promise<void> {
-  await runStartupStep('[main] telemetry store init', () => initTelemetryStore(ud));
-  const store = getTelemetryStore();
-  if (store) initOutcomeObserver(store);
+  // telemetry store + outcomeObserver + drain removed in Wave 101 Phase 4
+  // editProvenance removed in Wave 101 Phase 4
   initResearchOutcomeWriter(ud);
   initCorrectionWriter(ud);
-  initEditProvenance(ud);
   scheduleJsonlRetentionPurge(ud);
   scheduleResearchCachePurge(ud);
-  await runParityQueueDrain();
 }
 
 async function initWindowsAndServices(): Promise<void> {

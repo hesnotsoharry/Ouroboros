@@ -42,13 +42,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Hoisted mocks ───────────────────────────────────────────────────────────
 
-const { mockGetConfigValue, mockGetInternalMcpUrl, mockReadFile, mockMkdirSync, mockAppendFile } =
+const { mockGetConfigValue, mockGetInternalMcpUrl, mockReadFile } =
   vi.hoisted(() => ({
     mockGetConfigValue: vi.fn(),
     mockGetInternalMcpUrl: vi.fn(),
     mockReadFile: vi.fn(),
-    mockMkdirSync: vi.fn(),
-    mockAppendFile: vi.fn(),
   }));
 
 vi.mock('../config', () => ({ getConfigValue: mockGetConfigValue }));
@@ -73,15 +71,7 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, readFile: wrappedReadFile };
 });
 
-vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>();
-  return {
-    ...actual,
-    default: { ...actual, mkdirSync: mockMkdirSync, appendFile: mockAppendFile },
-    mkdirSync: mockMkdirSync,
-    appendFile: mockAppendFile,
-  };
-});
+// Wave 101 Phase 4: fs mock for mcpSpawnCostTelemetry removed (telemetry pipeline deleted)
 
 vi.mock('electron', () => ({ app: { getPath: () => '/tmp' } }));
 
@@ -127,14 +117,8 @@ beforeEach(() => {
   mockGetConfigValue.mockReset();
   mockGetInternalMcpUrl.mockReset();
   mockReadFile.mockReset();
-  mockMkdirSync.mockReset();
-  mockAppendFile.mockReset();
   mockGetInternalMcpUrl.mockReturnValue(OUROBOROS_URL);
   mockReadFile.mockResolvedValue(JSON.stringify({ mcpServers: {} }));
-  mockMkdirSync.mockReturnValue(undefined);
-  mockAppendFile.mockImplementation((_p: string, _d: string, cb: (err?: unknown) => void) =>
-    cb(null),
-  );
 });
 
 afterEach(() => {
@@ -316,32 +300,4 @@ describe('repeated spawns are evaluated independently', () => {
   });
 });
 
-// ─── Telemetry under crash recovery ──────────────────────────────────────────
-
-describe('telemetry records the downgraded decision, not the original', () => {
-  it('records direct-inject when route-through-codemode was downgraded', async () => {
-    applyConfig({
-      internalMcpScope: 'task-gated',
-      codemode: { enabled: true },
-    });
-    const result = await buildScopedMcpConfig({
-      goalShape: 'code',
-      sessionId: 'telemetry-recovery-1',
-      codemodeAcquireFailed: true,
-      mainOutDir: FAKE_MAIN_OUT,
-    });
-    expect(result).not.toBeNull();
-    expect(mockAppendFile).toHaveBeenCalledTimes(1);
-    const line = mockAppendFile.mock.calls[0][1] as string;
-    const record = JSON.parse(line.trimEnd()) as {
-      routingDecision: string;
-      codemodeEnabled: boolean;
-    };
-    expect(record.routingDecision).toBe('direct-inject');
-    // The flag itself is still on (the user didn't disable codemode); only
-    // the per-spawn outcome was downgraded. This lets the rollup attribute
-    // failures to the codemode path even when they fell back.
-    expect(record.codemodeEnabled).toBe(true);
-    await result!.cleanup();
-  });
-});
+// Wave 101 Phase 4: telemetry emission tests removed (mcpSpawnCostTelemetry deleted)

@@ -26,10 +26,8 @@ vi.mock('./extensionHost/extensionHostProxy', () => ({
 }));
 vi.mock('./ipc', () => ({ cleanupIpcHandlers: recorder('cleanupIpcHandlers', true) }));
 vi.mock('./logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
-vi.mock('./mainStartup', () => ({
-  closeEditProvenance: recorder('closeEditProvenance'),
-  // disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
-}));
+// closeEditProvenance mock removed in Wave 101 Phase 4 (editProvenance store deleted)
+// disposeCodebaseGraph removed in Wave 22 (codebaseGraph deleted)
 // Wave 60 Phase E: mcpHost subsystem removed alongside internalMcpServer.
 // contextDecisionWriter + contextOutcomeWriter mocks removed in Wave 100 Phase F
 //   (closeDecisionWriter/closeOutcomeWriter removed from mainShutdown during context-intelligence cut)
@@ -42,10 +40,7 @@ vi.mock('./research/researchOutcomeWriter', () => ({
 }));
 // router/qualitySignalCollector + router/retrainTrigger mocks removed in Wave 100 Phase G (router CUT)
 vi.mock('./session/sessionStartup', () => ({ closeSessionServices: recorder('closeSessionServices') }));
-vi.mock('./telemetry', () => ({
-  closeOutcomeObserver: recorder('closeOutcomeObserver'),
-  closeTelemetryStore: recorder('closeTelemetryStore'),
-}));
+// telemetry mock removed in Wave 101 Phase 4 (telemetry pipeline deleted)
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -62,7 +57,7 @@ describe('performWillQuitShutdown', () => {
     expect(calls).toContain('closeSessionServices');
     // closeDecisionWriter removed in Wave 100 Phase F (context-intelligence cut)
     expect(calls).toContain('closeResearchOutcomeWriter');
-    expect(calls).toContain('closeTelemetryStore');
+    // closeTelemetryStore removed in Wave 101 Phase 4 (telemetry pipeline deleted)
     expect(calls).toContain('stopClaudeUsagePoller');
     expect(calls).toContain('cleanupIpcHandlers');
     // closeThreadStore removed in Wave 100 Phase D (agentChat deleted)
@@ -70,8 +65,6 @@ describe('performWillQuitShutdown', () => {
     // shutdownCodexAppServerProcesses removed in Wave 100 Phase E (chat adapters deleted)
     expect(calls).toContain('shutdownExtensionHost');
 
-    // Research writer runs before the sync stores close (telemetry depends on writers being flushed).
-    expect(calls.indexOf('closeResearchOutcomeWriter')).toBeLessThan(calls.indexOf('closeTelemetryStore'));
     // IPC cleanup runs before subsystem disposal.
     expect(calls.indexOf('cleanupIpcHandlers')).toBeLessThan(calls.indexOf('shutdownExtensionHost'));
   });

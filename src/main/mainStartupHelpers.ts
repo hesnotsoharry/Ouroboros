@@ -6,7 +6,6 @@
 import { app, crashReporter } from 'electron';
 
 import log from './logger';
-import { closeEditProvenance as closeEP } from './orchestration/editProvenance';
 import { migrateLegacyJsonl, purgeOlderThan } from './orchestration/jsonlRetention';
 
 export function bootstrapCrashReporter(): void {
@@ -25,11 +24,6 @@ export function bootstrapApp(): void {
   if (!app.isPackaged) {
     app.commandLine.appendSwitch('no-sandbox');
   }
-}
-
-/** Close edit provenance store on app shutdown. */
-export function closeEditProvenance(): void {
-  closeEP();
 }
 
 /**

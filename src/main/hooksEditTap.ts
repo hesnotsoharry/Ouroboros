@@ -1,7 +1,7 @@
 /**
  * hooksEditTap.ts — Hook pipeline taps for post-tool-use Edit/Write/MultiEdit events.
  *
- * Handles conflict monitor recording and edit provenance tracking.
+ * Handles conflict monitor recording.
  * Extracted from hooks.ts to stay under the 300-line ESLint limit.
  * Called from dispatchToRenderer and dispatchSyntheticHookEvent in hooks.ts.
  */
@@ -9,7 +9,6 @@
 import { getConflictMonitor } from './agentConflict/conflictMonitor';
 import type { HookPayload } from './hooks';
 import log from './logger';
-import { getEditProvenanceStore } from './orchestration/editProvenance';
 
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit']);
 
@@ -36,19 +35,6 @@ export function tapConflictMonitor(payload: HookPayload, sessionCwdMap: Map<stri
       getConflictMonitor().recordEdit(cwd, payload.sessionId, filePath);
     } catch (err) {
       log.warn('[conflictMonitor] recordEdit error:', err);
-    }
-  });
-}
-
-export function tapEditProvenance(payload: HookPayload): void {
-  if (!isPostEditEvent(payload)) return;
-  const filePath = getFilePathFromInput(payload);
-  if (!filePath) return;
-  setImmediate(() => {
-    try {
-      getEditProvenanceStore()?.markAgentEdit(filePath, payload.correlationId);
-    } catch (err) {
-      log.warn('[editProvenance] markAgentEdit error:', err);
     }
   });
 }

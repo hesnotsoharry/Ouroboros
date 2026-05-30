@@ -2,6 +2,7 @@
  * hooksEditTap.test.ts — Unit tests for hooksEditTap.ts
  *
  * Wave 30 Phase D (extracted from hooks.ts to satisfy max-lines limit).
+ * Wave 101 Phase 4: tapEditProvenance removed (editProvenance store deleted).
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,14 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
 const mockRecordEdit = vi.fn();
-const mockMarkAgentEdit = vi.fn();
 
 vi.mock('./agentConflict/conflictMonitor', () => ({
   getConflictMonitor: () => ({ recordEdit: mockRecordEdit }),
-}));
-
-vi.mock('./orchestration/editProvenance', () => ({
-  getEditProvenanceStore: () => ({ markAgentEdit: mockMarkAgentEdit }),
 }));
 
 vi.mock('./logger', () => ({
@@ -26,7 +22,7 @@ vi.mock('./logger', () => ({
 // ─── Import under test (after mocks) ─────────────────────────────────────────
 
 import type { HookPayload } from './hooks';
-import { tapConflictMonitor, tapEditProvenance } from './hooksEditTap';
+import { tapConflictMonitor } from './hooksEditTap';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,51 +107,4 @@ describe('tapConflictMonitor', () => {
   });
 });
 
-// ─── tapEditProvenance ────────────────────────────────────────────────────────
-
-describe('tapEditProvenance', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    mockMarkAgentEdit.mockReset();
-  });
-  afterEach(() => vi.useRealTimers());
-
-  it('does nothing for pre_tool_use', () => {
-    tapEditProvenance(makePayload({ type: 'pre_tool_use' }));
-    vi.runAllTimers();
-    expect(mockMarkAgentEdit).not.toHaveBeenCalled();
-  });
-
-  it('does nothing for non-edit tools', () => {
-    tapEditProvenance(makePayload({ toolName: 'Task' }));
-    vi.runAllTimers();
-    expect(mockMarkAgentEdit).not.toHaveBeenCalled();
-  });
-
-  it('does nothing when file path is absent', () => {
-    tapEditProvenance(makePayload({ input: {} }));
-    vi.runAllTimers();
-    expect(mockMarkAgentEdit).not.toHaveBeenCalled();
-  });
-
-  it('calls markAgentEdit via setImmediate', () => {
-    tapEditProvenance(makePayload());
-    expect(mockMarkAgentEdit).not.toHaveBeenCalled();
-    vi.runAllTimers();
-    expect(mockMarkAgentEdit).toHaveBeenCalledWith('/workspace/foo.ts', 'corr-1');
-  });
-
-  it('passes undefined correlationId when absent', () => {
-    tapEditProvenance(makePayload({ correlationId: undefined }));
-    vi.runAllTimers();
-    expect(mockMarkAgentEdit).toHaveBeenCalledWith('/workspace/foo.ts', undefined);
-  });
-
-  it('does not throw when markAgentEdit throws', () => {
-    mockMarkAgentEdit.mockImplementation(() => {
-      throw new Error('provenance error');
-    });
-    tapEditProvenance(makePayload());
-    expect(() => vi.runAllTimers()).not.toThrow();
-  });
-});
+// tapEditProvenance removed in Wave 101 Phase 4 (editProvenance store deleted)

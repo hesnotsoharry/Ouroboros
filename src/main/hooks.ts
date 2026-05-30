@@ -42,7 +42,6 @@ import {
 import { tapSkillExecution } from './hooksSkillExecutionTap';
 import { runHookTaps } from './hooksTapRunner';
 import log from './logger';
-import { getOutcomeObserver, getTelemetryStore } from './telemetry';
 import { broadcastToWebClients } from './web/webServer';
 import { getAllActiveWindows } from './windowManager';
 
@@ -257,15 +256,6 @@ function dispatchToRenderer(rawPayload: HookPayload): void {
   }
 
   pairCorrelationId(rawPayload);
-  const rowId = getTelemetryStore()?.record(rawPayload) ?? '';
-  if (rawPayload.type === 'post_tool_use') {
-    getOutcomeObserver()?.noteToolUseEvent(
-      rawPayload.sessionId,
-      rowId,
-      rawPayload.correlationId ?? '',
-      rawPayload.timestamp,
-    );
-  }
   trackSessionLifecycle(rawPayload);
   const inferred = inferSessionId(rawPayload);
   const payload = enrichAgentStartPayload(inferred);
@@ -314,15 +304,6 @@ export function stopHooksServer(): Promise<void> {
 /** Dispatch a synthetic hook event (from chat orchestration). Skips approval — chat sessions manage permissions. */
 export function dispatchSyntheticHookEvent(rawPayload: HookPayload): void {
   const payload: HookPayload = { ...rawPayload, ideSpawned: true };
-  const rowId = getTelemetryStore()?.record(payload) ?? '';
-  if (payload.type === 'post_tool_use') {
-    getOutcomeObserver()?.noteToolUseEvent(
-      payload.sessionId,
-      rowId,
-      payload.correlationId ?? '',
-      payload.timestamp,
-    );
-  }
   trackSessionLifecycle(payload);
 
   const windows = getDispatchWindows();

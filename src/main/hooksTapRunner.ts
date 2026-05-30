@@ -7,18 +7,13 @@
 
 import type { HookPayload } from './hooks';
 import { tapDiffReview } from './hooksDiffReview';
-import { tapConflictMonitor, tapEditProvenance } from './hooksEditTap';
-import { tapGraphUsage } from './hooksGraphUsageTap';
-import { tapPreToolResearch } from './hooksPreToolResearchTap';
+import { tapConflictMonitor } from './hooksEditTap';
 import { tapSkillExecution } from './hooksSkillExecutionTap';
 import { tapSubagentTracker } from './hooksSubagentTap';
 
 export function runHookTaps(payload: HookPayload, sessionCwdMap: Map<string, string>): void {
   tapConflictMonitor(payload, sessionCwdMap);
-  tapEditProvenance(payload);
   tapSubagentTracker(payload);
-  tapPreToolResearch(payload);
-  tapGraphUsage(payload);
   tapSkillExecution(payload);
   tapDiffReview(payload, sessionCwdMap);
 }

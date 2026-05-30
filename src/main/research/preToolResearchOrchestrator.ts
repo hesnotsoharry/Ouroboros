@@ -6,20 +6,20 @@
  * indicated. Never blocks the tool call. Never throws.
  */
 
-import crypto from 'node:crypto';
+// crypto import removed in Wave 101 Phase 4 (telemetry store calls that used it are deleted)
 
 import { app } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
 
 import { getConfigValue } from '../config';
-import { getTelemetryStore } from '../telemetry';
+// getTelemetryStore import removed in Wave 101 Phase 4 (telemetry pipeline deleted; research/ deleted in Phase 5)
 import { type CorrectionStore, getCorrectionStore } from './correctionStore';
 import { extractImports } from './importExtractor';
 import { cacheKey, getResearchCache } from './researchCache';
 import { getSnapshot } from './researchSessionState';
 import * as researchSubagent from './researchSubagent';
-import type { TriggerDecision } from './triggerEvaluator';
+// TriggerDecision type import removed (only needed by removed recordTraceSafe/recordDryRunTrace)
 import { evaluateTrigger } from './triggerEvaluator';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -83,25 +83,7 @@ function buildCacheCheck(dbPath: string): (library: string) => boolean {
   };
 }
 
-function recordTraceSafe(
-  decision: TriggerDecision,
-  library: string | undefined,
-  correlationId: string | undefined,
-): void {
-  try {
-    const store = getTelemetryStore();
-    if (!store) return;
-    store.recordTrace({
-      id: crypto.randomUUID(),
-      traceId: correlationId ?? crypto.randomUUID(),
-      sessionId: '',
-      phase: 'pre-tool-research-fire',
-      payload: { decision, library, correlationId },
-    });
-  } catch {
-    // Swallow — telemetry must never affect the hook pipeline
-  }
-}
+// recordTraceSafe removed in Wave 101 Phase 4 (telemetry store deleted; research/ deleted in Phase 5)
 
 function resolveDbPath(): string {
   try {
@@ -179,25 +161,7 @@ function resolveDeps(deps: OrchestratorDeps): ResolvedDeps {
   };
 }
 
-function recordDryRunTrace(
-  input: PreToolResearchInput,
-  library: string,
-  decision: TriggerDecision,
-): void {
-  try {
-    const store2 = getTelemetryStore();
-    if (!store2) return;
-    store2.recordTrace({
-      id: crypto.randomUUID(),
-      traceId: input.correlationId ?? crypto.randomUUID(),
-      sessionId: input.sessionId,
-      phase: 'pre-tool-research-dryrun',
-      payload: { library, decision },
-    });
-  } catch {
-    // swallow — telemetry must never affect the hook pipeline
-  }
-}
+// recordDryRunTrace removed in Wave 101 Phase 4 (telemetry store deleted; research/ deleted in Phase 5)
 
 export async function _runOrchestration(
   input: PreToolResearchInput,
@@ -230,11 +194,9 @@ export async function _runOrchestration(
   const library = decision.library ?? '';
 
   if (dryRunOnly) {
-    recordDryRunTrace(input, library, decision);
     return null;
   }
-
-  recordTraceSafe(decision, library, input.correlationId);
+  // recordTraceSafe removed in Wave 101 Phase 4 (telemetry store deleted)
   return runResearch({
     topic: library,
     library,

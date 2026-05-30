@@ -29,13 +29,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Hoisted mocks ───────────────────────────────────────────────────────────
 
-const { mockGetConfigValue, mockGetInternalMcpUrl, mockReadFile, mockMkdirSync, mockAppendFile } =
+const { mockGetConfigValue, mockGetInternalMcpUrl, mockReadFile } =
   vi.hoisted(() => ({
     mockGetConfigValue: vi.fn(),
     mockGetInternalMcpUrl: vi.fn(),
     mockReadFile: vi.fn(),
-    mockMkdirSync: vi.fn(),
-    mockAppendFile: vi.fn(),
   }));
 
 vi.mock('../config', () => ({ getConfigValue: mockGetConfigValue }));
@@ -63,19 +61,7 @@ vi.mock('fs/promises', async (importOriginal) => {
   return { ...actual, readFile: wrappedReadFile };
 });
 
-// Partial fs mock — preserve real fs surface (existsSync, readFileSync, etc.)
-// so the test can read back the temp config file, but stub `mkdirSync` and
-// `appendFile` (the only two functions mcpSpawnCostTelemetry uses) so the
-// real `~/.ouroboros/telemetry/mcp-spawn-cost.jsonl` is never touched.
-vi.mock('fs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('fs')>();
-  return {
-    ...actual,
-    default: { ...actual, mkdirSync: mockMkdirSync, appendFile: mockAppendFile },
-    mkdirSync: mockMkdirSync,
-    appendFile: mockAppendFile,
-  };
-});
+// Wave 101 Phase 4: fs mock for mcpSpawnCostTelemetry removed (telemetry pipeline deleted)
 
 // internalMcp barrel pulls Electron `app` transitively through the graph
 // controller. We only need the type symbol from internalMcpTypes, so this
@@ -121,25 +107,12 @@ function readWrittenConfig(configPath: string): {
   return JSON.parse(raw) as ReturnType<typeof readWrittenConfig>;
 }
 
-function captureTelemetryRecord(): Record<string, unknown> | null {
-  if (mockAppendFile.mock.calls.length === 0) return null;
-  const line = mockAppendFile.mock.calls[0][1] as string;
-  return JSON.parse(line.trimEnd()) as Record<string, unknown>;
-}
-
 beforeEach(() => {
   mockGetConfigValue.mockReset();
   mockGetInternalMcpUrl.mockReset();
   mockReadFile.mockReset();
-  mockMkdirSync.mockReset();
-  mockAppendFile.mockReset();
   mockGetInternalMcpUrl.mockReturnValue(OUROBOROS_URL);
   applyUserServers();
-  // Telemetry: pretend mkdir + appendFile succeed so emit doesn't warn.
-  mockMkdirSync.mockReturnValue(undefined);
-  mockAppendFile.mockImplementation((_p: string, _d: string, cb: (err?: unknown) => void) =>
-    cb(null),
-  );
 });
 
 afterEach(() => {
@@ -265,92 +238,7 @@ describe('settings-write shape', () => {
 });
 
 
-// ─── Telemetry emission ──────────────────────────────────────────────────────
-
-describe('telemetry emission', () => {
-  it('emits a record with the routing decision and serversIncluded for direct-inject', async () => {
-    applyConfig({
-      internalMcpScope: 'task-gated',
-      codemode: { enabled: false },
-    });
-    const result = await buildScopedMcpConfig({
-      goalShape: 'code',
-      sessionId: SESSION_ID,
-      mainOutDir: FAKE_MAIN_OUT,
-    });
-    expect(result).not.toBeNull();
-    const record = captureTelemetryRecord();
-    expect(record).not.toBeNull();
-    expect(record!.routingDecision).toBe('direct-inject');
-    expect(record!.codemodeEnabled).toBe(false);
-    expect(record!.spawnId).toBe(SESSION_ID);
-    expect(record!.serversIncluded).toContain('ouroboros');
-    await result!.cleanup();
-  });
-
-  it('emits route-through-codemode and excludes ouroboros from serversIncluded', async () => {
-    applyConfig({
-      internalMcpScope: 'task-gated',
-      codemode: { enabled: true },
-    });
-    const result = await buildScopedMcpConfig({
-      goalShape: 'code',
-      sessionId: SESSION_ID,
-      mainOutDir: FAKE_MAIN_OUT,
-    });
-    expect(result).not.toBeNull();
-    const record = captureTelemetryRecord();
-    expect(record!.routingDecision).toBe('route-through-codemode');
-    expect(record!.codemodeEnabled).toBe(true);
-    expect(record!.serversIncluded).not.toContain('ouroboros');
-    await result!.cleanup();
-  });
-
-  it('emits omit when scope gate excludes ouroboros entirely', async () => {
-    applyConfig({
-      internalMcpScope: 'never',
-      codemode: { enabled: true },
-    });
-    const result = await buildScopedMcpConfig({
-      goalShape: 'code',
-      sessionId: SESSION_ID,
-      mainOutDir: FAKE_MAIN_OUT,
-    });
-    expect(result).not.toBeNull();
-    const record = captureTelemetryRecord();
-    expect(record!.routingDecision).toBe('omit');
-    expect(record!.internalMcpScope).toBe('never');
-    await result!.cleanup();
-  });
-
-  it('records a sane mcpConfigBytes / tokenEstimate for direct-inject', async () => {
-    applyConfig({
-      internalMcpScope: 'always',
-      codemode: { enabled: false },
-    });
-    const result = await buildScopedMcpConfig({
-      goalShape: 'casual',
-      sessionId: SESSION_ID,
-      mainOutDir: FAKE_MAIN_OUT,
-    });
-    expect(result).not.toBeNull();
-    const record = captureTelemetryRecord();
-    expect(typeof record!.mcpConfigBytes).toBe('number');
-    expect(record!.mcpConfigBytes as number).toBeGreaterThan(0);
-    expect(record!.tokenEstimate).toBe(Math.round((record!.mcpConfigBytes as number) / 4));
-    await result!.cleanup();
-  });
-
-  it('telemetry test uses the fs mock — never touches the real telemetry file', () => {
-    // Sanity: our `fs` mock stubs both writers. The production module would
-    // otherwise create `~/.ouroboros/telemetry/mcp-spawn-cost.jsonl`. If the
-    // mock is bypassed, mockAppendFile would never be called and a real
-    // write would land. The other tests assert via mockAppendFile, which
-    // implicitly proves the mock path is the only one exercised.
-    expect(mockAppendFile).toBeDefined();
-    expect(mockMkdirSync).toBeDefined();
-  });
-});
+// Wave 101 Phase 4: telemetry emission describe block removed (mcpSpawnCostTelemetry deleted)
 
 // ─── Cleanup ─────────────────────────────────────────────────────────────────
 

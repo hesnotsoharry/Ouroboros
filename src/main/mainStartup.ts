@@ -13,16 +13,13 @@ import path from 'path';
 import { getCredential } from './auth/credentialStore';
 import log from './logger';
 import { broadcastToActiveWindows } from './mainStartupBroadcast';
-import { initEditProvenance } from './orchestration/editProvenance';
 import { setGithubTokenForPty } from './ptyEnv';
 import { configureUpdaterChannel, getAutoUpdater, setUpdaterGitHubToken } from './updater';
 
 export { broadcastToActiveWindows };
-export { initEditProvenance };
 export {
   bootstrapApp,
   bootstrapCrashReporter,
-  closeEditProvenance,
   scheduleJsonlRetentionPurge,
 } from './mainStartupHelpers';
 

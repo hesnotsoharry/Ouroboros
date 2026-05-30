@@ -135,7 +135,9 @@ describe('dispatchSyntheticHookEvent — live emission invariant', () => {
   });
 
   it('sends hooks:event to renderer even when telemetry store is present', () => {
-    // Simulate Wave 100 state: telemetry store still exists
+    // Simulate post-Phase-4 state: telemetry store module still returns a value
+    // (e.g. during a partial migration), but the persistence call is severed —
+    // hooks.ts no longer calls store.record(). Live emission must still fire.
     const mockStore = {
       record: vi.fn().mockReturnValue('rowId123'),
     };
@@ -150,7 +152,7 @@ describe('dispatchSyntheticHookEvent — live emission invariant', () => {
 
     dispatchSyntheticHookEvent(payload);
 
-    // Assert: mainFrame.send('hooks:event', ...) was called
+    // Assert: mainFrame.send('hooks:event', ...) was called regardless of store presence
     expect(mockWindowSend).toHaveBeenCalledWith('hooks:event', expect.objectContaining({
       type: 'tool_use',
       sessionId: 'test-session-2',
@@ -159,10 +161,8 @@ describe('dispatchSyntheticHookEvent — live emission invariant', () => {
       ideSpawned: true,
     }));
 
-    // Assert: telemetry.record was called (evidence store was consulted)
-    expect(mockStore.record).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'tool_use',
-    }));
+    // Assert: store.record was NOT called — the persistence seam is severed (Phase 4)
+    expect(mockStore.record).not.toHaveBeenCalled();
   });
 
   it('proves emission is independent of store presence by dispatching with store then null', () => {

@@ -18,7 +18,7 @@ import path from 'node:path';
 import { app, ipcMain } from 'electron';
 
 import log from '../logger';
-import { getTelemetryStore } from '../telemetry';
+// getTelemetryStore import removed in Wave 101 Phase 4 (telemetry pipeline deleted)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -195,11 +195,11 @@ function incrementTriggerBucket(
 // ─── Main aggregation ─────────────────────────────────────────────────────────
 
 async function aggregateInvocations(
-  sinceMs: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- retained for signature compat
+  _sinceMs: number,
 ): Promise<ResearchDashboardMetrics['invocations']> {
-  const store = getTelemetryStore();
-  const filter = sinceMs > 0 ? { since: sinceMs } : {};
-  const rows = store?.queryInvocations(filter) ?? [];
+  // Wave 101 Phase 4: telemetry store removed; invocations query returns empty.
+  const rows: never[] = [];
 
   const byTrigger = emptyByTrigger();
   let cacheHits = 0;

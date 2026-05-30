@@ -41,9 +41,7 @@ vi.mock('./researchCache', () => ({
   cacheKey: vi.fn(),
 }));
 
-vi.mock('../telemetry', () => ({
-  getTelemetryStore: vi.fn(),
-}));
+// Wave 101 Phase 4: telemetry mock removed (getTelemetryStore import removed from production; research/ deleted in Phase 5)
 
 vi.mock('../config', () => ({
   getConfigValue: vi.fn(),
@@ -56,7 +54,7 @@ vi.mock('electron', () => ({
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
 import { getConfigValue } from '../config';
-import { getTelemetryStore } from '../telemetry';
+// getTelemetryStore import removed in Wave 101 Phase 4 (telemetry pipeline deleted)
 import { detectFactClaims } from './factClaimDetector';
 import { maybePauseForFactClaim, resetInFlightForTests } from './factClaimPauseOrchestrator';
 import { getModelCutoffDate } from './modelTrainingCutoffs';
@@ -107,11 +105,7 @@ function mockCacheMiss(): void {
   vi.mocked(cacheKey).mockReturnValue('zod::zod');
 }
 
-function mockTelemetry() {
-  const recordTrace = vi.fn();
-  vi.mocked(getTelemetryStore).mockReturnValue({ recordTrace } as never);
-  return { recordTrace };
-}
+// mockTelemetry removed in Wave 101 Phase 4 (telemetry store deleted; research/ deleted in Phase 5)
 
 function baseSetup(
   opts: {
@@ -149,7 +143,6 @@ describe('maybePauseForFactClaim', () => {
 
   it('fires research and emits status chunk when stale + uncached + flag on + conservative', async () => {
     baseSetup({ globalFlag: true, mode: 'conservative', stale: true, cached: false });
-    const { recordTrace } = mockTelemetry();
     vi.mocked(researchSubagent.runResearch).mockResolvedValue({ summary: 'ok' } as never);
 
     const emitStatusChunk = vi.fn();
@@ -165,12 +158,11 @@ describe('maybePauseForFactClaim', () => {
     expect(researchSubagent.runResearch).toHaveBeenCalledWith(
       expect.objectContaining({ library: 'zod', triggerReason: 'auto' }),
     );
-    expect(recordTrace).toHaveBeenCalledWith(expect.objectContaining({ phase: 'fact-claim-fire' }));
+    // recordTrace removed in Wave 101 Phase 4 (telemetry store deleted)
   });
 
   it('does not fire when library is cached', async () => {
     baseSetup({ globalFlag: true, mode: 'conservative', stale: true, cached: true });
-    mockTelemetry();
 
     const emitStatusChunk = vi.fn();
     await maybePauseForFactClaim({
@@ -186,7 +178,6 @@ describe('maybePauseForFactClaim', () => {
 
   it('does not fire when library is not stale', async () => {
     baseSetup({ globalFlag: true, mode: 'conservative', stale: false, cached: false });
-    mockTelemetry();
 
     const emitStatusChunk = vi.fn();
     await maybePauseForFactClaim({
@@ -200,9 +191,9 @@ describe('maybePauseForFactClaim', () => {
     expect(emitStatusChunk).not.toHaveBeenCalled();
   });
 
-  it('records observation telemetry but does not fire when flag off + conservative', async () => {
+  it('does not fire when flag off + conservative', async () => {
     baseSetup({ globalFlag: false, mode: 'conservative', stale: true, cached: false });
-    const { recordTrace } = mockTelemetry();
+    // Wave 101 Phase 4: recordTrace removed (telemetry store deleted)
 
     const emitStatusChunk = vi.fn();
     await maybePauseForFactClaim({
@@ -214,14 +205,10 @@ describe('maybePauseForFactClaim', () => {
 
     expect(researchSubagent.runResearch).not.toHaveBeenCalled();
     expect(emitStatusChunk).not.toHaveBeenCalled();
-    expect(recordTrace).toHaveBeenCalledWith(
-      expect.objectContaining({ phase: 'fact-claim-match-observed' }),
-    );
   });
 
   it('fires when flag off + aggressive (aggressive overrides flag)', async () => {
     baseSetup({ globalFlag: false, mode: 'aggressive', stale: true, cached: false });
-    mockTelemetry();
     vi.mocked(researchSubagent.runResearch).mockResolvedValue({ summary: 'ok' } as never);
 
     const emitStatusChunk = vi.fn();
@@ -238,7 +225,7 @@ describe('maybePauseForFactClaim', () => {
 
   it('returns within deadline when research exceeds maxLatencyMs', async () => {
     baseSetup({ globalFlag: true, mode: 'conservative', stale: true, cached: false });
-    const { recordTrace } = mockTelemetry();
+    // Wave 101 Phase 4: recordTrace removed (telemetry store deleted)
 
     // Research takes 200ms; budget is 50ms
     vi.mocked(researchSubagent.runResearch).mockReturnValue(
@@ -257,14 +244,10 @@ describe('maybePauseForFactClaim', () => {
     const elapsed = Date.now() - start;
 
     expect(elapsed).toBeLessThan(150); // well within timeout with margin
-    expect(recordTrace).toHaveBeenCalledWith(
-      expect.objectContaining({ phase: 'fact-claim-timeout' }),
-    );
   }, 2000);
 
   it('dedupes the same library in the same session', async () => {
     baseSetup({ globalFlag: true, mode: 'conservative', stale: true, cached: false });
-    mockTelemetry();
 
     // First call takes longer than the second call's window so it stays in-flight
     vi.mocked(researchSubagent.runResearch).mockReturnValue(
@@ -291,7 +274,6 @@ describe('maybePauseForFactClaim', () => {
 
   it('swallows runResearch rejection and calls console.warn', async () => {
     baseSetup({ globalFlag: true, mode: 'conservative', stale: true, cached: false });
-    mockTelemetry();
 
     vi.mocked(researchSubagent.runResearch).mockRejectedValue(new Error('spawn failed'));
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -376,9 +358,9 @@ describe('maybePauseForFactClaim — Phase I knobs', () => {
     mockCacheMiss();
   }
 
-  it('factClaimEnabled=false + conservative → records fact-claim-disabled, no fire', async () => {
+  it('factClaimEnabled=false + conservative → does not fire', async () => {
     setupWithKnobs({ globalFlag: true, mode: 'conservative', factClaimEnabled: false });
-    const { recordTrace } = mockTelemetry();
+    // Wave 101 Phase 4: recordTrace removed (telemetry store deleted)
     const emitStatusChunk = vi.fn();
 
     await maybePauseForFactClaim({
@@ -390,14 +372,10 @@ describe('maybePauseForFactClaim — Phase I knobs', () => {
 
     expect(researchSubagent.runResearch).not.toHaveBeenCalled();
     expect(emitStatusChunk).not.toHaveBeenCalled();
-    expect(recordTrace).toHaveBeenCalledWith(
-      expect.objectContaining({ phase: 'fact-claim-disabled' }),
-    );
   });
 
   it('factClaimEnabled=false + aggressive → still fires (aggressive overrides disabled)', async () => {
     setupWithKnobs({ globalFlag: true, mode: 'aggressive', factClaimEnabled: false });
-    mockTelemetry();
     vi.mocked(researchSubagent.runResearch).mockResolvedValue({ summary: 'ok' } as never);
 
     const emitStatusChunk = vi.fn();
@@ -414,7 +392,7 @@ describe('maybePauseForFactClaim — Phase I knobs', () => {
 
   it('maxLatencyMs=100 from config → honors the 100ms deadline', async () => {
     setupWithKnobs({ globalFlag: true, mode: 'conservative', maxLatencyMs: 100 });
-    const { recordTrace } = mockTelemetry();
+    // Wave 101 Phase 4: recordTrace removed (telemetry store deleted)
 
     // Research takes 300ms — well over the 100ms deadline
     vi.mocked(researchSubagent.runResearch).mockReturnValue(
@@ -432,15 +410,12 @@ describe('maybePauseForFactClaim — Phase I knobs', () => {
     const elapsed = Date.now() - start;
 
     expect(elapsed).toBeLessThan(250); // well within with margin
-    expect(recordTrace).toHaveBeenCalledWith(
-      expect.objectContaining({ phase: 'fact-claim-timeout' }),
-    );
   }, 2000);
 
   it('caller-supplied maxLatencyMs overrides config value', async () => {
     // Config says 800ms, caller passes 50ms
     setupWithKnobs({ globalFlag: true, mode: 'conservative', maxLatencyMs: 800 });
-    const { recordTrace } = mockTelemetry();
+    // Wave 101 Phase 4: recordTrace removed (telemetry store deleted)
 
     vi.mocked(researchSubagent.runResearch).mockReturnValue(
       new Promise((resolve) => setTimeout(() => resolve({ summary: 'late' } as never), 300)),
@@ -457,8 +432,5 @@ describe('maybePauseForFactClaim — Phase I knobs', () => {
     const elapsed = Date.now() - start;
 
     expect(elapsed).toBeLessThan(200);
-    expect(recordTrace).toHaveBeenCalledWith(
-      expect.objectContaining({ phase: 'fact-claim-timeout' }),
-    );
   }, 2000);
 });
