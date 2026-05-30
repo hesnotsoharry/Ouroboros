@@ -1,6 +1,8 @@
 ---
-status: PLANNED
+status: IN-PROGRESS
 created: 2026-05-29
+updated: 2026-05-29
+note: All 8 phases (1-6, 6b, 7-automated) code-complete + committed on branch freeze-fix-and-wave-101-scaffold. Automated gates green (3 pre-existing codemode failures only). PENDING before SHIPPED — live AgentSidebar smoke (IDE launch) + product decisions (ResearchSettings UI, data-tree cleanup) + push.
 ---
 
 # Wave 101: telemetry-pipeline-removal
@@ -53,13 +55,16 @@ After this wave, the orphaned telemetry **persistence/analytics** pipeline is de
 
 ### Acceptance criteria
 
+**Automated gates — VERIFIED (2026-05-29):**
+- [x] `git grep` finds zero live references to deleted modules (`telemetryStore`, `traceBatcher`, `editProvenance`, `research/`, `Observability/`, `telemetryApi`, `jsonlRetention`, `mainTelemetryHandlers`, `appendToTelemetryQueue`). Only `// removed in Wave 101` tombstone comments + uninstall-matcher strings remain.
+- [x] `tsc --noEmit` clean (default config); lint clean (0 errors, 4 pre-existing warnings); `test:main` 3356 passed / 3 **pre-existing** codemode `/packages/` path failures (wave introduced ZERO new failures, stash-verified at every phase); `test:renderer` + `test:preload` green (pre-existing failures only).
+- [x] No synchronous SQLite write remains on the main-process event loop — the store is deleted; `hooks.ts` `store.record` seam cut (guard test `hooks.liveEmissionInvariant.test.ts` proves emission is independent of the store, 5/5 green). **The freeze class is structurally gone.**
+
+**Live-launch observation — PENDING (requires launching the Electron IDE + an inner Claude Code session; cannot be self-served by the agent):**
 - [ ] App launches clean; no `telemetry.db` is created in `AppData/Roaming/ouroboros/telemetry/`.
-- [ ] Workbench `AgentSidebar` (NOW / timeline / files-touched / context ring) updates **live** during an active inner Claude Code session.
+- [ ] Workbench `AgentSidebar` (NOW / timeline / files-touched / context ring) updates **live** during an active inner Claude Code session. ← THE canary.
 - [ ] No `[telemetry] store initialised`, `[*-drain]`, `flushEvents`, or `no handler for surface: router-shadow` lines in the main-process log.
-- [ ] `~/.claude/settings.json` does not contain the `router-shadow` UserPromptSubmit hook after a relaunch.
-- [ ] `git grep` finds zero live references to deleted modules (`telemetryStore`, `traceBatcher`, `editProvenance`, `research/`, `Observability/`, `telemetryApi`).
-- [ ] `tsc --noEmit` clean; lint clean; `test:main` + `test:renderer` + `test:preload` green.
-- [ ] No synchronous SQLite write remains on the main-process event loop (the freeze class is structurally gone).
+- [ ] `~/.claude/settings.json` does not contain the `router-shadow` or `session_start_spawn_cost` hook entries after a relaunch (the `pruneRemovedHooksFromSettings` one-time pass fires on next launch).
 
 ### Files the next agent should read first
 
@@ -101,11 +106,22 @@ First step: verify the `## Locked decisions` section below has its three decisio
 
 | Phase | Dispatched | Completed | Commit SHA | Observation point hit |
 |---|---|---|---|---|
-| 1 — Boundary safety pin | 2026-05-29 | 2026-05-29 | (read-only; no commit) | Seam mapped: 6 call sites in `hooks.ts` (Sites 3a/3b/5a/5b REMOVE, 1/2 KEEP) + 7-tap split in `hooksTapRunner.ts` (4 KEEP / 3 REMOVE). Live path confirmed via graph trace: `hooks.ts`→`sendPayload`→`hooks:event` IPC→`useAgentEvents`→`AgentEventsContext`→`useWorkbenchAgentData`→`AgentSidebar`, fully independent of SQLite store. Guard test designed. 6 risk callouts captured (rowId coupling, double tapSkillExecution, hooksEditTap dual-tap, hooksTapRunner survives, research ordering, mainStartup re-export). |
+| 1 — Boundary safety pin | 2026-05-29 | 2026-05-29 | `3045beb6` (guard test) | Seam mapped: 6 call sites in `hooks.ts` (Sites 3a/3b/5a/5b REMOVE, 1/2 KEEP) + 7-tap split in `hooksTapRunner.ts` (4 KEEP / 3 REMOVE). Live path confirmed via graph trace: `hooks.ts`→`sendPayload`→`hooks:event` IPC→`useAgentEvents`→`AgentEventsContext`→`useWorkbenchAgentData`→`AgentSidebar`, fully independent of SQLite store. Guard test landed green. 6 risk callouts captured. |
+| 2 — Renderer teardown | 2026-05-29 | 2026-05-29 | `19889951` | `Observability/` dir (15 files) verified-unmounted then deleted; `ViewModeSelector` telemetry.record removed; `electron-telemetry.d.ts` + `telemetryApi`/`observabilityApi` preload surfaces removed. tsc clean; guard green. |
+| 3 — Main IPC teardown | 2026-05-29 | 2026-05-29 | `a237c4fb` | `ipc-handlers/telemetry.ts` + `mainTelemetryHandlers.ts` (+ tests) deleted; all registration wiring removed (ipc.ts, index, main.ts). tsc clean; guard green. |
+| 4 — Store + tap severance (CRUX) | 2026-05-29 | 2026-05-29 | `dca86344` | hooks.ts Sites 3a/3b/5a/5b cut (live emission preserved); hooksTapRunner 7→4 taps; hooksEditTap dual-tap split; `telemetry/` dir + editProvenance + spawnCost + tap modules deleted; main.ts inits removed. Guard **strengthened** (store.record proven not-called). No sync SQLite write remains. tsc clean; 5/5 guard. |
+| 5 — Research subsystem removal | 2026-05-29 | 2026-05-29 | `bcd6d0f4` | `src/main/research/` (44 files) + IPC handlers + preload + `electron-research.d.ts` deleted; `ResearchMode` migrated to keep live `ResearchSettings.tsx` compiling. tsc clean; test:main 3370 pass. |
+| 6 — Hook + dead-ref cleanup | 2026-05-29 | 2026-05-29 | `6f7a8a30` | `router_shadow` asset + entry removed; safe one-time `pruneRouterShadowFromSettings` uninstall pass (5 tests); channel-catalog + web-preload dead refs cleaned; `scheduleJsonlRetentionPurge` + orphaned `jsonlRetention.ts` removed. tsc clean; guard green. |
+| 6b — Hook-process writers (gate discovery) | 2026-05-29 | 2026-05-29 | `c2d1d93b` | Wave-end gate found hook-side queue writers still feeding `~/.ouroboros/telemetry/queue/`. Removed `ouroboros.mjs` write-on-fail fallback (live pipe/TCP send preserved), `telemetryQueueAppend.mjs`, `session_start_spawn_cost.mjs`; generalized uninstall prune to `REMOVED_HOOKS` list. node --check + test:hooks green. |
+| 7 — Gates + observation | 2026-05-29 | (automated gates done; live smoke PENDING) | — | tsc/lint/knip/test:main+renderer+preload + dangling-ref grep all green (3 pre-existing codemode failures only). Live AgentSidebar smoke requires IDE launch — handed to user. |
 
 ## Follow-up candidates
 
-<empty — Track A (git-status caching) is pre-identified Out-of-scope work with its own deferral path, not a mid-wave Tier-3 discovery>
+- **ResearchSettings UI is now dead-ish (PRODUCT DECISION needed).** The `src/main/research/` backend was deleted (Phase 5), but the live Settings panel `ResearchSettings.tsx` + `ResearchSettingsAdvanced.tsx` (+ parts/tests) and the `researchSettings` config keys remain — they configure a feature that no longer exists. Knip flags the associated types/props as unused (`research.ts`, `ResearchSettings` config type, `*Props` interfaces). Decide: remove the panel + config keys, or keep inert. Not removed in-wave (scope/product call).
+- **Data-tree cleanup (post-ship, destructive).** `~/.ouroboros/telemetry/` (the `_stopgap-backup-*` dir holding the 689 MB telemetry.db, `queue/`, `processed/`, `*.jsonl`) is now orphaned and no longer regrows. Deletion deferred to an explicit post-ship confirmation — it is irreversible (loses all accumulated history per Decision 1).
+- **Pre-existing, NOT wave-introduced (noted, not owned by this wave):** (a) `tsc -p tsconfig.web.json` fails on `Layout/GraphPanel/**` — `graph: GraphAPI` removed in Wave 22, GraphPanel deferred (confirmed failing at base commit `c8841d64`). (b) 3 codemode `/packages/codebase-graph-mcp` path assertions stale since Wave 22 (runtime path is `C:\codebase-graph-mcp`). (c) `webPreloadTransport.ts` timeout regex still names `observability:exportTrace` (harmless — timeout classification only).
+
+Track A (git-status caching) remains pre-identified Out-of-scope work with its own deferral path.
 
 ## Result
 
