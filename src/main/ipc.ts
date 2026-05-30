@@ -26,7 +26,6 @@ import {
   cleanupResearchHandlers,
   cleanupSessionCrudHandlers,
   cleanupSystemPromptHandlers,
-  cleanupTelemetryHandlers,
   cleanupWorkspaceReadListHandlers,
   cleanupWorktreeHandlers,
   closeEmbeddingStore,
@@ -74,7 +73,6 @@ import {
   registerSpecHandlers,
   registerSubagentHandlers,
   registerSystemPromptHandlers,
-  registerTelemetryHandlers,
   registerUsageExporterHandlers,
   registerWorkspaceReadListHandlers,
   registerWorktreeHandlers,
@@ -140,7 +138,6 @@ function registerAuxDomainHandlers(): string[] {
     ...safeRegister('checkpoint', () => registerCheckpointHandlers()),
     ...safeRegister('backgroundJobs', () => registerBackgroundJobsHandlers()),
     ...safeRegister('agentConflict', () => registerAgentConflictHandlers()),
-    ...safeRegister('telemetry', () => registerTelemetryHandlers()),
     ...safeRegister('worktree', () => registerWorktreeHandlers()),
     ...safeRegister('workspaceReadList', () => registerWorkspaceReadListHandlers()),
     ...safeRegister('subagent', () => registerSubagentHandlers()),
@@ -262,7 +259,6 @@ export async function cleanupIpcHandlers(): Promise<void> {
   cleanupResearchHandlers();
   cleanupResearchControlHandlers();
   cleanupResearchDashboardHandlers();
-  cleanupTelemetryHandlers();
   cleanupWorktreeHandlers();
   cleanupWorkspaceReadListHandlers();
   cleanupLayoutHandlers();

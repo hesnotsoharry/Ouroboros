@@ -51,7 +51,6 @@ export { registerSessionHandlers } from './sessions';
 export { registerSpecHandlers } from './specScaffold';
 export { registerSubagentHandlers } from './subagent';
 export { cleanupSystemPromptHandlers, registerSystemPromptHandlers } from './systemPromptHandlers';
-export { cleanupTelemetryHandlers, registerTelemetryHandlers } from './telemetry';
 export { registerUsageExporterHandlers } from './usageExporterHandlers';
 export {
   cleanupWorkspaceReadListHandlers,

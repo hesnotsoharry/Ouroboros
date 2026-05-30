@@ -21,7 +21,6 @@ import log from './logger';
 import { performWillQuitShutdown } from './mainShutdown';
 // prettier-ignore
 import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, initEditProvenance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
-import { registerAllTelemetryDrainHandlers } from './mainTelemetryHandlers';
 import { buildApplicationMenu } from './menu';
 import { runStaleRootsMigration } from './migrateStaleRoots';
 // prettier-ignore
@@ -188,7 +187,6 @@ async function initTelemetryAndWriters(ud: string): Promise<void> {
   initEditProvenance(ud);
   scheduleJsonlRetentionPurge(ud);
   scheduleResearchCachePurge(ud);
-  registerAllTelemetryDrainHandlers();
   await runParityQueueDrain();
 }
 
