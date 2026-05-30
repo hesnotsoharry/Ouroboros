@@ -2,7 +2,10 @@
  * webPreloadApisExtended.test.ts — smoke tests for the extended web preload
  * API builders: ecosystem, marketplace, research, agentChat additions,
  * agentConflict, system2, workspace, backgroundJobs, and
- * desktop-only stubs (ai, aiStream, embedding, telemetry, observability, graph, spec).
+ * desktop-only stubs (ai, aiStream, embedding, graph, spec).
+ *
+ * Note: buildTelemetryApi and buildObservabilityApi were removed in Wave 101
+ * (telemetry IPC handlers deleted); their tests are removed here too.
  *
  * Each test asserts that t.invoke is called with the correct channel name
  * and that the result is returned as-is. Transport is mocked.
@@ -20,11 +23,9 @@ import {
   buildEmbeddingApi,
   buildGraphApi,
   buildMarketplaceApi,
-  buildObservabilityApi,
   buildResearchApi,
   buildSpecApi,
   buildSystem2Api,
-  buildTelemetryApi,
   buildWorkspaceApi,
 } from './webPreloadApisExtended';
 
@@ -277,30 +278,7 @@ describe('buildEmbeddingApi', () => {
   });
 });
 
-describe('buildTelemetryApi', () => {
-  it('queryEvents returns desktop-only stub without invoking transport', async () => {
-    const t = makeTransport();
-    const api = buildTelemetryApi(t);
-    const result = await api.queryEvents({ limit: 10 });
-    expect(result.success).toBe(false);
-    expect(t.invoke).not.toHaveBeenCalled();
-  });
-
-  it('record invokes telemetry:record', async () => {
-    const t = makeTransport();
-    const api = buildTelemetryApi(t);
-    await api.record({ type: 'test', payload: {} });
-    expect(t.invoke).toHaveBeenCalledWith('telemetry:record', expect.any(Object));
-  });
-});
-
-describe('buildObservabilityApi', () => {
-  it('exportTrace returns desktop-only stub', async () => {
-    const api = buildObservabilityApi();
-    const result = await api.exportTrace({});
-    expect(result.success).toBe(false);
-  });
-});
+// buildTelemetryApi and buildObservabilityApi removed in Wave 101 (telemetry IPC deleted)
 
 describe('buildGraphApi', () => {
   it('searchGraph returns desktop-only stub', async () => {

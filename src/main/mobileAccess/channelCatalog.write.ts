@@ -231,8 +231,7 @@ export const WRITE_CATALOG: Record<string, CatalogEntry> = {
   // ── subagent (write) ────────────────────────────────────────────────────────
   'subagent:cancel': { class: 'paired-write', timeoutClass: 'normal' },
 
-  // ── telemetry (write) ───────────────────────────────────────────────────────
-  'telemetry:record': { class: 'paired-write', timeoutClass: 'normal' },
+  // telemetry:record removed in Wave 101 (telemetry IPC deleted)
 
   // ── theme (write) ───────────────────────────────────────────────────────────
   'theme:set': { class: 'paired-write', timeoutClass: 'short' },

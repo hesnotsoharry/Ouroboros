@@ -22,7 +22,10 @@ import path from 'path';
 
 import { getConfigValue } from './config';
 import { buildHookCommands } from './hookInstallerCommands';
-import { registerTelemetryHooksInSettings } from './hookInstallerSettings';
+import {
+  pruneRouterShadowFromSettings,
+  registerTelemetryHooksInSettings,
+} from './hookInstallerSettings';
 import { registerStatusLineInSettings } from './hookInstallerStatusLine';
 import log from './logger';
 
@@ -83,7 +86,7 @@ const MJS_HOOKS: HookEntry[] = [
   { src: 'instructions_loaded.mjs', dest: 'instructions_loaded.mjs' },
   { src: 'statusline_capture.mjs', dest: 'statusline_capture.mjs' },
   { src: 'generic_hook.mjs', dest: 'generic_hook.mjs' },
-  { src: 'user_prompt_submit_router_shadow.mjs', dest: 'user_prompt_submit_router_shadow.mjs' },
+  // user_prompt_submit_router_shadow.mjs removed in Wave 101 (router-shadow deleted)
 ];
 
 /**
@@ -288,6 +291,8 @@ async function syncHooksIntoSettings(hooksDir: string): Promise<void> {
     log.warn('could not update settings.json:', err);
   }
   try {
+    // Wave 101: prune stale router-shadow entry before (re-)registering live hooks
+    pruneRouterShadowFromSettings();
     registerTelemetryHooksInSettings(hooksDir);
   } catch (err) {
     log.warn('could not register telemetry hooks in settings.json:', err);

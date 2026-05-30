@@ -3,7 +3,7 @@
  * from mainStartup.ts.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
 
@@ -11,14 +11,10 @@ const {
   mockCrashReporterStart,
   mockAppSetName,
   mockAppCommandLineAppendSwitch,
-  mockMigrateLegacyJsonl,
-  mockPurgeOlderThan,
 } = vi.hoisted(() => ({
   mockCrashReporterStart: vi.fn(),
   mockAppSetName: vi.fn(),
   mockAppCommandLineAppendSwitch: vi.fn(),
-  mockMigrateLegacyJsonl: vi.fn().mockResolvedValue(undefined),
-  mockPurgeOlderThan: vi.fn().mockResolvedValue(0),
 }));
 
 vi.mock('electron', () => ({
@@ -33,11 +29,7 @@ vi.mock('electron', () => ({
 }));
 
 // editProvenance mock removed in Wave 101 Phase 4 (provenance store deleted)
-
-vi.mock('./orchestration/jsonlRetention', () => ({
-  migrateLegacyJsonl: mockMigrateLegacyJsonl,
-  purgeOlderThan: mockPurgeOlderThan,
-}));
+// jsonlRetention mock removed in Wave 101 Phase 6 (scheduleJsonlRetentionPurge deleted)
 
 vi.mock('./logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -45,11 +37,7 @@ vi.mock('./logger', () => ({
 
 // ─── Imports after mocks ──────────────────────────────────────────────────────
 
-import {
-  bootstrapApp,
-  bootstrapCrashReporter,
-  scheduleJsonlRetentionPurge,
-} from './mainStartupHelpers';
+import { bootstrapApp, bootstrapCrashReporter } from './mainStartupHelpers';
 
 // ─── bootstrapCrashReporter ───────────────────────────────────────────────────
 
@@ -94,38 +82,4 @@ describe('bootstrapApp', () => {
 });
 
 // closeEditProvenance test removed in Wave 101 Phase 4 (provenance store deleted)
-
-// ─── scheduleJsonlRetentionPurge ──────────────────────────────────────────────
-
-describe('scheduleJsonlRetentionPurge', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('runs migrate and purge for all four basenames', async () => {
-    scheduleJsonlRetentionPurge('/tmp/userData');
-    await vi.runAllTimersAsync();
-
-    const expectedBases = [
-      'context-decisions',
-      'context-outcomes',
-      'research-outcomes',
-      'corrections',
-    ];
-    for (const base of expectedBases) {
-      expect(mockMigrateLegacyJsonl).toHaveBeenCalledWith('/tmp/userData', base);
-      expect(mockPurgeOlderThan).toHaveBeenCalledWith('/tmp/userData', base, 30);
-    }
-  });
-
-  it('passes the provided userDataPath to each migrate call', async () => {
-    scheduleJsonlRetentionPurge('/custom/path');
-    await vi.runAllTimersAsync();
-    expect(mockMigrateLegacyJsonl).toHaveBeenCalledWith('/custom/path', expect.any(String));
-  });
-});
+// scheduleJsonlRetentionPurge tests removed in Wave 101 Phase 6 (function deleted)

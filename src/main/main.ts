@@ -20,7 +20,7 @@ import { startJankDetector, stopJankDetector } from './jankDetector';
 import log from './logger';
 import { performWillQuitShutdown } from './mainShutdown';
 // prettier-ignore
-import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, scheduleJsonlRetentionPurge, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
+import { bootstrapApp, bootstrapCrashReporter, bootstrapProcessHandlers, configureAutoUpdater, ensureSingleInstance, seedGithubTokenWithRetry, writeCrashLog } from './mainStartup';
 import { buildApplicationMenu } from './menu';
 import { runStaleRootsMigration } from './migrateStaleRoots';
 // prettier-ignore
@@ -174,11 +174,9 @@ function startWebServerAsync(): void {
     });
 }
 
-async function initTelemetryAndWriters(ud: string): Promise<void> {
-  // telemetry store + outcomeObserver + drain removed in Wave 101 Phase 4
-  // editProvenance removed in Wave 101 Phase 4
-  // research writers + cache-purge removed in Wave 101 Phase 5
-  scheduleJsonlRetentionPurge(ud);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function initTelemetryAndWriters(_ud: string): Promise<void> {
+  // all telemetry/research writers removed in Wave 101
 }
 
 async function initWindowsAndServices(): Promise<void> {

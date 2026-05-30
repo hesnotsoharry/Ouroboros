@@ -58,16 +58,11 @@ export const DESKTOP_ONLY_CATALOG: Record<string, CatalogEntry> = {
 
   // graph:* entries removed in Wave 22 (graph IPC handlers deleted; deferred to Wave 100)
 
-  // ── observability:exportTrace (writes to arbitrary path) ──────────────────────
-  'observability:exportTrace': { class: 'desktop-only', timeoutClass: 'long' },
+  // observability:exportTrace removed in Wave 101 (telemetry IPC deleted)
+  // telemetry:queryEvents removed in Wave 101 (telemetry IPC deleted)
 
   // ── spec:scaffold (writes new spec files to disk) ─────────────────────────────
   'spec:scaffold': { class: 'desktop-only', timeoutClass: 'long' },
-
-  // ── telemetry:queryEvents (developer debug feature — direct DB access) ─────────
-  // queryOutcomes and queryTraces remain paired-read. queryEvents is excluded
-  // because it exposes the raw telemetry DB to mobile clients.
-  'telemetry:queryEvents': { class: 'desktop-only', timeoutClass: 'normal' },
 
   // ── app lifecycle ────────────────────────────────────────────────────────────
   'app:clearCrashLogs': { class: 'desktop-only', timeoutClass: 'normal' },

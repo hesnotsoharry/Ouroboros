@@ -168,28 +168,8 @@ export function buildEmbeddingApi() {
   };
 }
 
-// ─── Telemetry API (desktop-only stubs for queryEvents) ──────────────────────
-// telemetry:queryEvents is a developer debug feature — desktop-only.
-// telemetry:record and telemetry:queryOutcomes/queryTraces remain available.
-
-export function buildTelemetryApi(t: WebSocketTransport) {
-  return {
-    // queryEvents is desktop-only (direct DB access, developer debug feature).
-    queryEvents: desktopOnlyStub('telemetry:queryEvents'),
-    queryOutcomes: (opts: unknown) => t.invoke('telemetry:queryOutcomes', opts),
-    queryTraces: (opts: unknown) => t.invoke('telemetry:queryTraces', opts),
-    record: (event: unknown) => t.invoke('telemetry:record', event),
-  };
-}
-
-// ─── Observability API (partial desktop-only) ─────────────────────────────────
-// exportTrace writes to an arbitrary path — desktop-only.
-
-export function buildObservabilityApi() {
-  return {
-    exportTrace: desktopOnlyStub('observability:exportTrace'),
-  };
-}
+// buildTelemetryApi removed in Wave 101 (telemetry IPC handlers deleted)
+// buildObservabilityApi removed in Wave 101 (telemetry IPC handlers deleted)
 
 // ─── Graph API (desktop-only stubs) ──────────────────────────────────────────
 // Full codebase graph requires local index — not available in web mode.

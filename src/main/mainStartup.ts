@@ -20,7 +20,6 @@ export { broadcastToActiveWindows };
 export {
   bootstrapApp,
   bootstrapCrashReporter,
-  scheduleJsonlRetentionPurge,
 } from './mainStartupHelpers';
 
 // ---------------------------------------------------------------------------

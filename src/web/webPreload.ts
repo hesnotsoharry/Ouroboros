@@ -31,11 +31,9 @@ import {
   buildEmbeddingApi,
   buildGraphApi,
   buildMarketplaceApi,
-  buildObservabilityApi,
   buildResearchApi,
   buildSpecApi,
   buildSystem2Api,
-  buildTelemetryApi,
   buildWorkspaceApi,
 } from './webPreloadApisExtended';
 import { buildRulesAndSkillsApi } from './webPreloadApisRulesSkills';
@@ -182,8 +180,7 @@ const backgroundJobsAPI = buildBackgroundJobsApi(transport);
 const aiAPI = buildAiApi();
 const aiStreamAPI = buildAiStreamApi();
 const embeddingAPI = buildEmbeddingApi();
-const telemetryAPI = buildTelemetryApi(transport);
-const observabilityAPI = buildObservabilityApi();
+// telemetryAPI + observabilityAPI removed in Wave 101 (telemetry IPC handlers deleted)
 const graphAPI = buildGraphApi();
 const specAPI = buildSpecApi();
 // ── Wave 86 new chat-orchestration path ────────────────────────────────────────
@@ -243,8 +240,7 @@ const electronAPI = {
   ai: aiAPI,
   aiStream: aiStreamAPI,
   embedding: embeddingAPI,
-  telemetry: telemetryAPI,
-  observability: observabilityAPI,
+  // telemetry + observability removed in Wave 101 (telemetry IPC handlers deleted)
   graph: graphAPI,
   spec: specAPI,
   // ── Wave 86 new chat-orchestration path ──────────────────────────────────────

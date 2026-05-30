@@ -157,8 +157,7 @@ export const READ_CATALOG: Record<string, CatalogEntry> = {
   // ── mobileAccess (read) ─────────────────────────────────────────────────────
   'mobileAccess:listPairedDevices': { class: 'paired-read', timeoutClass: 'short' },
 
-  // ── observability — exportTrace reclassified desktop-only (Wave 41 Phase I)
-  // 'observability:exportTrace' moved to channelCatalog.desktopOnly.ts.
+  // observability:exportTrace removed in Wave 101 (telemetry IPC deleted)
 
   // ── perf (read) ─────────────────────────────────────────────────────────────
   'perf:getRuntimeMetrics': { class: 'paired-read', timeoutClass: 'short' },
@@ -223,10 +222,8 @@ export const READ_CATALOG: Record<string, CatalogEntry> = {
   // ── symbol (read) ───────────────────────────────────────────────────────────
   'symbol:search': { class: 'paired-read', timeoutClass: 'normal' },
 
-  // ── telemetry (read) ────────────────────────────────────────────────────────
-  // telemetry:queryEvents reclassified desktop-only (Wave 41 Phase I; dev-only debug).
-  'telemetry:queryOutcomes': { class: 'paired-read', timeoutClass: 'normal' },
-  'telemetry:queryTraces': { class: 'paired-read', timeoutClass: 'normal' },
+  // telemetry:queryEvents, telemetry:queryOutcomes, telemetry:queryTraces removed in Wave 101
+  // (telemetry IPC handlers deleted)
 
   // ── usage (read) ────────────────────────────────────────────────────────────
   'usage:getRecentSessions': { class: 'paired-read', timeoutClass: 'normal' },

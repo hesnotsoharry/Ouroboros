@@ -1,5 +1,6 @@
 /**
- * hookInstallerSettings.test.ts — Unit tests for telemetry hook registration.
+ * hookInstallerSettings.test.ts — Unit tests for telemetry hook registration
+ * and router-shadow pruning (Wave 101).
  *
  * Coverage:
  *   - Idempotent merge: running twice writes once, no duplicates on second run.
@@ -10,6 +11,8 @@
  *   - Missing settings.json: creates a fresh file.
  *   - Malformed settings.json: treated as fresh + backup of corrupted file.
  *   - autoInstallHooks=false: callsite gates the call (caller responsibility).
+ *   - pruneRouterShadowFromSettings: removes stale router-shadow entries;
+ *     preserves all other hooks; idempotent; fails gracefully.
  *
  * Real ~/.claude/settings.json is NEVER touched. All fs calls are mocked.
  */
@@ -79,6 +82,7 @@ import path from 'path';
 
 import {
   buildTelemetryHookCommand,
+  pruneRouterShadowFromSettings,
   registerTelemetryHooksInSettings,
 } from './hookInstallerSettings';
 
@@ -88,6 +92,7 @@ const HOOKS_DIR = path.join(os.homedir(), '.claude', 'hooks');
 const SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json');
 
 const SPAWN_COST_CMD = buildTelemetryHookCommand(HOOKS_DIR, 'session_start_spawn_cost.mjs');
+// ROUTER_SHADOW_CMD still used in pruneRouterShadowFromSettings tests
 const ROUTER_SHADOW_CMD = buildTelemetryHookCommand(
   HOOKS_DIR,
   'user_prompt_submit_router_shadow.mjs',
@@ -133,7 +138,7 @@ describe('registerTelemetryHooksInSettings', () => {
     vi.clearAllMocks();
   });
 
-  it('creates a fresh settings.json with both hook entries when file is missing', () => {
+  it('creates a fresh settings.json with the SessionStart hook entry when file is missing', () => {
     mockReadClaudeSettings.mockReturnValue({});
     mockExistsSync.mockReturnValue(false);
     mockReaddirSync.mockReturnValue([]);
@@ -143,13 +148,11 @@ describe('registerTelemetryHooksInSettings', () => {
     const written = captureWrittenSettings();
     const hooks = written['hooks'] as Record<string, unknown[]>;
     expect(Array.isArray(hooks['SessionStart'])).toBe(true);
-    expect(Array.isArray(hooks['UserPromptSubmit'])).toBe(true);
+    // UserPromptSubmit (router-shadow) removed in Wave 101 — must NOT be written
+    expect(hooks['UserPromptSubmit']).toBeUndefined();
     const sessionCmds = (hooks['SessionStart'] as Array<{ hooks: Array<{ command: string }> }>)
       .flatMap((m) => m.hooks.map((h) => h.command));
     expect(sessionCmds).toContain(SPAWN_COST_CMD);
-    const promptCmds = (hooks['UserPromptSubmit'] as Array<{ hooks: Array<{ command: string }> }>)
-      .flatMap((m) => m.hooks.map((h) => h.command));
-    expect(promptCmds).toContain(ROUTER_SHADOW_CMD);
   });
 
   it('is idempotent: second run writes nothing new', () => {
@@ -196,7 +199,8 @@ describe('registerTelemetryHooksInSettings', () => {
     expect(sessionCmds).toContain(SPAWN_COST_CMD);
   });
 
-  it('does not duplicate an entry that is already present', () => {
+  it('does not write when the only hook entry is already present', () => {
+    // SessionStart with SPAWN_COST_CMD already present; no other hooks in manifest.
     const existingEntry = {
       hooks: [{ type: 'command', command: SPAWN_COST_CMD }],
     };
@@ -204,14 +208,12 @@ describe('registerTelemetryHooksInSettings', () => {
 
     registerTelemetryHooksInSettings(HOOKS_DIR);
 
-    // Should still write (UserPromptSubmit is new) but SessionStart must not duplicate
-    const written = captureWrittenSettings();
-    const hooks = written['hooks'] as Record<string, unknown[]>;
-    const sessionStart = hooks['SessionStart'] as Array<{ hooks: Array<{ command: string }> }>;
-    const spawnCostEntries = sessionStart.flatMap((m) =>
-      m.hooks.filter((h) => h.command === SPAWN_COST_CMD),
+    // Nothing new to add — write must NOT be triggered
+    const tmpCalls = mockWriteFileSync.mock.calls.filter((c) => String(c[0]).endsWith('.tmp'));
+    expect(tmpCalls).toHaveLength(0);
+    expect(mockLog.info).toHaveBeenCalledWith(
+      expect.stringContaining('already registered'),
     );
-    expect(spawnCostEntries).toHaveLength(1);
   });
 
   it('creates a backup on first install', () => {
@@ -257,11 +259,11 @@ describe('registerTelemetryHooksInSettings', () => {
 
     // Backup should be created for the malformed file
     expect(mockCopyFileSync).toHaveBeenCalled();
-    // And valid hooks written
+    // Only the SessionStart hook is written (router-shadow removed in Wave 101)
     const written = captureWrittenSettings();
     const hooks = written['hooks'] as Record<string, unknown[]>;
     expect(hooks['SessionStart']).toBeDefined();
-    expect(hooks['UserPromptSubmit']).toBeDefined();
+    expect(hooks['UserPromptSubmit']).toBeUndefined();
   });
 
   it('logs warn and does not throw when write fails', () => {
@@ -285,6 +287,117 @@ describe('registerTelemetryHooksInSettings', () => {
     expect(() => registerTelemetryHooksInSettings(HOOKS_DIR)).not.toThrow();
     expect(mockLog.warn).toHaveBeenCalledWith(
       expect.stringContaining('could not read'),
+      expect.any(Error),
+    );
+  });
+});
+
+// ── pruneRouterShadowFromSettings ─────────────────────────────────────────────
+
+describe('pruneRouterShadowFromSettings', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset any implementation overrides from prior test groups (e.g. the "disk full"
+    // mockImplementation set in registerTelemetryHooksInSettings's write-fail test).
+    // vi.clearAllMocks() clears call history but not custom implementations.
+    mockWriteFileSync.mockReset();
+    mockOpenSync.mockReturnValue(3); // restore default return value after mockReset
+  });
+
+  it('removes the router-shadow UserPromptSubmit entry when present', () => {
+    const existingSettings = {
+      hooks: {
+        UserPromptSubmit: [
+          { hooks: [{ type: 'command', command: ROUTER_SHADOW_CMD }] },
+        ],
+      },
+    };
+    mockReadClaudeSettings.mockReturnValue(JSON.parse(JSON.stringify(existingSettings)));
+    mockExistsSync.mockImplementation((p: string) => p === SETTINGS_PATH);
+    mockReadFileSync.mockReturnValue(JSON.stringify(existingSettings));
+    mockReaddirSync.mockReturnValue([]);
+
+    pruneRouterShadowFromSettings();
+
+    const written = captureWrittenSettings();
+    const hooks = written['hooks'] as Record<string, unknown>;
+    expect(hooks['UserPromptSubmit']).toBeUndefined();
+    expect(mockLog.info).toHaveBeenCalledWith(
+      expect.stringContaining('pruned'),
+    );
+  });
+
+  it('preserves other UserPromptSubmit hooks while removing only the router-shadow entry', () => {
+    const userEntry = { type: 'command', command: 'node /usr/local/bin/my-hook.mjs' };
+    const existingSettings = {
+      hooks: {
+        UserPromptSubmit: [
+          { hooks: [userEntry] },
+          { hooks: [{ type: 'command', command: ROUTER_SHADOW_CMD }] },
+        ],
+      },
+    };
+    mockReadClaudeSettings.mockReturnValue(JSON.parse(JSON.stringify(existingSettings)));
+    mockExistsSync.mockImplementation((p: string) => p === SETTINGS_PATH);
+    mockReadFileSync.mockReturnValue(JSON.stringify(existingSettings));
+    mockReaddirSync.mockReturnValue([]);
+
+    pruneRouterShadowFromSettings();
+
+    const written = captureWrittenSettings();
+    const hooks = written['hooks'] as Record<string, Array<{ hooks: Array<{ command: string }> }>>;
+    const remaining = hooks['UserPromptSubmit'];
+    expect(Array.isArray(remaining)).toBe(true);
+    const cmds = remaining.flatMap((m) => m.hooks.map((h) => h.command));
+    expect(cmds).toContain(userEntry.command);
+    expect(cmds).not.toContain(ROUTER_SHADOW_CMD);
+  });
+
+  it('is idempotent: does nothing when router-shadow is already absent', () => {
+    const existingSettings = {
+      hooks: {
+        SessionStart: [{ hooks: [{ type: 'command', command: SPAWN_COST_CMD }] }],
+      },
+    };
+    mockReadClaudeSettings.mockReturnValue(JSON.parse(JSON.stringify(existingSettings)));
+    mockExistsSync.mockImplementation((p: string) => p === SETTINGS_PATH);
+    mockReadFileSync.mockReturnValue(JSON.stringify(existingSettings));
+    mockReaddirSync.mockReturnValue([]);
+
+    pruneRouterShadowFromSettings();
+
+    // No write should occur — nothing to prune
+    const tmpCalls = mockWriteFileSync.mock.calls.filter((c) => String(c[0]).endsWith('.tmp'));
+    expect(tmpCalls).toHaveLength(0);
+  });
+
+  it('does nothing when settings.json is missing', () => {
+    mockReadClaudeSettings.mockReturnValue({});
+    mockExistsSync.mockReturnValue(false);
+
+    expect(() => pruneRouterShadowFromSettings()).not.toThrow();
+    expect(mockWriteFileSync).not.toHaveBeenCalled();
+  });
+
+  it('does not throw when the write fails after pruning', () => {
+    const existingSettings = {
+      hooks: {
+        UserPromptSubmit: [
+          { hooks: [{ type: 'command', command: ROUTER_SHADOW_CMD }] },
+        ],
+      },
+    };
+    mockReadClaudeSettings.mockReturnValue(JSON.parse(JSON.stringify(existingSettings)));
+    mockExistsSync.mockImplementation((p: string) => p === SETTINGS_PATH);
+    mockReadFileSync.mockReturnValue(JSON.stringify(existingSettings));
+    mockReaddirSync.mockReturnValue([]);
+    mockWriteFileSync.mockImplementation(() => {
+      throw new Error('disk full');
+    });
+
+    expect(() => pruneRouterShadowFromSettings()).not.toThrow();
+    expect(mockLog.warn).toHaveBeenCalledWith(
+      expect.stringContaining('pruneRouterShadow'),
       expect.any(Error),
     );
   });

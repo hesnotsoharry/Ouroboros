@@ -5,9 +5,6 @@
 
 import { app, crashReporter } from 'electron';
 
-import log from './logger';
-import { migrateLegacyJsonl, purgeOlderThan } from './orchestration/jsonlRetention';
-
 export function bootstrapCrashReporter(): void {
   crashReporter.start({
     uploadToServer: false,
@@ -26,20 +23,6 @@ export function bootstrapApp(): void {
   }
 }
 
-/**
- * Schedule JSONL migration + 30-day retention purge via setImmediate so it
- * does not block window creation (Wave 29.5 M2).
- */
-export function scheduleJsonlRetentionPurge(userDataPath: string): void {
-  const basenames = ['context-decisions', 'context-outcomes', 'research-outcomes', 'corrections'];
-  setImmediate(() => {
-    for (const base of basenames) {
-      migrateLegacyJsonl(userDataPath, base)
-        .then(() => purgeOlderThan(userDataPath, base, 30))
-        .then((n) => {
-          if (n > 0) console.warn(`[jsonlRetention] purged ${n} old files for ${base}`);
-        })
-        .catch((err) => log.error('[jsonlRetention] purge error', err));
-    }
-  });
-}
+// scheduleJsonlRetentionPurge + jsonlRetention.ts removed in Wave 101 Phase 6
+// (all four JSONL basenames it managed belonged to deleted telemetry tiers;
+//  with its only caller gone, the retention helpers were dead code)
