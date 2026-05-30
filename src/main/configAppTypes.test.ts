@@ -128,14 +128,14 @@ describe('AppConfig — structural shape', () => {
     const cfg: Partial<AppConfig> = {
       layout: { presets: { v2: true }, dragAndDrop: true },
       provenanceTracking: true,
-      researchSettings: { globalEnabled: false, defaultMode: 'conservative' },
+      // researchSettings removed in Wave 101 Phase 5b
       ecosystem: { systemPrompt: '', rulesAndSkillsInstallEnabled: false },
       platform: { language: 'en', updateChannel: 'stable' },
       theming: { accentOverride: '#ff0000' },
       mobileAccess: { enabled: false, pairedDevices: [] },
     };
     expect(cfg.layout?.dragAndDrop).toBe(true);
-    expect(cfg.researchSettings?.defaultMode).toBe('conservative');
+    // researchSettings removed in Wave 101 Phase 5b
     expect(cfg.theming?.accentOverride).toBe('#ff0000');
   });
 

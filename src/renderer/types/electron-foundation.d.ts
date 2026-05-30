@@ -112,19 +112,7 @@ export interface WorkspaceSnapshot {
   projectRoot?: string;
 }
 
-/** Wave 30 — research mode values (settings UI still uses these for config only). */
-export type ResearchMode = 'off' | 'conservative' | 'aggressive';
-
-/** Wave 30 — research auto-firing settings. */
-export interface ResearchSettings {
-  globalEnabled?: boolean;
-  defaultMode?: ResearchMode;
-  stalenessConfidenceFloor?: number;
-  factClaimEnabled?: boolean;
-  factClaimMinPatternConfidence?: 'high' | 'medium' | 'low';
-  preEditDryRunOnly?: boolean;
-  maxLatencyMs?: number;
-}
+// ResearchMode + ResearchSettings removed in Wave 101 Phase 5b (research subsystem deleted Phase 5; UI + types removed Phase 5b)
 
 /** Wave 35 — per-user theming overrides. */
 export interface ThemingOverrides {
@@ -271,8 +259,7 @@ export interface AppConfig {
   agentic?: { subagentUx?: boolean };
   /** Wave 29 Phase A — diff review enhanced UX (keyboard shortcuts + rollback) */
   review?: { enhanced?: boolean };
-  /** Wave 30 Phases G+I — research auto-firing defaults + threshold knobs. */
-  researchSettings?: ResearchSettings;
+  // researchSettings removed in Wave 101 Phase 5b (research subsystem deleted Phase 5; UI + types removed Phase 5b)
   /** Wave 19/24/31 — context scoring feature flags. Wave 31 Phase E adds packetMode. */
   context?: {
     provenanceWeights?: boolean;

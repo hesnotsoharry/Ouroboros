@@ -266,15 +266,7 @@ export interface AppEcosystemConfig {
   codexAppServerTransport?: boolean;
 }
 
-export interface ResearchSettings {
-  globalEnabled?: boolean;
-  defaultMode?: 'off' | 'conservative' | 'aggressive';
-  stalenessConfidenceFloor?: number;
-  factClaimEnabled?: boolean;
-  factClaimMinPatternConfidence?: 'high' | 'medium' | 'low';
-  preEditDryRunOnly?: boolean;
-  maxLatencyMs?: number;
-}
+// ResearchSettings removed in Wave 101 Phase 5b (research subsystem deleted in Phase 5; UI + config type removed here)
 
 export interface InstalledVsxExtension {
   id: string;

@@ -25,7 +25,6 @@ export type TabId =
   | 'contextDocs'
   | 'performance'
   | 'workspaceReadList'
-  | 'research'
   | 'mobileAccess'
   | 'systemPrompt'
   | 'promptDiff'
@@ -60,7 +59,6 @@ export const TABS: Tab[] = [
   { id: 'contextDocs', label: 'Context Docs' },
   { id: 'performance', label: 'Performance' },
   { id: 'workspaceReadList', label: 'Read-List' },
-  { id: 'research', label: 'Research' },
   { id: 'mobileAccess', label: 'Mobile Access' },
   { id: 'systemPrompt', label: 'System Prompt' },
   { id: 'promptDiff', label: 'Prompt Diff' },
@@ -99,7 +97,6 @@ export const MAIN_TABS: MainTab[] = [
       'codemode',
       'contextDocs',
       'workspaceReadList',
-      'research',
       'systemPrompt',
       'promptDiff',
       'usageExport',

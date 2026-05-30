@@ -31,7 +31,6 @@ export type {
   PanelSizes,
   PlatformConfig,
   ProviderModel,
-  ResearchSettings,
   SessionDispatchConfig,
   TerminalSessionSnapshot,
   ThemingConfig,

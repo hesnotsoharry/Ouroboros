@@ -25,7 +25,6 @@ import { PlatformSection } from './PlatformSection';
 import { ProfilesSection } from './ProfilesSection';
 import { PromptDiffView } from './PromptDiffView';
 import { ProvidersSection } from './ProvidersSection';
-import { ResearchSettings } from './ResearchSettings';
 import { SettingsPerformancePanel } from './SettingsPerformancePanel';
 import type { TabId } from './settingsTabs';
 import { SystemPromptPane } from './SystemPromptPane';
@@ -69,7 +68,6 @@ const TAB_RENDERERS: Record<TabId, TabRenderer> = {
   contextDocs: ({ draft, onChange }) => <ContextDocsSection draft={draft} onChange={onChange} />,
   performance: () => <SettingsPerformancePanel />,
   workspaceReadList: ({ draft }) => <WorkspaceReadListSection draft={draft} />,
-  research: ({ draft, onChange }) => <ResearchSettings draft={draft} onChange={onChange} />,
   mobileAccess: ({ draft, onChange }) => <MobileAccessPane draft={draft} onChange={onChange} />,
   systemPrompt: () => <SystemPromptPane />,
   promptDiff: () => <PromptDiffView />,

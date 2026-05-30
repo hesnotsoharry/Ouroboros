@@ -24,7 +24,6 @@ import type {
   NotificationSettings,
   PanelSizes,
   PlatformConfig,
-  ResearchSettings,
   SessionDispatchConfig,
   TerminalSessionSnapshot,
   ThemingConfig,
@@ -217,8 +216,7 @@ export interface AppConfig {
   platform?: PlatformConfig;
   /** Wave 41 Phase C — marketplace behaviour flags. */
   marketplace?: { allowInstallOnRevocationFetchFailure?: boolean };
-  /** Wave 30 Phase G+I — research auto-firing global defaults + threshold tuning knobs. */
-  researchSettings?: ResearchSettings;
+  // researchSettings removed in Wave 101 Phase 5b (research subsystem deleted Phase 5; UI + config removed Phase 5b)
   /** Wave 50 Phase B/D — deterministic PreToolUse hook enforcement toggles.
    *  enforceGraphFirst: reserved stub — Phase D analysis returned 93.9% adherence (stay log-only). */
   hooks?: { enforcedRules: string[]; enforceGraphFirst?: boolean };
