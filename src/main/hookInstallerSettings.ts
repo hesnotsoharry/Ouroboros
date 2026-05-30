@@ -2,11 +2,13 @@
  * hookInstallerSettings.ts — Registers telemetry hook commands into
  * ~/.claude/settings.json on IDE boot.
  *
- * Handles one telemetry hook entry:
- *   1. SessionStart → session_start_spawn_cost.mjs  (spawn-cost + spawn-trace)
+ * The live telemetry hook manifest (TELEMETRY_HOOKS) is currently empty after
+ * Wave 101 removed all telemetry-persistence hooks:
+ *   - session_start_spawn_cost.mjs removed in Wave 101 Phase 6b (spawn-cost/trace deleted)
+ *   - user_prompt_submit_router_shadow.mjs removed in Wave 101 Phase 6 (router-shadow deleted)
  *
- * Also performs a one-time pruning pass (Wave 101) to remove the stale
- * user_prompt_submit_router_shadow.mjs entry from existing installs.
+ * Also performs one-time pruning passes (Wave 101) to remove stale entries from
+ * existing installs of both removed scripts from ~/.claude/settings.json.
  *
  * Properties:
  *   - Idempotent: running N times is identical to running once.
@@ -45,16 +47,29 @@ interface TelemetryHookSpec {
   scriptName: string;
 }
 
-const TELEMETRY_HOOKS: TelemetryHookSpec[] = [
-  { eventType: 'SessionStart', scriptName: 'session_start_spawn_cost.mjs' },
-  // user_prompt_submit_router_shadow.mjs removed in Wave 101 (router-shadow deleted)
-];
+/**
+ * Live telemetry hooks — currently empty after Wave 101 Phase 6/6b removed all
+ * telemetry-persistence hooks. Kept as a typed manifest so the merge logic
+ * and tests remain wired for future hook additions.
+ */
+const TELEMETRY_HOOKS: TelemetryHookSpec[] = [];
 
 /**
- * Script filename of the removed router-shadow hook.
- * Used by pruneRouterShadowFromSettings to remove stale entries from existing installs.
+ * Scripts removed in Wave 101, keyed by their event-type registration, that
+ * must be pruned from existing ~/.claude/settings.json installs.
+ * pruneRouterShadowFromSettings() iterates this list and removes all of them.
  */
-const ROUTER_SHADOW_SCRIPT = 'user_prompt_submit_router_shadow.mjs';
+interface RemovedHookSpec {
+  eventType: string;
+  scriptName: string;
+}
+
+const REMOVED_HOOKS: RemovedHookSpec[] = [
+  // Phase 6: router-shadow deleted (UserPromptSubmit)
+  { eventType: 'UserPromptSubmit', scriptName: 'user_prompt_submit_router_shadow.mjs' },
+  // Phase 6b: spawn-cost/trace deleted (SessionStart)
+  { eventType: 'SessionStart', scriptName: 'session_start_spawn_cost.mjs' },
+];
 
 // ─── Command builders ─────────────────────────────────────────────────────────
 
@@ -159,19 +174,17 @@ function atomicWriteSettings(settingsPath: string, settings: Record<string, unkn
   }
 }
 
-// ─── Router-shadow prune (Wave 101 one-time uninstall) ───────────────────────
+// ─── Removed-hook prune (Wave 101 one-time uninstall) ────────────────────────
 
-/** Returns true if a hook command references the router-shadow script. */
-function isRouterShadowCommand(h: HookEntry): boolean {
-  return h.command.includes(ROUTER_SHADOW_SCRIPT);
-}
-
-/** Returns matchers with the router-shadow hook entries removed (empty matchers dropped). */
-function filterRouterShadow(matchers: HookMatcher[]): { filtered: HookMatcher[]; count: number } {
+/** Returns matchers with any hooks referencing scriptName removed (empty matchers dropped). */
+function filterScriptFromMatchers(
+  matchers: HookMatcher[],
+  scriptName: string,
+): { filtered: HookMatcher[]; count: number } {
   let count = 0;
   const filtered = matchers
     .map((m) => {
-      const kept = (m.hooks ?? []).filter((h) => !isRouterShadowCommand(h));
+      const kept = (m.hooks ?? []).filter((h) => !h.command.includes(scriptName));
       count += (m.hooks ?? []).length - kept.length;
       return { ...m, hooks: kept };
     })
@@ -180,10 +193,34 @@ function filterRouterShadow(matchers: HookMatcher[]): { filtered: HookMatcher[];
 }
 
 /**
- * Removes any UserPromptSubmit hook entry whose command references
- * user_prompt_submit_router_shadow.mjs from ~/.claude/settings.json.
+ * Applies the REMOVED_HOOKS list to hooksMap in-place.
+ * Returns the total count of pruned hook entries across all specs.
+ */
+function pruneSpecsFromHooksMap(hooksMap: Record<string, HookMatcher[]>): number {
+  let total = 0;
+  for (const spec of REMOVED_HOOKS) {
+    const matchers = hooksMap[spec.eventType];
+    if (!Array.isArray(matchers)) continue;
+    const { filtered, count } = filterScriptFromMatchers(matchers, spec.scriptName);
+    if (count === 0) continue;
+    total += count;
+    if (filtered.length > 0) {
+      hooksMap[spec.eventType] = filtered;
+    } else {
+      delete (hooksMap as Record<string, unknown>)[spec.eventType];
+    }
+  }
+  return total;
+}
+
+/**
+ * Removes all hook entries listed in REMOVED_HOOKS from ~/.claude/settings.json.
  *
- * Safety: matches only on the specific script filename; all other hooks and
+ * Covers Wave 101 Phase 6 (router-shadow, UserPromptSubmit) and Phase 6b
+ * (session_start_spawn_cost, SessionStart). Iterates REMOVED_HOOKS so future
+ * removals only need a new entry there, not a new prune function.
+ *
+ * Safety: matches only on the specific script filenames; all other hooks and
  * settings are preserved verbatim; writes atomically; never throws.
  */
 export function pruneRouterShadowFromSettings(): void {
@@ -201,23 +238,16 @@ export function pruneRouterShadowFromSettings(): void {
   const hooks = settings['hooks'];
   if (typeof hooks !== 'object' || hooks === null) return;
   const hooksMap = hooks as Record<string, HookMatcher[]>;
-  const userPromptMatchers = hooksMap['UserPromptSubmit'];
-  if (!Array.isArray(userPromptMatchers)) return;
 
-  const { filtered, count } = filterRouterShadow(userPromptMatchers);
-  if (count === 0) return;
+  const totalPruned = pruneSpecsFromHooksMap(hooksMap);
 
-  if (filtered.length > 0) {
-    hooksMap['UserPromptSubmit'] = filtered;
-  } else {
-    delete (hooksMap as Record<string, unknown>)['UserPromptSubmit'];
-  }
+  if (totalPruned === 0) return;
 
   try {
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- path from ~/.claude/settings.json
     fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
     atomicWriteSettings(settingsPath, settings);
-    log.info(`[hookInstallerSettings] pruned ${count} router-shadow hook entries from settings.json`);
+    log.info(`[hookInstallerSettings] pruned ${totalPruned} removed hook entries from settings.json`);
   } catch (err) {
     log.warn('[hookInstallerSettings] pruneRouterShadow: could not write settings.json:', err);
   }
