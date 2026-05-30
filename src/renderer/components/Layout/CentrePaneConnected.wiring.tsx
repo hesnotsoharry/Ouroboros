@@ -21,8 +21,6 @@ export const SPECIAL_VIEW_EVENTS: Array<[string, SpecialViewType]> = [
   [OPEN_FLOW_TRACER_EVENT, 'flow-tracer'],
 ];
 
-export const GRAPH_PANEL_EVENT = 'agent-ide:open-graph-panel';
-
 export function useDiffReviewEvents(
   openReview: (
     sessionId: string,
@@ -75,18 +73,6 @@ export function useSpecialViewEvents(openAndActivate: (view: SpecialViewType) =>
     });
     return () => handlers.forEach(([event, handler]) => window.removeEventListener(event, handler));
   }, [openAndActivate]);
-}
-
-export function useGraphPanelEvent(
-  openAndActivate: (view: SpecialViewType) => void,
-  enabled: boolean,
-): void {
-  useEffect(() => {
-    if (!enabled) return;
-    const handler = () => openAndActivate('graph-panel');
-    window.addEventListener(GRAPH_PANEL_EVENT, handler);
-    return () => window.removeEventListener(GRAPH_PANEL_EVENT, handler);
-  }, [openAndActivate, enabled]);
 }
 
 export function useFileTabClicksSwitchToEditor(setActiveView: (v: 'editor') => void): void {
@@ -143,7 +129,6 @@ export interface CentrePaneWiringArgs {
     filePaths?: string[],
   ) => void;
   projectRoot: string | null;
-  enhancedEnabled: boolean;
 }
 
 export function useCentrePaneWiring(args: CentrePaneWiringArgs): void {
@@ -154,12 +139,10 @@ export function useCentrePaneWiring(args: CentrePaneWiringArgs): void {
     setActiveView,
     openReview,
     projectRoot,
-    enhancedEnabled,
   } = args;
   useDiffReviewEvents(openReview, setReplaySession, setActiveView);
   useSessionReplayEvents(closeReview, setReplaySession, setActiveView);
   useSpecialViewEvents(openAndActivate);
-  useGraphPanelEvent(openAndActivate, enhancedEnabled);
   useFileTabClicksSwitchToEditor(setActiveView);
   useGlobalReviewEvents(openReview, projectRoot, setReplaySession, setActiveView);
 }

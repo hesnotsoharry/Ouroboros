@@ -44,7 +44,6 @@ type SpecialViewType =
   | 'extensions'
   | 'mcp'
   | 'usage-dashboard'
-  | 'graph-panel'
   | 'flow-tracer';
 
 export type { SpecialViewType };
@@ -66,7 +65,6 @@ const SPECIAL_VIEW_META: Record<SpecialViewType, { label: string; icon: string }
   extensions: { label: 'Extensions', icon: '\u2B29' },
   mcp: { label: 'MCP Servers', icon: '\u2B21' },
   'usage-dashboard': { label: 'Usage Dashboard', icon: '\u25A4' },
-  'graph-panel': { label: 'Graph', icon: '\u29C0' },
   'flow-tracer': { label: 'Flow Tracer', icon: '\u27A4' },
 };
 

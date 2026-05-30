@@ -37,9 +37,6 @@ const UsageDashboard = React.lazy(() =>
 const TimeTravelPanelConnected = React.lazy(() =>
   import('./TimeTravelPanelConnected').then((m) => ({ default: m.TimeTravelPanelConnected })),
 );
-const LazyGraphPanel = React.lazy(() =>
-  import('./GraphPanel/GraphPanel').then((m) => ({ default: m.GraphPanel })),
-);
 const LazyFlowTracerView = React.lazy(() =>
   import('../FlowTracer/FlowTracerView').then((m) => ({ default: m.FlowTracerView })),
 );
@@ -60,7 +57,6 @@ const SIMPLE_VIEW_MAP: Partial<Record<SpecialViewType, SimpleViewComponent>> = {
   extensions: ExtensionStorePage,
   mcp: McpStorePage,
   'usage-dashboard': UsageDashboard,
-  'graph-panel': LazyGraphPanel,
   'flow-tracer': LazyFlowTracerView,
 };
 
@@ -274,7 +270,6 @@ export function CentrePaneConnectedShell(): React.ReactElement {
     setActiveView,
     openReview: review.openReview,
     projectRoot,
-    enhancedEnabled,
   });
 
   if (review.state) return renderActiveDiffReview(review, enhancedEnabled);

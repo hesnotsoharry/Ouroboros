@@ -8,12 +8,10 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  GRAPH_PANEL_EVENT,
   SPECIAL_VIEW_EVENTS,
   useDiffReviewEvents,
   useFileTabClicksSwitchToEditor,
   useGlobalReviewEvents,
-  useGraphPanelEvent,
   useSessionReplayEvents,
   useSpecialViewEvents,
 } from './CentrePaneConnected.wiring';
@@ -131,32 +129,6 @@ describe('useSpecialViewEvents', () => {
     act(() => {
       window.dispatchEvent(new CustomEvent(eventName));
     });
-    expect(openAndActivate).not.toHaveBeenCalled();
-  });
-});
-
-// ─── useGraphPanelEvent ───────────────────────────────────────────────────────
-
-describe('useGraphPanelEvent', () => {
-  it('calls openAndActivate("graph-panel") when enabled and event fires', () => {
-    const openAndActivate = vi.fn();
-    renderHook(() => useGraphPanelEvent(openAndActivate, true));
-
-    act(() => {
-      window.dispatchEvent(new CustomEvent(GRAPH_PANEL_EVENT));
-    });
-
-    expect(openAndActivate).toHaveBeenCalledWith('graph-panel');
-  });
-
-  it('does not attach listener when disabled', () => {
-    const openAndActivate = vi.fn();
-    renderHook(() => useGraphPanelEvent(openAndActivate, false));
-
-    act(() => {
-      window.dispatchEvent(new CustomEvent(GRAPH_PANEL_EVENT));
-    });
-
     expect(openAndActivate).not.toHaveBeenCalled();
   });
 });

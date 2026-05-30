@@ -292,7 +292,7 @@ export interface ElectronAPI {
   workspaceReadList: WorkspaceReadListAPI;
   subagent: SubagentAPI;
   flowTracer: FlowTracerAPI;
-  // graph: GraphAPI removed in Wave 22 (IPC handlers deleted; GraphPanel deferred to Wave 100)
+  // graph: GraphAPI removed in Wave 22 (IPC handlers deleted); in-app GraphPanel removed in Wave 101
   layout: LayoutAPI;
   mobileAccess: MobileAccessAPI;
   compareProviders: CompareProvidersAPI;

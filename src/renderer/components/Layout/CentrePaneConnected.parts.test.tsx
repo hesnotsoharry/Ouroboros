@@ -75,9 +75,6 @@ vi.mock('./TimeTravelPanelConnected', () => ({
   TimeTravelPanelConnected: () =>
     React.createElement('div', { 'data-testid': 'time-travel' }),
 }));
-vi.mock('./GraphPanel/GraphPanel', () => ({
-  GraphPanel: () => React.createElement('div', { 'data-testid': 'graph-panel' }),
-}));
 
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
