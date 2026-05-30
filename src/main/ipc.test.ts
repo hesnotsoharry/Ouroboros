@@ -46,9 +46,7 @@ vi.mock('./ipc-handlers', () => ({
   cleanupPairingHandlers: vi.fn(),
   cleanupPinnedContextHandlers: vi.fn(),
   cleanupProfileCrudHandlers: vi.fn(),
-  cleanupResearchControlHandlers: vi.fn(),
-  cleanupResearchDashboardHandlers: vi.fn(),
-  cleanupResearchHandlers: vi.fn(),
+  // cleanupResearch* removed in Wave 101 Phase 5 (research subsystem deleted)
   cleanupSessionCrudHandlers: vi.fn(),
   cleanupSystemPromptHandlers: vi.fn(),
   cleanupWorkspaceReadListHandlers: vi.fn(),
@@ -89,9 +87,7 @@ vi.mock('./ipc-handlers', () => ({
   registerProviderHandlers: vi.fn(),
   registerPtyHandlers: vi.fn().mockReturnValue([]),
   registerPtyPersistenceHandlers: vi.fn().mockReturnValue([]),
-  registerResearchControlHandlers: vi.fn().mockReturnValue([]),
-  registerResearchDashboardHandlers: vi.fn().mockReturnValue([]),
-  registerResearchHandlers: vi.fn().mockReturnValue([]),
+  // registerResearch* removed in Wave 101 Phase 5 (research subsystem deleted)
   registerRulesAndSkillsHandlers: vi.fn().mockReturnValue([]),
   registerSearchHandlers: vi.fn().mockReturnValue([]),
   registerSessionCrudHandlers: vi.fn().mockReturnValue([]),

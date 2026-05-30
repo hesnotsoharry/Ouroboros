@@ -37,12 +37,7 @@ export { cleanupProfileCrudHandlers, registerProfileCrudHandlers } from './profi
 export { registerProviderHandlers } from './providerHandlers';
 export { registerPtyHandlers } from './pty';
 export { registerPtyPersistenceHandlers } from './ptyPersistence';
-export { cleanupResearchHandlers, registerResearchHandlers } from './research';
-export { cleanupResearchControlHandlers, registerResearchControlHandlers } from './researchControl';
-export {
-  cleanupResearchDashboardHandlers,
-  registerResearchDashboardHandlers,
-} from './researchDashboardHandlers';
+// research handler exports removed in Wave 101 Phase 5 (research subsystem deleted)
 export { registerRulesAndSkillsHandlers } from './rulesAndSkills';
 export { registerSearchHandlers } from './search';
 export { cleanupSessionCrudHandlers, registerSessionCrudHandlers } from './sessionCrud';

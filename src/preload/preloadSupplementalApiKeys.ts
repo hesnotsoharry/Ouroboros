@@ -28,7 +28,7 @@ export type SupplementalApiKey =
   | 'folderCrud'
   | 'pinnedContext'
   | 'profileCrud'
-  | 'research'
+  // 'research' removed in Wave 101 Phase 5 (research subsystem deleted)
   | 'workspaceReadList'
   | 'subagent'
   | 'layout'

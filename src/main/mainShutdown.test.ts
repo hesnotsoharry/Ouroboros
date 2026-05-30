@@ -6,6 +6,7 @@
  *   - a failing subsystem does not abort the shutdown sequence
  *
  * codebase-graph disposal removed in Wave 22 (codebaseGraph deleted).
+ * research writer mocks removed in Wave 101 Phase 5 (research subsystem deleted).
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,12 +33,7 @@ vi.mock('./logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.
 // contextDecisionWriter + contextOutcomeWriter mocks removed in Wave 100 Phase F
 //   (closeDecisionWriter/closeOutcomeWriter removed from mainShutdown during context-intelligence cut)
 vi.mock('./pipeAuth', () => ({ deleteTokenFile: recorder('deleteTokenFile') }));
-vi.mock('./research/correctionWriter', () => ({
-  closeCorrectionWriter: recorder('closeCorrectionWriter', true),
-}));
-vi.mock('./research/researchOutcomeWriter', () => ({
-  closeResearchOutcomeWriter: recorder('closeResearchOutcomeWriter', true),
-}));
+// research writer mocks removed in Wave 101 Phase 5 (closeCorrectionWriter/closeResearchOutcomeWriter deleted)
 // router/qualitySignalCollector + router/retrainTrigger mocks removed in Wave 100 Phase G (router CUT)
 vi.mock('./session/sessionStartup', () => ({ closeSessionServices: recorder('closeSessionServices') }));
 // telemetry mock removed in Wave 101 Phase 4 (telemetry pipeline deleted)
@@ -56,7 +52,7 @@ describe('performWillQuitShutdown', () => {
 
     expect(calls).toContain('closeSessionServices');
     // closeDecisionWriter removed in Wave 100 Phase F (context-intelligence cut)
-    expect(calls).toContain('closeResearchOutcomeWriter');
+    // closeResearchOutcomeWriter/closeCorrectionWriter removed in Wave 101 Phase 5 (research subsystem deleted)
     // closeTelemetryStore removed in Wave 101 Phase 4 (telemetry pipeline deleted)
     expect(calls).toContain('stopClaudeUsagePoller');
     expect(calls).toContain('cleanupIpcHandlers');

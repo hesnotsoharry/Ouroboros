@@ -23,7 +23,7 @@ import { marketplaceApi } from './preloadSupplementalMarketplaceApis';
 import { memoryApi } from './preloadSupplementalMemoryApis';
 import { pinnedContextApi } from './preloadSupplementalPinnedContextApis';
 import { profileCrudApi } from './preloadSupplementalProfileApis';
-import { researchApi } from './preloadSupplementalResearchApis';
+// researchApi removed in Wave 101 Phase 5 (research subsystem deleted)
 import { rulesAndSkillsApi } from './preloadSupplementalRulesSkills';
 import { sessionCrudApi } from './preloadSupplementalSessionApis';
 import { subagentApi } from './preloadSupplementalSubagentApis';
@@ -268,7 +268,7 @@ export const supplementalApis: SupplementalApis = {
   folderCrud: folderCrudApi,
   pinnedContext: pinnedContextApi,
   profileCrud: profileCrudApi,
-  research: researchApi,
+  // research removed in Wave 101 Phase 5 (research subsystem deleted)
   workspaceReadList: workspaceReadListApi,
   subagent: subagentApi,
   layout: layoutApi,

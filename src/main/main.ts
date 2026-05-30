@@ -29,9 +29,7 @@ import { generatePipeTokens, setTokenFilePath } from './pipeAuth';
 import { dispatchPermalinkFromArgv, setupThreadProtocol } from './protocolHandler';
 import { registerBuiltinProviders } from './providerBootstrap';
 import { killAllPtySessions } from './pty';
-import { initCorrectionWriter } from './research/correctionWriter';
-import { scheduleResearchCachePurge } from './research/researchCacheScheduler';
-import { initResearchOutcomeWriter } from './research/researchOutcomeWriter';
+// research imports removed in Wave 101 Phase 5 (research subsystem deleted)
 import { fireBootRestore } from './rulesAndSkills/postSpawnRestore';
 import { initSessionServices } from './session/sessionStartup';
 import { runAllMigrations } from './storage/migrate';
@@ -179,10 +177,8 @@ function startWebServerAsync(): void {
 async function initTelemetryAndWriters(ud: string): Promise<void> {
   // telemetry store + outcomeObserver + drain removed in Wave 101 Phase 4
   // editProvenance removed in Wave 101 Phase 4
-  initResearchOutcomeWriter(ud);
-  initCorrectionWriter(ud);
+  // research writers + cache-purge removed in Wave 101 Phase 5
   scheduleJsonlRetentionPurge(ud);
-  scheduleResearchCachePurge(ud);
 }
 
 async function initWindowsAndServices(): Promise<void> {

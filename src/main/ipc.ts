@@ -21,9 +21,7 @@ import {
   cleanupPairingHandlers,
   cleanupPinnedContextHandlers,
   cleanupProfileCrudHandlers,
-  cleanupResearchControlHandlers,
-  cleanupResearchDashboardHandlers,
-  cleanupResearchHandlers,
+  // cleanupResearch* removed in Wave 101 Phase 5 (research subsystem deleted)
   cleanupSessionCrudHandlers,
   cleanupSystemPromptHandlers,
   cleanupWorkspaceReadListHandlers,
@@ -63,9 +61,7 @@ import {
   registerProviderHandlers,
   registerPtyHandlers,
   registerPtyPersistenceHandlers,
-  registerResearchControlHandlers,
-  registerResearchDashboardHandlers,
-  registerResearchHandlers,
+  // registerResearch* removed in Wave 101 Phase 5 (research subsystem deleted)
   registerRulesAndSkillsHandlers,
   registerSearchHandlers,
   registerSessionCrudHandlers,
@@ -111,9 +107,7 @@ function registerCoreDomainHandlers(win: BrowserWindow): string[] {
     ...safeRegister('folderCrud', () => registerFolderCrudHandlers()),
     ...safeRegister('pinnedContext', () => registerPinnedContextHandlers()),
     ...safeRegister('profileCrud', () => registerProfileCrudHandlers()),
-    ...safeRegister('research', () => registerResearchHandlers()),
-    ...safeRegister('researchControl', () => registerResearchControlHandlers()),
-    ...safeRegister('researchDashboard', () => registerResearchDashboardHandlers()),
+    // research handlers removed in Wave 101 Phase 5 (research subsystem deleted)
     ...safeRegister('sessions', () => registerSessionHandlers(senderWindow)),
     ...safeRegister('systemPrompt', () => registerSystemPromptHandlers()),
     ...safeRegister('misc', () => registerMiscHandlers(senderWindow, win)),
@@ -256,9 +250,7 @@ export async function cleanupIpcHandlers(): Promise<void> {
   cleanupFolderCrudHandlers();
   cleanupPinnedContextHandlers();
   cleanupProfileCrudHandlers();
-  cleanupResearchHandlers();
-  cleanupResearchControlHandlers();
-  cleanupResearchDashboardHandlers();
+  // cleanupResearch* removed in Wave 101 Phase 5 (research subsystem deleted)
   cleanupWorktreeHandlers();
   cleanupWorkspaceReadListHandlers();
   cleanupLayoutHandlers();

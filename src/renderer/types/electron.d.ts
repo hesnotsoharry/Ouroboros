@@ -25,7 +25,7 @@ export * from './electron-observability';
 export * from './electron-orchestration';
 export * from './electron-pinned-context';
 export * from './electron-profile';
-export * from './electron-research';
+// electron-research removed in Wave 101 Phase 5 (research subsystem deleted; ResearchMode moved to electron-foundation)
 export * from './electron-rules-skills';
 export * from './electron-runtime-apis';
 export * from './electron-session';

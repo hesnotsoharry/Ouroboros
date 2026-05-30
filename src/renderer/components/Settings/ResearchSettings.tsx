@@ -7,8 +7,7 @@
 
 import React from 'react';
 
-import type { AppConfig } from '../../types/electron';
-import type { ResearchMode } from '../../types/electron-research';
+import type { AppConfig, ResearchMode } from '../../types/electron';
 import {
   claudeSectionHeaderTextStyle,
   claudeSectionRootStyle,

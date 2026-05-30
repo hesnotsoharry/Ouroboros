@@ -31,7 +31,7 @@ import type {
 } from './electron-observability';
 import type { PinnedContextAPI } from './electron-pinned-context';
 import type { ProfileAPI } from './electron-profile';
-import type { ResearchAPI } from './electron-research';
+// ResearchAPI import removed in Wave 101 Phase 5 (research subsystem deleted)
 import type { RulesAndSkillsAPI } from './electron-rules-skills';
 import type {
   AppAPI,
@@ -290,7 +290,7 @@ export interface ElectronAPI {
   folderCrud: FolderCrudAPI;
   pinnedContext: PinnedContextAPI;
   profileCrud: ProfileAPI;
-  research: ResearchAPI;
+  // research removed in Wave 101 Phase 5 (research subsystem deleted)
   workspaceReadList: WorkspaceReadListAPI;
   subagent: SubagentAPI;
   flowTracer: FlowTracerAPI;

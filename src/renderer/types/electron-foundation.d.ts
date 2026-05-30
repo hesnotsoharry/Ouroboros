@@ -112,10 +112,13 @@ export interface WorkspaceSnapshot {
   projectRoot?: string;
 }
 
+/** Wave 30 — research mode values (settings UI still uses these for config only). */
+export type ResearchMode = 'off' | 'conservative' | 'aggressive';
+
 /** Wave 30 — research auto-firing settings. */
 export interface ResearchSettings {
   globalEnabled?: boolean;
-  defaultMode?: 'off' | 'conservative' | 'aggressive';
+  defaultMode?: ResearchMode;
   stalenessConfidenceFloor?: number;
   factClaimEnabled?: boolean;
   factClaimMinPatternConfidence?: 'high' | 'medium' | 'low';

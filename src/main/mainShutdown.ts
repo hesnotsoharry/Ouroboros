@@ -18,8 +18,7 @@ import log from './logger';
 // closeDecisionWriter/closeOutcomeWriter/stopContextRetrainTrigger removed in Wave 100 Phase F (context-intelligence cut)
 // closeEditProvenance/closeOutcomeObserver/closeTelemetryStore removed in Wave 101 Phase 4 (telemetry pipeline removed)
 import { deleteTokenFile } from './pipeAuth';
-import { closeCorrectionWriter } from './research/correctionWriter';
-import { closeResearchOutcomeWriter } from './research/researchOutcomeWriter';
+// research writer imports removed in Wave 101 Phase 5 (research subsystem deleted)
 import { closeSessionServices } from './session/sessionStartup';
 
 async function tryShutdown(label: string, fn: () => Promise<void>): Promise<void> {
@@ -30,11 +29,7 @@ async function tryShutdown(label: string, fn: () => Promise<void>): Promise<void
   }
 }
 
-async function closeWriters(): Promise<void> {
-  await closeResearchOutcomeWriter();
-  await closeCorrectionWriter();
-}
-
+// closeWriters removed in Wave 101 Phase 5 (research writers deleted)
 // closeSyncStores removed in Wave 101 Phase 4 (telemetry pipeline + editProvenance removed)
 
 async function disposeSubsystems(): Promise<void> {
@@ -52,7 +47,7 @@ export async function performWillQuitShutdown(): Promise<void> {
   flushPendingWritesSync();
   await tryShutdown('codemode-user-level', disableCodeModeUserLevel);
   closeSessionServices();
-  await closeWriters();
+  // closeWriters removed in Wave 101 Phase 5 (research writers deleted)
   await stopClaudeUsagePoller();
   await cleanupIpcHandlers();
   closeCostHistoryDb();
