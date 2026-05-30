@@ -18,7 +18,6 @@ const TIMELINE_VISIBLE_LIMIT = 500;
 export type WorkbenchTimelineTone = 'neutral' | 'success' | 'warning' | 'error';
 
 export type WorkbenchTimelineKind =
-  | 'approval'
   | 'review'
   | 'session'
   | 'tool'

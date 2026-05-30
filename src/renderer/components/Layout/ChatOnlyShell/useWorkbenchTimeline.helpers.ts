@@ -1,6 +1,5 @@
 import type { LoadedRule, SkillExecutionRecord } from '@shared/types/ruleActivity';
 
-import type { ApprovalRequest } from '../../../types/electron';
 import type { AgentSession } from '../../AgentMonitor/types';
 import type { DiffReviewState } from '../../DiffReview/types';
 import type { WorkbenchTimelineEntry, WorkbenchTimelineTone } from './useWorkbenchTimeline';
@@ -39,14 +38,6 @@ export function completionTone(status: AgentSession['status']): WorkbenchTimelin
 
 // ─── Detail helpers ───────────────────────────────────────────────────────────
 
-export function approvalPreview(request: ApprovalRequest): string {
-  if (request.toolName === 'Bash')
-    return normalizeText(String(request.toolInput.command ?? ''), 140);
-  const filePath = request.toolInput.file_path ?? request.toolInput.path;
-  if (filePath !== undefined) return normalizeText(String(filePath), 140);
-  return normalizeText(JSON.stringify(request.toolInput), 140);
-}
-
 export function getRuleDetail(rule: LoadedRule): string {
   const parts = [rule.name, rule.memoryType, normalizeText(rule.loadReason, 80)];
   return parts.filter(Boolean).join(' · ');
@@ -75,26 +66,7 @@ export function deriveSessionLabel(session: AgentSession): string {
   return session.taskLabel || `Session ${session.id.slice(0, 8)}`;
 }
 
-// ─── Approval / review entries ────────────────────────────────────────────────
-
-export function appendApprovalEntries(
-  requests: ApprovalRequest[],
-  entries: WorkbenchTimelineEntry[],
-): void {
-  for (const request of requests) {
-    entries.push({
-      id: `approval:${request.requestId}`,
-      kind: 'approval',
-      kindLabel: 'Approval',
-      sessionId: request.sessionId,
-      sessionLabel: request.sessionId,
-      timestamp: request.timestamp,
-      title: `Approval required for ${request.toolName}`,
-      detail: approvalPreview(request) || undefined,
-      tone: 'warning',
-    });
-  }
-}
+// ─── Review entries ───────────────────────────────────────────────────────────
 
 export function appendReviewEntry(
   diffReviewState: DiffReviewState | null,

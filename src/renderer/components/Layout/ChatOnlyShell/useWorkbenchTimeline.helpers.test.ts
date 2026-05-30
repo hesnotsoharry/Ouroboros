@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ApprovalRequest } from '../../../types/electron';
 import type { AgentSession } from '../../AgentMonitor/types';
 import type { WorkbenchTimelineEntry } from './useWorkbenchTimeline';
 import {
-  appendApprovalEntries,
   appendReviewEntry,
-  approvalPreview,
   completionTone,
   dedupeSessions,
   deriveSessionLabel,
@@ -92,30 +89,6 @@ describe('completionTone', () => {
   });
 });
 
-describe('approvalPreview', () => {
-  it('extracts Bash command', () => {
-    const req: ApprovalRequest = {
-      requestId: 'r1',
-      toolName: 'Bash',
-      toolInput: { command: 'npm test' },
-      sessionId: 's1',
-      timestamp: 1_000,
-    };
-    expect(approvalPreview(req)).toBe('npm test');
-  });
-
-  it('extracts file_path for non-Bash tools', () => {
-    const req: ApprovalRequest = {
-      requestId: 'r2',
-      toolName: 'Write',
-      toolInput: { file_path: '/src/index.ts', content: '...' },
-      sessionId: 's1',
-      timestamp: 1_000,
-    };
-    expect(approvalPreview(req)).toBe('/src/index.ts');
-  });
-});
-
 describe('dedupeSessions', () => {
   it('removes duplicate session ids keeping first occurrence', () => {
     const a = makeSession({ id: 'a', startedAt: 1_000 });
@@ -141,24 +114,6 @@ describe('deriveSessionLabel', () => {
   it('falls back to truncated id', () => {
     const s = makeSession({ taskLabel: '', id: 'abcdef1234567890' });
     expect(deriveSessionLabel(s)).toBe('Session abcdef12');
-  });
-});
-
-describe('appendApprovalEntries', () => {
-  it('pushes one entry per request with warning tone', () => {
-    const entries: WorkbenchTimelineEntry[] = [];
-    const req: ApprovalRequest = {
-      requestId: 'req-1',
-      toolName: 'Bash',
-      toolInput: { command: 'rm -rf /' },
-      sessionId: 's1',
-      timestamp: 5_000,
-    };
-    appendApprovalEntries([req], entries);
-    expect(entries).toHaveLength(1);
-    expect(entries[0].kind).toBe('approval');
-    expect(entries[0].tone).toBe('warning');
-    expect(entries[0].detail).toContain('rm -rf /');
   });
 });
 
