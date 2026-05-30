@@ -1,10 +1,34 @@
 ---
 project: agent-ide
-updated: 2026-05-29
-active-focus: wave-101 telemetry-pipeline-removal (CODE-COMPLETE on branch; pending live smoke + push)
+updated: 2026-05-30
+active-focus: CRITICAL machine-lockup — codebase/MCP process storm (see bugs/2026-05-30-machine-lockup-mcp-process-storm.md)
 last-wave: wave-101-telemetry-pipeline-removal
 last-wave-status: CODE-COMPLETE-PENDING-LIVE-SMOKE
 ---
+
+## ⚠️ CRITICAL — START HERE (2026-05-30): machine lockup from MCP process storm
+
+User's machine **locked up ~13 min** on IDE launch. Root cause is a **storm of codebase-MCP
+processes** (`codebase-memory-mcp.exe`, user-observed in Task Manager) — each Claude session spawns a
+heavy MCP per `.mcp.json`, each scanning a repo → OS-level CPU/disk saturation. Smoking gun:
+`[jank] event loop blocked for ~107101ms` (107 s) with `ops: []` = Electron main thread STARVED by
+other processes, not blocking on its own code. `git:branch` hit **104 s**, `files:mkdir` 12 s.
+
+**This is a DIFFERENT cause than the two already fixed** — NOT the telemetry-SQLite freeze (wave-101
+removed it) and NOT the approval sockets (removed this session, commit `684e9f81`).
+
+**Full triage + raw log + the concrete lead (stale `.mcp.json` pointing at a legacy
+`C:\Web App\Agent IDE\out\main\ouroborosMcp.js` electron MCP, spawned per session):**
+→ **`roadmap/bugs/2026-05-30-machine-lockup-mcp-process-storm.md`**
+
+**First moves for the fresh session (start at the OS, not the app log):** `tasklist`/`Get-Process`
+to count the MCP/electron-run-as-node/node processes + their parent PIDs; check `.mcp.json` in all 3
+roots (AgentIDE/Gamify/ContractorApp); determine why ~94 (phantom-session spawn loop? per-call MCP
+leak? stale-path retry storm?); check whether each MCP launch does a full cold repo scan.
+
+This session's 5 commits (semaphore, diff-review gate, xterm, approval removal, cleanup) are verified
+green (tsc + build + tests) but did NOT stop the lockup. All on `freeze-fix-and-wave-101-scaffold`,
+**not pushed**.
 
 ## Current state
 
