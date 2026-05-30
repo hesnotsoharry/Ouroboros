@@ -24,6 +24,11 @@ vi.mock('./ipc-handlers/gitOperations', () => ({
   gitTrimmed: (...args: unknown[]) => gitTrimmedMock(...args),
 }));
 
+const getCachedRepoStatusMock = vi.fn<() => boolean | undefined>().mockReturnValue(undefined);
+vi.mock('./ipc-handlers/gitRepoStatusCache', () => ({
+  getCachedRepoStatus: (...args: unknown[]) => getCachedRepoStatusMock(...args),
+}));
+
 import log from './logger';
 vi.mock('./logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
@@ -40,6 +45,10 @@ function makePrePayload(overrides: Partial<HookPayload> = {}): HookPayload {
     sessionId: 'sess-1',
     toolName: 'Write',
     correlationId: 'corr-1',
+    // paneId marks this as an IDE-owned session (set from OUROBOROS_PANE_ID in PTY env).
+    // External sessions omit this field — tests that need to simulate external
+    // sessions should pass paneId: undefined explicitly.
+    paneId: 'wb-upper-cc',
     timestamp: Date.now(),
     input: { file_path: 'src/foo.ts' },
     ...overrides,
@@ -52,6 +61,7 @@ function makePostPayload(overrides: Partial<HookPayload> = {}): HookPayload {
     sessionId: 'sess-1',
     toolName: 'Write',
     correlationId: 'corr-1',
+    paneId: 'wb-upper-cc',
     timestamp: Date.now(),
     data: { filePath: 'src/foo.ts' },
     ...overrides,
@@ -182,6 +192,68 @@ describe('tapDiffReview', () => {
 
     tapDiffReview(makePostPayload({ correlationId: postCorrelationId }), cwdMap);
     expect(dispatchSyntheticMock).not.toHaveBeenCalled();
+  });
+
+  // ── Ownership gate regression tests ───────────────────────────────────────
+
+  it('skips git spawn for external session (no paneId) on pre_tool_use', async () => {
+    // Simulates an external Claude session running on the same machine that fires
+    // hooks into the IDE's named pipe. Without paneId the payload should be dropped
+    // BEFORE any git work is triggered — the git spawn must never be called.
+    tapDiffReview(makePrePayload({ paneId: undefined }), cwdMap);
+    await vi.runAllTimersAsync();
+    await vi.runAllTimersAsync();
+    expect(gitTrimmedMock).not.toHaveBeenCalled();
+  });
+
+  it('skips diff_review_ready emit for external session (no paneId) on post_tool_use', async () => {
+    // The pre event for an external session must have been dropped, so the stash
+    // has no entry. But even if we call post directly, the ownership gate fires
+    // on the post too and stops it before stash lookup.
+    tapDiffReview(makePostPayload({ paneId: undefined }), cwdMap);
+    expect(dispatchSyntheticMock).not.toHaveBeenCalled();
+  });
+
+  it('still processes diff-review for IDE-owned session (paneId present) on pre_tool_use', async () => {
+    // Regression guard: the ownership gate must NOT block legitimate IDE sessions.
+    tapDiffReview(makePrePayload({ paneId: 'wb-upper-cc' }), cwdMap);
+    await vi.runAllTimersAsync();
+    await vi.runAllTimersAsync();
+    expect(gitTrimmedMock).toHaveBeenCalledWith('/proj', ['rev-parse', 'HEAD']);
+  });
+
+  it('still emits diff_review_ready for IDE-owned session (paneId present) end-to-end', async () => {
+    tapDiffReview(makePrePayload({ paneId: 'wb-upper-cc' }), cwdMap);
+    await vi.runAllTimersAsync();
+    await vi.runAllTimersAsync();
+
+    tapDiffReview(makePostPayload({ paneId: 'wb-upper-cc' }), cwdMap);
+    expect(dispatchSyntheticMock).toHaveBeenCalledTimes(1);
+    const emitted = dispatchSyntheticMock.mock.calls[0][0];
+    expect(emitted.type).toBe('diff_review_ready');
+    expect(emitted.sessionId).toBe('sess-1');
+  });
+
+  // ── Non-repo guard (defense-in-depth) tests ───────────────────────────────
+
+  it('skips git spawn when cache reports cwd is not a git repo', async () => {
+    // getCachedRepoStatus returning false means the repo-status cache already
+    // confirmed this directory is not a git repo — no spawn needed.
+    getCachedRepoStatusMock.mockReturnValue(false);
+    tapDiffReview(makePrePayload(), cwdMap);
+    await vi.runAllTimersAsync();
+    await vi.runAllTimersAsync();
+    expect(gitTrimmedMock).not.toHaveBeenCalled();
+  });
+
+  it('still spawns git when cache returns undefined (not yet checked)', async () => {
+    // A cache miss means we have not yet checked this directory — allow the spawn.
+    // The existing error-catch handles the case where it turns out not to be a repo.
+    getCachedRepoStatusMock.mockReturnValue(undefined);
+    tapDiffReview(makePrePayload(), cwdMap);
+    await vi.runAllTimersAsync();
+    await vi.runAllTimersAsync();
+    expect(gitTrimmedMock).toHaveBeenCalledWith('/proj', ['rev-parse', 'HEAD']);
   });
 
   it('handles MultiEdit filePaths forwarded from hook script', async () => {

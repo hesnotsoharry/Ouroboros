@@ -13,6 +13,7 @@
 import { getConfigValue } from './config';
 import type { HookPayload } from './hooks';
 import { dispatchSyntheticHookEvent } from './hooks';
+import { getCachedRepoStatus } from './ipc-handlers/gitRepoStatusCache';
 import log from './logger';
 
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit']);
@@ -52,6 +53,13 @@ function evictStaleEntries(): void {
 }
 
 async function captureSnapshot(cwd: string): Promise<string | null> {
+  // Defense-in-depth: skip the spawn when the cache already confirms this is
+  // not a git repo (avoids "fatal: not a git repository" churn on non-repo cwds).
+  // A cache miss (undefined) allows the spawn — the catch below handles the case
+  // where the cwd is later confirmed non-repo.
+  if (getCachedRepoStatus(cwd) === false) {
+    return null;
+  }
   const { gitTrimmed } = await import('./ipc-handlers/gitOperations');
   try {
     return await gitTrimmed(cwd, ['rev-parse', 'HEAD']);
@@ -133,8 +141,34 @@ function handlePostToolUse(payload: HookPayload): void {
   dispatchSyntheticHookEvent(event as unknown as HookPayload);
 }
 
+/**
+ * Ownership gate: only process diff-review work for IDE-spawned sessions.
+ *
+ * `paneId` is set by session_start.mjs / agent_start.mjs exclusively from
+ * `process.env.OUROBOROS_PANE_ID`, which is injected only into PTY processes
+ * the IDE spawns. External Claude sessions running elsewhere on the machine
+ * will never have this env var, so their hook payloads arrive with no paneId.
+ *
+ * This is the primary ownership signal (preferred over an owned-session-ID set
+ * because: (a) it requires no threading of state from hooks.ts, (b) it is
+ * reliable at the payload level, and (c) the CLAUDE.md gotcha explicitly
+ * documents it as the discriminator for IDE-owned sessions).
+ *
+ * Synthetic `diff_review_ready` payloads emitted by this module have
+ * `ideSpawned: true` (set by dispatchSyntheticHookEvent) but no paneId — that
+ * is correct: they skip this gate because their type is 'diff_review_ready',
+ * not 'pre_tool_use' / 'post_tool_use', so the toolName check returns first.
+ */
+function isOwnedSession(payload: HookPayload): boolean {
+  return Boolean(payload.paneId);
+}
+
 export function tapDiffReview(payload: HookPayload, sessionCwdMap: Map<string, string>): void {
   if (!payload.toolName || !WRITE_TOOLS.has(payload.toolName)) return;
+  // Gate: skip diff-review for sessions the IDE did not spawn. External Claude
+  // sessions on the same machine send hooks to this pipe too; processing their
+  // write events causes git spawns against unknown cwds and saturates CPU/disk.
+  if (!isOwnedSession(payload)) return;
   const enabled = getConfigValue('claudeCliSettings')?.enableTerminalDiffReview ?? true;
   if (!enabled) return;
 
