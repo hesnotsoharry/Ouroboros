@@ -71,13 +71,6 @@ function createTerminal(
     allowTransparency: true,
     theme: buildXtermTheme(),
   };
-  log.info('[xterm-init] createTerminal', {
-    cursorBlink: opts.cursorBlink,
-    cursorStyle: opts.cursorStyle,
-    cursorInactiveStyle: opts.cursorInactiveStyle,
-    allowTransparency: opts.allowTransparency,
-    scrollback: opts.scrollback,
-  });
   return new Terminal(opts);
 }
 
@@ -190,10 +183,8 @@ function loadTerminalAddons(
   container: HTMLDivElement,
 ): void {
   const { fitAddon, searchAddon } = loadPreOpenAddons(term);
-  // [trace:xterm-init] Marks the term.open() call site — pre-open addons
-  // (FitAddon, SearchAddon, WebLinksAddon) are loaded before this point;
-  // post-open addons (WebGL, Image, Clipboard, etc.) load after.
-  log.info('[xterm-init] term.open() called', { sessionId: context.sessionId });
+  // Pre-open addons (FitAddon, SearchAddon, WebLinksAddon) load before
+  // term.open(); post-open addons (WebGL, Image, Clipboard, etc.) load after.
   term.open(container);
   loadPostOpenAddons(context, term);
   context.refs.fitAddonRef.current = fitAddon;
