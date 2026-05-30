@@ -123,5 +123,5 @@ export function buildOverlapSymbols(
   const overlapIds = new Set(symsA.map((s) => s.id));
   return symsB
     .filter((s) => overlapIds.has(s.id))
-    .map((s) => ({ id: s.id, file: s.filePath, line: s.line, kind: s.type, name: s.name }));
+    .map((s) => ({ id: s.id, file: s.filePath ?? '', line: s.line, kind: s.type ?? '', name: s.name ?? '' }));
 }

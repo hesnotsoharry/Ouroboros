@@ -60,7 +60,7 @@ function buildNodeChunks(
     if (text.trim().length === 0) continue;
     chunks.push({
       filePath,
-      symbolName: node.name,
+      symbolName: node.name ?? '',
       symbolType: node.type,
       startLine: start + 1,
       endLine: clampedEnd,

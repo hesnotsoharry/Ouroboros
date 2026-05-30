@@ -17,7 +17,7 @@
  * flowTracer.maxDepth (default 6, range 3-12).
  */
 
-import type { FlowTrace, SymbolRef } from '../../shared/types/flowTracer';
+import type { FlowEdge, FlowStep, FlowTrace, SymbolRef } from '../../shared/types/flowTracer';
 import log from '../logger';
 import { getBoundaryRegistry } from './boundaryRegistry';
 import { getWalkingSkeletonFallback } from './traceEngineFallback';

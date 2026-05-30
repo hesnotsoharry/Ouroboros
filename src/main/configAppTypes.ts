@@ -7,11 +7,13 @@
  */
 
 import type { DockPersistenceData } from '@shared/config/dockPersistenceSchema';
+import type { TerminalSessionsPerProject } from '@shared/config/projectTerminalsSchema';
 
 import type {
   AgentTemplate,
   AppEcosystemConfig,
   AppLayoutConfig,
+  CanonWorkbenchSessions,
   ClaudeCliSettings,
   ClaudeMdSettings,
   CodebaseGraphSettings,
@@ -222,4 +224,8 @@ export interface AppConfig {
   flowTracer?: { maxDepth?: number; saveSharedFlows?: boolean };
   /** Wave 95 Phase B — terminal subsystem settings. */
   terminal?: { scrollback?: number };
+  /** Wave 10 — per-project canon workbench session persistence (path → two-frame slot). */
+  canonWorkbenchSessions: CanonWorkbenchSessions;
+  /** Wave 94 Phase B — per-project terminal session ownership (path → ProjectTerminalState map). */
+  terminalSessionsPerProject: TerminalSessionsPerProject;
 }
