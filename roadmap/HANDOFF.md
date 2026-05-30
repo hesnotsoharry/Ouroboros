@@ -1,24 +1,24 @@
 ---
 project: agent-ide
 updated: 2026-05-29
-active-focus: wave-101 telemetry-pipeline-removal (scaffolded, ready to execute)
-last-wave: wave-14-rails-ui-fix-sweep
-last-wave-status: SHIPPED-PENDING-MANUAL-SMOKE
+active-focus: wave-101 telemetry-pipeline-removal (CODE-COMPLETE on branch; pending live smoke + push)
+last-wave: wave-101-telemetry-pipeline-removal
+last-wave-status: CODE-COMPLETE-PENDING-LIVE-SMOKE
 ---
 
 ## Current state
 
-- Branch: **`freeze-fix-and-wave-101-scaffold`** off master. Track A committed (`c2bfa902`). **Nothing pushed this session.**
-- **The freeze is SOLVED and stopgapped.** Root cause: the **telemetry SQLite store** — a 100 ms `flushEvents` synchronous `better-sqlite3` write + a forced WAL checkpoint against a **689 MB `telemetry.db`** blocked the main thread up to **193 s** (whole machine froze). It was NOT the watcher fan-out (prior session's lead was wrong) and NOT the deferred purge. Note: the prior static pass *ruled telemetry out* as O(1); the live launch proved it was the cause — runtime data beat static analysis here.
-- **Stopgap applied:** `telemetry.db` (+`-wal`/`-shm`) moved to `AppData/Roaming/ouroboros/telemetry/_stopgap-backup-20260529-165653/`. Confirmed by relaunch — worst event-loop block **193 s → 2 s**, `services-ready` **6.4 s → 3.2 s**. Freeze gone; the fresh DB regrows slowly until wave-101 deletes the writers.
-- **Telemetry pipeline confirmed fully orphaned** (two explorer passes, verified against code): feeds only removed consumers — router (gone), chat (Wave 100), the never-mounted `Observability/OrchestrationInspector` panel; graph went standalone-MCP, auto-inject removed (Wave 22). **The live workbench `AgentSidebar` uses the live `hooks.ts`→renderer stream, NOT the SQLite store** — this is the load-bearing constraint for the removal.
-- HELD: `66369791` (Thing 3, windowGroups multi-root persistence), still not pushed. Instrumentation (`main.ts`, `migrateStaleRoots.ts` `[trace:startup]`) intentionally **uncommitted** — still useful (it confirmed the stopgap). Product: terminal workbench shell only (chat removed Wave 100 / v2.35.0).
+- Branch: **`freeze-fix-and-wave-101-scaffold`** off master. **Nothing pushed yet.** Wave-101 is **CODE-COMPLETE** — 10 commits (`3045beb6`..`2c16ddc5`), all 8 phases (1–6, 6b, 5b) done; Phase 7 automated gates green.
+- **The freeze is PERMANENTLY FIXED.** Wave-101 deleted the telemetry SQLite store (the 100 ms synchronous `flushEvents` + WAL checkpoint against a 689 MB `telemetry.db` that blocked the main thread up to 193 s), all drain handlers, the dead tap pipeline, `editProvenance`, the 44-file `research/` subsystem + its UI, and the hook-process queue writers. **No synchronous SQLite write remains on the main event loop** — the freeze class is structurally gone (the earlier stopgap is now moot; its 722 MB backup was deleted).
+- **Live AgentSidebar feed preserved surgically.** The `hooks.ts → hooks:event → AgentSidebar` path was kept; the `store.record` persistence seam was cut. Guard test `src/main/hooks.liveEmissionInvariant.test.ts` proves emission is independent of the store (5/5 green at every phase).
+- **Gates:** tsc clean (default config) · lint 0 errors · `test:main` 3356 pass / **3 pre-existing** codemode `/packages/` failures (zero wave-introduced) · guard 5/5 · dangling-ref grep clean. Telemetry data tree deleted (~935 MB freed); live `codebase-graph.db` untouched.
+- HELD (unchanged, post-wave decisions): `66369791` (Thing 3, windowGroups multi-root persistence) still not pushed. Instrumentation (`main.ts`, `migrateStaleRoots.ts` `[trace:startup]`) intentionally **uncommitted** (excluded from every wave commit via partial staging). Product: terminal workbench shell only.
 
 ## Next steps
 
-1. **Execute wave-101** — `roadmap/wave-101-telemetry-pipeline-removal.md` (PLANNED, 7 phases, ~80–100 files). Wholesale deletion of the telemetry persistence/analytics layer. **CRITICAL:** Phase 1 (read-only) maps the `hooks.ts` seam — live renderer-emission (KEEP) vs persistence calls `store.record`/`tapEditProvenance`/`tapGraphUsage` (REMOVE) — before any deletion. AgentSidebar is the live canary checked at every phase. Do NOT `rm -rf src/main/telemetry` and chase compile errors.
-2. Commit the wave-101 scaffold + this HANDOFF (currently pending in the working tree, this branch).
-3. After wave-101 ships: clean `~/.ouroboros/telemetry/` (queue/processed/jsonl + the stopgap backup); decide on the held instrumentation + Thing 3 (`66369791`).
+1. **Live smoke (REQUIRED before push — could not be agent-served):** `npm run dev` → launch an inner Claude Code session → confirm **AgentSidebar updates live** (NOW/timeline/files/context) → main log has **no** `[telemetry]`/`[*-drain]`/`flushEvents`/`router-shadow` lines → **no** `telemetry.db` recreated → relaunch confirms `~/.claude/settings.json` no longer has `router-shadow`/`session_start_spawn_cost` hooks (the `pruneRemovedHooksFromSettings` one-time pass).
+2. **On smoke pass:** flip wave-101 to SHIPPED, push the branch, run the wrap (HANDOFF rewrite + decision promotion). Version: minor bump (feature/removal wave).
+3. **Post-ship housekeeping:** decide on the held instrumentation + Thing 3 (`66369791`); optionally clear the 16 KB orphaned `research-cache.db`; doc sweep for `roadmap/docs/data-model.md:237` (stale `researchSettings` ref).
 
 ## Track A — residual micro-lag (committed `c2bfa902`, separate root cause)
 
