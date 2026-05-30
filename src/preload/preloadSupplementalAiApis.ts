@@ -4,8 +4,6 @@ import type { ElectronAPI } from '../renderer/types/electron';
 
 type AiApi = ElectronAPI['ai'];
 type EmbeddingApi = ElectronAPI['embedding'];
-type TelemetryApi = ElectronAPI['telemetry'];
-type ObservabilityApi = ElectronAPI['observability'];
 
 export const aiApi: AiApi = {
   inlineCompletion: (request) => ipcRenderer.invoke('ai:inline-completion', request),
@@ -20,13 +18,4 @@ export const embeddingApi: EmbeddingApi = {
   reindex: (projectRoot: string) => ipcRenderer.invoke('embedding:reindex', projectRoot),
 };
 
-export const telemetryApi: TelemetryApi = {
-  queryEvents: (opts) => ipcRenderer.invoke('telemetry:queryEvents', opts),
-  queryOutcomes: (eventId) => ipcRenderer.invoke('telemetry:queryOutcomes', eventId),
-  queryTraces: (opts) => ipcRenderer.invoke('telemetry:queryTraces', opts),
-  record: (opts) => ipcRenderer.invoke('telemetry:record', opts),
-};
-
-export const observabilityApi: ObservabilityApi = {
-  exportTrace: (opts) => ipcRenderer.invoke('observability:exportTrace', opts),
-};
+// telemetryApi + observabilityApi removed in Wave 101 (telemetry persistence pipeline deleted)

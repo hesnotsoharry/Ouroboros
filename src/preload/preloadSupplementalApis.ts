@@ -13,7 +13,7 @@ import type {
   System2IndexProgressEvent,
   UpdaterEvent,
 } from '../renderer/types/electron';
-import { aiApi, embeddingApi, observabilityApi, telemetryApi } from './preloadSupplementalAiApis';
+import { aiApi, embeddingApi } from './preloadSupplementalAiApis';
 import type { SupplementalApiKey } from './preloadSupplementalApiKeys';
 import { flowTracerApi } from './preloadSupplementalFlowTracerApis';
 import { folderCrudApi } from './preloadSupplementalFolderApis';
@@ -253,8 +253,7 @@ export const supplementalApis: SupplementalApis = {
   rulesAndSkills: rulesAndSkillsApi,
   ai: aiApi,
   embedding: embeddingApi,
-  telemetry: telemetryApi,
-  observability: observabilityApi,
+  // telemetry + observability removed in Wave 101 (persistence pipeline deleted)
   workspace: {
     isTrusted: (p: string) => ipcRenderer.invoke('workspace:isTrusted', p),
     trustLevel: (roots: string[]) => ipcRenderer.invoke('workspace:trustLevel', roots),

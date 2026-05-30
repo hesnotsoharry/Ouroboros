@@ -21,8 +21,7 @@ export type SupplementalApiKey =
   | 'rulesAndSkills'
   | 'ai'
   | 'embedding'
-  | 'telemetry'
-  | 'observability'
+  // 'telemetry' + 'observability' removed in Wave 101 (persistence pipeline deleted)
   | 'workspace'
   | 'system2'
   | 'sessionCrud'

@@ -74,12 +74,6 @@ export const ViewModeSelector = memo(function ViewModeSelector({
     (mode: AgentMonitorViewMode) => {
       if (mode === value) return;
       onChange(mode);
-      if (typeof window !== 'undefined' && window.electronAPI) {
-        void window.electronAPI.telemetry.record({
-          kind: 'agent_monitor.view_mode',
-          data: { viewMode: mode },
-        });
-      }
     },
     [onChange, value],
   );

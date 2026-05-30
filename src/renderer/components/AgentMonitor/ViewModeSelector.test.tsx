@@ -4,22 +4,9 @@
  */
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ViewModeSelector } from './ViewModeSelector';
-
-// ─── electronAPI stub ─────────────────────────────────────────────────────────
-
-const mockRecord = vi.fn().mockResolvedValue({ success: true });
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  Object.defineProperty(window, 'electronAPI', {
-    value: { telemetry: { record: mockRecord } },
-    writable: true,
-    configurable: true,
-  });
-});
 
 afterEach(() => {
   cleanup();
@@ -74,22 +61,5 @@ describe('ViewModeSelector — onChange', () => {
   });
 });
 
-describe('ViewModeSelector — telemetry', () => {
-  it('fires telemetry record on mode change', async () => {
-    render(<ViewModeSelector value="normal" onChange={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: /verbose/i }));
-    // allow microtask flush
-    await Promise.resolve();
-    expect(mockRecord).toHaveBeenCalledWith({
-      kind: 'agent_monitor.view_mode',
-      data: { viewMode: 'verbose' },
-    });
-  });
-
-  it('does not fire telemetry when active mode clicked', async () => {
-    render(<ViewModeSelector value="normal" onChange={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: /normal/i }));
-    await Promise.resolve();
-    expect(mockRecord).not.toHaveBeenCalled();
-  });
-});
+// ViewModeSelector — telemetry describe block removed in Wave 101
+// (telemetry.record call deleted from the component; cosmetic instrumentation only)

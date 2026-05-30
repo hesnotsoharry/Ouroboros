@@ -48,7 +48,7 @@ import type { SessionCrudAPI } from './electron-session';
 import type { SpecAPI } from './electron-spec';
 import type { SubagentAPI } from './electron-subagent';
 import type { System2API } from './electron-system2';
-import type { ObservabilityAPI, TelemetryAPI } from './electron-telemetry';
+// electron-telemetry import removed in Wave 101 (telemetry persistence pipeline deleted)
 import type { WorkspaceReadListAPI } from './electron-workspace-read-list';
 
 export interface McpServerConfig {
@@ -279,8 +279,7 @@ export interface ElectronAPI {
   ai: AiAPI;
   aiStream: AiStreamAPI;
   embedding: EmbeddingAPI;
-  telemetry: TelemetryAPI;
-  observability: ObservabilityAPI;
+  // telemetry + observability removed in Wave 101 (persistence pipeline deleted)
   workspace: WorkspaceAPI;
   backgroundJobs: BackgroundJobsAPI;
   agentConflict: AgentConflictAPI;
