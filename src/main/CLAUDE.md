@@ -14,7 +14,6 @@ Node.js main process for the Ouroboros IDE. Entry point is `main.ts`. Each subdi
 | `windowManager.ts`   | BrowserWindow lifecycle, multi-window tracking                                                         |
 | `lsp.ts`             | LSP server lifecycle (start/stop per workspace root)                                                   |
 | `extensions.ts`      | VS Code extension loading and management                                                               |
-| `approvalManager.ts` | Pre-execution approval flow — response-file protocol at `~/.ouroboros/approvals/`                      |
 | `hookInstaller.ts`   | Auto-installs Claude Code hook scripts; version tracked via SHA-256 of contents                        |
 | `agentChat/`         | Chat thread persistence, orchestration bridge, session projection — see `agentChat/CLAUDE.md`          |
 | `codebaseGraph/`     | In-process codebase knowledge graph engine — see `codebaseGraph/CLAUDE.md`                             |
@@ -29,7 +28,6 @@ Node.js main process for the Ouroboros IDE. Entry point is `main.ts`. Each subdi
 
 ## Key Patterns
 
-- **Approval flow**: `approvalManager` uses a response-file protocol at `~/.ouroboros/approvals/` — hook scripts poll this path rather than holding a socket open. Important for debugging approval timeouts.
 - **Hook version tracking**: `hookInstaller.ts` auto-computes its version from SHA-256 of script contents — no manual bumping ever needed.
 - **Startup sequencing**: `storage/migrate.ts` runs before `createWindow()` — a sequencing constraint that would be easy to violate when reorganizing startup code.
 - **Config schema split**: Schema is spread across `configSchema.ts` → `configSchemaMiddle.ts` → `configSchemaTail.ts` and merged in `config.ts`. Add new keys by domain, not by convenience. Do not consolidate — the split enforces the 300-line ESLint limit.

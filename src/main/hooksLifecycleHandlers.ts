@@ -8,38 +8,7 @@
  * permission_denied, and all other pass-through events added in Phase 0.
  */
 
-import type { PermissionContext } from '@shared/types/permissionContext';
-
 import log from './logger';
-
-// ---------------------------------------------------------------------------
-// Permission context cache — keyed by `sessionId:toolName`.
-// Written by enrichFromPermissionRequest (permission_request event) and read
-// by approvalManager.requestApproval (pre_tool_use event, fires later).
-// Eviction is lookup-on-read: getPermissionContext deletes after returning.
-// ---------------------------------------------------------------------------
-
-const permissionContextCache = new Map<string, PermissionContext>();
-
-function cacheKey(sessionId: string, toolName: string): string {
-  return `${sessionId}:${toolName}`;
-}
-
-export function getPermissionContext(
-  sessionId: string,
-  toolName: string,
-): PermissionContext | undefined {
-  const key = cacheKey(sessionId, toolName);
-  const value = permissionContextCache.get(key);
-  if (value !== undefined) {
-    permissionContextCache.delete(key);
-  }
-  return value;
-}
-
-export function clearPermissionContext(sessionId: string, toolName: string): void {
-  permissionContextCache.delete(cacheKey(sessionId, toolName));
-}
 
 // ---------------------------------------------------------------------------
 // HookEventType — canonical union of all wire-format event names.
@@ -125,9 +94,9 @@ export function handleConfigChange(sessionId: string): void {
 }
 
 /**
- * Cache permission context from a permission_request event so the approval
- * dialog can display richer information than what comes through pre_tool_use.
- * The cache entry is evicted on first read by getPermissionContext.
+ * Log a permission_request event. The event is forwarded to the renderer via
+ * sendPayload before this handler runs; this function handles the main-process
+ * side-effect (currently: structured logging only).
  */
 export function enrichFromPermissionRequest(payload: {
   sessionId: string;
@@ -135,19 +104,10 @@ export function enrichFromPermissionRequest(payload: {
   toolName?: string;
 }): void {
   const permissionType = payload.data?.['permissionType'] as string | undefined;
-  const matchedRule = payload.data?.['matchedRule'] as string | undefined;
   const toolName = payload.toolName ?? '';
-
   log.info(
     `[hooks] permission_request session=${payload.sessionId}` +
       ` tool=${toolName || 'unknown'}` +
       ` permissionType=${permissionType ?? 'unknown'}`,
   );
-
-  const context: PermissionContext = {
-    ...(permissionType !== undefined && { permissionType }),
-    ...(matchedRule !== undefined && { matchedRule }),
-    rawData: payload.data,
-  };
-  permissionContextCache.set(cacheKey(payload.sessionId, toolName), context);
 }

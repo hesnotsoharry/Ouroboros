@@ -19,13 +19,12 @@ vi.mock('./logger', () => ({
 // ── Import after mocks ───────────────────────────────────────────────────────
 
 import {
-  clearPermissionContext,
   enrichFromPermissionRequest,
-  getPermissionContext,
   handleConfigChange,
   handleCwdChanged,
   handleFileChanged,
 } from './hooksLifecycleHandlers';
+import log from './logger';
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
@@ -87,40 +86,20 @@ describe('enrichFromPermissionRequest', () => {
     expect(() => enrichFromPermissionRequest({ sessionId: 'abc' })).not.toThrow();
   });
 
-  it('stores context in the cache when data and toolName are provided', () => {
+  it('logs the permission_request with session, tool, and permissionType', () => {
     enrichFromPermissionRequest({
       sessionId: 'sess1',
       toolName: 'Bash',
-      data: { permissionType: 'shell_exec', matchedRule: 'allow-bash' },
+      data: { permissionType: 'shell_exec' },
     });
-    const ctx = getPermissionContext('sess1', 'Bash');
-    expect(ctx).toMatchObject({
-      permissionType: 'shell_exec',
-      matchedRule: 'allow-bash',
-    });
+    expect(log.info).toHaveBeenCalledWith(
+      expect.stringContaining('permission_request session=sess1'),
+    );
   });
 
-  it('getPermissionContext evicts on first read', () => {
-    enrichFromPermissionRequest({
-      sessionId: 'sess2',
-      toolName: 'Write',
-      data: { permissionType: 'file_write' },
-    });
-    // First read returns the value
-    const first = getPermissionContext('sess2', 'Write');
-    expect(first?.permissionType).toBe('file_write');
-    // Second read returns undefined (evicted)
-    const second = getPermissionContext('sess2', 'Write');
-    expect(second).toBeUndefined();
-  });
-
-  it('clearPermissionContext removes the entry before it is read', () => {
-    enrichFromPermissionRequest({
-      sessionId: 'sess3',
-      toolName: 'Edit',
-      data: { permissionType: 'file_edit' },
-    });
-    clearPermissionContext('sess3', 'Edit');
-    expect(getPermissionContext('sess3', 'Edit')).toBeUndefined();
+  it('runs without throwing when toolName and data are absent', () => {
+    expect(() =>
+      enrichFromPermissionRequest({ sessionId: 'sess2', toolName: undefined }),
+    ).not.toThrow();
   });
 });

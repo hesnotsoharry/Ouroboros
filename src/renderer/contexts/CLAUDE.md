@@ -12,7 +12,6 @@ React contexts that lift shared state above the component tree so it survives pa
 | File                     | Role                                                                                                                                                                 |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ProjectContext.tsx`     | Multi-root project state — persists roots per-window via `window.setProjectRoots()`. Provides `projectRoot`, `addProjectRoot`, `removeProjectRoot`.         |
-| `ApprovalContext.tsx`    | Pre-execution approval queue — listens for `approval:request` IPC events, exposes the queue + `approve`/`reject`/`alwaysAllow` resolvers via `useApprovalContext()`, plays an 880 Hz tone on new requests. Renders no UI itself; consumers render the surface. |
 | `FocusContext.tsx`       | Keyboard focus tracker — `Ctrl+1–4` switches between `sidebar`, `editor`, `terminal`, `agentMonitor`. Panels update focus via click handlers.                        |
 | `ToastContext.tsx`       | Toast/notification system — wraps `useToast` hook, renders `ToastContainer`. Also exposes progress tracking (`startProgress`, `updateProgress`, `completeProgress`). |
 | `AgentEventsContext.tsx` | Agent session state — wraps `useAgentEvents` hook at the App level so IPC listeners stay active even when AgentMonitorPane is collapsed/unmounted.                   |
@@ -22,16 +21,15 @@ React contexts that lift shared state above the component tree so it survives pa
 - **Consistent shape**: Each context exports a `useXxxContext()` hook (throws if used outside provider) and an `XxxProvider` component.
 - **Thin wrappers**: Contexts hold minimal logic — they lift existing hooks (`useToast`, `useAgentEvents`) or IPC listeners to a stable tree position.
 - **`useMemo` on values**: Every provider memoizes its context value to prevent unnecessary re-renders downstream.
-- **Side-effect ownership**: `ApprovalContext` and `ProjectContext` own their own IPC subscriptions (`useEffect` with cleanup). `ToastContext` and `AgentEventsContext` delegate to hooks.
+- **Side-effect ownership**: `ProjectContext` owns its own IPC subscriptions (`useEffect` with cleanup). `ToastContext` and `AgentEventsContext` delegate to hooks.
 
 ## Gotchas
 
 - **AgentEventsContext exists because of unmounting** — if the agent monitor panel is collapsed, its children unmount. Without this context, IPC events arriving while collapsed are silently dropped. Don't move `useAgentEvents` back into the panel component.
-- **ApprovalContext renders NO UI** — it only maintains the queue and exposes `approve`/`reject`/`alwaysAllow` via `useApprovalContext()`; consumers render the surface. (The legacy `AgentMonitor/ApprovalDialog.tsx` is currently mounted nowhere — orphaned, see `roadmap/follow-ups/`. The canon workbench renders its own surfaces under `Workbench/Permission/` — Wave 5.) Earlier docs claimed the provider rendered `<ApprovalDialog>` directly; that was never true of the current code.
 - **ProjectContext persists on every mutation** — `addProjectRoot`, `removeProjectRoot`, `setProjectRoot` all call `persistRoots()` which writes to electron-store synchronously. Don't batch rapid mutations without debouncing.
 
 ## Dependencies
 
-- **IPC bridge**: `window.electronAPI.approval`, `window.electronAPI.config` — contexts assume these exist (guarded by `typeof window` checks for SSR safety).
+- **IPC bridge**: `window.electronAPI.config` — contexts assume this exists (guarded by `typeof window` checks for SSR safety).
 - **Hooks**: `../hooks/useToast`, `../hooks/useAgentEvents` — contexts re-export their return types.
-- **Components**: `ApprovalDialog` (from `AgentMonitor/`), `ToastContainer` (from `shared/`).
+- **Components**: `ToastContainer` (from `shared/`).

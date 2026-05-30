@@ -43,12 +43,6 @@ Workbench/
 │   ├── FilesTouched.tsx        — Phase 5
 │   ├── LatestHunk.tsx          — Phase 5
 │   └── HookTimeline.tsx        — Phase 5
-├── Permission/                 — Wave 5: canon §13 dual-presentation approval UI
-│   ├── useWorkbenchApproval.ts — selector over useApprovalContext(); SINGLE keydown owner (D3)
-│   ├── PermissionCard.tsx      — shared card primitive (overlay|sidebar variant); .styles.ts sidecar
-│   ├── usePermissionRejectFlow.ts — two-stage optional reject-reason flow
-│   ├── PermissionOverlay.tsx   — terminal-pane glass overlay (canon §13a); owns the keydown via the hook
-│   └── PermissionSidebarTakeover.tsx — sidebar NOW-slot takeover (canon §13b); pure props, no hook
 ├── Overlays/                   — Wave 7: canon §06 TitleBar right-cluster affordances (live)
 │   ├── WorkbenchSettingsOverlay.tsx — listens OPEN_SETTINGS_EVENT → shared SettingsModal (cog)
 │   ├── WorkbenchCommandPalette.tsx — useCommandPalette + useCommandRegistry → CommandPalette (Ctrl-K pill)
@@ -80,12 +74,6 @@ Wave 1 shipped static-only. The constraint is being lifted region by region:
   `FileDiff → MockDiffHunk`. Diff surfaces piggyback `enableTerminalDiffReview` and degrade to
   empty/badge-free when off (D5). The sidebar `MOCK_*` data constants were swept (only
   `MOCK_STATUS_BAR` + the `Mock*` types remain — D8).
-- **Permission UI — LIVE (Wave 5).** `Permission/**` renders the canon §13 dual presentation
-  over the EXISTING approval context (`useApprovalContext()` — no new protocol, no main/IPC change).
-  Terminal overlay (`PermissionOverlay`, mounted in `Terminals/CenterPane`) + sidebar NOW-slot
-  takeover (`PermissionSidebarTakeover`, swapped into `AgentSidebar`'s NOW slot when a request is
-  pending; panels 2–5 dim to 0.7). Both render `<PermissionCard>` simultaneously. v1 actions =
-  Approve / Always-for-tool / Deny (project-scope is canon v2, out of scope — D5).
 - **Themes + responsive collapse — LIVE (Wave 6).** Modern/Warp/Retro get full canon §15 treatment
   via per-theme `Theme.workbenchTokens` maps driven through `applyComponentTokens` (warm-amber Warp
   wash/glows; matte Retro — opaque panels, `--blur-*: none`, green phosphor + CRT scanline overlay).
@@ -147,16 +135,6 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
   `file_path`). The `+N/−N` badge match currently uses **exact** `relativePath` equality, so a
   >80-char path renders badge-free (accepted degrade — `follow-ups/2026-05-22-workbench-files-touched-truncated-path-badges.md`).
   Do NOT add IPC to forward the full path — match defensively in the renderer.
-- **Permission UI: ONE keydown owner across both surfaces (Wave 5 D3).** The Y/A/N/Esc shortcut is
-  a single `window`-level listener registered by `useWorkbenchApproval` (`Permission/useWorkbenchApproval.ts`),
-  which is called by exactly ONE mounted component — `PermissionOverlay`. The sidebar takeover
-  (`PermissionSidebarTakeover`, fed by `AgentSidebar`'s private `useSidebarApproval`) reads
-  `useApprovalContext()` **directly** and binds only click handlers — it must NOT call
-  `useWorkbenchApproval()`, or a second keydown listener registers and every shortcut fires twice.
-  If you add a third permission surface, follow the same rule: read the context directly for clicks;
-  let the overlay keep the sole keyboard handler. The frozen acceptance test
-  (`Permission/permission-approval.acceptance.test.tsx`) renders both surfaces and asserts a single
-  keypress resolves once — it catches a duplicate handler.
 - **`diff_review_ready` subscription gating (Wave 4 D5).** Subscribe to
   `window.electronAPI.hooks.onAgentEvent` unconditionally; guard on `enableTerminalDiffReview`
   *inside* the callback (mirrors `src/renderer/hooks/useDiffReviewTrigger.ts`). Flag off → no event
@@ -204,8 +182,6 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
   branch/clock, sessions list/sidebar header/context stats. Sidebar's 5 panel bodies left mock → Wave 4.
 - Wave 4: ✅ the five AgentSidebar panel bodies live (NOW/Context/Files Touched/Latest Hunk/Hook
   Timeline) via the same adapter + the Wave-94 diff pipeline; sidebar `MOCK_*` data swept (types kept).
-- Wave 5: ✅ canon §13 dual-presentation permission UI (terminal overlay + sidebar NOW-takeover)
-  over the existing approval context. Single keyboard owner (D3). `Permission/**`.
 - Wave 6: ✅ themes (Modern/Warp/Retro full canon §15 via per-theme `workbenchTokens`; matte Retro +
   scanlines) + responsive collapse (`useWorkbenchBreakpoint`, 3 tiers, canon §16 minus HUD — D3);
   `UnifiedRail` mounted + live-wired.
