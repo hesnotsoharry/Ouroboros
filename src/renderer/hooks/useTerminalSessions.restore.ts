@@ -13,6 +13,7 @@ import {
   registerExitHandler,
   serializeSavedSessionSnapshots,
 } from './useTerminalSessions.effects';
+import { deduplicateSnapshots } from './useTerminalSessions.sync.helpers';
 
 type SessionSetter = Dispatch<SetStateAction<TerminalSession[]>>;
 type ActiveSessionSetter = Dispatch<SetStateAction<string | null>>;
@@ -195,7 +196,17 @@ function reconnectSessions(
   return matchedSessions ? serializeSavedSessionSnapshots(savedSnapshots) : null;
 }
 
-async function spawnFromSavedOrDefault(
+export const MAX_RESTORE_SESSIONS = 8;
+
+function applyRestoreCap(snapshots: SavedSessionSnapshot[]): SavedSessionSnapshot[] {
+  if (snapshots.length <= MAX_RESTORE_SESSIONS) return snapshots;
+  log.warn(
+    `[restore] Capping restore: ${snapshots.length} snapshots → ${MAX_RESTORE_SESSIONS} (dropped ${snapshots.length - MAX_RESTORE_SESSIONS})`,
+  );
+  return snapshots.slice(0, MAX_RESTORE_SESSIONS);
+}
+
+export async function spawnFromSavedOrDefault(
   savedSnapshots: SavedSessionSnapshot[],
   deps: Pick<RestoreDependencies, 'spawnSession' | 'spawnClaudeSession' | 'spawnCodexSession'>,
 ): Promise<void> {
@@ -205,7 +216,9 @@ async function spawnFromSavedOrDefault(
     else void deps.spawnSession();
     return;
   }
-  for (const snapshot of savedSnapshots) {
+  const deduped = deduplicateSnapshots(savedSnapshots);
+  const capped = applyRestoreCap(deduped);
+  for (const snapshot of capped) {
     await spawnSavedSession(snapshot, autoLaunch, deps);
   }
 }

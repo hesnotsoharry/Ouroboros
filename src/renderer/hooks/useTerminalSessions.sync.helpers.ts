@@ -22,6 +22,27 @@ export interface PendingCodexCapture {
 
 const CODEX_CAPTURE_MAX_RETRIES = 3;
 
+// ── Snapshot deduplication ────────────────────────────────────────────────────
+
+/**
+ * Collapse duplicate saved snapshots using claudeSessionId when present,
+ * otherwise cwd. Keeps the first occurrence of each key.
+ */
+export function deduplicateSnapshots<T extends { cwd: string; claudeSessionId?: string }>(
+  snapshots: T[],
+): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const snap of snapshots) {
+    const key = snap.claudeSessionId ?? snap.cwd;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(snap);
+    }
+  }
+  return result;
+}
+
 // ── Claude session capture helpers ────────────────────────────────────────────
 
 // Events that indicate a Claude session is active in a terminal and should

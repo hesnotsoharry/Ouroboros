@@ -133,3 +133,44 @@ storm** the in-app `[trace:*]` could never see. **Start at the OS process list, 
 
 Note: heap stays ~21–33 MB the entire time — this is **not** a memory leak in the Electron process
 itself. The blocking is external (other processes starving the OS), consistent with the MCP storm.
+
+---
+
+## CONFIRMED via live reproduction (2026-05-30 ~14:58, next session)
+
+Status upgraded: hypothesis → **CONFIRMED root cause = launch-time session spawn loop**. Reproduced by
+launching `npm run dev` in the background while polling the OS process table every 2s (census written to
+a file so it survives console starvation). The IDE was killed via `TaskStop` before it reached full
+lockup; cleanup tree-killed the entire spawned army (so the ~40 spawned sessions ARE children of the IDE
+process tree).
+
+### Process census — baseline (3 idle terminal sessions) → peak after IDE launch
+| metric | baseline | peak |
+|---|---|---|
+| `claude --dangerously-skip` CLI | 3 | **43** (~40 new, IDE-spawned) |
+| `codebase-memory-mcp.exe` (164 MB ea) | 0 | **40** |
+| `codebase-graph-mcp` node | 6 | 86 |
+| `telemetry-query` node | 6 | 46 |
+| `context7` node | 6 | 90 |
+| **total node.exe** | 20 | **368** |
+
+### The mechanism (shape confirmed; exact multiplier under diagnostician investigation)
+Main-process restore is SANE — it logs `sessionsData { total: 5, windowGroups: 1 }` → `clamped: 1` → a
+single `restoring session` with 3 projectRoots. The explosion happens **~25s later, AFTER the renderer
+mounts** (`first-render=26818ms`): ~40 Claude CLI sessions spawn, each launching its full MCP set
+(graph + telemetry + context7 + ContractorApp's heavy `codebase-memory-mcp.exe`). The IDE main thread
+shows `ops: []` with multi-second jank and `git:branch` 7s+ — starved at the OS level, identical to the
+original signature, climbing toward the 13-min lockup.
+
+So: **multiplier = a post-mount spawn loop in the IDE code** (restore of 1 window / 5 sessions → ~40
+live Claude CLIs). The stale/redundant `.mcp.json` configs are the **amplifier** (each spawned session
+is heavier — ContractorApp runs BOTH a 164 MB `codebase-memory-mcp.exe` AND a redundant node graph
+server), NOT the multiplier. Fix the spawn loop first; fix the configs second.
+
+### `.mcp.json` audit (all 3 roots, this session)
+- **AgentIDE** — `ouroboros` → `electron.exe` run-as-node → `out/main/ouroborosMcp.js` at legacy
+  space-bearing path `C:\Web App\Agent IDE\…`. **All 3 paths MISSING** (electron.exe ✗, legacy js ✗,
+  current-root js ✗) → fails fast. Possible retry-loop feeder — for diagnostician to assess.
+- **Gamify** — correct: `node C:/Web App/codebase-graph-mcp/dist/index.js --root Gamify` (+ maestro).
+- **ContractorApp** — `codebase-memory-mcp` → `C:/Users/coles/.local/bin/codebase-memory-mcp.exe`
+  (EXISTS, 164 MB) **redundant with** the `ouroboros` node standalone it also declares. Drop the .exe entry.

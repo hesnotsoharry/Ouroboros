@@ -8,6 +8,7 @@ import {
   applyPendingBind,
   applyTerminalFallbackBind,
   attemptCodexCapture,
+  deduplicateSnapshots,
   readSessionSnapshot,
   TERMINAL_BIND_TRIGGER_TYPES,
 } from './useTerminalSessions.sync.helpers';
@@ -54,7 +55,8 @@ async function persistCurrentSessions(
 
   try {
     const running = getRunningSessions(sessionsRef.current);
-    const snapshots = running.length > 0 ? await Promise.all(running.map(readSessionSnapshot)) : [];
+    const raw = running.length > 0 ? await Promise.all(running.map(readSessionSnapshot)) : [];
+    const snapshots = deduplicateSnapshots(raw);
     const serialized = serializeSnapshots(snapshots);
     if (serialized === lastPersistedSerializedRef.current) return;
 
