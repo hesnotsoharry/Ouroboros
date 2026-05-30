@@ -14,7 +14,7 @@
  * - useFileViewerManager — FileViewer context provider; boundary to FileViewer
  *   subsystem. useWorkbenchArtifacts (inside ChatOnlyShell/) is NOT mocked.
  * - useDiffReview — DiffReview context provider; boundary to DiffReview subsystem
- * - AgentEventsContext, ApprovalContext — global providers above the shell
+ * - AgentEventsContext — global provider above the shell
  * - agentChatStore — per-workspace store; provide controlled test state
  * - useSessions — session IPC bridge; not in ChatOnlyShell/
  * - Heavy overlays (TitleBar, StatusBar, CommandPalette) — structural chrome with
@@ -22,11 +22,11 @@
  *
  * WHAT IS NOT MOCKED (real joins exercised):
  * - WorkbenchRail, WorkbenchRailSections, WorkbenchSessionRow
- * - ChatWorkbenchUtilityDrawer (activity, approvals, monitor tabs)
+ * - ChatWorkbenchUtilityDrawer (activity, monitor tabs)
  * - ChatWorkbenchBody, ChatWorkbenchBody.model, ChatWorkbenchBody.parts
  * - useWorkbenchSurfacePolicy, useWorkbenchArtifacts, useWorkbenchCompare
  * - useChatWorkbenchLayout, useWorkbenchSessions, useWorkbenchAttention
- * - WorkbenchTimelinePanel, WorkbenchApprovalPanel
+ * - WorkbenchTimelinePanel
  */
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import React from 'react';
@@ -36,16 +36,6 @@ import { ToastProvider } from '../../../contexts/ToastContext';
 import { OPEN_SUBAGENT_PANEL_EVENT } from '../../../hooks/appEventNames';
 
 // ── Platform / external boundary mocks ─────────────────────────────────────
-
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({
-    pendingCount: 0,
-    requests: [],
-    approve: vi.fn(),
-    reject: vi.fn(),
-    alwaysAllow: vi.fn(),
-  }),
-}));
 
 let mockSessions: Array<{
   id: string;
@@ -234,10 +224,6 @@ function renderShell(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   mockSessions = [];
   window.electronAPI = {
-    approval: {
-      respond: vi.fn().mockResolvedValue({ success: true }),
-      remember: vi.fn().mockResolvedValue({ success: true }),
-    },
     sessionCrud: {
       active: vi.fn().mockResolvedValue({ success: false, sessionId: null }),
       onChanged: vi.fn().mockReturnValue(() => undefined),

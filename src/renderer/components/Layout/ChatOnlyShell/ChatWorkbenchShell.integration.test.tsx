@@ -19,13 +19,6 @@ let mockCompareTarget: null | {
   threadId: string;
   projectLabel: string;
 } = null;
-let approvalRequests = [] as Array<{
-  requestId: string;
-  toolName: string;
-  toolInput: Record<string, unknown>;
-  sessionId: string;
-  timestamp: number;
-}>;
 let diffState: null | {
   sessionId: string;
   snapshotHash: string;
@@ -47,13 +40,6 @@ let currentSessions = [] as Array<{
   }>;
   parentSessionId?: string;
 }>;
-
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({
-    pendingCount: approvalRequests.length,
-    requests: approvalRequests,
-  }),
-}));
 
 vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: () => ({
@@ -79,9 +65,6 @@ vi.mock('../../../contexts/ProjectContext', () => ({
 }));
 vi.mock('../../../hooks/useConfig', () => ({
   useConfig: () => ({ config: { recentProjects: [] } }),
-}));
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({ pendingCount: approvalRequests.length, requests: approvalRequests }),
 }));
 vi.mock('../../FileViewer/FileViewerManager', () => ({
   useFileViewerManager: () => ({ openFile: vi.fn(), activeFile: null, openFiles: [] }),
@@ -293,7 +276,6 @@ function renderShell() {
 }
 
 beforeEach(() => {
-  approvalRequests = [];
   diffState = null;
   currentSessions = [];
   mockCompareTarget = null;
@@ -301,10 +283,6 @@ beforeEach(() => {
   mockRefreshSessions.mockReset();
   mockActivateSession.mockReset();
   window.electronAPI = {
-    approval: {
-      respond: vi.fn().mockResolvedValue({ success: true }),
-      remember: vi.fn().mockResolvedValue({ success: true }),
-    },
     sessionCrud: {
       active: vi.fn().mockResolvedValue({ success: false, sessionId: null }),
       onChanged: vi.fn().mockReturnValue(() => undefined),
@@ -317,39 +295,10 @@ afterEach(() => {
 });
 
 describe('ChatWorkbenchShell integration', () => {
-  it('shows a compact background approval prompt when a new approval arrives', () => {
-    const view = renderShell();
+  it('renders the utility overlay drawer in hidden state by default', () => {
+    renderShell();
     // Wave 89 Phase 3: OverlayDrawer keeps children mounted; hidden via translate-x-full.
     expect(screen.getByTestId('utility-overlay-drawer').className).toContain('translate-x-full');
-
-    approvalRequests = [
-      {
-        requestId: 'req-1',
-        toolName: 'Bash',
-        toolInput: { command: 'npm test' },
-        sessionId: 'session-1',
-        timestamp: Date.now(),
-      },
-    ];
-    view.rerender(
-      <ToastProvider>
-        <ChatWorkbenchShell
-          projectRoot="/test/project"
-          diffOverlayOpen={false}
-          openDiffOverlay={vi.fn()}
-          closeDiffOverlay={vi.fn()}
-          toggleDrawer={vi.fn()}
-          paletteOpen={false}
-          closePalette={vi.fn()}
-          commands={[]}
-          recentIds={[]}
-          execute={vi.fn().mockResolvedValue(undefined)}
-        />
-      </ToastProvider>,
-    );
-
-    expect(screen.getByTestId('workbench-background-approval-prompt')).toBeDefined();
-    expect(screen.getByTestId('chat-workbench-utility-drawer')).toBeDefined();
   });
 
   it('switches to the subagents tab when a subagent-open event fires', () => {

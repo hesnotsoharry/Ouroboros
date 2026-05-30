@@ -7,42 +7,31 @@
  * as called out in the Wave 47 plan and Wave 47 audit finding #11.
  *
  * Covered here:
- * 1. Utility drawer auto-open + dismissal-key flow: open via approval count,
- *    dismiss, verify same-key event does not re-open.
+ * 1. Utility drawer auto-open + dismissal-key flow: subagent panel event opens
+ *    the monitor tab; dismissal-key suppresses the same event re-open.
  * 2. Layout persistence: open/close the drawer, confirm state survives a
  *    simulated remount (reading from localStorage).
- * 3. Drawer tab switching: verify all five real tabs (activity, approvals,
- *    review, rules, monitor) render their content panels without crashing.
+ * 3. Drawer tab switching: verify real tabs (activity, monitor) render their
+ *    content panels without crashing.
  *
  * What is NOT mocked (same policy as ChatWorkbenchFollowThrough.integration.test.tsx):
  * - useWorkbenchSurfacePolicy, useChatWorkbenchLayout, ChatWorkbenchUtilityDrawer
- * - All tab content panels (WorkbenchApprovalPanel, WorkbenchTimelinePanel,
- *   AgentMonitorManager, WorkbenchRulesPanel)
+ * - Tab content panels (WorkbenchTimelinePanel, AgentMonitorManager)
  *
  * What IS mocked (platform / external boundaries):
  * - window.electronAPI, useFileViewerManager, useDiffReview, AgentChatWorkspace,
- *   AgentEventsContext, ApprovalContext (with controlled values), useSessions,
- *   useProject, useRulesAndSkills, structural chrome
+ *   AgentEventsContext, useSessions, useProject, useRulesAndSkills, structural chrome
  */
 import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { OPEN_SUBAGENT_PANEL_EVENT } from '../../../hooks/appEventNames';
 import { ChatWorkbenchUtilityDrawer } from './ChatWorkbenchUtilityDrawer';
 import type { ChatWorkbenchUtilityTab } from './useChatWorkbenchLayout';
 import { useWorkbenchSurfacePolicy } from './useWorkbenchSurfacePolicy';
 
 // ── Shared mocks (boundary-only) ────────────────────────────────────────────
-
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({
-    pendingCount: 0,
-    requests: [],
-    approve: vi.fn(),
-    reject: vi.fn(),
-    alwaysAllow: vi.fn(),
-  }),
-}));
 
 vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: () => ({
@@ -84,10 +73,6 @@ vi.mock('../../../hooks/useRulesAndSkills', () => ({
 
 beforeEach(() => {
   window.electronAPI = {
-    approval: {
-      respond: vi.fn().mockResolvedValue({ success: true }),
-      remember: vi.fn().mockResolvedValue({ success: true }),
-    },
     rulesAndSkills: {
       listRuleFiles: vi.fn().mockResolvedValue({ success: true, ruleFiles: [] }),
       onChanged: vi.fn().mockReturnValue(() => undefined),
@@ -103,64 +88,40 @@ afterEach(() => {
 
 // ── 1. Utility drawer auto-open + dismissal-key flow ─────────────────────────
 describe('Surface policy — auto-open + dismissal-key flow', () => {
-  it('opens drawer to approvals tab when approvalCount transitions 0 → 1', () => {
-    const setUtilityOpen = vi.fn();
-    const setActiveUtilityTab = vi.fn();
-
-    const { rerender } = renderHook((props) => useWorkbenchSurfacePolicy(props), {
-      initialProps: {
-        approvalCount: 0,
-        artifactKey: null,
-        artifactKind: 'empty' as const,
-        setArtifactOpen: vi.fn(),
-        setUtilityOpen,
-        setActiveUtilityTab,
-      },
-    });
-
-    expect(setUtilityOpen).not.toHaveBeenCalled();
-
-    act(() => {
-      rerender({
-        approvalCount: 1,
-        artifactKey: null,
-        artifactKind: 'empty' as const,
-        setArtifactOpen: vi.fn(),
-        setUtilityOpen,
-        setActiveUtilityTab,
-      });
-    });
-
-    expect(setUtilityOpen).toHaveBeenCalledWith(true);
-    expect(setActiveUtilityTab).toHaveBeenCalledWith('approvals');
-  });
-
-  it('dismissal-key prevents re-open on same approval count', () => {
+  it('opens drawer to monitor tab when subagent panel event fires', () => {
     const setUtilityOpen = vi.fn();
     const setActiveUtilityTab = vi.fn();
 
     const { result } = renderHook(() =>
       useWorkbenchSurfacePolicy({
-        approvalCount: 1,
-        artifactKey: null,
-        artifactKind: 'empty' as const,
-        setArtifactOpen: vi.fn(),
         setUtilityOpen,
         setActiveUtilityTab,
       }),
     );
 
-    // Opened on mount
-    expect(setUtilityOpen).toHaveBeenCalledWith(true);
-    setUtilityOpen.mockClear();
+    expect(setUtilityOpen).not.toHaveBeenCalled();
 
-    // User closes
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(OPEN_SUBAGENT_PANEL_EVENT, { detail: { toolCallId: 'tool-1' } }),
+      );
+    });
+
+    expect(setUtilityOpen).toHaveBeenCalledWith(true);
+    expect(setActiveUtilityTab).toHaveBeenCalledWith('monitor');
+
+    // dismissal-key prevents re-open for same tool call
     act(() => {
       result.current.closeUtility();
     });
+    setUtilityOpen.mockClear();
 
-    // Count unchanged — should not re-open
-    expect(setUtilityOpen).not.toHaveBeenCalledWith(true);
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(OPEN_SUBAGENT_PANEL_EVENT, { detail: { toolCallId: 'tool-1' } }),
+      );
+    });
+    expect(setUtilityOpen).not.toHaveBeenCalled();
   });
 });
 
@@ -169,25 +130,23 @@ describe('Layout persistence (useChatWorkbenchLayout)', () => {
   it('restores utilityOpen=true and active tab from localStorage on remount', () => {
     const persistedState = {
       railOpen: true,
-      artifactOpen: false,
       utilityOpen: true,
-      activeUtilityTab: 'approvals' as ChatWorkbenchUtilityTab,
+      activeUtilityTab: 'monitor' as ChatWorkbenchUtilityTab,
     };
     window.localStorage.setItem('agent-ide:chat-workbench-layout', JSON.stringify(persistedState));
 
     render(
-      <ChatWorkbenchUtilityDrawer activeTab="approvals" onSelectTab={vi.fn()} onClose={vi.fn()} />,
+      <ChatWorkbenchUtilityDrawer activeTab="monitor" onSelectTab={vi.fn()} onClose={vi.fn()} />,
     );
 
-    // Drawer mounts with approvals tab active — confirmed by header subtitle
-    expect(screen.getByText('No approvals are waiting right now.')).toBeDefined();
+    // Drawer mounts with monitor tab active — the agent-monitor-manager is rendered
+    expect(screen.getByTestId('agent-monitor-manager')).toBeDefined();
     // And the active tab button carries the active styling
-    const btn = screen.getByTestId('chat-workbench-utility-tab-approvals');
+    const btn = screen.getByTestId('chat-workbench-utility-tab-monitor');
     expect(btn.className).toContain('bg-surface-panel');
   });
 
   it('persists tab switch to localStorage', () => {
-    // vi.fn() records calls; no-op callback — the parent rerenders via rerender() below.
     const onSelectTab = vi.fn();
 
     render(
@@ -198,20 +157,19 @@ describe('Layout persistence (useChatWorkbenchLayout)', () => {
       />,
     );
 
-    const approvalsTab = screen.getByTestId('chat-workbench-utility-tab-approvals');
+    const monitorTab = screen.getByTestId('chat-workbench-utility-tab-monitor');
     act(() => {
-      approvalsTab.click();
+      monitorTab.click();
     });
 
-    expect(onSelectTab).toHaveBeenCalledWith('approvals');
+    expect(onSelectTab).toHaveBeenCalledWith('monitor');
   });
 });
 
 // ── 3. All drawer tabs render without crashing ────────────────────────────────
-describe('Drawer tab content panels — all five tabs mount real components', () => {
-  // Wave 95 Phase H: 'review' tab removed — diff review is status-bar pull only.
-  // Wave 100: 'rules' tab removed — WorkbenchRulesPanel deleted with AgentChat surface.
-  const tabs: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'monitor'];
+describe('Drawer tab content panels — real tabs mount correctly', () => {
+  // approvals tab removed; review tab removed (Wave 95 Phase H); rules tab removed (Wave 100).
+  const tabs: ChatWorkbenchUtilityTab[] = ['activity', 'monitor'];
 
   it.each(tabs)('tab "%s" mounts without crashing', (tab) => {
     render(<ChatWorkbenchUtilityDrawer activeTab={tab} onSelectTab={vi.fn()} onClose={vi.fn()} />);
@@ -228,13 +186,5 @@ describe('Drawer tab content panels — all five tabs mount real components', ()
     );
     // Empty state rendered by WorkbenchTimelinePanel when no sessions present
     expect(screen.getByText('No timeline entries yet.')).toBeDefined();
-  });
-
-  it('approvals tab renders approval empty state (real WorkbenchApprovalPanel)', () => {
-    render(
-      <ChatWorkbenchUtilityDrawer activeTab="approvals" onSelectTab={vi.fn()} onClose={vi.fn()} />,
-    );
-    // Empty state rendered by WorkbenchApprovalPanel when no requests pending
-    expect(screen.getByText('No approvals are waiting right now.')).toBeDefined();
   });
 });

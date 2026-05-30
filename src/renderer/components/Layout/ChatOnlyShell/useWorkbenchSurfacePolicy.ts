@@ -9,7 +9,6 @@ interface UtilityTrigger {
 }
 
 export interface UseWorkbenchSurfacePolicyOptions {
-  approvalCount: number;
   setUtilityOpen: (open: boolean) => void;
   setActiveUtilityTab: (tab: ChatWorkbenchUtilityTab) => void;
 }
@@ -50,14 +49,8 @@ function useUtilityCallbacks(
 }
 
 function useUtilityEffects(
-  approvalCount: number,
   openUtility: (trigger: UtilityTrigger) => void,
 ): void {
-  React.useEffect(() => {
-    if (approvalCount <= 0) return;
-    openUtility({ key: `approvals:${approvalCount}`, tab: 'approvals' });
-  }, [approvalCount, openUtility]);
-
   React.useEffect(() => {
     const handleSubagentOpen = (event: Event): void => {
       const detail = (event as CustomEvent<{ toolCallId?: string }>).detail;
@@ -71,13 +64,12 @@ function useUtilityEffects(
 }
 
 export function useWorkbenchSurfacePolicy({
-  approvalCount,
   setUtilityOpen,
   setActiveUtilityTab,
 }: UseWorkbenchSurfacePolicyOptions): UseWorkbenchSurfacePolicyResult {
   const { openUtility, closeUtility } = useUtilityCallbacks(setUtilityOpen, setActiveUtilityTab);
 
-  useUtilityEffects(approvalCount, openUtility);
+  useUtilityEffects(openUtility);
 
   return { closeUtility };
 }

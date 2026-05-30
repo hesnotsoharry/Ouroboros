@@ -4,12 +4,6 @@ import { BrowserWindow } from 'electron';
 
 import { traceLink } from './agentChat/subagentLinkTrace';
 import { get as getSubagentRecord } from './agentChat/subagentTracker';
-import {
-  clearSessionRules,
-  requestApproval,
-  respondToApproval,
-  toolRequiresApproval,
-} from './approvalManager';
 import { enrichAgentStartPayload } from './hooksAgentStartEnrich';
 import { getChatLaunchesInFlight } from './hooksChatLaunch';
 // (tap functions live in hooksTapRunner.ts; tapSkillExecution is also called
@@ -37,7 +31,6 @@ import {
   handleSessionEnd,
   handleSessionStart,
   handleSessionStop,
-  resolveEnforcementResponse,
 } from './hooksSessionHandlers';
 import { tapSkillExecution } from './hooksSkillExecutionTap';
 import { runHookTaps } from './hooksTapRunner';
@@ -109,6 +102,18 @@ export interface ToolCallEvent extends AgentEvent {
 let mainWindow: BrowserWindow | null = null;
 
 const pendingQueue: HookPayload[] = [];
+
+// ── Ownership tracking ────────────────────────────────────────────────────────
+// Sessions the IDE spawned. A session is owned if its first event carries
+// paneId (set only for IDE-spawned PTYs via OUROBOROS_PANE_ID). The Set lets
+// subsequent synthetic events (e.g. onConnectionDisconnect agent_stop, which
+// carries no paneId) still be recognised as owned.
+const ownedSessionIds = new Set<string>();
+
+/** True when this event belongs to a session the IDE spawned. */
+function isOwnedSession(payload: HookPayload): boolean {
+  return Boolean(payload.paneId) || ownedSessionIds.has(payload.sessionId);
+}
 
 // Session inference: maps sessionId→lastSeen and sessionId→cwd for tool events with unknown IDs
 const activeSessions = new Map<string, number>();
@@ -216,42 +221,14 @@ function dispatchLifecycleEvent(payload: HookPayload): void {
   if (payload.type === 'session_stop') handleSessionStop(payload, sessionCwdMap);
 }
 
-function handleApprovalRequest(payload: HookPayload): void {
-  if (payload.type !== 'pre_tool_use' || !payload.toolName || !payload.requestId) return;
+const TERMINAL_EVENT_TYPES = new Set(['session_stop', 'agent_end']);
 
-  // Wave 50 Phase B — deterministic enforcement before normal approval flow.
-  const enforced = resolveEnforcementResponse(payload);
-  if (enforced) {
-    void respondToApproval(payload.requestId, enforced);
-    return;
-  }
-
-  if (payload.internal || !toolRequiresApproval(payload.toolName, payload.sessionId)) {
-    void respondToApproval(payload.requestId, { decision: 'approve' });
-    return;
-  }
-
-  requestApproval({
-    requestId: payload.requestId,
-    toolName: payload.toolName,
-    toolInput: (payload.input ?? {}) as Record<string, unknown>,
-    sessionId: payload.sessionId,
-    timestamp: payload.timestamp,
-  });
-}
-
-function clearApprovalRulesForEndedSession(payload: HookPayload): void {
-  if (payload.type === 'agent_stop' || payload.type === 'agent_end') {
-    clearSessionRules(payload.sessionId);
-  }
-}
-
-function dispatchToRenderer(rawPayload: HookPayload): void {
+/** Runs the full dispatch pipeline for a confirmed IDE-owned event. */
+function dispatchOwnedEvent(rawPayload: HookPayload): void {
   tapSkillExecution(rawPayload);
   traceInstructionsLoaded(rawPayload, new Set());
   if (shouldSuppressDispatch(rawPayload.type, getChatLaunchesInFlight(), 0)) {
     log.info(`suppressing: ${rawPayload.type} session=${rawPayload.sessionId}`);
-    handleApprovalRequest(rawPayload);
     return;
   }
 
@@ -272,9 +249,28 @@ function dispatchToRenderer(rawPayload: HookPayload): void {
   );
   sendPayload(windows, payload);
   dispatchLifecycleEvent(payload);
-  handleApprovalRequest(payload);
-  clearApprovalRulesForEndedSession(payload);
   runHookTaps(payload, sessionCwdMap);
+
+  // Remove from owned set AFTER dispatch so the terminal event itself goes
+  // through. Bounds the set to actively-running sessions only.
+  if (TERMINAL_EVENT_TYPES.has(payload.type)) {
+    ownedSessionIds.delete(payload.sessionId);
+  }
+}
+
+function dispatchToRenderer(rawPayload: HookPayload): void {
+  // Register paneId before the gate so the first owned event populates the set
+  // and all subsequent paneId-less synthetics for that session still pass.
+  if (rawPayload.paneId) {
+    ownedSessionIds.add(rawPayload.sessionId);
+  }
+
+  if (!isOwnedSession(rawPayload)) {
+    // External session: drop — do NOT dispatch to the renderer.
+    return;
+  }
+
+  dispatchOwnedEvent(rawPayload);
 }
 
 function evictOrphanedSessions(): void {
@@ -320,4 +316,16 @@ export function dispatchSyntheticHookEvent(rawPayload: HookPayload): void {
 
 export function getHooksAddress(): string | null {
   return getHooksNetAddress();
+}
+
+// ── Test seams ────────────────────────────────────────────────────────────────
+// Exported for unit testing only. Do not import these from application code.
+
+/** @internal */
+export { dispatchToRenderer as _dispatchToRenderer };
+
+/** Clears the owned-session set between tests.
+ * @internal */
+export function _resetOwnedSessionIds(): void {
+  ownedSessionIds.clear();
 }

@@ -8,7 +8,6 @@
 
 import { BrowserWindow, ipcMain, IpcMainInvokeEvent } from 'electron';
 
-import { startApprovalManagerCleanup, stopApprovalManagerCleanup } from './approvalManager';
 import {
   cleanupCompareProvidersHandlers,
   cleanupConfigWatcher,
@@ -228,7 +227,6 @@ export function registerIpcHandlers(win: BrowserWindow): () => void {
   allChannels = registerDomainHandlers(win);
   registerCodeModeHandlers(allChannels);
   registerProviderHandlers(allChannels);
-  startApprovalManagerCleanup();
   markStartup('ipc-ready');
 
   // Return a no-op — global IPC handler teardown (ipcMain.removeHandler for all
@@ -260,7 +258,6 @@ export async function cleanupIpcHandlers(): Promise<void> {
   cleanupMemoryHandlers();
   cleanupFlowTracerHandlers();
   closeEmbeddingStore();
-  stopApprovalManagerCleanup();
   lspStopAll().catch((error) => {
     log.error('Failed to stop LSP servers during cleanup:', error);
   });

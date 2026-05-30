@@ -1,5 +1,4 @@
 export type SupplementalApiKey =
-  | 'approval'
   | 'sessions'
   | 'cost'
   | 'usage'

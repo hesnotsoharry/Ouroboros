@@ -3,7 +3,6 @@ import React from 'react';
 import { AgentMonitorManager } from '../../AgentMonitor';
 import type { ChatWorkbenchUtilityTab } from './useChatWorkbenchLayout';
 import { useWorkbenchTimeline } from './useWorkbenchTimeline';
-import { WorkbenchApprovalPanel } from './WorkbenchApprovalPanel';
 import { WorkbenchTimelinePanel } from './WorkbenchTimelinePanel';
 
 export interface ChatWorkbenchUtilityDrawerProps {
@@ -13,7 +12,6 @@ export interface ChatWorkbenchUtilityDrawerProps {
 }
 
 function tabLabel(tab: ChatWorkbenchUtilityTab): string {
-  if (tab === 'approvals') return 'Approvals';
   if (tab === 'monitor') return 'Monitor';
   return 'Timeline';
 }
@@ -21,7 +19,6 @@ function tabLabel(tab: ChatWorkbenchUtilityTab): string {
 function useTabCounts(): Record<ChatWorkbenchUtilityTab, number> {
   const { counts } = useWorkbenchTimeline();
   return {
-    approvals: counts.approvals,
     monitor: counts.monitor,
     activity: counts.activity,
   };
@@ -65,7 +62,6 @@ function DrawerContent({
 }: {
   activeTab: ChatWorkbenchUtilityTab;
 }): React.ReactElement {
-  if (activeTab === 'approvals') return <WorkbenchApprovalPanel />;
   if (activeTab === 'monitor')
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -99,7 +95,7 @@ function DrawerHeader({ onClose }: DrawerHeaderProps): React.ReactElement {
   );
 }
 
-const DRAWER_TABS: ChatWorkbenchUtilityTab[] = ['activity', 'approvals', 'monitor'];
+const DRAWER_TABS: ChatWorkbenchUtilityTab[] = ['activity', 'monitor'];
 
 export function ChatWorkbenchUtilityDrawer({
   activeTab,

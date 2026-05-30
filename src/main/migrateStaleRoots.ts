@@ -163,6 +163,19 @@ export function pruneStaleRoots(exists: ExistsFn): void {
  * renderer input — they are trusted internal data.
  */
 export function runStaleRootsMigration(): void {
-  // eslint-disable-next-line security/detect-non-literal-fs-filename -- paths from internal config, not renderer input
-  pruneStaleRoots((p) => fs.existsSync(p));
+  // [trace:stale-roots] temporary jank instrumentation — times each existsSync
+  // so a launch can identify which persisted path stalls the main thread (e.g.
+  // an offline network share / unmounted drive hanging on the SMB timeout).
+  // Remove after the cold-start freeze root cause is confirmed.
+  const t0 = performance.now();
+  const timedExists: ExistsFn = (p) => {
+    const t = performance.now();
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- paths from internal config, not renderer input
+    const result = fs.existsSync(p);
+    const ms = Math.round(performance.now() - t);
+    if (ms > 100) log.warn('[trace:stale-roots] slow existsSync', { path: p, ms, exists: result });
+    return result;
+  };
+  pruneStaleRoots(timedExists);
+  log.info('[trace:stale-roots] pruneStaleRoots done', { ms: Math.round(performance.now() - t0) });
 }

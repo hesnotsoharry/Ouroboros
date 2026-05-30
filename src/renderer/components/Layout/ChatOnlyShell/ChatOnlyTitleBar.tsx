@@ -15,7 +15,6 @@
 import React from 'react';
 
 import ouroborosLogo from '../../../../../public/OUROBOROS.png';
-import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { useProject } from '../../../contexts/ProjectContext';
 import { WindowControls } from './TitleBarWindowControls';
 import type { ChatSidebarMode } from './useChatSidebarMode';
@@ -127,20 +126,8 @@ function TitleBarLeft({
 // ── TitleBarRight ─────────────────────────────────────────────────────────────
 
 function TitleBarRight(): React.ReactElement {
-  const { pendingCount } = useApprovalContext();
   return (
     <>
-      {pendingCount > 0 && (
-        <div
-          className="rounded-full border border-status-warning bg-status-warning-subtle px-2 py-0.5 text-[11px] font-medium text-status-warning"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          title={`${pendingCount} approval${pendingCount === 1 ? '' : 's'} waiting`}
-          aria-label={`${pendingCount} approval${pendingCount === 1 ? '' : 's'} waiting`}
-          data-testid="chat-approval-pill"
-        >
-          {pendingCount} approval{pendingCount === 1 ? '' : 's'}
-        </div>
-      )}
       <WindowControls />
     </>
   );

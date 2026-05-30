@@ -21,16 +21,8 @@ import { ChatWorkbenchShell } from './ChatWorkbenchShell';
 
 let mockDockVisible = false;
 let mockUtilityOpen = false;
-let mockPendingCount = 0;
-let mockApprovalRequests: Array<{
-  requestId: string;
-  toolName: string;
-  toolInput: Record<string, unknown>;
-  sessionId: string;
-  timestamp: number;
-}> = [];
 let mockDiffState: null | { sessionId: string; snapshotHash: string } = null;
-let mockActiveUtilityTab: 'activity' | 'approvals' | 'rules' | 'monitor' = 'activity';
+let mockActiveUtilityTab: 'activity' | 'monitor' = 'activity';
 const mockSetUtilityOpen = vi.fn();
 const mockSetActiveUtilityTab = vi.fn();
 const mockSelectThread = vi.fn();
@@ -72,10 +64,6 @@ const mockSessions = [
     metadata: {},
   },
 ];
-
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({ pendingCount: mockPendingCount, requests: mockApprovalRequests }),
-}));
 
 vi.mock('../../DiffReview/DiffReviewManager', () => ({
   useDiffReview: () => ({ state: mockDiffState }),
@@ -328,8 +316,6 @@ afterEach(() => {
   cleanup();
   mockDockVisible = false;
   mockUtilityOpen = false;
-  mockPendingCount = 0;
-  mockApprovalRequests = [];
   mockDiffState = null;
   mockActiveUtilityTab = 'activity';
   mockSetUtilityOpen.mockReset();
@@ -411,27 +397,6 @@ describe('ChatWorkbenchShell', () => {
     };
     renderShell();
     expect(screen.queryByTestId('chat-workbench-compare-pane')).toBeNull();
-  });
-
-  it('does not auto-open the approvals utility tab', () => {
-    mockPendingCount = 1;
-    renderShell();
-    expect(mockSetUtilityOpen).not.toHaveBeenCalledWith(true);
-    expect(mockSetActiveUtilityTab).not.toHaveBeenCalledWith('approvals');
-  });
-
-  it('shows a compact prompt for background approvals', () => {
-    mockApprovalRequests = [
-      {
-        requestId: 'req-1',
-        toolName: 'Bash',
-        toolInput: { command: 'npm test' },
-        sessionId: 'session-background',
-        timestamp: Date.now(),
-      },
-    ];
-    renderShell();
-    expect(screen.getByTestId('workbench-background-approval-prompt')).toBeDefined();
   });
 
   it('suppresses reopening the same subagent event after dismissal, but reopens for a new tool call', async () => {

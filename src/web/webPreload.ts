@@ -145,7 +145,7 @@ const hooksAPI = buildHooksApi(transport);
 const appAPI = buildAppApi(transport);
 const { shellAPI, themeAPI } = buildShellThemeApis(transport);
 const gitAPI = buildGitApi(transport);
-const { approvalAPI, sessionsAPI, costAPI, usageAPI } = buildTransactionApis(transport);
+const { sessionsAPI, costAPI, usageAPI } = buildTransactionApis(transport);
 const { shellHistoryAPI, updaterAPI, crashAPI, perfAPI, symbolAPI } = buildMonitorApis(transport);
 const lspAPI = buildLspApi(transport);
 const { windowAPI, extensionsAPI } = buildWindowExtensionsApis(transport);
@@ -195,7 +195,6 @@ const electronAPI = {
   shell: shellAPI,
   theme: themeAPI,
   git: gitAPI,
-  approval: approvalAPI,
   sessions: sessionsAPI,
   cost: costAPI,
   usage: usageAPI,

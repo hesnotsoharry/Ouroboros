@@ -58,9 +58,6 @@ const UNCLASSIFIED_ALLOWLIST = new Set<string>([
   'app:navigateToPermalink', // webContents.send push — notifications.ts / protocolHandler.ts
   'app:rebuilding',
   'app:startupWarning', // webContents.send push — main.ts
-  'approval:memoryChanged', // webContents.send push — approvalMemory.ts
-  'approval:request',
-  'approval:resolved',
   'auth:loginEvent',
   'auth:stateChanged',
   'backgroundJobs:update',

@@ -84,15 +84,6 @@ export const tailSchemaExt = {
     additionalProperties: { type: 'string' },
     default: {},
   },
-  /** Wave 26 Phase E — persisted approval memory (allow/deny patterns) */
-  approvalMemory: {
-    type: 'object',
-    properties: {
-      alwaysAllow: { type: 'array', items: { type: 'object' }, default: [] },
-      alwaysDeny: { type: 'array', items: { type: 'object' }, default: [] },
-    },
-    default: { alwaysAllow: [], alwaysDeny: [] },
-  },
   /** Wave 27 — subagent UX feature flags */
   agentic: {
     type: 'object',

@@ -55,11 +55,6 @@ vi.mock('../../../contexts/FocusContext', () => ({
   useFocus: () => ({ focusedPanel: null, setFocus: vi.fn() }),
 }));
 
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  ApprovalProvider: ({ children }: React.PropsWithChildren) => <>{children}</>,
-  useApprovalContext: () => ({ pendingCount: 0, requests: [] }),
-}));
-
 // FileViewer / DiffReview providers — pass-through.
 vi.mock('../../FileViewer', () => ({
   FileViewerManager: ({ children }: React.PropsWithChildren) => <>{children}</>,

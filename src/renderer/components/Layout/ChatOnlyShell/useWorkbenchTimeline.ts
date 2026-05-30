@@ -1,14 +1,11 @@
 import { useMemo } from 'react';
 
 import { useAgentEventsContext } from '../../../contexts/AgentEventsContext';
-import { useApprovalContext } from '../../../contexts/ApprovalContext';
-import type { ApprovalRequest } from '../../../types/electron';
 import type { AgentSession } from '../../AgentMonitor/types';
 import { useDiffReview } from '../../DiffReview/DiffReviewManager';
 import type { DiffReviewState } from '../../DiffReview/types';
 import { collectSessionEntries } from './useWorkbenchTimeline.entries';
 import {
-  appendApprovalEntries,
   appendReviewEntry,
   dedupeSessions,
 } from './useWorkbenchTimeline.helpers';
@@ -50,7 +47,6 @@ export interface UseWorkbenchTimelineOptions {
   currentSessions?: AgentSession[];
   historicalSessions?: AgentSession[];
   maxEntries?: number;
-  approvalRequests?: ApprovalRequest[];
   diffReviewState?: DiffReviewState | null;
   now?: number;
 }
@@ -60,7 +56,6 @@ export interface UseWorkbenchTimelineResult {
   visibleEntries: WorkbenchTimelineEntry[];
   totalCount: number;
   counts: {
-    approvals: number;
     review: number;
     monitor: number;
     activity: number;
@@ -70,7 +65,6 @@ export interface UseWorkbenchTimelineResult {
 export function buildWorkbenchTimelineEntries(
   sessions: AgentSession[],
   options: {
-    approvalRequests?: ApprovalRequest[];
     diffReviewState?: DiffReviewState | null;
     now?: number;
   } = {},
@@ -80,7 +74,6 @@ export function buildWorkbenchTimelineEntries(
   const entries = orderedSessions.flatMap((session) =>
     collectSessionEntries(session, sessionsById),
   );
-  appendApprovalEntries(options.approvalRequests ?? [], entries);
   appendReviewEntry(options.diffReviewState ?? null, entries, options.now ?? Date.now());
   return entries.sort((left, right) => {
     if (left.timestamp !== right.timestamp) return right.timestamp - left.timestamp;
@@ -110,20 +103,17 @@ export function useWorkbenchTimeline(
   options: UseWorkbenchTimelineOptions = {},
 ): UseWorkbenchTimelineResult {
   const sessions = useResolvedSessions(options);
-  const { requests } = useApprovalContext();
   const { state } = useDiffReview();
-  const approvalRequests = options.approvalRequests ?? requests;
   const reviewState = options.diffReviewState ?? state;
   const now = options.now ?? Date.now();
 
   const entries = useMemo(
     () =>
       buildWorkbenchTimelineEntries(sessions, {
-        approvalRequests,
         diffReviewState: reviewState,
         now,
       }),
-    [approvalRequests, now, reviewState, sessions],
+    [now, reviewState, sessions],
   );
   const maxEntries = options.maxEntries ?? TIMELINE_VISIBLE_LIMIT;
   const visibleEntries = useMemo(() => entries.slice(0, maxEntries), [entries, maxEntries]);
@@ -133,7 +123,6 @@ export function useWorkbenchTimeline(
     visibleEntries,
     totalCount: entries.length,
     counts: {
-      approvals: approvalRequests.length,
       review: reviewState?.projects.reduce((sum, p) => sum + p.files.length, 0) ?? 0,
       monitor: sessions.filter((session) => Boolean(session.parentSessionId)).length,
       activity: entries.length,

@@ -3,7 +3,6 @@
  *
  * Smoke tests for ChatWorkbenchBody.parts exported components:
  *   - TwoTierRailSurface: renders OuterProjectRail + InnerSidebar
- *   - WorkbenchApprovalSurface: renders without crashing
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
@@ -27,15 +26,6 @@ vi.mock('./AgentCompletionIndicatorsContext', () => ({
 vi.mock('../../../hooks/useConfig', () => ({
   useConfig: () => ({ config: { recentProjects: [] } }),
 }));
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({
-    pendingCount: 0,
-    requests: [],
-    approve: vi.fn(),
-    reject: vi.fn(),
-    alwaysAllow: vi.fn(),
-  }),
-}));
 vi.mock('./useWorkbenchRailActions', () => ({
   useWorkbenchRailActions: () => ({
     actions: {
@@ -56,7 +46,6 @@ vi.mock('../../FileTree/FileTree', () => ({
 import {
   TwoTierRailSurface,
   type TwoTierRailSurfaceProps,
-  WorkbenchApprovalSurface,
 } from './ChatWorkbenchBody.parts';
 import type { ChatWorkbenchLayoutApi } from './useChatWorkbenchLayout';
 
@@ -65,15 +54,12 @@ import type { ChatWorkbenchLayoutApi } from './useChatWorkbenchLayout';
 function makeLayout(overrides: Partial<ChatWorkbenchLayoutApi> = {}): ChatWorkbenchLayoutApi {
   return {
     railOpen: true,
-    artifactOpen: false,
     utilityOpen: false,
     activeUtilityTab: 'activity',
     activeProject: null,
     projectStates: {},
     toggleRail: vi.fn(),
     setRailOpen: vi.fn(),
-    toggleArtifact: vi.fn(),
-    setArtifactOpen: vi.fn(),
     toggleUtility: vi.fn(),
     setUtilityOpen: vi.fn(),
     setActiveUtilityTab: vi.fn(),
@@ -81,15 +67,11 @@ function makeLayout(overrides: Partial<ChatWorkbenchLayoutApi> = {}): ChatWorkbe
     setActiveInnerTab: vi.fn(),
     getProjectState: vi.fn(() => ({ activeInnerTab: 'chats' as const })),
     ...overrides,
-  };
+  } as ChatWorkbenchLayoutApi;
 }
 
 beforeEach(() => {
   window.electronAPI = {
-    approval: {
-      respond: vi.fn().mockResolvedValue({ success: true }),
-      remember: vi.fn().mockResolvedValue({ success: true }),
-    },
     sessionCrud: {
       list: vi.fn().mockResolvedValue({ success: true, sessions: [] }),
       active: vi.fn().mockResolvedValue({ success: true, sessionId: null }),
@@ -107,23 +89,6 @@ afterEach(() => {
 function makeRailProps(overrides: Partial<TwoTierRailSurfaceProps> = {}): TwoTierRailSurfaceProps {
   return {
     layout: makeLayout(),
-    sessionsState: { sessions: [], activeSessionId: null, refresh: vi.fn() } as never,
-    threads: [],
-    approvalRequests: [],
-    compare: {
-      isComparing: false,
-      compareTarget: null,
-      canCompare: vi.fn(() => false),
-      openCompare: vi.fn(),
-      closeCompare: vi.fn(),
-    } as never,
-    handlers: {
-      handleCreateSession: vi.fn().mockResolvedValue(undefined),
-      handleLaunchAgent: vi.fn(),
-      handleSelectSession: vi.fn(),
-      handleSelectRecentChat: vi.fn(),
-    },
-    terminal: undefined,
     dock: {
       visible: false,
       height: 240,
@@ -164,24 +129,3 @@ describe('TwoTierRailSurface', () => {
   });
 });
 
-// ── WorkbenchApprovalSurface ──────────────────────────────────────────────────
-
-describe('WorkbenchApprovalSurface', () => {
-  it('renders without crashing with empty props', () => {
-    render(
-      <WorkbenchApprovalSurface
-        activeApprovalSessionIds={[]}
-        approvalRequests={[]}
-        handlers={{
-          handleCreateSession: vi.fn(),
-          handleLaunchAgent: vi.fn(),
-          handleSelectSession: vi.fn(),
-          handleSelectRecentChat: vi.fn(),
-        }}
-        sessionsState={{ sessions: [], activeSessionId: null, refresh: vi.fn() }}
-        threads={[]}
-      />,
-    );
-    // No crash = pass
-  });
-});

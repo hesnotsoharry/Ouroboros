@@ -277,16 +277,5 @@ export const schema: Record<string, unknown> = {
     type: 'boolean',
     default: false,
   },
-  approvalRequired: {
-    type: 'array',
-    items: { type: 'string' },
-    default: [],
-  },
-  approvalTimeout: {
-    type: 'number',
-    minimum: 0,
-    maximum: 300,
-    default: 0,
-  },
   ...tailSchema,
 };

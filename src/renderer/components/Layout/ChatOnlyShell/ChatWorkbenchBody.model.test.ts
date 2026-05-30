@@ -1,16 +1,16 @@
 /**
  * @vitest-environment jsdom
  *
- * Tests for ChatWorkbenchBody.model — useWorkbenchHandlers and
- * useActiveApprovalSessionIds. useWorkbenchContextState composes too many
- * external providers to test in isolation here; it is covered by the
- * ChatWorkbenchFollowThrough integration test.
+ * Tests for ChatWorkbenchBody.model — useWorkbenchHandlers.
+ * useWorkbenchContextState composes too many external providers to test in
+ * isolation here; it is covered by the ChatWorkbenchFollowThrough integration
+ * test.
  */
 
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useActiveApprovalSessionIds, useWorkbenchHandlers } from './ChatWorkbenchBody.model';
+import { useWorkbenchHandlers } from './ChatWorkbenchBody.model';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -99,18 +99,3 @@ describe('useWorkbenchHandlers', () => {
   });
 });
 
-// ── useActiveApprovalSessionIds ───────────────────────────────────────────────
-
-describe('useActiveApprovalSessionIds', () => {
-  it('returns array with just activeSessionId after Wave 100 chat surface removal', () => {
-    const { result } = renderHook(() => useActiveApprovalSessionIds('ses-1'));
-    expect(result.current[0]).toBe('ses-1');
-    expect(result.current).toHaveLength(1);
-  });
-
-  it('returns array with null when activeSessionId is null', () => {
-    const { result } = renderHook(() => useActiveApprovalSessionIds(null));
-    expect(result.current[0]).toBeNull();
-    expect(result.current).toHaveLength(1);
-  });
-});

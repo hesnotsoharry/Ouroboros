@@ -7,7 +7,6 @@ import { LoadingScreen } from './components/Layout/LoadingScreen';
 import { FirstRunTourGate } from './components/Onboarding/FirstRunTour';
 import { System2IndexProgress } from './components/System2IndexProgress';
 import { AgentEventsProvider } from './contexts/AgentEventsContext';
-import { ApprovalProvider } from './contexts/ApprovalContext';
 import { FocusProvider } from './contexts/FocusContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -39,15 +38,13 @@ function ConfiguredApp({
     <ToastProvider>
       <FocusProvider>
         <AgentEventsProvider>
-          <ApprovalProvider>
-            <ProjectProvider initialRoot={initialRoot}>
-              <InnerApp
-                initialRecentProjects={initialRecents}
-                keybindings={keybindings}
-                persistTerminalSessions={persistTerminalSessions}
-              />
-            </ProjectProvider>
-          </ApprovalProvider>
+          <ProjectProvider initialRoot={initialRoot}>
+            <InnerApp
+              initialRecentProjects={initialRecents}
+              keybindings={keybindings}
+              persistTerminalSessions={persistTerminalSessions}
+            />
+          </ProjectProvider>
         </AgentEventsProvider>
       </FocusProvider>
       <WebFolderBrowser />

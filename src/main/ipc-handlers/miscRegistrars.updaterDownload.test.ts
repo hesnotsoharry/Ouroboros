@@ -54,16 +54,6 @@ vi.mock('../agentChat/utils', () => ({
 }));
 
 // Stub every other dependency miscRegistrars.ts touches so the import doesn't blow up
-vi.mock('../approvalManager', () => ({
-  addAlwaysAllowRule: vi.fn(),
-  respondToApproval: vi.fn(),
-}));
-vi.mock('../approvalMemory', () => ({
-  forget: vi.fn(),
-  listAll: vi.fn(() => []),
-  rememberAllow: vi.fn(),
-  rememberDeny: vi.fn(),
-}));
 vi.mock('../claudeRateLimits', () => ({ getLatestClaudeUsageSnapshot: vi.fn() }));
 vi.mock('../codexRateLimits', () => ({ getLatestCodexUsageSnapshot: vi.fn() }));
 vi.mock('../costHistory', () => ({

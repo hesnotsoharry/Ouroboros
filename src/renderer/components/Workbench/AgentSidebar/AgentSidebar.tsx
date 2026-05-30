@@ -11,10 +11,8 @@
 
 import React, { useState } from 'react';
 
-import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { useProjectOptional } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
-import { PermissionSidebarTakeover } from '../Permission/PermissionSidebarTakeover';
 import { useWorkbenchTabs } from '../Terminals/useWorkbenchTabs';
 import { useActiveWorkbenchFrame } from '../useActiveWorkbenchFrame';
 import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
@@ -225,27 +223,6 @@ function PanelStack({
   );
 }
 
-/**
- * Reads approval state from context WITHOUT registering a keydown handler.
- * useWorkbenchApproval() is intentionally NOT called here — it owns the single
- * window keydown handler (ADR D3). Calling it again would register a duplicate.
- * Returns pre-bound handler props ready to spread onto PermissionSidebarTakeover.
- */
-function useSidebarApproval() {
-  const { pendingCount, requests, approve, reject, alwaysAllow } = useApprovalContext();
-  const current = requests.length > 0 ? requests[0] : null;
-  const takeoverProps = current
-    ? {
-        request: current,
-        queuedCount: Math.max(0, pendingCount - 1),
-        elapsedSec: Math.floor((Date.now() - current.timestamp) / 1000),
-        onApprove: () => approve(current.requestId),
-        onAlwaysAllow: () => alwaysAllow(current.requestId, current.sessionId, current.toolName),
-        onDeny: (reason?: string) => reject(current.requestId, reason),
-      }
-    : null;
-  return { current, isPending: current !== null, takeoverProps };
-}
 
 const SIDEBAR_BASE_STYLE: Omit<React.CSSProperties, 'width'> = {
   flexShrink: 0,
@@ -306,7 +283,6 @@ interface AgentSidebarProps {
 export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): React.ReactElement {
   const paneId = useActivePaneId();
   const agentData = useWorkbenchAgentData(paneId);
-  const { isPending, takeoverProps } = useSidebarApproval();
   const isFull = breakpointMode === 'full';
   const sidebarStyle: React.CSSProperties = { ...SIDEBAR_BASE_STYLE, width: isFull ? 348 : 300 };
   // D4: show empty state when no paneId-tagged session is active.
@@ -316,10 +292,7 @@ export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): Re
     <div data-testid="workbench-agentsidebar" style={sidebarStyle}>
       <SidebarHeader paneId={paneId} />
       <div style={SIDEBAR_SCROLL_STYLE}>
-        {isPending && takeoverProps ? (
-          // Permission request takes priority over empty state and normal NOW block.
-          <PermissionSidebarTakeover {...takeoverProps} />
-        ) : !hasActiveSession ? (
+        {!hasActiveSession ? (
           <SidebarEmptyState />
         ) : (
           <NowBlock data={agentData.now} />
@@ -327,7 +300,7 @@ export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): Re
         {/* PanelStack renders unconditionally so breakpoint-gated sub-panels
             (e.g. latest-hunk-collapsed in COMPACT mode) remain in the DOM even
             when no active session is bound (empty data → panels show placeholders). */}
-        <PanelStack agentData={agentData} dim={isPending} collapsed={!isFull} />
+        <PanelStack agentData={agentData} dim={false} collapsed={!isFull} />
       </div>
     </div>
   );

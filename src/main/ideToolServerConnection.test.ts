@@ -5,7 +5,6 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('./approvalManager', () => ({ waitForResolution: vi.fn() }));
 vi.mock('./lsp', () => ({ getDiagnostics: vi.fn(() => []) }));
 vi.mock('./pty', () => ({ getActiveSessions: vi.fn(() => []) }));
 vi.mock('./logger', () => ({

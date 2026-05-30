@@ -35,7 +35,6 @@ import type { ProfileAPI } from './electron-profile';
 import type { RulesAndSkillsAPI } from './electron-rules-skills';
 import type {
   AppAPI,
-  ApprovalAPI,
   CodexAPI,
   ConfigAPI,
   FilesAPI,
@@ -247,7 +246,6 @@ export interface ElectronAPI {
   config: ConfigAPI;
   files: FilesAPI;
   hooks: HooksAPI;
-  approval: ApprovalAPI;
   auth: AuthAPI;
   app: AppAPI;
   shell: ShellAPI;

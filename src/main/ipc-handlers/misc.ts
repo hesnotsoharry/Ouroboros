@@ -1,7 +1,6 @@
 import { type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
 
 import { stopAllServers as lspStopAll } from '../lsp';
-import { registerApprovalHandlers } from './approvalHandlers';
 import { registerCostHandlers } from './costHandlers';
 import { registerCrashLogHandlers } from './crashHandlers';
 import { registerLspHandlers } from './lspHandlers';
@@ -30,7 +29,6 @@ export function registerMiscHandlers(senderWindow: SenderWindow, win: BrowserWin
   registerWindowHandlers(channels);
   registerExtensionHandlers(channels);
   registerLspHandlers(channels, win);
-  registerApprovalHandlers(channels);
   registerTrustHandlers(channels);
 
   return channels;

@@ -8,13 +8,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatWorkbenchUtilityDrawer } from './ChatWorkbenchUtilityDrawer';
 
-let approvalRequests = [] as Array<{
-  requestId: string;
-  toolName: string;
-  toolInput: Record<string, unknown>;
-  sessionId: string;
-  timestamp: number;
-}>;
 let currentSessions = [] as Array<{
   id: string;
   taskLabel: string;
@@ -35,13 +28,6 @@ let currentSessions = [] as Array<{
   outputTokens: number;
 }>;
 
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({
-    pendingCount: approvalRequests.length,
-    requests: approvalRequests,
-  }),
-}));
-
 vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: () => ({
     currentSessions,
@@ -54,8 +40,7 @@ vi.mock('../../../contexts/AgentEventsContext', () => ({
   }),
 }));
 
-// useDiffReview is still consumed by WorkbenchApprovalPanel / WorkbenchTimelinePanel
-// even though the review tab itself is removed from this drawer.
+// useDiffReview is still consumed by WorkbenchTimelinePanel.
 vi.mock('../../DiffReview/DiffReviewManager', () => ({
   useDiffReview: () => ({
     state: null,
@@ -82,14 +67,7 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  approvalRequests = [];
   currentSessions = [];
-  window.electronAPI = {
-    approval: {
-      respond: vi.fn().mockResolvedValue({ success: true }),
-      remember: vi.fn().mockResolvedValue({ success: true }),
-    },
-  } as typeof window.electronAPI;
 });
 
 describe('ChatWorkbenchUtilityDrawer', () => {
@@ -125,27 +103,20 @@ describe('ChatWorkbenchUtilityDrawer', () => {
     expect(screen.getByText('Read')).toBeTruthy();
   });
 
-  it('switches across approvals and monitor tabs (Wave 95 — review tab removed)', () => {
-    approvalRequests = [
-      {
-        requestId: 'req-1',
-        toolName: 'Bash',
-        toolInput: { command: 'npm test' },
-        sessionId: 'session-1',
-        timestamp: 3_000,
-      },
-    ];
-
+  it('switches between activity and monitor tabs', () => {
     const onSelectTab = vi.fn();
     const { rerender } = render(
       <ChatWorkbenchUtilityDrawer
-        activeTab="approvals"
+        activeTab="activity"
         onSelectTab={onSelectTab}
         onClose={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('workbench-approval-panel')).toBeTruthy();
+    // With no sessions, timeline renders the empty state (no workbench-timeline-panel testid)
+    expect(screen.getByText('No timeline entries yet.')).toBeTruthy();
 
+    // approvals tab must not exist in the drawer anymore
+    expect(screen.queryByTestId('chat-workbench-utility-tab-approvals')).toBeNull();
     // review tab must not exist in the drawer anymore
     expect(screen.queryByTestId('chat-workbench-utility-tab-review')).toBeNull();
 

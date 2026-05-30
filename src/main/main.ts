@@ -80,6 +80,21 @@ async function runStartupStep(
   }
 }
 
+// [trace:startup] temporary jank instrumentation — brackets each synchronous
+// cold-start step so a launch can attribute the main-thread block to one of
+// them. Remove after the cold-start freeze root cause is confirmed.
+function timeSync(label: string, fn: () => void): void {
+  const t = performance.now();
+  fn();
+  log.info(`[trace:startup] ${label}`, { ms: Math.round(performance.now() - t) });
+}
+
+async function timeAsync(label: string, fn: () => Promise<unknown>): Promise<void> {
+  const t = performance.now();
+  await fn();
+  log.info(`[trace:startup] ${label}`, { ms: Math.round(performance.now() - t) });
+}
+
 async function startIdeTools(): Promise<void> {
   const addr = await startIdeToolServer();
   if (addr) log.info(`IDE tool server started at ${addr.address}`);
@@ -204,27 +219,27 @@ async function initWindowsAndServices(): Promise<void> {
 async function initializeApplication(): Promise<void> {
   markStartup('app-ready');
   const defaultRoot = getConfigValue('defaultProjectRoot') as string | undefined;
-  runAllMigrations(defaultRoot);
+  timeSync('runAllMigrations', () => runAllMigrations(defaultRoot));
   // Phase 2 stale-roots cleanup: drop persisted entries pointing at paths that
   // no longer exist on disk. Must run BEFORE restoreWindowSessions (called from
   // initWindowsAndServices) so the restore pass reads already-cleaned data.
-  runStaleRootsMigration();
+  timeSync('runStaleRootsMigration', runStaleRootsMigration);
   // Auto-trust the configured defaultProjectRoot if it exists on disk but is
   // not yet trusted. This handles the folder-rename case where the path is no
   // longer in trustedWorkspaces, which would otherwise silently lock the app
   // into restricted mode with no UI escape hatch. Must run BEFORE
   // initWindowsAndServices → startBackgroundServices where the trust check fires.
-  ensureRootTrusted(defaultRoot, fs.existsSync);
-  await fireBootRestore(defaultRoot);
+  timeSync('ensureRootTrusted', () => ensureRootTrusted(defaultRoot, fs.existsSync));
+  await timeAsync('fireBootRestore', () => fireBootRestore(defaultRoot));
   const ud = app.getPath('userData');
-  await initTelemetryAndWriters(ud);
+  await timeAsync('initTelemetryAndWriters', () => initTelemetryAndWriters(ud));
   await runStartupStep('[main] session services', () => initSessionServices());
   registerBuiltinProviders();
   await migrateSecretsIfNeeded();
   setTokenFilePath(ud);
   generatePipeTokens();
   installHandlerCapture();
-  await initWindowsAndServices();
+  await timeAsync('initWindowsAndServices', initWindowsAndServices);
   markStartup('services-ready');
 }
 

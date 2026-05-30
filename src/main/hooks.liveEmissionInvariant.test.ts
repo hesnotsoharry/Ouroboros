@@ -15,12 +15,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock('electron', () => ({ BrowserWindow: class {} }));
-vi.mock('./approvalManager', () => ({
-  clearSessionRules: vi.fn(),
-  requestApproval: vi.fn(),
-  respondToApproval: vi.fn().mockResolvedValue(true),
-  toolRequiresApproval: vi.fn().mockReturnValue(false),
-}));
 vi.mock('./claudeMdGenerator', () => ({ generateClaudeMd: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('./codebaseGraph/graphController', () => ({
   getGraphController: vi.fn().mockReturnValue(null),
@@ -68,7 +62,6 @@ vi.mock('./hooksSessionHandlers', () => ({
   handleSessionEnd: vi.fn(),
   handleSessionStart: vi.fn(),
   handleSessionStop: vi.fn(),
-  resolveEnforcementResponse: vi.fn(),
 }));
 vi.mock('./hooksTapRunner', () => ({
   runHookTaps: vi.fn(),

@@ -1,9 +1,7 @@
 import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import React from 'react';
 
-import { useApprovalContext } from '../../../contexts/ApprovalContext';
 import { OPEN_MULTI_SESSION_EVENT } from '../../../hooks/appEventNames';
-import type { ApprovalRequest } from '../../../types/electron';
 import {
   createStoredSessionFromPicker,
   createStoredSessionInProject,
@@ -25,7 +23,6 @@ export type SurfacePolicyState = ReturnType<typeof useWorkbenchSurfacePolicy>;
 
 export interface WorkbenchContextState {
   activation: ActivationState;
-  approvalRequests: ApprovalRequest[];
   compare: CompareState;
   dock: DockState;
   layout: LayoutState;
@@ -52,9 +49,8 @@ function useWorkbenchListState(
   });
 }
 
-function useWorkbenchSurfaceState(layout: LayoutState, approvalCount: number): SurfacePolicyState {
+function useWorkbenchSurfaceState(layout: LayoutState): SurfacePolicyState {
   return useWorkbenchSurfacePolicy({
-    approvalCount,
     setUtilityOpen: layout.setUtilityOpen,
     setActiveUtilityTab: layout.setActiveUtilityTab,
   });
@@ -66,7 +62,6 @@ export function useWorkbenchContextState(
   layout: LayoutState,
   dock: DockState,
 ): WorkbenchContextState {
-  const { requests: approvalRequests } = useApprovalContext();
   const threads = EMPTY_THREADS;
   const sessionsState = useSessions();
   const workbenchSessions = useWorkbenchListState(sessionsState, threads);
@@ -77,11 +72,10 @@ export function useWorkbenchContextState(
     refreshSessions: sessionsState.refresh,
     actions: { selectThread: () => undefined },
   });
-  const surfacePolicy = useWorkbenchSurfaceState(layout, approvalRequests.length);
+  const surfacePolicy = useWorkbenchSurfaceState(layout);
 
   return {
     activation,
-    approvalRequests,
     compare,
     dock,
     layout,
@@ -123,8 +117,3 @@ export function useWorkbenchHandlers(
   return { handleCreateSession, handleLaunchAgent, handleSelectRecentChat, handleSelectSession };
 }
 
-export function useActiveApprovalSessionIds(
-  activeSessionId: string | null,
-): Array<string | null | undefined> {
-  return [activeSessionId];
-}

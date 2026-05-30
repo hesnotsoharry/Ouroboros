@@ -1,8 +1,6 @@
 import { ipcRenderer } from 'electron';
 
 import type {
-  ApprovalRequest,
-  ApprovalResolved,
   ClaudeMdGenerationStatus,
   CompareProvidersEventPayload,
   ElectronAPI,
@@ -38,20 +36,6 @@ function onChannel<T>(channel: string, callback: (payload: T) => void): () => vo
 }
 
 export const supplementalApis: SupplementalApis = {
-  approval: {
-    respond: (requestId, decision, reason) =>
-      ipcRenderer.invoke('approval:respond', requestId, decision, reason),
-    alwaysAllow: (sessionId, toolName) =>
-      ipcRenderer.invoke('approval:alwaysAllow', sessionId, toolName),
-    remember: (toolName, key, decision) =>
-      ipcRenderer.invoke('approval:remember', toolName, key, decision),
-    listMemory: () => ipcRenderer.invoke('approval:listMemory'),
-    forget: (hash) => ipcRenderer.invoke('approval:forget', hash),
-    onRequest: (callback) => onChannel<ApprovalRequest>('approval:request', callback),
-    onResolved: (callback) => onChannel<ApprovalResolved>('approval:resolved', callback),
-    onMemoryChanged: (callback) => onChannel<void>('approval:memoryChanged', callback),
-  },
-
   sessions: {
     save: (session) => ipcRenderer.invoke('sessions:save', session),
     load: () => ipcRenderer.invoke('sessions:load'),

@@ -51,8 +51,6 @@ export const IMPORTABLE_KEYS: (keyof AppConfig)[] = [
   'voyageApiKey',
   'lspServers',
   'claudeAutoLaunch',
-  'approvalRequired',
-  'approvalTimeout',
   'commandBlocksEnabled',
   'promptPattern',
   'formatOnSave',

@@ -45,8 +45,8 @@ describe('WorkbenchRightPane', () => {
   });
 
   it('passes activeTab to the utility drawer', () => {
-    render(<WorkbenchRightPane {...makeProps({ activeUtilityTab: 'approvals' })} />);
-    expect(screen.getByTestId('utility-drawer-mock').textContent).toContain('approvals');
+    render(<WorkbenchRightPane {...makeProps({ activeUtilityTab: 'monitor' })} />);
+    expect(screen.getByTestId('utility-drawer-mock').textContent).toContain('monitor');
   });
 
   it('close button calls onClose', () => {

@@ -12,7 +12,7 @@
  *
  * Per `~/.claude/rules/manual-smoke-gate.md` we do NOT mock components
  * defined inside ChatOnlyShell/. We DO mock cross-subsystem dependencies
- * (FileTree, ApprovalContext) and the electronAPI surface — those are
+ * (FileTree) and the electronAPI surface — those are
  * outside the integration boundary for this test.
  */
 
@@ -39,15 +39,6 @@ vi.mock('./AgentCompletionIndicatorsContext', () => ({
 }));
 vi.mock('../../../hooks/useConfig', () => ({
   useConfig: () => ({ config: { recentProjects: [] } }),
-}));
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({
-    pendingCount: 0,
-    requests: [],
-    approve: vi.fn(),
-    reject: vi.fn(),
-    alwaysAllow: vi.fn(),
-  }),
 }));
 vi.mock('./useWorkbenchRailActions', () => ({
   useWorkbenchRailActions: () => ({
@@ -76,10 +67,6 @@ afterEach(cleanup);
 
 beforeEach(() => {
   window.electronAPI = {
-    approval: {
-      respond: vi.fn().mockResolvedValue({ success: true }),
-      remember: vi.fn().mockResolvedValue({ success: true }),
-    },
     sessionCrud: {
       list: vi.fn().mockResolvedValue({ success: true, sessions: [] }),
       active: vi.fn().mockResolvedValue({ success: true, sessionId: null }),
@@ -93,7 +80,6 @@ function makeLayout(overrides: Partial<ChatWorkbenchLayoutApi> = {}): ChatWorkbe
   let activeInnerTab: 'chats' | 'terminals' | 'code' = 'chats';
   return {
     railOpen: true,
-    artifactOpen: false,
     utilityOpen: false,
     activeUtilityTab: 'activity',
     get activeProject() {
@@ -102,8 +88,6 @@ function makeLayout(overrides: Partial<ChatWorkbenchLayoutApi> = {}): ChatWorkbe
     projectStates: {},
     toggleRail: vi.fn(),
     setRailOpen: vi.fn(),
-    toggleArtifact: vi.fn(),
-    setArtifactOpen: vi.fn(),
     toggleUtility: vi.fn(),
     setUtilityOpen: vi.fn(),
     setActiveUtilityTab: vi.fn(),
@@ -121,23 +105,6 @@ function makeLayout(overrides: Partial<ChatWorkbenchLayoutApi> = {}): ChatWorkbe
 function makeRailProps(overrides: Partial<TwoTierRailSurfaceProps> = {}): TwoTierRailSurfaceProps {
   return {
     layout: makeLayout(),
-    sessionsState: { sessions: [], activeSessionId: null, refresh: vi.fn() } as never,
-    threads: [],
-    approvalRequests: [],
-    compare: {
-      isComparing: false,
-      compareTarget: null,
-      canCompare: vi.fn(() => false),
-      openCompare: vi.fn(),
-      closeCompare: vi.fn(),
-    } as never,
-    handlers: {
-      handleCreateSession: vi.fn().mockResolvedValue(undefined),
-      handleLaunchAgent: vi.fn(),
-      handleSelectSession: vi.fn(),
-      handleSelectRecentChat: vi.fn(),
-    },
-    terminal: undefined,
     dock: {
       visible: false,
       height: 240,

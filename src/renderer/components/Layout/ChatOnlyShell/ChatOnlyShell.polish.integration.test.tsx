@@ -57,11 +57,6 @@ vi.mock('../../DiffReview/DiffReviewManager', () => ({
   useDiffReview: () => ({ state: null }),
 }));
 
-// Wave 59: workbench is the only chat shell, so deeper hooks
-// (useWorkbenchArtifacts, etc.) need their cross-subsystem deps mocked.
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({ pendingCount: 0, requests: [] }),
-}));
 vi.mock('../../FileViewer/FileViewerManager', () => ({
   useFileViewerManager: () => ({ openFile: vi.fn(), activeFile: null, openFiles: [] }),
 }));

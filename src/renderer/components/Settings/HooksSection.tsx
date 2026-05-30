@@ -1,8 +1,6 @@
 import React from 'react';
 
 import type { AppConfig } from '../../types/electron';
-import { ApprovalMemorySection } from './ApprovalMemorySection';
-import { ApprovalSubsection } from './HooksApprovalSubsection';
 import { HooksConfigSubsection } from './HooksConfigSubsection';
 import { HooksStatusSubsection } from './HooksStatusSubsection';
 import { SectionLabel } from './settingsStyles';
@@ -18,8 +16,6 @@ export function HooksSection({ draft, onChange }: HooksSectionProps): React.Reac
       <HooksStatusSubsection draft={draft} onChange={onChange} />
       <TcpPortSection draft={draft} onChange={onChange} />
       <HookScriptsLocation />
-      <ApprovalSubsection draft={draft} onChange={onChange} />
-      <ApprovalMemorySection />
       <HooksConfigSubsection />
     </div>
   );

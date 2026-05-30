@@ -5,13 +5,11 @@ import { useIsMobile } from '../../../hooks/useIsMobile';
 import type { UseTerminalSessionsReturn } from '../../../hooks/useTerminalSessions';
 import { AgentCompletionIndicatorsProvider } from './AgentCompletionIndicatorsContext';
 import {
-  useActiveApprovalSessionIds,
   useWorkbenchContextState,
   useWorkbenchHandlers,
 } from './ChatWorkbenchBody.model';
 import {
   TwoTierRailSurface,
-  WorkbenchApprovalSurface,
   WorkbenchMainColumn,
 } from './ChatWorkbenchBody.parts';
 import type { ChatWorkbenchLayoutApi } from './useChatWorkbenchLayout';
@@ -95,7 +93,6 @@ function MobileOverlay({
 interface BodyContentProps {
   state: WorkbenchState;
   handlers: WorkbenchHandlersResult;
-  activeApprovalSessionIds: Array<string | null | undefined>;
   overlayWidths: UseOverlayDrawerWidthsReturn;
   onActiveSessionChange?: (sessionId: string | null) => void;
 }
@@ -120,13 +117,11 @@ function useNewSessionMenuListener(
 function useBodyContent(props: ChatWorkbenchBodyProps): BodyContentProps {
   const state = useWorkbenchContextState(props.layout, props.dock);
   const handlers = useWorkbenchHandlers(state.activation);
-  const activeApprovalSessionIds = useActiveApprovalSessionIds(state.sessionsState.activeSessionId);
   const overlayWidths = useOverlayDrawerWidths();
   useNewSessionMenuListener(handlers.handleCreateSession, props.layout.activeProject);
   return {
     state,
     handlers,
-    activeApprovalSessionIds,
     overlayWidths,
     onActiveSessionChange: props.onActiveSessionChange,
   };
@@ -145,20 +140,11 @@ export function ChatWorkbenchBody(props: ChatWorkbenchBodyProps): React.ReactEle
 
 function DesktopBody({
   state,
-  handlers,
-  activeApprovalSessionIds,
   overlayWidths,
   onActiveSessionChange,
 }: BodyContentProps): React.ReactElement {
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden" data-testid="chat-workbench-body">
-      <WorkbenchApprovalSurface
-        activeApprovalSessionIds={activeApprovalSessionIds}
-        approvalRequests={state.approvalRequests}
-        handlers={handlers}
-        sessionsState={state.sessionsState}
-        threads={state.threads}
-      />
       <RailSlot state={state} />
       <WorkbenchMainColumn
         layout={state.layout}
@@ -172,8 +158,6 @@ function DesktopBody({
 
 function MobileBody({
   state,
-  handlers,
-  activeApprovalSessionIds,
   overlayWidths,
   onActiveSessionChange,
 }: BodyContentProps): React.ReactElement {
@@ -183,13 +167,6 @@ function MobileBody({
       data-testid="chat-workbench-body"
       data-mobile="true"
     >
-      <WorkbenchApprovalSurface
-        activeApprovalSessionIds={activeApprovalSessionIds}
-        approvalRequests={state.approvalRequests}
-        handlers={handlers}
-        sessionsState={state.sessionsState}
-        threads={state.threads}
-      />
       <WorkbenchMainColumn
         layout={state.layout}
         surfacePolicy={state.surfacePolicy}

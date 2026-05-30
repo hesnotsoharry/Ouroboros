@@ -204,8 +204,6 @@ export interface AppConfig {
   /** Voyage AI API key (used when embeddingProvider === 'voyage') */
   voyageApiKey: string;
   claudeAutoLaunch: boolean;
-  approvalRequired: string[];
-  approvalTimeout: number;
   workspaceSnapshots: WorkspaceSnapshot[];
   terminalCursorStyle: 'block' | 'underline' | 'bar';
   commandBlocksEnabled: boolean;

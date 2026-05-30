@@ -1,16 +1,11 @@
-import type { AgentChatThreadRecord } from '@shared/types/agentChat';
 import React, { Suspense } from 'react';
 
-import type { ApprovalRequest } from '../../../types/electron';
 import type {
   LayoutState,
-  SessionsState,
   SurfacePolicyState,
-  WorkbenchHandlers,
 } from './ChatWorkbenchBody.model';
 import { ChatWorkbenchOverlays } from './ChatWorkbenchOverlays';
 import type { UseOverlayDrawerWidthsReturn } from './useOverlayDrawerWidths';
-import { WorkbenchApprovalPrompt } from './WorkbenchApprovalPrompt';
 
 const ChatWorkbenchTerminalDock = React.lazy(() =>
   import('./ChatWorkbenchTerminalDock').then((m) => ({ default: m.ChatWorkbenchTerminalDock })),
@@ -21,33 +16,6 @@ const ChatWorkbenchTerminalDock = React.lazy(() =>
 // TwoTierRailSurface lives in ChatWorkbenchBody.rails.tsx. Re-exported here for
 // existing import sites.
 export { TwoTierRailSurface, type TwoTierRailSurfaceProps } from './ChatWorkbenchBody.rails';
-
-// ── Approval surface ───────────────────────────────────────────────────────────
-
-export function WorkbenchApprovalSurface({
-  activeApprovalSessionIds,
-  approvalRequests,
-  handlers,
-  sessionsState,
-  threads,
-}: {
-  activeApprovalSessionIds: Array<string | null | undefined>;
-  approvalRequests: ApprovalRequest[];
-  handlers: WorkbenchHandlers;
-  sessionsState: SessionsState;
-  threads: AgentChatThreadRecord[];
-}): React.ReactElement {
-  return (
-    <WorkbenchApprovalPrompt
-      requests={approvalRequests}
-      activeSessionIds={activeApprovalSessionIds}
-      sessions={sessionsState.sessions}
-      threads={threads}
-      onSelectSession={handlers.handleSelectSession}
-      onSelectThread={handlers.handleSelectRecentChat}
-    />
-  );
-}
 
 // ── Main column ────────────────────────────────────────────────────────────────
 //

@@ -1,15 +1,13 @@
 // ouroboros.mjs — shared utilities for Ouroboros IDE hook scripts.
 // Provides token loading (disk-first, env fallback), pipe/TCP send transport,
-// stdin reading, address parsing, session-ID inference, and the approval.wait
-// flow used by pre_tool_use.
+// stdin reading, address parsing, and session-ID inference.
 
-import { createConnection } from 'node:net';
 import { existsSync, readFileSync } from 'node:fs';
+import { createConnection } from 'node:net';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const PIPE_PATH = '\\\\.\\pipe\\agent-ide-hooks';
-const TOOL_PIPE_PATH = '\\\\.\\pipe\\ouroboros-tools';
 const DEFAULT_TIMEOUT_MS = 800;
 
 export function readStdin() {
@@ -125,57 +123,3 @@ export async function sendEvent(payload, hooksToken, opts = {}) {
   return false;
 }
 
-// approval.wait over ouroboros-tools pipe. Returns { decision, reason, message } where
-// decision is 'approve' | 'reject' | null (null = pipe unavailable / timeout).
-// message carries the advisory text for warn decisions (surfaced to agent via stdout).
-export function waitForApproval(toolToken, requestId, waitMs) {
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (decision, reason, message) => {
-      if (!done) { done = true; resolve({ decision, reason, message }); }
-    };
-    let sock;
-    try {
-      sock = createConnection({ path: TOOL_PIPE_PATH });
-    } catch {
-      finish(null, null, null);
-      return;
-    }
-    sock.setTimeout(waitMs + 2000);
-    let buf = '';
-    sock.on('connect', () => {
-      try {
-        sock.write(JSON.stringify({ auth: toolToken }) + '\n');
-        sock.write(JSON.stringify({
-          id: 'aw-' + requestId,
-          method: 'approval.wait',
-          params: { requestId, timeoutMs: waitMs },
-        }) + '\n');
-      } catch {
-        sock.destroy();
-        finish(null, null, null);
-      }
-    });
-    sock.on('data', (chunk) => {
-      buf += chunk.toString('utf8');
-      const nl = buf.indexOf('\n');
-      if (nl < 0) return;
-      const line = buf.slice(0, nl);
-      try {
-        const resp = JSON.parse(line);
-        const inner = resp.result || resp;
-        if (inner?.decision) {
-          finish(inner.decision, inner.reason || null, inner.message || null);
-        } else {
-          finish(null, null, null);
-        }
-      } catch {
-        finish(null, null, null);
-      }
-      sock.end();
-    });
-    sock.on('timeout', () => { sock.destroy(); finish(null, null, null); });
-    sock.on('error', () => { sock.destroy(); finish(null, null, null); });
-    sock.on('close', () => finish(null, null, null));
-  });
-}

@@ -50,12 +50,6 @@ export const WRITE_CATALOG: Record<string, CatalogEntry> = {
   // ── agentConflict (write) ───────────────────────────────────────────────────
   'agentConflict:dismiss': { class: 'paired-write', timeoutClass: 'normal' },
 
-  // ── approval (write) ────────────────────────────────────────────────────────
-  'approval:alwaysAllow': { class: 'paired-write', timeoutClass: 'normal' },
-  'approval:forget': { class: 'paired-write', timeoutClass: 'normal' },
-  'approval:remember': { class: 'paired-write', timeoutClass: 'normal' },
-  'approval:respond': { class: 'paired-write', timeoutClass: 'normal' },
-
   // ── backgroundJobs (write) ──────────────────────────────────────────────────
   // backgroundJobs:enqueue reclassified desktop-only (Wave 41 Phase I).
   'backgroundJobs:cancel': { class: 'paired-write', timeoutClass: 'normal' },

@@ -1,31 +1,23 @@
 // pre_tool_use.mjs
-// PreToolUse hook. Sends pre_tool_use event to Ouroboros and waits for an
-// approval decision (via ouroboros-tools pipe primary, file-poll fallback).
-// Exits 0 to approve, 2 with reason on stderr to reject. Approves by default
-// when Ouroboros is unreachable.
+// PreToolUse hook. Sends pre_tool_use event to Ouroboros (fire-and-forget).
+// Always exits 0 — the hook no longer waits for an approval decision.
+// Approves unconditionally when Ouroboros is unreachable.
 
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, unlinkSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 
-import {
-  inferSessionId,
-  loadTokens,
-  readStdin,
-  sendEvent,
-  shouldSkipForNoIde,
-  waitForApproval,
-} from './lib/ouroboros.mjs';
+import { inferSessionId, loadTokens, readStdin, sendEvent, shouldSkipForNoIde } from './lib/ouroboros.mjs';
 import { consumeScratch, detectSensitivePaths } from './lib/signals.mjs';
-
-const APPROVALS_DIR = join(homedir(), '.ouroboros', 'approvals');
-const POLL_INTERVAL_MS = 500;
-const MAX_POLL_MS = 15000;
 
 if (shouldSkipForNoIde()) process.exit(0);
 
-const { hooksToken, toolToken } = loadTokens();
+// External (non-IDE-spawned) sessions must never open a socket to the IDE pipes.
+// OUROBOROS_IDE_SESSION is set by buildBaseEnv() (src/main/ptyEnv.ts) for every
+// IDE-spawned PTY and is absent in an external `claude` process.
+// Exit 0 (approve) immediately — before loadTokens(), readStdin(), or any
+// socket attempt — so no ouroboros-tools / agent-ide-hooks socket is ever opened.
+if (process.env.OUROBOROS_IDE_SESSION !== '1') process.exit(0);
+
+const { hooksToken } = loadTokens();
 if (!hooksToken) process.exit(0);
 
 const stdinData = await readStdin();
@@ -85,66 +77,6 @@ if (promptAtRaw) {
   }
 }
 
-const sent = await sendEvent(payload, hooksToken);
-if (!sent) process.exit(0);
-
-let decision = null;
-let reason = null;
-let message = null;
-
-if (toolToken) {
-  const result = await waitForApproval(toolToken, requestId, MAX_POLL_MS);
-  decision = result.decision;
-  reason = result.reason;
-  message = result.message;
-}
-
-if (decision === null) {
-  ({ decision, reason, message } = await pollResponseFile({
-    responsePath: join(APPROVALS_DIR, requestId + '.response'),
-    maxMs: MAX_POLL_MS,
-    intervalMs: POLL_INTERVAL_MS,
-    decision, reason, message,
-  }));
-}
-
-async function pollResponseFile({ responsePath, maxMs, intervalMs, decision, reason, message }) {
-  const deadline = Date.now() + maxMs;
-  while (Date.now() < deadline) {
-    if (existsSync(responsePath)) {
-      const parsed = tryReadResponse(responsePath);
-      if (parsed) return { decision: parsed.decision, reason: parsed.reason || null, message: parsed.message || null };
-    }
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-  return { decision, reason, message };
-}
-
-function tryReadResponse(responsePath) {
-  try {
-    const text = readFileSync(responsePath, 'utf8');
-    const resp = JSON.parse(text);
-    try { unlinkSync(responsePath); } catch { /* best-effort cleanup */ }
-    return resp;
-  } catch {
-    // partial write — wait and retry
-    return null;
-  }
-}
-
-if (decision === 'reject') {
-  process.stderr.write(reason || 'Rejected by user in Ouroboros IDE');
-  process.exit(2);
-}
-
-// Warn: tool proceeds (exit 0) but advisory message is surfaced to the agent
-// via structured JSON stdout — the documented Claude Code hook protocol for
-// agent-visible context. See roadmap/wave-76-warn-hooks/wave-76-decisions.md.
-if (decision === 'approve' && message) {
-  process.stdout.write(JSON.stringify({
-    hookSpecificOutput: { permissionDecision: 'allow' },
-    systemMessage: message,
-  }));
-}
+await sendEvent(payload, hooksToken);
 
 process.exit(0);

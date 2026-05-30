@@ -8,27 +8,9 @@
 import { desktopOnlyNoop, desktopOnlyStub } from './webPreloadApis';
 import type { WebSocketTransport } from './webPreloadTransport';
 
-// ─── Approval + Sessions + Cost + Usage ──────────────────────────────────────
-
-function buildApprovalApi(t: WebSocketTransport) {
-  return {
-    respond: (requestId: string, decision: string, reason?: string) =>
-      t.invoke('approval:respond', requestId, decision, reason),
-    alwaysAllow: (sessionId: string, toolName: string) =>
-      t.invoke('approval:alwaysAllow', sessionId, toolName),
-    remember: (toolName: string, key: string, decision: string) =>
-      t.invoke('approval:remember', toolName, key, decision),
-    listMemory: () => t.invoke('approval:listMemory'),
-    forget: (entryId: string) => t.invoke('approval:forget', entryId),
-    onRequest: (cb: (request: unknown) => void) => t.on('approval:request', cb),
-    onResolved: (cb: (resolved: unknown) => void) => t.on('approval:resolved', cb),
-    onMemoryChanged: (cb: (entries: unknown) => void) => t.on('approval:memoryChanged', cb),
-  };
-}
+// ─── Sessions + Cost + Usage ──────────────────────────────────────────────────
 
 export function buildTransactionApis(t: WebSocketTransport) {
-  const approvalAPI = buildApprovalApi(t);
-
   const sessionsAPI = {
     save: (session: unknown) => t.invoke('sessions:save', session),
     load: () => t.invoke('sessions:load'),
@@ -58,7 +40,7 @@ export function buildTransactionApis(t: WebSocketTransport) {
     getUsageWindowSnapshot: () => t.invoke('usage:getUsageWindowSnapshot'),
   };
 
-  return { approvalAPI, sessionsAPI, costAPI, usageAPI };
+  return { sessionsAPI, costAPI, usageAPI };
 }
 
 // ─── Updater + Crash + Perf + Symbol APIs ────────────────────────────────────

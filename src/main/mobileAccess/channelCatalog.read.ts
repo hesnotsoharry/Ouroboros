@@ -41,9 +41,6 @@ export const READ_CATALOG: Record<string, CatalogEntry> = {
   // ── agentConflict ───────────────────────────────────────────────────────────
   'agentConflict:getReports': { class: 'paired-read', timeoutClass: 'normal' },
 
-  // ── approval (read) ─────────────────────────────────────────────────────────
-  'approval:listMemory': { class: 'paired-read', timeoutClass: 'short' },
-
   // ── auth (read) ─────────────────────────────────────────────────────────────
   'auth:getStates': { class: 'paired-read', timeoutClass: 'short' },
   'auth:detectCliCreds': { class: 'paired-read', timeoutClass: 'normal' },

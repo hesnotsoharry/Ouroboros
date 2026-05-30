@@ -81,28 +81,6 @@ afterEach(cleanup);
 function makeProps(overrides: Partial<TwoTierRailSurfaceProps> = {}): TwoTierRailSurfaceProps {
   return {
     layout: makeLayout(),
-    sessionsState: {
-      sessions: [],
-      activeSessionId: null,
-      isLoading: false,
-      refresh: vi.fn(),
-    } as never,
-    threads: [],
-    approvalRequests: [],
-    compare: {
-      isComparing: false,
-      compareTarget: null,
-      canCompare: vi.fn(() => false),
-      openCompare: vi.fn(),
-      closeCompare: vi.fn(),
-    } as never,
-    handlers: {
-      handleCreateSession: vi.fn().mockResolvedValue(undefined),
-      handleLaunchAgent: vi.fn(),
-      handleSelectSession: vi.fn(),
-      handleSelectRecentChat: vi.fn(),
-    },
-    terminal: undefined,
     dock: {
       visible: false,
       height: 240,

@@ -12,10 +12,6 @@ vi.mock('../../DiffReview/DiffReviewManager', () => ({
   useDiffReview: () => ({ state: null }),
 }));
 
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({ requests: [], pendingCount: 0 }),
-}));
-
 let currentSessions: Array<{
   id: string;
   taskLabel: string;

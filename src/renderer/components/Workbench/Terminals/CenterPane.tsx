@@ -18,7 +18,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { PermissionOverlay } from '../Permission/PermissionOverlay';
 import { TerminalShell } from './TerminalShell';
 import { useVerticalSplitResize } from './useVerticalSplitResize';
 import { useWorkbenchTerminals } from './useWorkbenchTerminals';
@@ -202,7 +201,6 @@ export function CenterPane({
         maximizedFrame={maximizedFrame}
         onSetMaximizedFrame={onSetMaximizedFrame}
       />
-      <PermissionOverlay />
     </div>
   );
 }

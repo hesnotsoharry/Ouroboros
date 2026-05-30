@@ -15,15 +15,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── External boundary mocks ───────────────────────────────────────────────────
 
-vi.mock('../../../contexts/ApprovalContext', () => ({
-  useApprovalContext: () => ({
-    pendingCount: 0,
-    requests: [],
-    approve: vi.fn(),
-    reject: vi.fn(),
-    alwaysAllow: vi.fn(),
-  }),
-}));
 vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: () => ({
     currentSessions: [],
@@ -129,10 +120,6 @@ const { ChatWorkbenchBody } = await import('./ChatWorkbenchBody');
 beforeEach(() => {
   window.localStorage.clear();
   window.electronAPI = {
-    approval: {
-      respond: vi.fn().mockResolvedValue({ success: true }),
-      remember: vi.fn().mockResolvedValue({ success: true }),
-    },
     rulesAndSkills: {
       listRuleFiles: vi.fn().mockResolvedValue({ success: true, ruleFiles: [] }),
       onChanged: vi.fn().mockReturnValue(() => undefined),

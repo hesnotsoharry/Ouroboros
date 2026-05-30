@@ -111,10 +111,6 @@ export interface AppConfig {
   lspServers: Record<string, string>;
   /** Auto-launch a Claude Code session on startup instead of a plain shell */
   claudeAutoLaunch: boolean;
-  /** Tool names that require user approval before execution */
-  approvalRequired: string[];
-  /** Auto-approve after N seconds (0 = never auto-approve) */
-  approvalTimeout: number;
   /** Workspace time-travel snapshots (capped at 100) */
   workspaceSnapshots: WorkspaceSnapshot[];
   /** Terminal cursor style: 'block' | 'underline' | 'bar' */
@@ -200,8 +196,6 @@ export interface AppConfig {
   workspaceReadLists?: Record<string, string[]>;
   /** Wave 26 Phase A — per-project default profile: projectRoot → profileId */
   workspaceProfileDefaults?: Record<string, string>;
-  /** Wave 26 Phase E — persisted approval memory (allow/deny patterns) */
-  approvalMemory?: import('./approvalMemory').ApprovalMemoryStore;
   /** Wave 33a Phase A — mobile client pairing and device registry. */
   mobileAccess?: MobileAccessConfig;
   /** Wave 34 Phase A — cross-device session dispatch queue + settings. */
