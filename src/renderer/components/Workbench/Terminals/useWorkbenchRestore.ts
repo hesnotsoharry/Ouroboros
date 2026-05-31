@@ -2,9 +2,7 @@
  * useWorkbenchRestore — one-shot reader for the canon workbench session store (Wave 9/10/12).
  *
  * Wave 12: also returns `upperCollection` and `lowerCollection` (TabCollection)
- * when the persisted value has the Wave-12 shape. The Wave-9 fields
- * (`upperCwd`, `lowerCwd`, `resumeSessionId`) are preserved for backward
- * compat with `useWorkbenchTerminals` (Wave-9 acceptance test must stay GREEN).
+ * when the persisted value has the Wave-12 shape.
  *
  * Wave 10: accepts `projectRoot: string | null`. Reads `canonWorkbenchSessions`
  * (a Record keyed by project root) and returns the slice under [projectRoot].
@@ -15,6 +13,10 @@
  *
  * Legacy-shape guard: if the persisted value has `upper` or `lower` as top-level
  * keys, it is the Wave 9 flat shape — treat as cold-start per ADR D1.
+ *
+ * Resume removed (product decision Cole 2026-05-31): `resumeSessionId` is no
+ * longer computed or returned. All workbench Claude tabs spawn fresh on every
+ * launch and project switch — no --resume / --continue ever passed.
  *
  * Store boundary: reads from electron-store Store A (config.get) only. ADR D4.
  */
@@ -29,10 +31,6 @@ import type {
 } from '../../../types/electron';
 
 export interface WorkbenchRestoreState {
-  /** Wave-9 compat fields — derived from upper tab sessionId / tab cwds when available. */
-  upperCwd?: string;
-  lowerCwd?: string;
-  resumeSessionId?: string;
   /** Wave-12 fields — full TabCollection per frame. */
   upperCollection?: TabCollection;
   lowerCollection?: TabCollection;
@@ -73,20 +71,9 @@ function mapSlotToRestoreState(
 ): WorkbenchRestoreState {
   if (!slot) return { isReady: true, forProject: projectRoot };
 
-  const upper = slot.upper;
-  const lower = slot.lower;
-
-  // Wave-12 shape: derive Wave-9 compat fields from the active CC tab.
-  const activeCcTab =
-    upper.tabs.find((t) => t.kind === 'cc' && t.id === upper.activeTabId) ??
-    upper.tabs.find((t) => t.kind === 'cc');
-
   return {
-    upperCollection: upper,
-    lowerCollection: lower,
-    // Wave-9 compat: upperCwd and lowerCwd from first tab sessionId (no cwd stored in tabs).
-    // resumeSessionId from the active CC tab's sessionId.
-    resumeSessionId: activeCcTab?.sessionId,
+    upperCollection: slot.upper,
+    lowerCollection: slot.lower,
     isReady: true,
     forProject: projectRoot,
   };

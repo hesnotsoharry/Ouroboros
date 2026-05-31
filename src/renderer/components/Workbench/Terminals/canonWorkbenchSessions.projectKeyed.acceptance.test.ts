@@ -128,8 +128,8 @@ describe('Wave 10 — useWorkbenchRestore(projectRoot) reads the per-project sli
 
     expect(result.current.upperCollection).toEqual(upperA);
     expect(result.current.lowerCollection).toEqual(lowerA);
-    // resumeSessionId is derived from the active CC tab.
-    expect(result.current.resumeSessionId).toBe('sess-A');
+    // resumeSessionId is gone — spawn-fresh contract (product decision 2026-05-31).
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
   });
 
   it('returns empty (all fields undefined) when [projectRoot] key is absent', async () => {
@@ -147,7 +147,7 @@ describe('Wave 10 — useWorkbenchRestore(projectRoot) reads the per-project sli
 
     expect(result.current.upperCollection).toBeUndefined();
     expect(result.current.lowerCollection).toBeUndefined();
-    expect(result.current.resumeSessionId).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
   });
 
   it('returns empty when the [projectRoot] slot exists but is null', async () => {
@@ -160,7 +160,7 @@ describe('Wave 10 — useWorkbenchRestore(projectRoot) reads the per-project sli
 
     expect(result.current.upperCollection).toBeUndefined();
     expect(result.current.lowerCollection).toBeUndefined();
-    expect(result.current.resumeSessionId).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
   });
 });
 
@@ -180,7 +180,7 @@ describe('Wave 10 — useWorkbenchRestore cold-starts on Wave 9 legacy flat shap
 
     expect(result.current.upperCollection).toBeUndefined();
     expect(result.current.lowerCollection).toBeUndefined();
-    expect(result.current.resumeSessionId).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
   });
 });
 
@@ -208,7 +208,7 @@ describe('Wave 10 — useWorkbenchRestore(null) short-circuits without reading t
     expect(getMock).not.toHaveBeenCalled();
     expect(result.current.upperCollection).toBeUndefined();
     expect(result.current.lowerCollection).toBeUndefined();
-    expect(result.current.resumeSessionId).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
   });
 
   it('returns isReady:true and empty fields when persistTerminalSessions is false', async () => {
@@ -228,7 +228,7 @@ describe('Wave 10 — useWorkbenchRestore(null) short-circuits without reading t
     const getMock = (window.electronAPI as unknown as { config: { get: Mock } }).config.get;
     expect(getMock).not.toHaveBeenCalled();
     expect(result.current.upperCollection).toBeUndefined();
-    expect(result.current.resumeSessionId).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
   });
 });
 

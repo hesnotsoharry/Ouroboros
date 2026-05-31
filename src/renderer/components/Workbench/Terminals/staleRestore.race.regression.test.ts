@@ -182,12 +182,12 @@ describe('stale-restore race — uncached project switch (real useWorkbenchResto
       // (a) B's tabs are present, A's are not.
       expect(result.current.tabs.some((t) => t.id === 'tab-A')).toBe(false);
 
-      // (b) A's CC session must NOT have been resumed under B's cwd.
-      const badResumes = ptySpawnClaude().mock.calls.filter(
-        ([, opts]: [unknown, { resumeMode?: string; cwd?: string }]) =>
-          opts?.resumeMode === 'sess-A' && opts?.cwd === rootB,
+      // (b) No spawnClaude call must ever carry a resumeMode — always fresh.
+      // (product decision Cole 2026-05-31: resume removed from all interactive paths.)
+      const resumeCalls = ptySpawnClaude().mock.calls.filter(
+        ([, opts]: [unknown, { resumeMode?: string }]) => opts?.resumeMode != null,
       );
-      expect(badResumes).toHaveLength(0);
+      expect(resumeCalls).toHaveLength(0);
     },
   );
 });

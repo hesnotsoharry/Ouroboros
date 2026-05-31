@@ -43,15 +43,15 @@ export interface TerminalPaneControl {
   onReorder?: (reordered: TerminalSession[]) => void;
   /** Activate a session by ID, creating a terminal tab for it if it doesn't exist in the sessions list. */
   focusOrCreate?: (id: string) => void;
-  /** Spawn an interactive Claude session (e.g. --resume <sessionId>) */
+  /** Spawn an interactive Claude session (always fresh — no resume). */
   onSpawnClaude?: (
     cwd?: string,
-    options?: { resumeMode?: string; label?: string },
+    options?: { label?: string },
   ) => Promise<void>;
-  /** Spawn an interactive Codex session (e.g. `codex resume <threadId>`) */
+  /** Spawn an interactive Codex session (always fresh — no resume). */
   onSpawnCodex?: (
     cwd?: string,
-    options?: { resumeThreadId?: string; label?: string; model?: string },
+    options?: { label?: string; model?: string },
   ) => Promise<void>;
 }
 

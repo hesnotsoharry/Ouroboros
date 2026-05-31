@@ -23,14 +23,11 @@ import { buildBaseEnv, buildProviderEnv, resolveSpawnOptions } from './ptyEnv';
 
 function buildClaudeLaunchArgs(
   baseArgs: string[],
-  resumeMode?: 'continue' | string,
 ): { shell: string; args: string[] } {
+  // resumeMode param removed (product decision Cole 2026-05-31):
+  // interactive PTY Claude sessions always start fresh — no --resume / --continue.
+  // Only the agentChat/chat-bridge orchestration path (ptyAgent.ts) may use those flags.
   const claudeArgs = [...baseArgs];
-  if (resumeMode === 'continue') {
-    claudeArgs.push('--continue');
-  } else if (resumeMode) {
-    claudeArgs.push('--resume', resumeMode);
-  }
 
   if (process.platform === 'win32') {
     // Security: single-quote escaping prevents command injection via PowerShell metacharacters
@@ -46,14 +43,22 @@ export function spawnClaudePty(
   settings: ClaudeCliSettings,
   options: SpawnOptions & { initialPrompt?: string } = {},
 ): { success: boolean; error?: string } {
+  // [trace:bind] claudeSpawnAttempt — every pty:spawnClaude IPC call.
+  // sessionAlreadyExists:true = blocked by dedup guard (no spawn happens).
+  // resumeMode never present on this path (always-fresh policy, 2026-05-31).
+  log.info('[trace:bind] claudeSpawnAttempt', {
+    paneId: options.env?.['OUROBOROS_PANE_ID'] ?? null,
+    sessionAlreadyExists: sessions.has(id),
+  });
+
   if (sessions.has(id)) return { success: false, error: `Session ${id} already exists` };
 
   const { cwd: defaultCwd, cols, rows } = resolveSpawnOptions(options);
   const cwd = resolveClaudeCwd(win.id, defaultCwd);
-  const launch = buildClaudeLaunchArgs(buildClaudeArgs(settings), options.resumeMode);
-  log.debug(
-    `[pty] spawnClaude id=${id} shell=${launch.shell} args=${JSON.stringify(launch.args)} cwd=${cwd}`,
-  );
+  const launch = buildClaudeLaunchArgs(buildClaudeArgs(settings));
+  // [trace:bind] claudeSpawn — spawn proceeding; argv never contains --resume/--continue.
+  log.info('[trace:bind] claudeSpawn', { paneId: options.env?.['OUROBOROS_PANE_ID'] ?? null, cwd, argv: launch.args });
+  log.debug(`[pty] spawnClaude id=${id} shell=${launch.shell} args=${JSON.stringify(launch.args)} cwd=${cwd}`);
   try {
     const proc = pty.spawn(launch.shell, launch.args, {
       name: 'xterm-256color',
@@ -78,12 +83,14 @@ export function spawnCodexPty(
   id: string,
   win: BrowserWindow,
   settings: CodexCliSettings,
-  options: SpawnOptions & { initialPrompt?: string; resumeThreadId?: string } = {},
+  options: SpawnOptions & { initialPrompt?: string } = {},
 ): { success: boolean; error?: string } {
+  // resumeThreadId removed (product decision Cole 2026-05-31): interactive Codex
+  // tabs always start fresh. Only the agentChat orchestration path may resume.
   if (sessions.has(id)) return { success: false, error: `Session ${id} already exists` };
 
   const { cwd, cols, rows } = resolveSpawnOptions(options);
-  const launch = buildCodexLaunchArgs(buildCodexArgs(settings), options.resumeThreadId);
+  const launch = buildCodexLaunchArgs(buildCodexArgs(settings));
   try {
     const proc = pty.spawn(launch.shell, launch.args, {
       name: 'xterm-256color',

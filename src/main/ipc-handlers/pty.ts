@@ -37,7 +37,7 @@ interface PtySpawnOptions {
 interface ClaudeSpawnOptions extends PtySpawnOptions {
   initialPrompt?: string;
   cliOverrides?: Record<string, unknown>;
-  resumeMode?: string;
+  // resumeMode removed (product decision Cole 2026-05-31): interactive PTY always fresh.
   /** Provider:model override (e.g. 'minimax:MiniMax-M2.7') */
   providerModel?: string;
   /** Extra environment variables (e.g. resolved from providerModel) */
@@ -47,7 +47,7 @@ interface ClaudeSpawnOptions extends PtySpawnOptions {
 interface CodexSpawnOptions extends PtySpawnOptions {
   initialPrompt?: string;
   cliOverrides?: Record<string, unknown>;
-  resumeThreadId?: string;
+  // resumeThreadId removed (product decision Cole 2026-05-31): interactive PTY always fresh.
 }
 
 function getClaudeCliSettings(options?: ClaudeSpawnOptions) {

@@ -63,10 +63,12 @@ describe('useWorkbenchRestore — isReady lifecycle', () => {
     const { result } = renderHook(() => useWorkbenchRestore(TEST_ROOT));
 
     // Synchronously: isReady must be false.
+    // Wave-9 compat fields (upperCwd, lowerCwd, resumeSessionId) are removed per
+    // product decision 2026-05-31 — access via cast to avoid tsc errors on removed fields.
     expect(result.current.isReady).toBe(false);
-    expect(result.current.upperCwd).toBeUndefined();
-    expect(result.current.lowerCwd).toBeUndefined();
-    expect(result.current.resumeSessionId).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['upperCwd']).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['lowerCwd']).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
   });
 
   it('flips isReady:true after the async read resolves', async () => {
@@ -94,10 +96,11 @@ describe('useWorkbenchRestore — empty store', () => {
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
-    const state: WorkbenchRestoreState = result.current;
-    expect(state.upperCwd).toBeUndefined();
-    expect(state.lowerCwd).toBeUndefined();
-    expect(state.resumeSessionId).toBeUndefined();
+    const state = result.current as Record<string, unknown>;
+    // Wave-9 compat fields (upperCwd, lowerCwd, resumeSessionId) removed — cast to verify undefined.
+    expect(state['upperCwd']).toBeUndefined();
+    expect(state['lowerCwd']).toBeUndefined();
+    expect(state['resumeSessionId']).toBeUndefined();
     // Confirm config.get was called with the correct key.
     const mockGet = (window.electronAPI as { config: { get: ReturnType<typeof vi.fn> } }).config
       .get;
@@ -105,9 +108,10 @@ describe('useWorkbenchRestore — empty store', () => {
   });
 });
 
-describe('useWorkbenchRestore — Wave 12 CC tab restore (active CC tab → resumeSessionId)', () => {
-  it('returns upperCollection and resumeSessionId when upper has an active CC tab', async () => {
+describe('useWorkbenchRestore — Wave 12 CC tab restore (tab layout preserved, no resume)', () => {
+  it('returns upperCollection with tab layout when upper has an active CC tab (no resumeSessionId)', async () => {
     // Wave 12 shape: TabCollection with an active CC tab.
+    // resumeSessionId is intentionally gone (product decision 2026-05-31 — always spawn fresh).
     (window as unknown as { electronAPI: unknown }).electronAPI = makeElectronAPI({
       upper: {
         activeTabId: 'tab-cc-1',
@@ -130,7 +134,8 @@ describe('useWorkbenchRestore — Wave 12 CC tab restore (active CC tab → resu
 
     expect(result.current.upperCollection).toBeDefined();
     expect(result.current.upperCollection!.tabs.length).toBe(1);
-    expect(result.current.resumeSessionId).toBe('sess-abc123');
+    // resumeSessionId is never returned — spawn-fresh contract.
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
     expect(result.current.lowerCollection).toBeDefined();
   });
 });
@@ -168,7 +173,8 @@ describe('useWorkbenchRestore — Wave 12 full two-frame restore', () => {
 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
-    expect(result.current.resumeSessionId).toBe('sess-xyz789');
+    // resumeSessionId is never returned (spawn-fresh contract, 2026-05-31).
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
     expect(result.current.upperCollection!.activeTabId).toBe('tab-cc-1');
     expect(result.current.lowerCollection!.activeTabId).toBe('tab-sh-1');
   });
@@ -192,8 +198,9 @@ describe('useWorkbenchRestore — persistTerminalSessions:false short-circuit', 
     await waitFor(() => expect(result.current.isReady).toBe(true));
 
     expect(mockGet).not.toHaveBeenCalled();
-    expect(result.current.upperCwd).toBeUndefined();
-    expect(result.current.lowerCwd).toBeUndefined();
-    expect(result.current.resumeSessionId).toBeUndefined();
+    // Wave-9 compat fields removed (product decision 2026-05-31) — cast to verify.
+    expect((result.current as Record<string, unknown>)['upperCwd']).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['lowerCwd']).toBeUndefined();
+    expect((result.current as Record<string, unknown>)['resumeSessionId']).toBeUndefined();
   });
 });

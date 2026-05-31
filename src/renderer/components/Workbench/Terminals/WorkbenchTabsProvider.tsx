@@ -197,6 +197,13 @@ function useTabRestoreInit(args: TabRestoreInitArgs): void {
     if (initializedForRef.current === projectRoot) return;
     initializedForRef.current = projectRoot;
     if (cachedCollection && cachedCollection.tabs.length > 0) {
+      // [trace:bind] restoreInit:cached — switching back to a previously-visited
+      // project. The in-memory cache has its collection; NO new spawn happens here.
+      // eslint-disable-next-line no-console
+      console.warn('[trace:bind] restoreInit:cached', {
+        projectRoot,
+        cachedTabId: cachedCollection.tabs[0]?.id ?? null,
+      });
       setCollection(cachedCollection);
       return;
     }
@@ -210,6 +217,16 @@ function useTabRestoreInit(args: TabRestoreInitArgs): void {
       // Using collectionRef (not a closure-captured snapshot) guarantees
       // spawned-id === displayed activeTabId (the blank-screen invariant).
       const tab = collectionRef.current.tabs[0];
+      // [trace:bind] restoreInit:coldStart — no cache and no persisted restore;
+      // spawning a fresh Claude for this pane.
+      // tab.id = the OUROBOROS_PANE_ID that will be injected into the new process env.
+      // alreadySpawned = true means the duplicate guard fires and spawnTab is skipped.
+      // eslint-disable-next-line no-console
+      console.warn('[trace:bind] restoreInit:coldStart', {
+        projectRoot,
+        tabId: tab?.id ?? null,
+        alreadySpawned: tab ? spawnedTabsRef.current.has(tab.id) : null,
+      });
       if (tab && !spawnedTabsRef.current.has(tab.id)) {
         spawnedTabsRef.current.add(tab.id);
         spawnTab(tab.id, tab.kind, cwd);
@@ -221,6 +238,14 @@ function useTabRestoreInit(args: TabRestoreInitArgs): void {
   useEffect(() => {
     if (!isReady || !restoredCollection || restoredCollection.tabs.length === 0) return;
     if (cachedCollection && cachedCollection.tabs.length > 0) return;
+    // [trace:bind] restoreInit:restoredSpawn — persisted session found and cache is
+    // absent; spawning from the restored collection. paneId = tab.id (the tab id
+    // that spawnRestoredCcTabs will pass as OUROBOROS_PANE_ID).
+    // eslint-disable-next-line no-console
+    console.warn('[trace:bind] restoreInit:restoredSpawn', {
+      projectRoot,
+      restoredActiveTabId: restoredCollection.activeTabId,
+    });
     spawnRestoredCcTabs(restoredCollection, spawnedTabsRef.current, cwd);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, projectRoot]);
@@ -272,6 +297,19 @@ function useProjectSwitch(args: ProjectSwitchArgs): void {
     // causing a blank terminal (the id-match invariant). Only reset when genuinely
     // switching away from a known project root.
     if (prev === undefined) return;
+
+    // [trace:bind] projectSwitch — fires when the active project changes.
+    // savedUpperTabId = the outgoing project's upper tab that was just cached.
+    // spawnedBeforeClear = the set of pane ids that were in spawnedTabsRef before reset.
+    // After this effect: spawnedTabsRef is empty and collection state is reset to fresh
+    // defaults. useTabRestoreInit will fire next (same batch) for the new projectRoot.
+    // eslint-disable-next-line no-console
+    console.warn('[trace:bind] projectSwitch', {
+      from: prev,
+      to: projectRoot,
+      savedUpperTabId: getUpperColl().tabs[0]?.id ?? null,
+      spawnedBeforeClear: Array.from(spawnedTabsRef.current),
+    });
 
     // Reset spawned-tabs set so old ids don't block new project's spawns.
     spawnedTabsRef.current = new Set<string>();

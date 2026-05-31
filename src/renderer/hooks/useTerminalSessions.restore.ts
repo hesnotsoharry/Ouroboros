@@ -229,16 +229,18 @@ async function spawnSavedSession(
   deps: Pick<RestoreDependencies, 'spawnSession' | 'spawnClaudeSession' | 'spawnCodexSession'>,
 ): Promise<void> {
   if (snapshot.isClaude || autoLaunch) {
+    // Never resume — always spawn fresh. Conversation resume is removed by product
+    // decision (Cole 2026-05-31): resume reattaches stale session ids to new panes
+    // (project-switch misbinding) and silently bills for expired prompt caches.
     await deps.spawnClaudeSession(snapshot.cwd, {
       label: snapshot.title,
-      resumeMode: snapshot.claudeSessionId ?? 'continue',
     });
     return;
   }
   if (snapshot.isCodex) {
+    // Never resume — always spawn fresh (product decision Cole 2026-05-31).
     await deps.spawnCodexSession(snapshot.cwd, {
       label: snapshot.title,
-      resumeThreadId: snapshot.codexThreadId,
     });
     return;
   }

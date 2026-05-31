@@ -25,7 +25,8 @@ export interface SpawnClaudeOptions {
   initialPrompt?: string;
   cliOverrides?: Record<string, unknown>;
   label?: string;
-  resumeMode?: string;
+  // resumeMode intentionally removed (product decision Cole 2026-05-31):
+  // workbench Claude sessions always start fresh — no --resume / --continue.
   /** Provider:model override (e.g. 'minimax:MiniMax-M2.7') */
   providerModel?: string;
 }
@@ -34,7 +35,8 @@ export interface SpawnCodexOptions {
   initialPrompt?: string;
   cliOverrides?: Record<string, unknown>;
   label?: string;
-  resumeThreadId?: string;
+  // resumeThreadId intentionally removed (product decision Cole 2026-05-31):
+  // interactive Codex tabs always start fresh — no resume.
   model?: string;
 }
 
@@ -249,7 +251,6 @@ function useSpawnClaudeSession({
             cwd,
             initialPrompt: options?.initialPrompt,
             cliOverrides: options?.cliOverrides,
-            resumeMode: options?.resumeMode,
             providerModel: options?.providerModel,
           }),
       });
@@ -268,7 +269,7 @@ function buildCodexSession(
     title: options?.label ?? `Codex ${index + 1}`,
     status: 'running',
     isCodex: true,
-    codexThreadId: options?.resumeThreadId,
+    // codexThreadId intentionally not set — always spawn fresh, never resume.
     model: options?.model,
   };
 }
@@ -290,21 +291,20 @@ function useSpawnCodexSession({
         setActiveSessionId,
         clearKillTimers,
         onQueued: () => {
-          if (!options?.resumeThreadId) {
-            pendingCodexAssocRef.current.push({
-              ptyId: id,
-              cwd: cwd ?? '',
-              spawnedAt: Date.now(),
-              retries: 0,
-            });
-          }
+          // Always push to assoc queue — every Codex spawn is fresh.
+          pendingCodexAssocRef.current.push({
+            ptyId: id,
+            cwd: cwd ?? '',
+            spawnedAt: Date.now(),
+            retries: 0,
+          });
         },
         start: () =>
           window.electronAPI.pty.spawnCodex(id, {
             cwd,
             initialPrompt: options?.initialPrompt,
             cliOverrides: options?.cliOverrides,
-            resumeThreadId: options?.resumeThreadId,
+            // resumeThreadId intentionally omitted (product decision Cole 2026-05-31).
           }),
       });
     },

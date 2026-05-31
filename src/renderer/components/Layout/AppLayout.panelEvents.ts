@@ -22,11 +22,11 @@ export interface PanelEventHandlerArgs {
   focusOrCreate?: (id: string) => void;
   spawnClaudeSession?: (
     cwd?: string,
-    options?: { resumeMode?: string; label?: string },
+    options?: { label?: string },
   ) => Promise<void>;
   spawnCodexSession?: (
     cwd?: string,
-    options?: { resumeThreadId?: string; label?: string; model?: string },
+    options?: { label?: string; model?: string },
   ) => Promise<void>;
 }
 
@@ -58,13 +58,14 @@ export function resolveProvider(detail: OpenChatDetail): 'claude-code' | 'codex'
 function spawnChatSession(
   args: PanelEventHandlerArgs,
   provider: 'claude-code' | 'codex',
-  sessionId: string,
   model?: string,
 ): void {
+  // Never resume — always spawn fresh (product decision Cole 2026-05-31).
+  // resume reattached stale session ids to new panes and billed for expired caches.
   if (provider === 'codex') {
-    void args.spawnCodexSession?.(undefined, { resumeThreadId: sessionId, label: 'Chat (resumed)', model });
+    void args.spawnCodexSession?.(undefined, { label: 'Chat', model });
   } else {
-    void args.spawnClaudeSession?.(undefined, { resumeMode: sessionId, label: 'Chat (resumed)' });
+    void args.spawnClaudeSession?.(undefined, { label: 'Chat' });
   }
 }
 
@@ -72,11 +73,9 @@ function buildOpenChatInTerminalHandler(args: PanelEventHandlerArgs) {
   return function onOpenChatInTerminal(event: Event): void {
     const detail = resolveOpenChatDetail(event);
     const provider = resolveProvider(detail);
-    const sessionId = detail?.sessionId ?? detail?.claudeSessionId ?? detail?.codexThreadId;
-    if (!sessionId) return;
     args.expand('terminal');
     args.setFocusedPanel('terminal');
-    spawnChatSession(args, provider, sessionId, detail?.model);
+    spawnChatSession(args, provider, detail?.model);
   };
 }
 

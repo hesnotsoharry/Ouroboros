@@ -16,12 +16,10 @@ function escapeCliArg(arg: string): string {
 
 export function buildCodexLaunchArgs(
   baseArgs: string[],
-  resumeThreadId?: string,
 ): { shell: string; args: string[] } {
+  // resumeThreadId param removed (product decision Cole 2026-05-31):
+  // interactive PTY Codex sessions always start fresh.
   const codexArgs = [...baseArgs];
-  if (resumeThreadId) {
-    codexArgs.unshift('resume', resumeThreadId);
-  }
 
   if (process.platform === 'win32') {
     const escaped = ['codex', ...codexArgs].map(escapePowerShellArg).join(' ');

@@ -8,15 +8,15 @@ import type { SessionManagerActionArgs, SessionManagerActions } from './useSessi
 /** Spawns the correct PTY process type for a restarted session. */
 export function spawnBySessionType(session: TerminalSession, cwd: string): Promise<unknown> {
   if (session.isClaude) {
+    // Never resume — always spawn fresh (product decision Cole 2026-05-31).
     return window.electronAPI.pty.spawnClaude(session.id, {
       cwd,
-      resumeMode: session.claudeSessionId,
     });
   }
   if (session.isCodex) {
+    // Never resume — always spawn fresh (product decision Cole 2026-05-31).
     return window.electronAPI.pty.spawnCodex(session.id, {
       cwd,
-      resumeThreadId: session.codexThreadId,
     });
   }
   return window.electronAPI.pty.spawn(session.id, { cwd });

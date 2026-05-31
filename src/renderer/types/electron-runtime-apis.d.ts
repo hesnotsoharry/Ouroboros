@@ -87,7 +87,7 @@ export interface PtyAPI {
       rows?: number;
       initialPrompt?: string;
       cliOverrides?: Partial<ClaudeCliSettings>;
-      resumeMode?: string;
+      // resumeMode removed (product decision Cole 2026-05-31): always fresh spawn.
       /** Provider:model override (e.g. 'minimax:MiniMax-M2.7') */
       providerModel?: string;
       /** Extra env vars merged into the pty process env (Wave 13: OUROBOROS_PANE_ID). */
@@ -102,7 +102,7 @@ export interface PtyAPI {
       rows?: number;
       initialPrompt?: string;
       cliOverrides?: Partial<CodexCliSettings>;
-      resumeThreadId?: string;
+      // resumeThreadId removed (product decision Cole 2026-05-31): always fresh spawn.
     },
   ) => Promise<PtySpawnResult>;
   write: (id: string, data: string) => Promise<IpcResult>;
