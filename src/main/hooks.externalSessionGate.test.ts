@@ -189,4 +189,44 @@ describe('dispatchToRenderer — external session gate', () => {
 
     expect(mockFrameSend).not.toHaveBeenCalled();
   });
+
+  it('5. turn-2 pre_tool_use (no paneId) still dispatched after turn-1 session_stop', () => {
+    // session_stop fires at END OF EVERY TURN (Claude Code Stop hook), not session end.
+    // Ownership MUST persist across turns; only agent_end / agent_stop releases it.
+    const sessionId = 'sess-multiturn';
+
+    // Turn 1 start — paneId present, registers ownership
+    _dispatchToRenderer(makePayload({
+      type: 'agent_start',
+      sessionId,
+      paneId: 'pane-multiturn',
+      requestId: undefined,
+      toolName: undefined,
+    }));
+    mockFrameSend.mockClear();
+
+    // End of turn 1 — session_stop fires (per-turn Stop hook), no paneId
+    _dispatchToRenderer({
+      type: 'session_stop',
+      sessionId,
+      timestamp: Date.now(),
+    });
+    mockFrameSend.mockClear();
+
+    // Turn 2 tool call — no paneId; must STILL reach the renderer
+    _dispatchToRenderer(makePayload({
+      type: 'pre_tool_use',
+      sessionId,
+      paneId: undefined,
+      toolName: 'Read',
+      requestId: 'req-turn2',
+    }));
+
+    expect(mockFrameSend).toHaveBeenCalledOnce();
+    expect(mockFrameSend).toHaveBeenCalledWith('hooks:event', expect.objectContaining({
+      sessionId,
+      type: 'pre_tool_use',
+      toolName: 'Read',
+    }));
+  });
 });
