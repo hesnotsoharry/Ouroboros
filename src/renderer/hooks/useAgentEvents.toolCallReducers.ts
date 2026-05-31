@@ -8,12 +8,41 @@ import {
   updateSession,
 } from './useAgentEvents.session-utils';
 
+/** [trace:bind] Diagnostic: logs the resolved tool id + which reducer branch a TOOL_START takes.
+ *  Disambiguates fallback-id collision ('collision-update') vs the isDuplicate guard
+ *  ('duplicate-skip') vs a clean append. Remove when the trace commit is reverted (B5 cleanup). */
+function traceToolAttach(
+  session: { toolCalls: ToolCallEvent[] },
+  action: { sessionId: string; toolCall: ToolCallEvent },
+): void {
+  const existingIndex = session.toolCalls.findIndex((tc) => tc.id === action.toolCall.id);
+  const isDuplicate =
+    existingIndex < 0 &&
+    session.toolCalls.some(
+      (tc) =>
+        tc.toolName === action.toolCall.toolName &&
+        tc.input === action.toolCall.input &&
+        Math.abs(tc.timestamp - action.toolCall.timestamp) < 2000 &&
+        tc.status === 'pending',
+    );
+  const branch = existingIndex >= 0 ? 'collision-update' : isDuplicate ? 'duplicate-skip' : 'append';
+  // eslint-disable-next-line no-console
+  console.warn('[trace:bind] toolAttach', {
+    sessionId: action.sessionId,
+    toolName: action.toolCall.toolName,
+    toolCallId: action.toolCall.id,
+    branch,
+    countBefore: session.toolCalls.length,
+  });
+}
+
 export function startToolCall(
   state: AgentState,
   action: Extract<{ type: 'TOOL_START'; sessionId: string; toolCall: ToolCallEvent }, { type: 'TOOL_START' }>,
 ): AgentState {
   const baseState = ensureSession(state, action.sessionId, action.toolCall.timestamp);
   return updateSession(baseState, action.sessionId, (session) => {
+    traceToolAttach(session, action);
     const existingIndex = session.toolCalls.findIndex((tc) => tc.id === action.toolCall.id);
     if (existingIndex >= 0) {
       const existing = session.toolCalls[existingIndex];

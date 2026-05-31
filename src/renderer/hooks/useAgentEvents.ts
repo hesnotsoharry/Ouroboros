@@ -211,6 +211,12 @@ function handleAgentEvent(
   dispatch: Dispatch<AgentAction>,
   liveSessionIdsRef: MutableRefObject<Set<string>>,
 ): void {
+  // [trace:bind] RENDERER RECV — log every event as it enters the reducer pipeline.
+  log.info('[trace:bind] recv', {
+    type: event.type,
+    sessionId: event.sessionId,
+    paneId: (event as { paneId?: string }).paneId ?? null,
+  });
   const payload = toHookPayload(event);
   if (!payload) {
     log.warn('toHookPayload returned null for:', JSON.stringify(event));

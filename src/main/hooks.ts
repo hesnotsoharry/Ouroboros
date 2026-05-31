@@ -251,6 +251,15 @@ function dispatchOwnedEvent(rawPayload: HookPayload): void {
   log.debug(
     `dispatching to ${windows.length} renderer(s): ${payload.type} session=${payload.sessionId} tool=${payload.toolName ?? ''}`,
   );
+  // [trace:bind] MAIN EMIT — log every event before it crosses the IPC boundary.
+  log.info('[trace:bind] emit', {
+    type: payload.type,
+    sessionId: payload.sessionId,
+    toolName: payload.toolName ?? null,
+    toolCallId: payload.toolCallId ?? null,
+    paneId: (payload as { paneId?: string }).paneId ?? null,
+    owned: ownedSessionIds.has(payload.sessionId),
+  });
   sendPayload(windows, payload);
   dispatchLifecycleEvent(payload);
   runHookTaps(payload, sessionCwdMap);

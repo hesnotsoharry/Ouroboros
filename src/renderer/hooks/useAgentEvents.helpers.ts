@@ -312,6 +312,25 @@ function turnEnd(state: AgentState, action: TurnEndAction): AgentState {
 }
 
 function startSession(state: AgentState, action: AgentStartAction): AgentState {
+  // [trace:bind] SESSION CREATE — log before new session is prepended.
+  const existingWithPane = action.paneId
+    ? state.sessions.filter((s) => s.paneId === action.paneId).length
+    : 0;
+  if (!hasSession(state.sessions, action.sessionId)) {
+    // eslint-disable-next-line no-console
+    console.warn('[trace:bind] sessionCreate', {
+      sessionId: action.sessionId,
+      paneId: action.paneId ?? null,
+      totalSessions: state.sessions.length,
+    });
+    if (existingWithPane > 0) {
+      // eslint-disable-next-line no-console
+      console.warn('[trace:bind] paneDup', {
+        paneId: action.paneId,
+        countWithThisPane: existingWithPane,
+      });
+    }
+  }
   if (hasSession(state.sessions, action.sessionId)) return updateExistingSession(state, action);
   const { resolvedParent, updatedTimestamps } = resolveParentAndTimestamps(state, action);
   const newSession: AgentSession = {

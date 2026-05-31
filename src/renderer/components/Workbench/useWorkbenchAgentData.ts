@@ -12,6 +12,8 @@
  */
 
 
+import { useRef } from 'react';
+
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
 import { buildBadgeMap, deriveLatestHunk, useDiffReviewState } from './useWorkbenchAgentData.diff';
@@ -448,6 +450,24 @@ export function useWorkbenchAgentData(paneId?: string | null): WorkbenchAgentDat
   const primary = resolvePrimary(agents, paneId);
   // Note: useProjectOptional removed in Wave 13 Phase 2 (D4 Option A — no cwd fallback).
   const primaryId = primary?.id ?? null;
+
+  // [trace:bind] PANE SELECT — log whenever the resolved session or session count changes.
+  const prevSelectRef = useRef<{ sessionId: string | null; sessionCount: number }>({
+    sessionId: null,
+    sessionCount: 0,
+  });
+  const selectSignature = `${primaryId}:${agents.length}`;
+  const prevSignature = `${prevSelectRef.current.sessionId}:${prevSelectRef.current.sessionCount}`;
+  if (selectSignature !== prevSignature) {
+    prevSelectRef.current = { sessionId: primaryId, sessionCount: agents.length };
+    // eslint-disable-next-line no-console
+    console.warn('[trace:bind] paneSelect', {
+      activePaneId: paneId ?? null,
+      matchedSessionId: primaryId,
+      matchedToolCallsCount: primary?.toolCalls.length ?? null,
+      sessionCount: agents.length,
+    });
+  }
 
   const state = deriveWorkbenchAgentState(primary);
 
