@@ -31,6 +31,7 @@ const mockAddTab = vi.fn();
 const mockCloseTab = vi.fn();
 const mockRenameTab = vi.fn();
 const mockSetActiveTab = vi.fn();
+const mockSpawnCcTab = vi.fn();
 
 vi.mock('./WorkbenchTabsProvider', () => ({
   useWorkbenchTabsContext: vi.fn(),
@@ -87,6 +88,7 @@ function makeMockHook(
     createdAt: number;
   }>,
   activeTabId: string | null,
+  spawnedTabIds: ReadonlySet<string> = new Set(tabs.map((t) => t.id)),
 ) {
   return {
     tabs,
@@ -95,6 +97,8 @@ function makeMockHook(
     closeTab: mockCloseTab,
     renameTab: mockRenameTab,
     setActiveTab: mockSetActiveTab,
+    spawnedTabIds,
+    spawnCcTab: mockSpawnCcTab,
   };
 }
 
@@ -105,6 +109,7 @@ beforeEach(() => {
   mockCloseTab.mockClear();
   mockRenameTab.mockClear();
   mockSetActiveTab.mockClear();
+  mockSpawnCcTab.mockClear();
 
   // Default: single tab, upper frame.
   const defaultHook = makeMockHook(
@@ -174,5 +179,67 @@ describe('Wave 12 Phase 4 — TerminalShell addTab (lower frame, kind=shell)', (
     const call = mockAddTab.mock.calls[0][0] as { kind: string };
     expect(call.kind).toBe('shell');
     expect(call.kind).not.toBe('cc');
+  });
+});
+
+describe('Wave 101 — Start Claude gate (TerminalShell cc pane)', () => {
+  it('renders "Start Claude" button when cc pane has an unspawned active tab', () => {
+    // spawnedTabIds does NOT include 't1' → button shown.
+    const hookVal = makeMockHook(
+      [{ id: 't1', label: 'claude', sessionId: 's1', kind: 'cc', createdAt: 1 }],
+      't1',
+      new Set<string>(), // empty — tab not yet spawned
+    );
+    mockedUseWorkbenchTabsContext.mockReturnValue(hookVal);
+
+    render(<TerminalShell kind="cc" flex={0.62} sessionId="wb-cc-1" isActive />);
+
+    expect(screen.getByTestId('start-claude-button')).toBeDefined();
+    expect(screen.queryByTestId('terminal-instance-stub-s1')).toBeNull();
+  });
+
+  it('does NOT render "Start Claude" button when cc pane has a spawned active tab', () => {
+    // spawnedTabIds includes 't1' → terminal shown.
+    const hookVal = makeMockHook(
+      [{ id: 't1', label: 'claude', sessionId: 's1', kind: 'cc', createdAt: 1 }],
+      't1',
+      new Set(['t1']), // already spawned
+    );
+    mockedUseWorkbenchTabsContext.mockReturnValue(hookVal);
+
+    render(<TerminalShell kind="cc" flex={0.62} sessionId="wb-cc-1" isActive />);
+
+    expect(screen.queryByTestId('start-claude-button')).toBeNull();
+    expect(screen.getByTestId('terminal-instance-stub-s1')).toBeDefined();
+  });
+
+  it('does NOT render "Start Claude" button for a shell pane (no gate for shell)', () => {
+    const hookVal = makeMockHook(
+      [{ id: 's1', label: 'shell', sessionId: 'ws1', kind: 'shell', createdAt: 1 }],
+      's1',
+      new Set<string>(), // empty — but shell ignores this
+    );
+    mockedUseWorkbenchTabsContext.mockReturnValue(hookVal);
+
+    render(<TerminalShell kind="shell" flex={0.38} sessionId="wb-shell-1" isActive />);
+
+    expect(screen.queryByTestId('start-claude-button')).toBeNull();
+  });
+
+  it('clicking "Start Claude" calls spawnCcTab with the active tab id', () => {
+    const hookVal = makeMockHook(
+      [{ id: 't1', label: 'claude', sessionId: 's1', kind: 'cc', createdAt: 1 }],
+      't1',
+      new Set<string>(),
+    );
+    mockedUseWorkbenchTabsContext.mockReturnValue(hookVal);
+
+    render(<TerminalShell kind="cc" flex={0.62} sessionId="wb-cc-1" isActive />);
+
+    const btn = screen.getByTestId('start-claude-button');
+    fireEvent.click(btn);
+
+    expect(mockSpawnCcTab).toHaveBeenCalledTimes(1);
+    expect(mockSpawnCcTab).toHaveBeenCalledWith('t1');
   });
 });

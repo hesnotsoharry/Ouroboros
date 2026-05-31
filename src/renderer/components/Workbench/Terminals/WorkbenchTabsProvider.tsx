@@ -17,16 +17,32 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import type { TabCollection, TabState } from '../../../types/electron';
 import { useWorkbenchRestore } from './useWorkbenchRestore';
 import { useWorkbenchSessionPersist } from './useWorkbenchSessionPersist';
+import {
+  applyAddTab,
+  applyRenameTab,
+  resolveCloseResult,
+  spawnRestoredShellTabs,
+  spawnTab,
+  trySpawnFirstShellTab,
+} from './WorkbenchTabsProvider.pure';
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface UseWorkbenchTabsResult {
   tabs: TabState[];
   activeTabId: string | null;
+  /** Ids of tabs whose PTY session has been started (by user or auto-spawn). */
+  spawnedTabIds: ReadonlySet<string>;
   addTab(opts: { kind?: 'cc' | 'shell' }): string;
   closeTab(id: string): void;
   renameTab(id: string, label: string): void;
   setActiveTab(id: string): void;
+  /**
+   * Starts a cc PTY session for the given tab id.
+   * No-op if the tab was already spawned. Does NOT auto-start shell tabs —
+   * shell tabs are started at collection-init time (no token cost).
+   */
+  spawnCcTab(tabId: string): void;
 }
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
@@ -48,54 +64,6 @@ export function buildNewTab(frame: 'upper' | 'lower', kind: 'cc' | 'shell'): Tab
   return { id, label: defaultLabel(kind), sessionId: id, kind, createdAt: Date.now() };
 }
 
-export function spawnTab(id: string, kind: 'cc' | 'shell', cwd: string | undefined): void {
-  if (kind === 'cc') {
-    void window.electronAPI?.pty?.spawnClaude?.(id, {
-      cwd,
-      env: { OUROBOROS_PANE_ID: id },
-    });
-  } else {
-    void window.electronAPI?.pty?.spawn?.(id, {
-      cwd,
-      env: { OUROBOROS_PANE_ID: id },
-    });
-  }
-}
-
-function spawnRestoredCcTabs(
-  collection: TabCollection,
-  spawned: Set<string>,
-  cwd: string | undefined,
-): void {
-  const { tabs, activeTabId } = collection;
-  for (const tab of tabs) {
-    if (tab.kind !== 'cc') continue;
-    if (tab.id !== activeTabId && activeTabId !== null) continue;
-    if (spawned.has(tab.id)) break;
-    spawned.add(tab.id);
-    // Cold-start: always spawn FRESH — never resume a stale session.
-    // Tab structure (label, id) is preserved; the CC session itself starts new.
-    spawnTab(tab.id, 'cc', cwd);
-    break;
-  }
-}
-
-function resolveCloseResult(prev: TabCollection, id: string): TabCollection {
-  const remaining = prev.tabs.filter((t) => t.id !== id);
-  if (prev.activeTabId !== id) return { activeTabId: prev.activeTabId, tabs: remaining };
-  const closedIdx = prev.tabs.findIndex((t) => t.id === id);
-  const nextTab = remaining[closedIdx] ?? remaining[closedIdx - 1] ?? null;
-  return { activeTabId: nextTab?.id ?? null, tabs: remaining };
-}
-
-function applyAddTab(prev: TabCollection, newTab: TabState): TabCollection {
-  return { activeTabId: newTab.id, tabs: [...prev.tabs, newTab] };
-}
-
-function applyRenameTab(prev: TabCollection, id: string, label: string): TabCollection {
-  return { ...prev, tabs: prev.tabs.map((t) => (t.id === id ? { ...t, label } : t)) };
-}
-
 // ── makeDefaultCollection ──────────────────────────────────────────────────────
 
 function makeDefaultCollection(frame: 'upper' | 'lower'): TabCollection {
@@ -110,49 +78,57 @@ interface TabActions {
   closeTab(id: string): void;
   renameTab(id: string, label: string): void;
   setActiveTab(id: string): void;
+  spawnCcTab(tabId: string): void;
 }
 
-function useTabActions(
-  frame: 'upper' | 'lower',
-  cwd: string | undefined,
-  spawnedTabsRef: React.MutableRefObject<Set<string>>,
-  setCollection: React.Dispatch<React.SetStateAction<TabCollection>>,
-): TabActions {
+interface TabActionsArgs {
+  frame: 'upper' | 'lower';
+  cwd: string | undefined;
+  spawnedTabsRef: React.MutableRefObject<Set<string>>;
+  setCollection: React.Dispatch<React.SetStateAction<TabCollection>>;
+  markSpawned: (id: string) => void;
+}
+
+function useTabActions(args: TabActionsArgs): TabActions {
+  const { frame, cwd, spawnedTabsRef, setCollection, markSpawned } = args;
   const addTab = useCallback(
     (opts: { kind?: 'cc' | 'shell' } = {}): string => {
       const kind = opts.kind ?? defaultKind(frame);
       const newTab = buildNewTab(frame, kind);
       spawnTab(newTab.id, kind, cwd);
       spawnedTabsRef.current.add(newTab.id);
+      markSpawned(newTab.id);
       setCollection((prev) => applyAddTab(prev, newTab));
       return newTab.id;
     },
-    // spawnedTabsRef is a stable ref — intentionally excluded from deps.
+    // spawnedTabsRef is a stable ref — excluded from deps intentionally.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [frame, cwd, setCollection],
+    [frame, cwd, setCollection, markSpawned],
   );
-  const closeTab = useCallback(
-    (id: string): void => {
-      setCollection((prev) => resolveCloseResult(prev, id));
-      void Promise.resolve().then(() => {
-        void window.electronAPI?.pty?.kill(id);
-      });
-    },
-    [setCollection],
-  );
+  const closeTab = useCallback((id: string): void => {
+    setCollection((prev) => resolveCloseResult(prev, id));
+    void Promise.resolve().then(() => { void window.electronAPI?.pty?.kill(id); });
+  }, [setCollection]);
   const renameTab = useCallback(
-    (id: string, label: string): void => {
-      setCollection((prev) => applyRenameTab(prev, id, label));
-    },
+    (id: string, label: string): void => { setCollection((prev) => applyRenameTab(prev, id, label)); },
     [setCollection],
   );
   const setActiveTab = useCallback(
-    (id: string): void => {
-      setCollection((prev) => ({ ...prev, activeTabId: id }));
-    },
+    (id: string): void => { setCollection((prev) => ({ ...prev, activeTabId: id })); },
     [setCollection],
   );
-  return { addTab, closeTab, renameTab, setActiveTab };
+  const spawnCcTab = useCallback(
+    (tabId: string): void => {
+      if (spawnedTabsRef.current.has(tabId)) return;
+      spawnedTabsRef.current.add(tabId);
+      markSpawned(tabId);
+      spawnTab(tabId, 'cc', cwd);
+    },
+    // spawnedTabsRef is a stable ref — excluded from deps intentionally.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cwd, markSpawned],
+  );
+  return { addTab, closeTab, renameTab, setActiveTab, spawnCcTab };
 }
 
 // ── Per-project collection cache type ─────────────────────────────────────────
@@ -175,53 +151,36 @@ interface TabRestoreInitArgs {
   setCollection: React.Dispatch<React.SetStateAction<TabCollection>>;
 }
 
-/**
- * Manages initial collection state from restore and CC fresh-spawn.
- * Keyed by projectRoot — re-initializes when projectRoot changes (in-place
- * project switching without provider remount).
- *
- * ID-match invariant: the tab id passed to spawnTab/spawnClaude on cold start
- * MUST equal the tab id already held in `collection.activeTabId` (the id that
- * useWorkbenchTabsContext exposes and TerminalShell displays). We use
- * `collection.tabs[0]` — the tab that makeDefaultCollection put into useState —
- * instead of building a fresh tab here (which would produce a DIFFERENT id and
- * cause a blank terminal).
- */
-function useTabRestoreInit(args: TabRestoreInitArgs): void {
+/** Applies cold-start collection resolution for one frame (shell-only auto-spawn). */
+function applyColdStartCollection(
+  args: TabRestoreInitArgs,
+  initializedForRef: React.MutableRefObject<string | null | undefined>,
+): void {
   const { restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot } = args;
   const { cachedCollection, collectionRef, setCollection } = args;
+  if (!isReady || cwd === undefined) return;
+  if (initializedForRef.current === projectRoot) return;
+  initializedForRef.current = projectRoot;
+  if (cachedCollection && cachedCollection.tabs.length > 0) { setCollection(cachedCollection); return; }
+  if (restoredCollection && restoredCollection.tabs.length > 0) { setCollection(restoredCollection); return; }
+  trySpawnFirstShellTab(collectionRef.current, spawnedTabsRef.current, cwd);
+}
+
+/** Manages initial collection state (shell auto-spawn; CC gated). */
+function useTabRestoreInit(args: TabRestoreInitArgs): void {
+  const { restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot } = args;
+  const { cachedCollection } = args;
   const initializedForRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (!isReady || cwd === undefined) return;
-    if (initializedForRef.current === projectRoot) return;
-    initializedForRef.current = projectRoot;
-    if (cachedCollection && cachedCollection.tabs.length > 0) {
-      setCollection(cachedCollection);
-      return;
-    }
-    if (restoredCollection && restoredCollection.tabs.length > 0) {
-      setCollection(restoredCollection);
-    } else {
-      // Cold-start: spawn the tab already in collection state (read via ref so
-      // we always get the latest value, even if useProjectSwitch reset it).
-      // collectionRef.current.tabs[0] is the tab that makeDefaultCollection put
-      // into useState — its id is what useWorkbenchTabsContext exposes as activeTabId.
-      // Using collectionRef (not a closure-captured snapshot) guarantees
-      // spawned-id === displayed activeTabId (the blank-screen invariant).
-      const tab = collectionRef.current.tabs[0];
-      if (tab && !spawnedTabsRef.current.has(tab.id)) {
-        spawnedTabsRef.current.add(tab.id);
-        spawnTab(tab.id, tab.kind, cwd);
-      }
-    }
+    applyColdStartCollection(args, initializedForRef);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, cwd, projectRoot]);
 
   useEffect(() => {
     if (!isReady || !restoredCollection || restoredCollection.tabs.length === 0) return;
     if (cachedCollection && cachedCollection.tabs.length > 0) return;
-    spawnRestoredCcTabs(restoredCollection, spawnedTabsRef.current, cwd);
+    spawnRestoredShellTabs(restoredCollection, spawnedTabsRef.current, cwd);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, projectRoot]);
 }
@@ -290,6 +249,8 @@ interface FrameTabStateArgs {
   restoredCollection: TabCollection | undefined;
   isReady: boolean;
   spawnedTabsRef: React.MutableRefObject<Set<string>>;
+  spawnedTabIdsState: ReadonlySet<string>;
+  markSpawned: (id: string) => void;
   projectRoot: string | null;
   cachedCollection: TabCollection | undefined;
   collection: TabCollection;
@@ -303,16 +264,21 @@ interface FrameTabStateArgs {
  * Rules of Hooks: never call this inside a conditional or loop.
  */
 function useFrameTabState(args: FrameTabStateArgs): UseWorkbenchTabsResult {
-  const { frame, restoredCollection, isReady, spawnedTabsRef } = args;
-  const { projectRoot, cachedCollection, collection, collectionRef, setCollection } = args;
+  const { frame, restoredCollection, isReady, spawnedTabsRef, spawnedTabIdsState } = args;
+  const { markSpawned, projectRoot, cachedCollection, collection, collectionRef, setCollection } = args;
   const cwd = projectRoot ?? undefined;
   useTabRestoreInit({
     restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot, cachedCollection,
     collectionRef, setCollection,
   });
   useWorkbenchSessionPersist({ frame, projectRoot, tabCollection: collection });
-  const actions = useTabActions(frame, cwd, spawnedTabsRef, setCollection);
-  return { tabs: collection.tabs, activeTabId: collection.activeTabId, ...actions };
+  const actions = useTabActions({ frame, cwd, spawnedTabsRef, setCollection, markSpawned });
+  return {
+    tabs: collection.tabs,
+    activeTabId: collection.activeTabId,
+    spawnedTabIds: spawnedTabIdsState,
+    ...actions,
+  };
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -337,6 +303,20 @@ function useProviderCollections(projectRoot: string | null) {
   const lowerCollRef = useRef(lowerColl);
   lowerCollRef.current = lowerColl;
   const spawnedTabsRef = useRef<Set<string>>(new Set());
+  // Reactive copy of spawnedTabsRef for UI detection (spawnedTabsRef itself is
+  // a mutable ref — not reactive. spawnedTabIdsState triggers re-renders when
+  // a cc tab is started by the user clicking "Start Claude".)
+  const [spawnedTabIdsState, setSpawnedTabIdsState] = useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
+  const markSpawned = useCallback((id: string): void => {
+    setSpawnedTabIdsState((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
 
   useProjectSwitch({
     projectRoot,
@@ -351,7 +331,7 @@ function useProviderCollections(projectRoot: string | null) {
   return {
     upperColl, setUpperColl, upperCollRef,
     lowerColl, setLowerColl, lowerCollRef,
-    spawnedTabsRef, cachedCollections,
+    spawnedTabsRef, spawnedTabIdsState, markSpawned, cachedCollections,
   };
 }
 
@@ -370,7 +350,7 @@ export function WorkbenchTabsProvider({
   const {
     upperColl, setUpperColl, upperCollRef,
     lowerColl, setLowerColl, lowerCollRef,
-    spawnedTabsRef, cachedCollections,
+    spawnedTabsRef, spawnedTabIdsState, markSpawned, cachedCollections,
   } = useProviderCollections(projectRoot);
 
   const upper = useFrameTabState({
@@ -378,6 +358,8 @@ export function WorkbenchTabsProvider({
     restoredCollection: upperCollection,
     isReady,
     spawnedTabsRef,
+    spawnedTabIdsState,
+    markSpawned,
     projectRoot,
     cachedCollection: cachedCollections?.upper,
     collection: upperColl,
@@ -390,6 +372,8 @@ export function WorkbenchTabsProvider({
     restoredCollection: lowerCollection,
     isReady,
     spawnedTabsRef,
+    spawnedTabIdsState,
+    markSpawned,
     projectRoot,
     cachedCollection: cachedCollections?.lower,
     collection: lowerColl,

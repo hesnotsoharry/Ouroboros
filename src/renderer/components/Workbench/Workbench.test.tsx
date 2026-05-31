@@ -111,10 +111,15 @@ vi.mock('./Terminals/WorkbenchTabsProvider', () => ({
       },
     ],
     activeTabId: 'wb-test-default-tab',
+    // Pre-mark the default tab as spawned so TerminalShell renders the terminal,
+    // not the "Start Claude" button. Tests that assert TerminalInstance is present
+    // depend on this.
+    spawnedTabIds: new Set(['wb-test-default-tab']),
     addTab: vi.fn(),
     closeTab: vi.fn(),
     renameTab: vi.fn(),
     setActiveTab: vi.fn(),
+    spawnCcTab: vi.fn(),
   }),
   // Pass-through provider so <Workbench /> render tree keeps working structurally.
   WorkbenchTabsProvider: ({ children }: { children: React.ReactNode }) => children,

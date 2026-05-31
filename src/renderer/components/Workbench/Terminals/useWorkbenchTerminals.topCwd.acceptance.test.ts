@@ -1,40 +1,22 @@
 /**
- * Orchestrator-owned acceptance test — Wave 14 Phase 2 (top-dock terminal cwd fix).
+ * Orchestrator-owned acceptance test — Wave 14 Phase 2 (top-dock terminal cwd fix),
+ * updated Wave 101 (cc-spawn gate: Start Claude button).
  *
- * Contract: when the workbench upper (CC) terminal auto-spawns, it MUST use the
- * active project root as cwd — NOT `undefined`, NOT a sentinel such as
- * '__no-project__', and NOT a stale root from a previous session.
+ * Original contract (Wave 14): cc spawns automatically with the correct cwd once
+ * projectRoot is available.
  *
- * Bug: the upper CC terminal was spawning Claude in `C:\Web App\AgentIDE`
- * regardless of which project was active. Root cause: `useWorkbenchTabs` fires
- * the initial spawn before the project root is loaded (when `defaultProjectRoot`
- * is unset), capturing `cwd: undefined`. Because `hasInitializedRef` prevents
- * re-spawn, the correct cwd arriving later is ignored.
+ * Updated contract (Wave 101): cc does NOT auto-spawn regardless of projectRoot.
+ * The user must click "Start Claude" (calls spawnCcTab). When spawnCcTab is called,
+ * it MUST use the current projectRoot as cwd — NOT `undefined` or a stale root.
  *
- * Fix contract (two assertions):
- *   1. When `projectRoot` is null on mount, `spawnClaude` MUST NOT fire until
- *      a valid project root is available.
- *   2. Once a valid project root is provided, `spawnClaude` MUST be called
- *      exactly once with `cwd` equal to that project root.
- *
- * The implementer implements the fix against THIS test and MAY NOT modify it.
- * The test is RED before the fix and GREEN only after the spawn-deferral and
- * main-process session-update fix lands.
- *
- * Test subject: `useWorkbenchTabs('upper', projectRoot)` — the actual spawn site
- * for the upper CC terminal (TerminalShell mounts this hook with the active
- * project root from ProjectContext).
- *
- * Re-wiring note (structural fix only — contract unchanged): WorkbenchTabsProvider
- * now owns the projectRoot (it was moved from the hook arg into the provider prop
- * during the Wave 13 singleton-context refactor). To exercise the same deferral
- * contract, projectRoot is driven through the provider prop instead of the hook arg.
- * The provider's useTabRestoreInit still returns early when cwd === undefined, so
- * assertions 1 and 2 above remain satisfiable and byte-for-byte equivalent.
+ * Key assertions:
+ *   1. spawnClaude does NOT fire automatically when projectRoot becomes available.
+ *   2. spawnCcTab(tabId) fires spawnClaude with cwd = current projectRoot.
+ *   3. Calling spawnCcTab after a projectRoot change uses the new root's cwd.
  *
  * @vitest-environment jsdom
  */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -137,41 +119,42 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
     expect(ptySpawnClaude()).not.toHaveBeenCalled();
   });
 
-  it('spawns CC tab with cwd equal to the active project root once it is available', async () => {
+  it('does NOT auto-spawn CC tab when projectRoot becomes available (Start Claude gate)', async () => {
     const projectRoot = 'C:\\Web App\\Gamify';
 
-    // Start with null root — provider holds the deferred spawn.
+    // Start with null root.
     const wrapper = makeWrapper(null);
     const { rerender } = renderHook(
       ({ root }: { root: string | null }) => useWorkbenchTabs('upper', root),
       { wrapper, initialProps: { root: null } },
     );
 
-    // No spawn yet — project root not available.
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(ptySpawnClaude()).not.toHaveBeenCalled();
 
-    // Project root becomes available (simulates ProjectContext loading).
-    // Update the wrapper's mutable ref then rerender to push the new root
-    // through the provider prop — this is the structural equivalent of
-    // passing root: projectRoot to the old hook arg.
+    // Project root becomes available — cc must still not auto-spawn.
     wrapperRoot = projectRoot;
     rerender({ root: projectRoot });
 
-    await waitFor(() => {
-      expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
-    });
-
-    const [, opts] = ptySpawnClaude().mock.calls[0];
-    expect((opts as { cwd?: string }).cwd).toBe(projectRoot);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(ptySpawnClaude()).not.toHaveBeenCalled();
   });
 
   it('spawns CC tab with the correct project root cwd on first mount when already available', async () => {
     const projectRoot = 'C:\\Web App\\Gamify';
 
-    // Provider receives a valid root immediately on mount → spawn fires once.
-    renderHook(() => useWorkbenchTabs('upper', projectRoot), {
+    // Provider receives a valid root immediately on mount.
+    const { result } = renderHook(() => useWorkbenchTabs('upper', projectRoot), {
       wrapper: makeWrapper(projectRoot),
+    });
+
+    // No auto-spawn — cc is gated.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(ptySpawnClaude()).not.toHaveBeenCalled();
+
+    // User clicks "Start Claude" — spawnCcTab fires with current cwd.
+    act(() => {
+      result.current.spawnCcTab(result.current.activeTabId!);
     });
 
     await waitFor(() => {
@@ -186,12 +169,19 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
     const firstRoot = 'C:\\Web App\\Gamify';
     const secondRoot = 'C:\\Web App\\ContractorApp';
 
-    // Provider starts with firstRoot → spawn fires once.
+    // Provider starts with firstRoot — user clicks "Start Claude".
     const wrapper = makeWrapper(firstRoot);
-    const { rerender } = renderHook(
+    const { result, rerender } = renderHook(
       ({ root }: { root: string }) => useWorkbenchTabs('upper', root),
       { wrapper, initialProps: { root: firstRoot } },
     );
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(ptySpawnClaude()).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.spawnCcTab(result.current.activeTabId!);
+    });
 
     await waitFor(() => {
       expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
@@ -200,11 +190,20 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
     const [, firstOpts] = ptySpawnClaude().mock.calls[0];
     expect((firstOpts as { cwd?: string }).cwd).toBe(firstRoot);
 
-    // Project switch — provider handles in-place (no key remount). A new CC spawn
-    // fires for secondRoot so the user gets a fresh claude session in the new project.
+    // Project switch — provider handles in-place (no key remount).
     // The provider saves firstRoot's tab state to its in-memory cache.
     wrapperRoot = secondRoot;
     rerender({ root: secondRoot });
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    // cc does NOT auto-spawn for the new project — user must click again.
+    expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
+
+    // User clicks "Start Claude" for the new project.
+    act(() => {
+      result.current.spawnCcTab(result.current.activeTabId!);
+    });
 
     await waitFor(() => {
       expect(ptySpawnClaude()).toHaveBeenCalledTimes(2);

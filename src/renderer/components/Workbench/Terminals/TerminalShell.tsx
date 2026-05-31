@@ -68,24 +68,58 @@ function TerminalWell({
   );
 }
 
-/** Canon §08 glass container + live tab bar + tinted-well terminal. Wave 12 Phase 4: live tabs. */
-export function TerminalShell({
-  kind,
-  flex,
-  sessionId,
-  isActive,
-  onMaximize,
-  style: styleProp,
-}: TerminalShellProps): React.ReactElement {
-  const thisFrame: ActiveWorkbenchFrame = kind === 'cc' ? 'upper' : 'lower';
+/** Centered "Start Claude" empty state shown when no PTY has been started for this cc pane. */
+function StartClaudePrompt({ onStart }: { onStart: () => void }): React.ReactElement {
+  return (
+    <div
+      className="flex flex-1 items-center justify-center"
+      style={{ minHeight: 0 }}
+    >
+      <button
+        type="button"
+        className="rounded-md border border-border-semantic bg-interactive-accent px-4 py-2 text-sm font-medium text-text-on-accent transition-colors hover:bg-interactive-hover focus:outline-none focus:ring-2 focus:ring-interactive-focus"
+        onClick={onStart}
+        data-testid="start-claude-button"
+      >
+        Start Claude
+      </button>
+    </div>
+  );
+}
+
+interface ShellHandlerArgs {
+  kind: TerminalKind;
+  thisFrame: ActiveWorkbenchFrame;
+  activeTabId: string | null;
+  addTab: (o: { kind?: 'cc' | 'shell' }) => string;
+  spawnCcTab: (id: string) => void;
+  onMaximize: (() => void) | undefined;
+}
+
+function useShellHandlers(args: ShellHandlerArgs) {
+  const { kind, thisFrame, activeTabId, addTab, spawnCcTab, onMaximize } = args;
   const { setActiveFrame } = useActiveWorkbenchFrame();
-  const { tabs, activeTabId, addTab, closeTab, renameTab, setActiveTab } =
-    useWorkbenchTabsContext(thisFrame);
   const handleMouseDown = useCallback(() => setActiveFrame(thisFrame), [setActiveFrame, thisFrame]);
   const handleAddTab = useCallback(() => addTab({ kind }), [addTab, kind]);
   const handleMaximize = useCallback(() => onMaximize?.(), [onMaximize]);
+  const handleStartClaude = useCallback(() => {
+    if (activeTabId !== null) spawnCcTab(activeTabId);
+  }, [activeTabId, spawnCcTab]);
+  return { handleMouseDown, handleAddTab, handleMaximize, handleStartClaude };
+}
+
+/** Canon §08 glass container + live tab bar + tinted-well terminal. Wave 12 Phase 4: live tabs. */
+export function TerminalShell({
+  kind, flex, sessionId, isActive, onMaximize, style: styleProp,
+}: TerminalShellProps): React.ReactElement {
+  const thisFrame: ActiveWorkbenchFrame = kind === 'cc' ? 'upper' : 'lower';
+  const { tabs, activeTabId, addTab, closeTab, renameTab, setActiveTab, spawnedTabIds, spawnCcTab } =
+    useWorkbenchTabsContext(thisFrame);
+  const { handleMouseDown, handleAddTab, handleMaximize, handleStartClaude } =
+    useShellHandlers({ kind, thisFrame, activeTabId, addTab, spawnCcTab, onMaximize });
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const activeSessionId = activeTab?.sessionId ?? sessionId;
+  const showStartClaude = kind === 'cc' && activeTabId !== null && !spawnedTabIds.has(activeTabId);
   return (
     <div
       data-testid={kind === 'cc' ? 'terminal-shell-upper' : 'terminal-shell-lower'}
@@ -93,16 +127,15 @@ export function TerminalShell({
       style={{ ...SHELL_OUTER, flex, ...styleProp }}
     >
       <TabBar
-        tabs={tabs}
-        activeTabId={activeTabId}
-        frame={thisFrame}
-        onActivate={setActiveTab}
-        onClose={closeTab}
-        onRename={renameTab}
-        onAddTab={handleAddTab}
-        onMaximize={handleMaximize}
+        tabs={tabs} activeTabId={activeTabId} frame={thisFrame}
+        onActivate={setActiveTab} onClose={closeTab} onRename={renameTab}
+        onAddTab={handleAddTab} onMaximize={handleMaximize}
       />
-      <TerminalWell sessionId={activeSessionId} isActive={isActive} />
+      {showStartClaude ? (
+        <StartClaudePrompt onStart={handleStartClaude} />
+      ) : (
+        <TerminalWell sessionId={activeSessionId} isActive={isActive} />
+      )}
     </div>
   );
 }

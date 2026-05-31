@@ -1,29 +1,24 @@
 /**
- * Orchestrator-owned acceptance test — freeze-fix (2026-05-30).
+ * Orchestrator-owned acceptance test — freeze-fix (2026-05-30), updated Wave 101.
  *
- * Guards the cold-start id-match invariant:
- *   The tab id passed to pty.spawnClaude on cold start MUST equal the
- *   activeTabId returned by useWorkbenchTabsContext(frame) — the id that
- *   TerminalShell binds its visible terminal to.
+ * Guards the cc-spawn gate contract:
+ *   CC tabs must NOT auto-spawn on cold start (token-cost gate, Wave 101).
+ *   The "Start Claude" button calls spawnCcTab(tabId) to start the PTY on demand.
  *
- * A mismatch (spawned-id ≠ displayed-id) produces a blank terminal: the PTY
- * sends data to an id nobody is listening to, and the mounted terminal waits
- * forever for data on an id that was never spawned. This was the exact bug
- * introduced by the prior fix attempt (wip-autoresume-attempt branch).
+ * Id-match invariant (still applies for the user-triggered path):
+ *   The tab id passed to pty.spawnClaude via spawnCcTab MUST equal the
+ *   activeTabId returned by useWorkbenchTabsContext(frame).
  *
  * The test renders the REAL WorkbenchTabsProvider (not a mock) so the invariant
  * is asserted against production wiring. It covers:
- *   (a) True cold start — no restore, no cache.
- *   (b) Restored-collection cold start — a TabCollection is present from a
- *       prior session (no in-memory cache → the restored tab is spawned fresh).
- *
- * Additional assertions (policy contracts):
- *   - No resumeMode is ever passed to spawnClaude.
- *   - Exactly ONE CC spawn fires per pane on cold start.
+ *   (a) True cold start — no restore, no cache → cc NOT spawned.
+ *   (b) Restored-collection cold start → cc NOT spawned automatically.
+ *   (c) spawnCcTab call → cc IS spawned with the correct tab id (no resumeMode).
+ *   (d) spawnedTabIds is empty before spawnCcTab; has the id after.
  *
  * @vitest-environment jsdom
  */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -97,8 +92,8 @@ afterEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('WorkbenchTabsProvider — cold-start id-match invariant (blank-screen regression)', () => {
-  it('(a) true cold start: spawned id === activeTabId displayed by useWorkbenchTabsContext', async () => {
+describe('WorkbenchTabsProvider — cc-spawn gate (Start Claude, Wave 101)', () => {
+  it('(a) true cold start: cc tab is NOT spawned automatically', async () => {
     // No restore, no cache — pure cold start.
     const { useWorkbenchRestore } = await import('./useWorkbenchRestore');
     (useWorkbenchRestore as Mock).mockReturnValue({
@@ -110,25 +105,18 @@ describe('WorkbenchTabsProvider — cold-start id-match invariant (blank-screen 
     const wrapper = makeWrapper('/proj/A');
     const { result } = renderHook(() => useWorkbenchTabsContext('upper'), { wrapper });
 
-    // Wait for the spawn effect to fire.
-    await waitFor(() => {
-      expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
-    });
+    // Wait long enough for any deferred effect to fire.
+    await new Promise((resolve) => setTimeout(resolve, 30));
 
-    const [spawnedId, opts] = ptySpawnClaude().mock.calls[0] as [string, Record<string, unknown>];
+    // cc must NOT auto-spawn — user must click "Start Claude".
+    expect(ptySpawnClaude()).not.toHaveBeenCalled();
 
-    // Invariant: the id passed to spawnClaude is the same id the context exposes as active.
-    expect(spawnedId).toBe(result.current.activeTabId);
-
-    // Policy: no resumeMode ever on cold start.
-    expect(opts.resumeMode).toBeUndefined();
-
-    // Policy: exactly one CC spawn.
-    expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
+    // The context still has a valid activeTabId and the tab is in spawnedTabIds=false.
+    expect(result.current.activeTabId).toBeTruthy();
+    expect(result.current.spawnedTabIds.has(result.current.activeTabId!)).toBe(false);
   });
 
-  it('(b) restored-collection cold start: spawned id === activeTabId from restored collection', async () => {
-    // Simulate a prior session having persisted a CC tab.
+  it('(b) restored-collection cold start: cc tab is NOT auto-spawned', async () => {
     const { useWorkbenchRestore } = await import('./useWorkbenchRestore');
     const restoredTabId = 'tab-prior-session-cc';
     const restoredCollection: TabCollection = {
@@ -153,20 +141,73 @@ describe('WorkbenchTabsProvider — cold-start id-match invariant (blank-screen 
     const wrapper = makeWrapper('/proj/A');
     const { result } = renderHook(() => useWorkbenchTabsContext('upper'), { wrapper });
 
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    // Still no auto-spawn for cc.
+    expect(ptySpawnClaude()).not.toHaveBeenCalled();
+    expect(result.current.activeTabId).toBe(restoredTabId);
+    expect(result.current.spawnedTabIds.has(restoredTabId)).toBe(false);
+  });
+
+  it('(c) spawnCcTab call starts the PTY with the correct id and no resumeMode', async () => {
+    // Simulates the "Start Claude" button onClick path.
+    const { useWorkbenchRestore } = await import('./useWorkbenchRestore');
+    (useWorkbenchRestore as Mock).mockReturnValue({
+      isReady: true,
+      upperCollection: undefined,
+      lowerCollection: undefined,
+    });
+
+    const wrapper = makeWrapper('/proj/A');
+    const { result } = renderHook(() => useWorkbenchTabsContext('upper'), { wrapper });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(ptySpawnClaude()).not.toHaveBeenCalled();
+
+    const tabId = result.current.activeTabId!;
+    act(() => {
+      result.current.spawnCcTab(tabId);
+    });
+
     await waitFor(() => {
       expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
     });
 
     const [spawnedId, opts] = ptySpawnClaude().mock.calls[0] as [string, Record<string, unknown>];
-
-    // Invariant: spawned id === the restored tab's id (which the context exposes as active).
-    expect(spawnedId).toBe(restoredTabId);
-    expect(result.current.activeTabId).toBe(restoredTabId);
-
-    // Policy: no resumeMode ever — always fresh.
+    // Id-match invariant: spawned id === the activeTabId the context exposes.
+    expect(spawnedId).toBe(tabId);
+    // Policy: no resumeMode ever.
     expect(opts.resumeMode).toBeUndefined();
 
-    // Policy: exactly one CC spawn.
+    // Idempotent: calling again does nothing.
+    act(() => {
+      result.current.spawnCcTab(tabId);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
     expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
+  });
+
+  it('(d) spawnedTabIds is empty before spawnCcTab and contains the id after', async () => {
+    const { useWorkbenchRestore } = await import('./useWorkbenchRestore');
+    (useWorkbenchRestore as Mock).mockReturnValue({
+      isReady: true,
+      upperCollection: undefined,
+      lowerCollection: undefined,
+    });
+
+    const wrapper = makeWrapper('/proj/A');
+    const { result } = renderHook(() => useWorkbenchTabsContext('upper'), { wrapper });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const tabId = result.current.activeTabId!;
+    expect(result.current.spawnedTabIds.has(tabId)).toBe(false);
+
+    act(() => {
+      result.current.spawnCcTab(tabId);
+    });
+
+    await waitFor(() => {
+      expect(result.current.spawnedTabIds.has(tabId)).toBe(true);
+    });
   });
 });

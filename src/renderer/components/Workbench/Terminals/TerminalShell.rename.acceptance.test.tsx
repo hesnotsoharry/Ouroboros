@@ -35,6 +35,7 @@ const mockAddTab = vi.fn();
 const mockCloseTab = vi.fn();
 const mockRenameTab = vi.fn();
 const mockSetActiveTab = vi.fn();
+const mockSpawnCcTab = vi.fn();
 
 vi.mock('./WorkbenchTabsProvider', () => ({
   useWorkbenchTabsContext: vi.fn(),
@@ -88,6 +89,8 @@ function installHook(): void {
     closeTab: mockCloseTab,
     renameTab: mockRenameTab,
     setActiveTab: mockSetActiveTab,
+    spawnedTabIds: new Set(SINGLE_TAB.map((t) => t.id)),
+    spawnCcTab: mockSpawnCcTab,
   };
   // TerminalShell calls useWorkbenchTabsContext directly; useWorkbenchTabs kept for compat.
   mockedUseWorkbenchTabsContext.mockReturnValue(value);

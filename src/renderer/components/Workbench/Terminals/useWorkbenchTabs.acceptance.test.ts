@@ -321,11 +321,11 @@ describe('useWorkbenchTabs — per-project isolation (Wave 12 Phase 3)', () => {
   });
 });
 
-describe('useWorkbenchTabs — restored CC tab spawns FRESH (no resume) on cold start', () => {
-  it('CC tab that is active on mount triggers spawnClaude with NO resumeMode', async () => {
-    // Arrange: inject a restore that surfaces a Wave-12 TabCollection with one
-    // active CC tab. Cold-start policy: always spawn fresh — never resume a
-    // stale session (the old session id is meaningless after restart).
+describe('useWorkbenchTabs — cc tab does NOT auto-spawn on cold start (Start Claude gate)', () => {
+  it('restored CC tab does NOT call spawnClaude automatically on cold start', async () => {
+    // New policy (Wave 101): cc tabs are gated behind "Start Claude" button.
+    // The provider must NOT auto-spawn a cc tab, even when restoring from a
+    // prior session. The user must click "Start Claude" in the TerminalShell.
     const { useWorkbenchRestore } = await import('./useWorkbenchRestore');
     const restoredTabId = 'tab-restored-cc';
     const restoredSessionId = 'sess-resume-123';
@@ -351,15 +351,48 @@ describe('useWorkbenchTabs — restored CC tab spawns FRESH (no resume) on cold 
 
     renderHook(() => useWorkbenchTabs('upper', '/proj/A'), { wrapper: wrapperA });
 
+    // Wait long enough for any deferred effect to fire (must NOT spawn).
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(ptySpawnClaude()).not.toHaveBeenCalled();
+  });
+
+  it('spawnCcTab (manual trigger) calls spawnClaude with the given tab id', async () => {
+    // spawnCcTab is the programmatic path for the "Start Claude" button.
+    // Calling it must spawn cc and mark the tab as spawned.
+    const { useWorkbenchRestore } = await import('./useWorkbenchRestore');
+    const tabId = 'tab-cc-manual';
+
+    (useWorkbenchRestore as Mock).mockReturnValue({
+      isReady: true,
+      upperCollection: {
+        activeTabId: tabId,
+        tabs: [{ id: tabId, label: 'claude', sessionId: tabId, kind: 'cc', createdAt: 1 }],
+      },
+      lowerCollection: { activeTabId: null, tabs: [] },
+    });
+
+    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'), { wrapper: wrapperA });
+
+    // No auto-spawn yet.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(ptySpawnClaude()).not.toHaveBeenCalled();
+
+    // Simulate the user clicking "Start Claude".
+    act(() => {
+      result.current.spawnCcTab(tabId);
+    });
+
     await waitFor(() => {
       expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
     });
 
     const [spawnedId, opts] = ptySpawnClaude().mock.calls[0] as [string, Record<string, unknown>];
-    // Must be a fresh spawn — no resumeMode ever.
+    expect(spawnedId).toBe(tabId);
     expect(opts.resumeMode).toBeUndefined();
-    // Spawned id must be the tab id from the restored collection (the displayed id).
-    expect(spawnedId).toBe(restoredTabId);
+
+    // Tab is now in spawnedTabIds.
+    expect(result.current.spawnedTabIds.has(tabId)).toBe(true);
   });
 });
 

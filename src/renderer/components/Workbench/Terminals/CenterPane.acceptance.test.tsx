@@ -60,10 +60,12 @@ vi.mock('./WorkbenchTabsProvider', () => ({
   useWorkbenchTabsContext: vi.fn().mockReturnValue({
     tabs: [],
     activeTabId: null,
+    spawnedTabIds: new Set<string>(),
     addTab: vi.fn(() => 'mock-tab-id'),
     closeTab: vi.fn(),
     renameTab: vi.fn(),
     setActiveTab: vi.fn(),
+    spawnCcTab: vi.fn(),
   }),
 }));
 

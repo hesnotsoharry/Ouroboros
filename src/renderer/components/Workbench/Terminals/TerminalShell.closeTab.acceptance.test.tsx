@@ -31,6 +31,7 @@ const mockAddTab = vi.fn();
 const mockCloseTab = vi.fn();
 const mockRenameTab = vi.fn();
 const mockSetActiveTab = vi.fn();
+const mockSpawnCcTab = vi.fn();
 
 vi.mock('./WorkbenchTabsProvider', () => ({
   useWorkbenchTabsContext: vi.fn(),
@@ -77,7 +78,11 @@ const TWO_TABS = [
   { id: 't2', label: 'two', sessionId: 's2', kind: 'cc' as const, createdAt: 2 },
 ];
 
-function installHook(tabs: typeof TWO_TABS, activeTabId: string | null): void {
+function installHook(
+  tabs: typeof TWO_TABS,
+  activeTabId: string | null,
+  spawnedTabIds: ReadonlySet<string> = new Set(tabs.map((t) => t.id)),
+): void {
   const value = {
     tabs,
     activeTabId,
@@ -85,6 +90,8 @@ function installHook(tabs: typeof TWO_TABS, activeTabId: string | null): void {
     closeTab: mockCloseTab,
     renameTab: mockRenameTab,
     setActiveTab: mockSetActiveTab,
+    spawnedTabIds,
+    spawnCcTab: mockSpawnCcTab,
   };
   // TerminalShell calls useWorkbenchTabsContext directly; useWorkbenchTabs kept for compat.
   mockedUseWorkbenchTabsContext.mockReturnValue(value);
@@ -98,6 +105,7 @@ beforeEach(() => {
   mockCloseTab.mockClear();
   mockRenameTab.mockClear();
   mockSetActiveTab.mockClear();
+  mockSpawnCcTab.mockClear();
   installHook(TWO_TABS, 't1');
 });
 
