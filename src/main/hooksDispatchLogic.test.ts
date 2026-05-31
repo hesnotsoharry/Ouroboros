@@ -236,6 +236,23 @@ describe('inferSessionId', () => {
     const result = inferSessionId(sessions, p);
     expect(result.sessionId).toBe('unknown');
   });
+
+  // Regression: project-switch paneId misbinding (2026-05-31). A pane-stamped tool
+  // event must NEVER be remapped to a guessed session, even when its own session was
+  // evicted from activeSessions by a per-turn session_stop. Otherwise the fallback
+  // attributes it to the most-recently-added session — another project's pane after
+  // a workbench switch.
+  it('does NOT substitute when payload carries a paneId, even if untracked', () => {
+    const sessions = new Map([['other-project-session', 300]]);
+    const p = makePayload({
+      type: 'pre_tool_use',
+      sessionId: 'my-pane-session',
+      paneId: 'wb-upper-cc-1780248844042-81rrur',
+    });
+    const result = inferSessionId(sessions, p);
+    expect(result.sessionId).toBe('my-pane-session');
+    expect(result).toBe(p);
+  });
 });
 
 // ── evictOrphanedSessions ─────────────────────────────────────────────

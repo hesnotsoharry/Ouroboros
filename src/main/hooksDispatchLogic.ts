@@ -136,6 +136,16 @@ export function inferSessionId(
     return payload;
   }
 
+  // An event carrying a paneId is from a known IDE-spawned pane (OUROBOROS_PANE_ID);
+  // its sessionId is authoritative — never substitute a guessed session. Without this
+  // guard, a per-turn session_stop (which evicts the session from activeSessions)
+  // makes the next turn's pre_tool_use look "untracked", and the fallback below
+  // mis-attributes it to whatever session was added most recently — e.g. another
+  // project's pane after a workbench switch (the paneId misbinding, 2026-05-31).
+  // Inference exists ONLY for external (pane-less) sessions whose tool events may
+  // arrive with an unknown id.
+  if (payload.paneId) return payload;
+
   const isTracked =
     payload.sessionId && payload.sessionId !== 'unknown' && activeSessions.has(payload.sessionId);
   if (isTracked) return payload;
