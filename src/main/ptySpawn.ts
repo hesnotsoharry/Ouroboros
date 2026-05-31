@@ -43,21 +43,11 @@ export function spawnClaudePty(
   settings: ClaudeCliSettings,
   options: SpawnOptions & { initialPrompt?: string } = {},
 ): { success: boolean; error?: string } {
-  // [trace:bind] claudeSpawnAttempt — every pty:spawnClaude IPC call.
-  // sessionAlreadyExists:true = blocked by dedup guard (no spawn happens).
-  // resumeMode never present on this path (always-fresh policy, 2026-05-31).
-  log.info('[trace:bind] claudeSpawnAttempt', {
-    paneId: options.env?.['OUROBOROS_PANE_ID'] ?? null,
-    sessionAlreadyExists: sessions.has(id),
-  });
-
   if (sessions.has(id)) return { success: false, error: `Session ${id} already exists` };
 
   const { cwd: defaultCwd, cols, rows } = resolveSpawnOptions(options);
   const cwd = resolveClaudeCwd(win.id, defaultCwd);
   const launch = buildClaudeLaunchArgs(buildClaudeArgs(settings));
-  // [trace:bind] claudeSpawn — spawn proceeding; argv never contains --resume/--continue.
-  log.info('[trace:bind] claudeSpawn', { paneId: options.env?.['OUROBOROS_PANE_ID'] ?? null, cwd, argv: launch.args });
   log.debug(`[pty] spawnClaude id=${id} shell=${launch.shell} args=${JSON.stringify(launch.args)} cwd=${cwd}`);
   try {
     const proc = pty.spawn(launch.shell, launch.args, {

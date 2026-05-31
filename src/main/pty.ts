@@ -3,7 +3,6 @@ import * as pty from 'node-pty';
 
 import { getConfigValue } from './config';
 import { dispatchActivationEvent } from './extensions';
-import log from './logger';
 import { resolvePtyCwd } from './ptyCwdResolver';
 import { disposeAll } from './ptyDisposables';
 import { electronBatcher } from './ptyElectronBatcher';
@@ -112,16 +111,6 @@ export const getActiveSessionCount = (): number => sessions.size;
 
 function handleSessionExit(id: string, win: BrowserWindow, exitCode: number, signal: number): void {
   if (!sessions.has(id)) return;
-
-  // [trace:bind] ptyExit — the PTY process for this pane id has exited.
-  // After this runs, sessions.has(id) will be false, so a subsequent
-  // spawnClaude for the same id will no longer be blocked by the duplicate guard.
-  log.info('[trace:bind] ptyExit', {
-    paneId: id,
-    cwd: sessions.get(id)?.cwd ?? null,
-    exitCode,
-    signal,
-  });
 
   reportPtyExit(id, sessions.get(id)?.cwd ?? '', exitCode);
   cleanupSession(id);
