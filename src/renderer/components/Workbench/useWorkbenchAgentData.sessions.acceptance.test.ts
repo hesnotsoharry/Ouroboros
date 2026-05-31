@@ -83,9 +83,9 @@ function ctxFor(sessions: AgentSession[]) {
   } as unknown as ReturnType<typeof useAgentEventsContext>;
 }
 
-function dataFor(sessions: AgentSession[]) {
+function dataFor(sessions: AgentSession[], paneId?: string) {
   mockedCtx.mockReturnValue(ctxFor(sessions));
-  return renderHook(() => useWorkbenchAgentData()).result.current;
+  return renderHook(() => useWorkbenchAgentData(paneId)).result.current;
 }
 
 const requestPerm: PermissionEvent = { type: 'request', timestamp: 2000 };
@@ -126,36 +126,50 @@ describe('Wave 3 Phase 3 — session mapping + context stats (orchestrator-owned
     expect(ids).toEqual(['r1']);
   });
 
-  it('marks exactly the primary session active (most-recently-active running)', () => {
-    const data = dataFor([
-      makeSession({
-        id: 'older',
-        status: 'running',
-        startedAt: 1000,
-        toolCalls: [makeToolCall({ toolName: 'Read', timestamp: 1100 })],
-      }),
-      makeSession({
-        id: 'newer',
-        status: 'running',
-        startedAt: 1050,
-        toolCalls: [makeToolCall({ toolName: 'Bash', timestamp: 9999 })],
-      }),
-    ]);
+  it('marks exactly the pane-bound session active (Wave 13 paneId contract)', () => {
+    // Wave 13 pane-aware contract: the session whose paneId matches the active tab
+    // is the primary — NOT the globally most-recently-active running session.
+    // 'newer' has higher activity but 'older' owns the active pane.
+    const ACTIVE_PANE = 'wb-upper-cc-111';
+    const data = dataFor(
+      [
+        makeSession({
+          id: 'older',
+          status: 'running',
+          startedAt: 1000,
+          paneId: ACTIVE_PANE,
+          toolCalls: [makeToolCall({ toolName: 'Read', timestamp: 1100 })],
+        }),
+        makeSession({
+          id: 'newer',
+          status: 'running',
+          startedAt: 1050,
+          toolCalls: [makeToolCall({ toolName: 'Bash', timestamp: 9999 })],
+        }),
+      ],
+      ACTIVE_PANE,
+    );
     const active = data.sessions.filter((s) => s.active).map((s) => s.id);
-    expect(active).toEqual(['newer']);
+    expect(active).toEqual(['older']);
   });
 
-  it('derives contextStats from the primary session', () => {
-    const data = dataFor([
-      makeSession({
-        id: 'p1',
-        status: 'running',
-        model: 'claude-opus-4-7',
-        inputTokens: 1000,
-        outputTokens: 500,
-        costUsd: 0.05,
-      }),
-    ]);
+  it('derives contextStats from the pane-bound primary session (Wave 13 paneId contract)', () => {
+    // Wave 13: contextStats come from the session whose paneId matches the active tab.
+    const ACTIVE_PANE = 'wb-upper-cc-222';
+    const data = dataFor(
+      [
+        makeSession({
+          id: 'p1',
+          status: 'running',
+          paneId: ACTIVE_PANE,
+          model: 'claude-opus-4-7',
+          inputTokens: 1000,
+          outputTokens: 500,
+          costUsd: 0.05,
+        }),
+      ],
+      ACTIVE_PANE,
+    );
     expect(data.contextStats.usedTokens).toBe(1500);
     expect(data.contextStats.model).toBe('claude-opus-4-7');
     expect(data.contextStats.costUsd).toBeCloseTo(0.05);

@@ -1,24 +1,33 @@
 /**
- * useWorkbenchGlobeData — global primary-session adapter for the AgentGlobe.
+ * useWorkbenchGlobeData — pane-aware primary-session adapter for the AgentGlobe.
  *
- * Unlike `useWorkbenchAgentData(paneId)`, which is pane-scoped and returns
- * D4 empty state when no matching session exists, this hook uses
- * `selectPrimarySession` to pick the most-recently-active session across ALL
- * sessions — the Wave 3 globe contract (global workbench state indicator).
+ * Wave 13 pane-aware fix: the globe now derives the active pane id from the same
+ * useActiveWorkbenchFrame → useWorkbenchTabsContextSafe → activeTab.id chain that
+ * AgentSidebar uses, then resolves the primary session via paneId-keyed lookup.
  *
- * Wave 13 Phase 2.6: extracted to its own module so that tests mocking
- * `useWorkbenchAgentData` (paneIdBinding.acceptance.test.tsx) do not inadvertently
- * break AgentGlobe, which needs the global contract rather than the pane-scoped one.
+ * This eliminates the "globe locks onto the outer/ambient session" bug caused by the
+ * old pane-unaware selectPrimarySession global scan.
  *
- * Intentionally self-contained — no imports from useWorkbenchAgentData — so that a
- * vi.mock('../useWorkbenchAgentData', ...) in test code cannot affect this module.
+ * Degradation contract:
+ *   - When the WorkbenchTabsProvider is not mounted (test isolation, cold boot before
+ *     provider), paneId resolves to null. The hook falls back to selectPrimarySession
+ *     (global most-recently-active, internal sessions excluded) so the globe still
+ *     shows live state rather than going blank.
+ *   - This fallback preserves the existing AgentGlobe.acceptance.test.tsx contract,
+ *     which mocks only useAgentEventsContext and does not wrap in WorkbenchTabsProvider.
+ *   - When a paneId is resolved but no session with that paneId exists yet (tab spawned
+ *     but claude not started), the hook also falls back to global selection.
  *
- * The AgentGlobe acceptance test mocks useAgentEventsContext; this hook routes through
- * the same boundary so the existing test mock continues to work.
+ * Intentionally does NOT import from useWorkbenchAgentData — that module is vi.mock'd
+ * in paneIdBinding.acceptance.test.tsx without exporting resolvePrimary. Importing from
+ * it would make useWorkbenchGlobeData crash under that mock. The globe derives its own
+ * pane-id resolution locally (matching the Wave 13 Phase 2.5 paneId-keyed contract).
  */
 
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
+import { useWorkbenchTabsContextSafe } from './Terminals/WorkbenchTabsProvider';
+import { useActiveWorkbenchFrame } from './useActiveWorkbenchFrame';
 
 // ── Re-export type for consumers (AgentGlobe.tsx) ────────────────────────────
 
@@ -40,9 +49,13 @@ function lastActivityOf(session: AgentSession): number {
   return Math.max(session.completedAt ?? 0, toolTs, session.startedAt);
 }
 
+/**
+ * Global most-recently-active session selector.
+ * Used as fallback when the globe is outside a WorkbenchTabsProvider or when
+ * paneId found but no matching session exists yet. Excludes internal sessions
+ * (IDE-spawned: usage poller, summariser, CLAUDE.md generator).
+ */
 export function selectPrimarySession(sessions: AgentSession[]): AgentSession | null {
-  // Exclude internal sessions (IDE-spawned: usage poller, summarizer, CLAUDE.md generator)
-  // so they never appear as the globe's displayed session.
   const visible = sessions.filter((s) => !s.internal);
   if (visible.length === 0) return null;
   const running = visible.filter((s) => s.status === 'running');
@@ -50,30 +63,46 @@ export function selectPrimarySession(sessions: AgentSession[]): AgentSession | n
   return pool.reduce((best, s) => (lastActivityOf(s) > lastActivityOf(best) ? s : best));
 }
 
-function deriveWorkbenchAgentState(session: AgentSession | null): WorkbenchAgentState {
+/**
+ * Pane-aware session lookup (Wave 13 paneId-keyed contract, mirrored from
+ * useWorkbenchAgentData's resolvePrimary). Matches session.paneId (stamped from
+ * AGENT_START hook payload's OUROBOROS_PANE_ID). Returns null when no match.
+ * Intentionally duplicated here — useWorkbenchAgentData is vi.mock'd in the
+ * paneIdBinding acceptance test without exporting this helper.
+ */
+function resolveByPaneId(agents: AgentSession[], paneId: string): AgentSession | null {
+  return agents.find((s) => s.paneId === paneId) ?? null;
+}
+
+// ── Pane-id derivation ────────────────────────────────────────────────────────
+
+/**
+ * Returns the OUROBOROS_PANE_ID for the currently active workbench tab, or null
+ * when called outside a WorkbenchTabsProvider (safe-default for test isolation).
+ */
+function useGlobePaneId(): string | null {
+  const { activeFrame } = useActiveWorkbenchFrame();
+  const tabs = useWorkbenchTabsContextSafe(activeFrame);
+  if (!tabs) return null;
+  const activeTab = tabs.tabs.find((t) => t.id === tabs.activeTabId);
+  return activeTab?.id ?? null;
+}
+
+// ── Presentation-state derivation ─────────────────────────────────────────────
+
+function deriveState(session: AgentSession | null): WorkbenchAgentState {
   if (!session || session.status === 'idle') return 'fresh';
   if (session.status === 'error') return 'errored';
   if (session.status === 'complete') return 'done';
   const perms = session.permissionEvents ?? [];
-  if (perms.length > 0 && perms[perms.length - 1].type === 'request') {
-    return 'awaiting';
-  }
-  const hasPendingTool = session.toolCalls.some((tc) => tc.status === 'pending');
-  return hasPendingTool ? 'running' : 'thinking';
-}
-
-const FALLBACK_MODEL = 'claude';
-
-function deriveModel(session: AgentSession | null): string {
-  return session?.model ?? FALLBACK_MODEL;
+  if (perms.length > 0 && perms[perms.length - 1].type === 'request') return 'awaiting';
+  return session.toolCalls.some((tc) => tc.status === 'pending') ? 'running' : 'thinking';
 }
 
 function deriveActiveTool(session: AgentSession | null): string {
   if (!session) return '';
   const pending = session.toolCalls.find((tc) => tc.status === 'pending');
-  if (pending) return pending.toolName;
-  const last = session.toolCalls.at(-1);
-  return last?.toolName ?? '';
+  return pending?.toolName ?? session.toolCalls.at(-1)?.toolName ?? '';
 }
 
 function deriveTarget(session: AgentSession | null): string {
@@ -88,6 +117,16 @@ function deriveElapsedSec(session: AgentSession | null): number {
   return Math.max(0, Math.floor((Date.now() - session.startedAt) / 1000));
 }
 
+function buildGlobeData(session: AgentSession | null): WorkbenchGlobeData {
+  return {
+    state: deriveState(session),
+    model: session?.model ?? 'claude',
+    activeTool: deriveActiveTool(session),
+    target: deriveTarget(session),
+    elapsedSec: deriveElapsedSec(session),
+  };
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export interface WorkbenchGlobeData {
@@ -98,17 +137,27 @@ export interface WorkbenchGlobeData {
   elapsedSec: number;
 }
 
+/**
+ * Pane-aware globe data hook.
+ *
+ * Primary path (inside WorkbenchTabsProvider): resolves paneId from the active tab
+ * and looks up the matching session by session.paneId (Wave 13 paneId-keyed contract).
+ * Reflects the same session as the AgentSidebar for the active pane.
+ *
+ * Fallback path (paneId null — outside provider OR paneId resolved but no matching
+ * session yet — tab spawned, claude not started): falls back to selectPrimarySession
+ * (global most-recently-active, internal excluded) so the globe degrades gracefully
+ * rather than going blank.
+ */
 export function useWorkbenchGlobeData(): WorkbenchGlobeData {
   const { agents } = useAgentEventsContext();
-  const primary = selectPrimarySession(agents);
-  const activeTool = deriveActiveTool(primary);
-  const target = deriveTarget(primary);
-  const elapsedSec = deriveElapsedSec(primary);
-  return {
-    state: deriveWorkbenchAgentState(primary),
-    model: deriveModel(primary),
-    activeTool,
-    target,
-    elapsedSec,
-  };
+  const paneId = useGlobePaneId();
+
+  // Pane-aware lookup: find the session whose paneId matches the active tab.
+  const paneSession = paneId != null ? resolveByPaneId(agents, paneId) : null;
+
+  // Graceful degrade: fall back to global selection when no pane-matched session.
+  const effective = paneSession ?? selectPrimarySession(agents);
+
+  return buildGlobeData(effective);
 }

@@ -118,6 +118,8 @@ vi.mock('./Terminals/WorkbenchTabsProvider', () => ({
   }),
   // Pass-through provider so <Workbench /> render tree keeps working structurally.
   WorkbenchTabsProvider: ({ children }: { children: React.ReactNode }) => children,
+  // Safe variant used by useWorkbenchGlobeData — return null (no active context in tests).
+  useWorkbenchTabsContextSafe: vi.fn().mockReturnValue(null),
 }));
 
 // WorkbenchRestore + SessionPersist — needed so the WorkbenchTabsProvider pass-through
