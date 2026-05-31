@@ -1070,32 +1070,15 @@ describe('StatusBar', () => {
     expect(screen.getByTestId('workbench-statusbar').textContent).toContain('200.0k');
   });
 
-  it('renders the tests-passing pill with count from MOCK_STATUS_BAR', () => {
+  it('does NOT render the tests-passing pill (element removed)', () => {
     render(<StatusBar />);
-    // MOCK_STATUS_BAR.testsPassing = 24
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('24 tests passing');
+    expect(screen.getByTestId('workbench-statusbar').textContent).not.toContain('tests passing');
   });
 
-  it('renders zero cost in status bar when no pane-tagged session is active (Wave 13 D4)', () => {
-    // D4: without a paneId match, contextStats.costUsd = 0 → shows '$0.00'.
-    mockedAgentCtx.mockReturnValue(
-      agentCtx([
-        {
-          id: 'p1',
-          taskLabel: 'task',
-          status: 'running',
-          startedAt: 1000,
-          inputTokens: 0,
-          outputTokens: 0,
-          costUsd: 0.087,
-          toolCalls: [],
-        },
-      ]),
-    );
+  it('does NOT render a cost string in the status bar (element removed)', () => {
     render(<StatusBar />);
-    // Session costUsd is NOT reflected — StatusBar sees D4 default (costUsd=0 → '$0.00').
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('$0.00');
-    expect(screen.getByTestId('workbench-statusbar').textContent).not.toContain('$0.09');
+    expect(screen.getByTestId('workbench-statusbar').textContent).not.toContain('$0.00');
+    expect(screen.getByTestId('workbench-statusbar').textContent).not.toContain('$');
   });
 
   it('renders a live HH:MM:SS clock string (not the static mock value)', () => {
@@ -1106,9 +1089,9 @@ describe('StatusBar', () => {
     expect(text).toMatch(/\d{2}:\d{2}:\d{2}/);
   });
 
-  it('renders the "connected" label', () => {
+  it('does NOT render the "connected" label (element removed)', () => {
     render(<StatusBar />);
-    expect(screen.getByTestId('workbench-statusbar').textContent).toContain('connected');
+    expect(screen.getByTestId('workbench-statusbar').textContent).not.toContain('connected');
   });
 });
 

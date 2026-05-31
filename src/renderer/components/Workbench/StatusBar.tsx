@@ -19,7 +19,6 @@ import { useProject } from '../../contexts/ProjectContext';
 import { useGitBranch } from '../../hooks/useGitBranch';
 import { Icon } from '../shared/Icon';
 import { useWorkbenchAgentData } from './useWorkbenchAgentData';
-import { MOCK_STATUS_BAR } from './workbenchMockData';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -27,11 +26,6 @@ import { MOCK_STATUS_BAR } from './workbenchMockData';
 function formatTokens(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(n);
-}
-
-/** Format a cost in USD: 0.087 → "$0.09". */
-function formatCost(usd: number): string {
-  return `$${usd.toFixed(2)}`;
 }
 
 /** Format a Date as HH:MM:SS using local time. */
@@ -99,12 +93,6 @@ function LeftSlots({ branch }: { branch: string | null }): React.ReactElement {
         <span>/ {maxStr} ctx</span>
       </span>
 
-      {SEP}
-
-      {/* Slot 4 — tests-passing pill (mock — no live source yet) */}
-      <span style={{ color: 'var(--success)' }}>
-        ● {MOCK_STATUS_BAR.testsPassing} tests passing
-      </span>
     </>
   );
 }
@@ -113,33 +101,10 @@ function LeftSlots({ branch }: { branch: string | null }): React.ReactElement {
 
 function RightSlots(): React.ReactElement {
   const clock = useLiveClock();
-  const { contextStats } = useWorkbenchAgentData();
   return (
     <>
-      {/* Slot 5 — cost (live Phase 3) */}
-      <span style={{ color: 'var(--ink-2)' }}>{formatCost(contextStats.costUsd)}</span>
-
-      {SEP}
-
       {/* Slot 6 — clock (live) */}
       <span>{clock}</span>
-
-      {SEP}
-
-      {/* Slot 7 — connection */}
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: 'var(--success)',
-            boxShadow: '0 0 6px var(--success)',
-            flexShrink: 0,
-          }}
-        />
-        connected
-      </span>
     </>
   );
 }
