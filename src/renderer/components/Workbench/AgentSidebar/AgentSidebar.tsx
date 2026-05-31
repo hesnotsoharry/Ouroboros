@@ -5,7 +5,7 @@
  * FilesTouched, LatestHunk, HookTimeline). All data is static mock;
  * Wave 3 swaps the source without changing shapes.
  *
- * Header: status dot · session label · sub-label · Stop (no-op) · Maximize (no-op)
+ * Header: status dot · session label · sub-label · Hide panel button
  * Bottom border: --stroke-faint (per canon §09)
  */
 
@@ -78,19 +78,19 @@ function SessionLabels({ label, sub }: SessionLabelsProps): React.ReactElement {
 
 interface IconButtonProps {
   title: string;
-  danger?: boolean;
+  onClick?: () => void;
 }
 
 function IconButton({
   title,
-  danger = false,
+  onClick,
   children,
 }: React.PropsWithChildren<IconButtonProps>): React.ReactElement {
   return (
     <button
       type="button"
       title={title}
-      onClick={undefined}
+      onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -99,13 +99,11 @@ function IconButton({
         height: 22,
         borderRadius: 4,
         flexShrink: 0,
-        cursor: 'default',
+        cursor: onClick ? 'pointer' : 'default',
         padding: 0,
-        background: danger ? 'var(--error-tint)' : 'transparent',
-        border: danger
-          ? '1px solid var(--error, rgba(248,113,113,0.4))'
-          : '1px solid var(--stroke-inner)',
-        color: danger ? 'var(--error)' : 'var(--ink-3)',
+        background: 'transparent',
+        border: '1px solid var(--stroke-inner)',
+        color: 'var(--ink-3)',
       }}
     >
       {children}
@@ -119,9 +117,10 @@ const HEADER_FALLBACK = { label: '—', sub: '' };
 
 interface SidebarHeaderProps {
   paneId?: string | null;
+  onHide?: () => void;
 }
 
-function SidebarHeader({ paneId }: SidebarHeaderProps): React.ReactElement {
+function SidebarHeader({ paneId, onHide }: SidebarHeaderProps): React.ReactElement {
   const { sessions } = useWorkbenchAgentData(paneId);
   const primary = sessions.find((s) => s.active) ?? HEADER_FALLBACK;
   return (
@@ -138,10 +137,7 @@ function SidebarHeader({ paneId }: SidebarHeaderProps): React.ReactElement {
     >
       <StatusDot />
       <SessionLabels label={primary.label} sub={primary.sub} />
-      <IconButton title="Stop" danger>
-        <Icon name="Stop" size={11} />
-      </IconButton>
-      <IconButton title="Maximize sidebar">
+      <IconButton title="Hide panel" onClick={onHide}>
         <Icon name="Maximize" size={11} />
       </IconButton>
     </div>
@@ -275,9 +271,13 @@ function useActivePaneId(): string | null {
 
 interface AgentSidebarProps {
   breakpointMode?: WorkbenchBreakpointMode;
+  onHide?: () => void;
 }
 
-export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): React.ReactElement {
+export function AgentSidebar({
+  breakpointMode = 'full',
+  onHide,
+}: AgentSidebarProps): React.ReactElement {
   const paneId = useActivePaneId();
   const agentData = useWorkbenchAgentData(paneId);
   const isFull = breakpointMode === 'full';
@@ -287,7 +287,7 @@ export function AgentSidebar({ breakpointMode = 'full' }: AgentSidebarProps): Re
 
   return (
     <div data-testid="workbench-agentsidebar" style={sidebarStyle}>
-      <SidebarHeader paneId={paneId} />
+      <SidebarHeader paneId={paneId} onHide={onHide} />
       <div style={SIDEBAR_SCROLL_STYLE}>
         {!hasActiveSession ? (
           <SidebarEmptyState />

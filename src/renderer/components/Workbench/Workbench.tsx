@@ -15,6 +15,7 @@ import React, { useEffect, useState } from 'react';
 
 import { useProjectOptional } from '../../contexts/ProjectContext';
 import { DiffReviewProvider } from '../DiffReview/DiffReviewManager';
+import { Icon } from '../shared/Icon';
 import { AgentSidebar } from './AgentSidebar/AgentSidebar';
 import { WorkbenchCommandPalette } from './Overlays/WorkbenchCommandPalette';
 import { WorkbenchFilePicker } from './Overlays/WorkbenchFilePicker';
@@ -94,6 +95,31 @@ function useScanlines(): boolean {
   return active;
 }
 
+// Edge handle shown when the AgentSidebar is hidden — 12px wide strip at right edge.
+const edgeHandleStyle: React.CSSProperties = {
+  flexShrink: 0,
+  width: 12,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  borderLeft: '1px solid var(--stroke-inner)',
+  color: 'var(--ink-3)',
+};
+
+function SidebarEdgeHandle({ onShow }: { onShow: () => void }): React.ReactElement {
+  return (
+    <button
+      type="button"
+      title="Show panel"
+      onClick={onShow}
+      style={edgeHandleStyle}
+    >
+      <Icon name="Maximize" size={10} />
+    </button>
+  );
+}
+
 interface MiddleRowProps {
   isUnified: boolean;
   breakpointMode: 'full' | 'compact' | 'unified';
@@ -103,6 +129,9 @@ interface MiddleRowProps {
   onSelectFile: (path: string) => void;
   maximizedFrame: 'upper' | 'lower' | null;
   onSetMaximizedFrame: (frame: 'upper' | 'lower' | null) => void;
+  showAgentSidebar: boolean;
+  onHideSidebar: () => void;
+  onShowSidebar: () => void;
 }
 
 function MiddleRow({
@@ -114,6 +143,9 @@ function MiddleRow({
   onSelectFile,
   maximizedFrame,
   onSetMaximizedFrame,
+  showAgentSidebar,
+  onHideSidebar,
+  onShowSidebar,
 }: MiddleRowProps): React.ReactElement {
   return (
     <div style={middleRowStyle}>
@@ -130,7 +162,11 @@ function MiddleRow({
         maximizedFrame={maximizedFrame}
         onSetMaximizedFrame={onSetMaximizedFrame}
       />
-      <AgentSidebar breakpointMode={breakpointMode} />
+      {showAgentSidebar ? (
+        <AgentSidebar breakpointMode={breakpointMode} onHide={onHideSidebar} />
+      ) : (
+        <SidebarEdgeHandle onShow={onShowSidebar} />
+      )}
     </div>
   );
 }
@@ -146,6 +182,25 @@ interface WorkbenchStageProps {
   onExpandToDual: () => void;
   maximizedFrame: 'upper' | 'lower' | null;
   onSetMaximizedFrame: (frame: 'upper' | 'lower' | null) => void;
+  showAgentSidebar: boolean;
+  onHideSidebar: () => void;
+  onShowSidebar: () => void;
+}
+
+function buildMiddleRowProps(p: WorkbenchStageProps): MiddleRowProps {
+  return {
+    isUnified: p.isUnified,
+    breakpointMode: p.breakpointMode,
+    onCollapseToUnified: p.onCollapseToUnified,
+    onExpandToDual: p.onExpandToDual,
+    projectKey: p.projectKey,
+    onSelectFile: p.setOpenFilePath,
+    maximizedFrame: p.maximizedFrame,
+    onSetMaximizedFrame: p.onSetMaximizedFrame,
+    showAgentSidebar: p.showAgentSidebar,
+    onHideSidebar: p.onHideSidebar,
+    onShowSidebar: p.onShowSidebar,
+  };
 }
 
 /**
@@ -154,37 +209,20 @@ interface WorkbenchStageProps {
  * Wave 11.1 DiffReviewProvider wrap was added on top.
  * Wave 13 Phase 2: claudeSessionId state + threading removed (D5).
  */
-function WorkbenchStage({
-  scanlines,
-  breakpointMode,
-  isUnified,
-  openFilePath,
-  setOpenFilePath,
-  projectKey,
-  onCollapseToUnified,
-  onExpandToDual,
-  maximizedFrame,
-  onSetMaximizedFrame,
-}: WorkbenchStageProps): React.ReactElement {
+function WorkbenchStage(p: WorkbenchStageProps): React.ReactElement {
   return (
     <div data-testid="workbench-root" style={stageStyle}>
       <TitleBar />
-      <MiddleRow
-        isUnified={isUnified}
-        breakpointMode={breakpointMode}
-        onCollapseToUnified={onCollapseToUnified}
-        onExpandToDual={onExpandToDual}
-        projectKey={projectKey}
-        onSelectFile={setOpenFilePath}
-        maximizedFrame={maximizedFrame}
-        onSetMaximizedFrame={onSetMaximizedFrame}
-      />
+      <MiddleRow {...buildMiddleRowProps(p)} />
       <StatusBar />
       <WorkbenchSettingsOverlay />
       <WorkbenchCommandPalette />
-      <WorkbenchFilePicker onSelectFile={setOpenFilePath} />
-      <WorkbenchFileViewerModal openFilePath={openFilePath} onClose={() => setOpenFilePath(null)} />
-      {scanlines && (
+      <WorkbenchFilePicker onSelectFile={p.setOpenFilePath} />
+      <WorkbenchFileViewerModal
+        openFilePath={p.openFilePath}
+        onClose={() => p.setOpenFilePath(null)}
+      />
+      {p.scanlines && (
         <div aria-hidden="true" data-testid="workbench-scanlines" style={scanlineOverlayStyle} />
       )}
     </div>
@@ -205,6 +243,7 @@ export function Workbench(): React.ReactElement {
   const [forceUnified, setForceUnified] = useState(false);
   const [openFilePath, setOpenFilePath] = useState<string | null>(null);
   const [maximizedFrame, setMaximizedFrame] = useState<'upper' | 'lower' | null>(null);
+  const [showAgentSidebar, setShowAgentSidebar] = useState(true);
   const projectCtx = useProjectOptional();
   const projectKey = projectCtx?.projectRoot ?? '__no-project__';
   const isUnified = forceUnified || breakpointMode === 'unified';
@@ -225,6 +264,9 @@ export function Workbench(): React.ReactElement {
             onExpandToDual={() => setForceUnified(false)}
             maximizedFrame={maximizedFrame}
             onSetMaximizedFrame={setMaximizedFrame}
+            showAgentSidebar={showAgentSidebar}
+            onHideSidebar={() => setShowAgentSidebar(false)}
+            onShowSidebar={() => setShowAgentSidebar(true)}
           />
         </WorkbenchTabsProvider>
       </ActiveFrameProvider>
