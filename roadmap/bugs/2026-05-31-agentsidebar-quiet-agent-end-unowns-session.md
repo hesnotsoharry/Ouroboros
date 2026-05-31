@@ -1,17 +1,31 @@
 ---
-status: IN-PROGRESS
+status: RESOLVED
 created: 2026-05-31
 updated: 2026-05-31
-branch: freeze-fix-and-wave-101-scaffold
+resolved: 2026-05-31
+branch: merged to master (ea1546f1)
 ---
 
 # AgentSidebar goes silent after turn 1 — `agent_end` (SubagentStop) un-owns the live session
 
-> **B3 fix landed `09dd7a96` (2026-05-31).** All 3 parts implemented + renderer
-> globe-half fix + regression test. Typecheck green (web+node), `test:hooks` 255/255.
-> **Awaiting B4 live smoke** (dev relaunch, turn 1 + turn 2, confirm sidebar keeps
-> updating + globe stays active). `[trace:bind]` instrumentation INTENTIONALLY RETAINED
-> until B4 passes; B5 cleanup (remove trace + revert `7faef0b7`) is the last step.
+> **RESOLVED 2026-05-31 — shipped to master.** The symptom spanned THREE distinct
+> causes, all fixed + live-verified:
+> 1. **agent_end ownership** — `agent_end` (SubagentStop, per-turn) was treated as
+>    session-terminal; removed from `TERMINAL_EVENT_TYPES`/`END_EVENT_TYPES`, and the
+>    renderer no longer flips the live parent session to complete. Commit `2f35f27d`.
+> 2. **Resume removal** — interactive/workbench Claude+Codex session resume reattached
+>    stale session ids to panes AND billed expired prompt caches; removed end-to-end
+>    (always fresh). Commit `9aea7ce9`. (Resume was a red herring for the misbinding
+>    but the correct call on token cost — kept removed. Chat-bridge turn-continuation
+>    preserved, 281 tests.)
+> 3. **THE misbinding root cause** — `inferSessionId` substituted a guessed session for
+>    pane-stamped tool events after a per-turn `session_stop` evicted the session from
+>    `activeSessions`. Fix: a payload carrying a `paneId` is authoritative — never
+>    remap. Commit `6ad5747f`, **live-trace confirmed**. Investigation trace removed in
+>    `1e2f9a70`.
+>
+> Bug #1 ("timeline freeze from missing toolCallId") remains DEBUNKED. Related new bug
+> filed separately: `2026-05-31-commandblockoverlay-disposablestore-leak.md` (LOW).
 
 ## Summary
 
