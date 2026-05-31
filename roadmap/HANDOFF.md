@@ -36,6 +36,28 @@ approval sockets) were NOT this — a distinct cause, exactly as the bug file pr
 
 Full triage + reproduction census: `bugs/2026-05-30-machine-lockup-mcp-process-storm.md`.
 
+## ✅ SHIPPED this session (2026-05-30): AgentSidebar empty-sidebar fix — `d4fc7318` (NOT pushed)
+
+**Root cause:** `useWorkbenchTabs` was a stateful, claude-spawning hook instantiated at TWO sites
+(`TerminalShell` + `AgentSidebar`'s `useActivePaneId`) → two private `useState` tab collections + a
+startup double-spawn; the sidebar read its own idle copy's `activeTabId`, never the tab the user typed
+in. **Fix:** lifted tab state into a singleton `WorkbenchTabsProvider` (`Terminals/WorkbenchTabsProvider.tsx`,
+mounted in `Workbench.tsx` under `key={projectKey}`); `useWorkbenchTabs` is now a thin wrapper over
+`useWorkbenchTabsContext`. Binding fixed + double-spawn gone. Verified: typecheck/lint clean, Workbench
+suite **398 pass** (2 pre-existing #9 fails — see follow-up 4). Bug doc:
+`bugs/2026-05-30-workbench-tab-state-instance-split.md`.
+
+**⚠️ The sidebar is NOT fully working yet — live verification surfaced 3 pre-existing bugs + 1 tooling gap. 4 follow-ups filed; handle in order:**
+1. **HIGH — `session_stop` un-owns the session** (`src/main/hooks.ts`) → multi-turn tool events dropped.
+   THIS is the live "tool calls don't populate" cause; the sidebar is unusable until it's fixed.
+   → `follow-ups/2026-05-30-session-stop-unowns-multiturn-tool-events.md`
+2. project-switch respawns + orphans the live session (= backlog `workbench-projectswitch-timeout`).
+   → `follow-ups/2026-05-30-workbench-project-switch-orphans-session.md`
+3. globe pane-unaware / stuck "thinking" (= the Deferred "globe re-scope to project" below).
+   → `follow-ups/2026-05-30-workbench-globe-pane-unaware-stuck-thinking.md`
+4. `test:layout` is mis-scoped — Workbench suite ungated; + the 2 stale Wave-3 session tests.
+   → `follow-ups/2026-05-30-test-layout-misscoped-workbench-ungated.md`
+
 ## Current state
 
 - Branch: **`freeze-fix-and-wave-101-scaffold`** off master. **Nothing pushed yet.** Wave-101 itself is **CODE-COMPLETE** — 10 commits (`3045beb6`..`2c16ddc5`), all 8 phases done; + the 4 lockup/typecheck commits above (`5634e1fe`..`6fe19109`).
