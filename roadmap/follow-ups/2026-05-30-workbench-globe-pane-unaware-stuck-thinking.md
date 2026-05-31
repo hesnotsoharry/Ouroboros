@@ -1,9 +1,21 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-30
 updated: 2026-05-30
+resolved: 2026-05-30
 priority: LOW
 ---
+
+> **RESOLVED 2026-05-30 — commit `6cc20e45`** (pane-awareness, the primary bug).
+> `useWorkbenchGlobeData` now derives the active pane id via
+> `useActiveWorkbenchFrame → useWorkbenchTabsContextSafe → activeTab.id` and resolves
+> the session whose `paneId` matches — the same binding the AgentSidebar uses. Falls
+> back to `selectPrimarySession` (internal-excluded) only outside the provider or
+> before a pane session exists. Confirmed live in production (globe is mounted under
+> `WorkbenchTabsProvider` + `ActiveFrameProvider` in `Workbench.tsx`). Acceptance test
+> updated to the pane-aware contract.
+> **The thinking-vs-idle half is DEFERRED** (no idle signal on the wire) →
+> `2026-05-30-workbench-globe-idle-heuristic.md`.
 
 # AgentGlobe is pane-unaware and gets stuck on "thinking"
 

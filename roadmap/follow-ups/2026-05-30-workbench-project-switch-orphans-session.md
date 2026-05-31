@@ -1,9 +1,21 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-30
 updated: 2026-05-30
+resolved: 2026-05-30
 priority: MEDIUM
 ---
+
+> **RESOLVED 2026-05-30 — commit `9e39772a`.** Implemented Option A: per-project
+> tab collections driven IN-PLACE inside `WorkbenchTabsProvider` (no key-based
+> remount), with an in-memory `Map<projectRoot, FrameCollections>` so switch-back
+> restores instantly. `useWorkbenchRestore` + `useTabRestoreInit` re-keyed by
+> `projectRoot`. Review caught a transitional-render restore race (stale project-A
+> data applied to B + A's session resumed under B); fixed by stamping restore state
+> with `forProject` and deriving `isReady` synchronously. Regression test
+> `staleRestore.race.regression.test.ts` reproduces it (verified red without the
+> guard). Carve-out filed: in-memory cache is unbounded per visited project
+> → `2026-05-30-workbench-project-cache-unbounded.md`.
 
 # Project switch respawns + orphans the live workbench claude session
 

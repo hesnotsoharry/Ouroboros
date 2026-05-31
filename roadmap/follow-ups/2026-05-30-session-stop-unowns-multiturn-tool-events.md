@@ -1,9 +1,20 @@
 ---
-status: OPEN
+status: RESOLVED
 created: 2026-05-30
 updated: 2026-05-30
+resolved: 2026-05-30
 priority: HIGH
 ---
+
+> **RESOLVED 2026-05-30 — commit `02632ed8`.** Removed `session_stop` from
+> `TERMINAL_EVENT_TYPES` in `src/main/hooks.ts`; ownership now releases only on
+> `agent_end` (true end) and `agent_stop` (the `onConnectionDisconnect` synthetic).
+> `session_stop` stays in `END_EVENT_TYPES` for its per-turn lifecycle work.
+> Hook semantics confirmed against `assets/hooks/{session_stop,agent_end}.mjs`.
+> Regression guard added to `hooks.externalSessionGate.test.ts` (turn-2 `pre_tool_use`
+> still dispatches as owned after a turn-1 `session_stop`); `test:hooks` 255/255 green.
+> Carve-out filed: `handleSessionEnd`/`onSessionEnd` activation event also fires per-turn
+> → `2026-05-30-handlesessionend-fires-per-turn.md`.
 
 # `session_stop` un-owns the session → multi-turn tool events dropped
 
