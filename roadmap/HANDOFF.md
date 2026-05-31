@@ -1,7 +1,7 @@
 ---
 project: agent-ide
-updated: 2026-05-30
-active-focus: freeze VERIFIED by user; AgentSidebar/project-switch/globe bugs FIXED + PUSHED this session (02632ed8/9e39772a/6cc20e45); wave-101 ship decision pending
+updated: 2026-05-31
+active-focus: NEXT — fix AgentSidebar-silent-after-turn-1 per roadmap/bugs/2026-05-31-agentsidebar-quiet-agent-end-unowns-session.md (CONFIRMED: agent_end/SubagentStop un-owns the live session; tool events have paneId:null). Trace instrumentation is committed 7faef0b7 — REVERT after the fix verifies. Bug #1 "timeline freeze from missing toolCallId" is DEBUNKED. wave-101 ship still pending.
 last-wave: wave-101-telemetry-pipeline-removal
 last-wave-status: CODE-COMPLETE-PENDING-LIVE-SMOKE
 ---
