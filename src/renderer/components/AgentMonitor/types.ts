@@ -70,6 +70,13 @@ export interface AgentSession {
   /** Notification messages received during this session. */
   notifications?: string[];
   /**
+   * Timestamp (ms) of the most recent `session_stop` event — the turn-ended boundary.
+   * After this fires, the session is still alive but idle between turns. Cleared
+   * (reset to undefined) when a new `user_prompt_submit` or `pre_tool_use` arrives.
+   * Absent means no turn has completed yet (i.e., session is in its first turn or brand new).
+   */
+  lastTurnEndedAt?: number;
+  /**
    * Captured end data when AGENT_END arrived but live subagents are still
    * running. The parent stays in 'running' status until the last child
    * finishes (or the safety timeout fires), then this gets applied. Transient

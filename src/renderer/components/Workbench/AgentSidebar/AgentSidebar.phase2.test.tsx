@@ -249,3 +249,33 @@ describe('HookTimeline panel (via AgentSidebar)', () => {
     expect(timeline.textContent).not.toContain('thinking ·');
   });
 });
+
+// ── NowBlock idle vs no-session distinction ───────────────────────────────────
+
+describe('NowBlock — idle-bound session vs no-session distinction', () => {
+  it('shows the D4 empty-state text when no session is bound to the pane', () => {
+    // No sessions in the pool → primary null → state 'fresh' → SidebarEmptyState shown.
+    mockedAgentCtx.mockReturnValue(agentCtx([]));
+    render(<AgentSidebar />);
+    // The no-session placeholder must be present.
+    expect(screen.getByText('No active claude session in this pane')).toBeDefined();
+    // NowBlock must NOT be shown for a missing session.
+    expect(screen.queryByTestId('now-block')).toBeNull();
+  });
+
+  it('shows the NowBlock idle row (not the no-session text) when session is bound but idle', () => {
+    // Session exists and matches the pane, but lastTurnEndedAt is set → state 'idle'.
+    const s: AgentSession = {
+      ...makeSession([tc('Bash', 'npm test', 'success', 1000)]),
+      lastTurnEndedAt: 9000,
+    };
+    mockedAgentCtx.mockReturnValue(agentCtx([s]));
+    render(<AgentSidebar />);
+    // Empty-state placeholder must NOT appear — a session IS bound.
+    expect(screen.queryByText('No active claude session in this pane')).toBeNull();
+    // NowBlock IS present with the idle indicator.
+    expect(screen.getByTestId('now-block')).toBeDefined();
+    expect(screen.getByTestId('now-block-idle')).toBeDefined();
+    expect(screen.getByTestId('now-block-idle').textContent).toContain('Idle');
+  });
+});

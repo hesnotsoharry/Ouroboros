@@ -79,3 +79,7 @@ export function dispatchStopFailure(payload: HookPayload, dispatch: Dispatch<Age
     payload.error ?? (payload.data?.['error'] as string | undefined) ?? 'Session stop failed';
   dispatchAgentEnd({ ...payload, error }, dispatch);
 }
+
+export function dispatchTurnEnd(payload: HookPayload, dispatch: Dispatch<AgentAction>): void {
+  dispatch({ type: 'TURN_END', sessionId: payload.sessionId, timestamp: payload.timestamp });
+}

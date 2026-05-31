@@ -15,8 +15,10 @@
  *     shows live state rather than going blank.
  *   - This fallback preserves the existing AgentGlobe.acceptance.test.tsx contract,
  *     which mocks only useAgentEventsContext and does not wrap in WorkbenchTabsProvider.
- *   - When a paneId is resolved but no session with that paneId exists yet (tab spawned
- *     but claude not started), the hook also falls back to global selection.
+ *   - When a paneId is resolved but no session with that paneId exists (tab spawned
+ *     but claude not started, or project just switched), the globe shows idle/empty —
+ *     it does NOT fall back to selectPrimarySession (Bug 2 fix: that surfaced ambient
+ *     outer sessions from the ~100-session pool).
  *
  * Intentionally does NOT import from useWorkbenchAgentData — that module is vi.mock'd
  * in paneIdBinding.acceptance.test.tsx without exporting resolvePrimary. Importing from
@@ -33,6 +35,7 @@ import { useActiveWorkbenchFrame } from './useActiveWorkbenchFrame';
 
 export type WorkbenchAgentState =
   | 'fresh'
+  | 'idle'
   | 'thinking'
   | 'running'
   | 'awaiting'
@@ -94,22 +97,31 @@ function deriveState(session: AgentSession | null): WorkbenchAgentState {
   if (!session || session.status === 'idle') return 'fresh';
   if (session.status === 'error') return 'errored';
   if (session.status === 'complete') return 'done';
+  // session_stop arrived: session is alive but resting between turns.
+  if (session.lastTurnEndedAt !== undefined) return 'idle';
   const perms = session.permissionEvents ?? [];
   if (perms.length > 0 && perms[perms.length - 1].type === 'request') return 'awaiting';
   return session.toolCalls.some((tc) => tc.status === 'pending') ? 'running' : 'thinking';
 }
 
+/**
+ * Returns the currently-executing tool name, or '' when nothing is pending.
+ * Does NOT fall back to the last completed tool (that's history, not active).
+ */
 function deriveActiveTool(session: AgentSession | null): string {
   if (!session) return '';
   const pending = session.toolCalls.find((tc) => tc.status === 'pending');
-  return pending?.toolName ?? session.toolCalls.at(-1)?.toolName ?? '';
+  return pending?.toolName ?? '';
 }
 
+/**
+ * Returns the input/target of the pending tool, or '' when idle.
+ * Does NOT fall back to the last completed tool's input.
+ */
 function deriveTarget(session: AgentSession | null): string {
   if (!session) return '';
   const pending = session.toolCalls.find((tc) => tc.status === 'pending');
-  const ref = pending ?? session.toolCalls.at(-1);
-  return ref?.input ?? '';
+  return pending?.input ?? '';
 }
 
 function deriveElapsedSec(session: AgentSession | null): number {
@@ -144,20 +156,26 @@ export interface WorkbenchGlobeData {
  * and looks up the matching session by session.paneId (Wave 13 paneId-keyed contract).
  * Reflects the same session as the AgentSidebar for the active pane.
  *
- * Fallback path (paneId null — outside provider OR paneId resolved but no matching
- * session yet — tab spawned, claude not started): falls back to selectPrimarySession
- * (global most-recently-active, internal excluded) so the globe degrades gracefully
- * rather than going blank.
+ * No-match path (paneId resolved but no session matches — tab spawned, claude not
+ * started OR project just switched): shows idle/empty state. Does NOT fall back to
+ * selectPrimarySession, which would surface an ambient/outer session (Bug 2 fix).
+ *
+ * Fallback path (paneId null — outside WorkbenchTabsProvider, e.g. test isolation or
+ * cold boot before provider mounts): falls back to selectPrimarySession so the globe
+ * shows live state rather than going blank when the provider is absent.
  */
 export function useWorkbenchGlobeData(): WorkbenchGlobeData {
   const { agents } = useAgentEventsContext();
   const paneId = useGlobePaneId();
 
-  // Pane-aware lookup: find the session whose paneId matches the active tab.
-  const paneSession = paneId != null ? resolveByPaneId(agents, paneId) : null;
-
-  // Graceful degrade: fall back to global selection when no pane-matched session.
-  const effective = paneSession ?? selectPrimarySession(agents);
+  let effective: AgentSession | null;
+  if (paneId === null) {
+    // Outside provider — use global fallback (test isolation / cold boot).
+    effective = selectPrimarySession(agents);
+  } else {
+    // Provider present — only show the pane-matched session; never a global ambient pick.
+    effective = resolveByPaneId(agents, paneId);
+  }
 
   return buildGlobeData(effective);
 }

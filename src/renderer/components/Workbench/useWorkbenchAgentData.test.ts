@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AgentSession, PermissionEvent, ToolCallEvent } from '../AgentMonitor/types';
 import {
+  deriveActiveTool,
   deriveSessionStatus,
   deriveWorkbenchAgentState,
   selectPrimarySession,
@@ -192,5 +193,88 @@ describe('deriveSessionStatus', () => {
   it('returns idle for an idle session regardless of permission events', () => {
     const s = makeSession({ status: 'idle', toolCalls: [], permissionEvents: [requestPerm] });
     expect(deriveSessionStatus(s)).toBe('idle');
+  });
+});
+
+// ── idle-between-turns (session_stop boundary) ────────────────────────────────
+
+describe('deriveWorkbenchAgentState — idle-between-turns (session_stop boundary)', () => {
+  it('returns idle when lastTurnEndedAt is set on a running session (turn-end idle)', () => {
+    // session_stop arrived after a tool completed; session is still running (alive)
+    // but idle between turns. State must be 'idle' (session exists), not 'fresh' (no session).
+    const session = makeSession({
+      status: 'running',
+      toolCalls: [makeTool({ toolName: 'Bash', status: 'success' })],
+      lastTurnEndedAt: 9000,
+    });
+    expect(deriveWorkbenchAgentState(session)).toBe('idle');
+  });
+
+  it('returns thinking (not fresh) when lastTurnEndedAt is absent and no pending tool', () => {
+    // No session_stop yet — session is still actively thinking.
+    const session = makeSession({
+      status: 'running',
+      toolCalls: [makeTool({ toolName: 'Read', status: 'success' })],
+    });
+    expect(deriveWorkbenchAgentState(session)).toBe('thinking');
+  });
+
+  it('returns running when lastTurnEndedAt is absent and a pending tool exists', () => {
+    const session = makeSession({
+      status: 'running',
+      toolCalls: [makeTool({ toolName: 'Bash', status: 'pending' })],
+    });
+    expect(deriveWorkbenchAgentState(session)).toBe('running');
+  });
+
+  it('idle-between-turns takes precedence over awaiting-permission', () => {
+    // If somehow both are set, turn-end wins (no shimmer/awaiting should show).
+    const session = makeSession({
+      status: 'running',
+      toolCalls: [],
+      permissionEvents: [requestPerm],
+      lastTurnEndedAt: 9000,
+    });
+    expect(deriveWorkbenchAgentState(session)).toBe('idle');
+  });
+});
+
+// ── deriveActiveTool ──────────────────────────────────────────────────────────
+
+describe('deriveActiveTool — returns empty string when nothing is pending', () => {
+  it('returns the pending tool name when a tool is in-flight', () => {
+    const session = makeSession({
+      status: 'running',
+      toolCalls: [makeTool({ toolName: 'Bash', status: 'pending' })],
+    });
+    expect(deriveActiveTool(session)).toBe('Bash');
+  });
+
+  it('returns empty string when the last tool completed (not pending) — no stale tool shown', () => {
+    // This is the key regression: previously returned the last completed tool name.
+    const session = makeSession({
+      status: 'running',
+      toolCalls: [makeTool({ toolName: 'Bash', status: 'success' })],
+    });
+    expect(deriveActiveTool(session)).toBe('');
+  });
+
+  it('returns empty string when there are no tool calls at all', () => {
+    expect(deriveActiveTool(makeSession({ status: 'running' }))).toBe('');
+  });
+
+  it('returns empty string when session is null', () => {
+    expect(deriveActiveTool(null)).toBe('');
+  });
+
+  it('returns the pending tool when mixed pending + completed tools exist', () => {
+    const session = makeSession({
+      status: 'running',
+      toolCalls: [
+        makeTool({ id: 'tc-1', toolName: 'Read', status: 'success', timestamp: 1000 }),
+        makeTool({ id: 'tc-2', toolName: 'Edit', status: 'pending', timestamp: 2000 }),
+      ],
+    });
+    expect(deriveActiveTool(session)).toBe('Edit');
   });
 });

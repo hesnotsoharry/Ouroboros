@@ -124,9 +124,10 @@ function ToolRow({ tool, target }: ToolRowProps): React.ReactElement {
 
 interface NowBlockHeaderProps {
   elapsedSec: number;
+  isIdle: boolean;
 }
 
-function NowBlockHeader({ elapsedSec }: NowBlockHeaderProps): React.ReactElement {
+function NowBlockHeader({ elapsedSec, isIdle }: NowBlockHeaderProps): React.ReactElement {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <span
@@ -134,19 +135,40 @@ function NowBlockHeader({ elapsedSec }: NowBlockHeaderProps): React.ReactElement
       >
         NOW
       </span>
-      <span
-        style={{
-          fontSize: 10,
-          fontFamily: 'var(--font-mono, monospace)',
-          color: 'var(--ink-3)',
-          background: 'var(--accent-tint)',
-          borderRadius: 4,
-          padding: '1px 5px',
-          border: '1px solid var(--accent-edge)',
-        }}
-      >
-        {formatDuration(elapsedSec)}
-      </span>
+      {!isIdle && (
+        <span
+          style={{
+            fontSize: 10,
+            fontFamily: 'var(--font-mono, monospace)',
+            color: 'var(--ink-3)',
+            background: 'var(--accent-tint)',
+            borderRadius: 4,
+            padding: '1px 5px',
+            border: '1px solid var(--accent-edge)',
+          }}
+        >
+          {formatDuration(elapsedSec)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Shown when a session IS bound to the pane but is idle between turns
+ * (session_stop received, no new prompt yet). NOT the same as no session.
+ */
+function IdleRow(): React.ReactElement {
+  return (
+    <div
+      data-testid="now-block-idle"
+      style={{
+        fontSize: 11,
+        fontFamily: 'var(--font-mono, monospace)',
+        color: 'var(--ink-3)',
+      }}
+    >
+      Idle · Waiting for prompt
     </div>
   );
 }
@@ -156,25 +178,32 @@ interface NowBlockProps {
 }
 
 export function NowBlock({ data }: NowBlockProps): React.ReactElement {
+  const isIdle = !data.tool;
   return (
     <div
       data-testid="now-block"
       style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}
     >
-      <NowBlockHeader elapsedSec={data.elapsedSec} />
-      <ToolRow tool={data.tool} target={data.target} />
-      <div
-        style={{
-          fontSize: 11,
-          color: 'var(--ink-3)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {data.description}
-      </div>
-      <ProgressBar progress={data.progress} />
+      <NowBlockHeader elapsedSec={data.elapsedSec} isIdle={isIdle} />
+      {isIdle ? (
+        <IdleRow />
+      ) : (
+        <>
+          <ToolRow tool={data.tool} target={data.target} />
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-3)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {data.description}
+          </div>
+          <ProgressBar progress={data.progress} />
+        </>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@
  *   D4 — Primary session = most-recently-active across all sessions; null when empty.
  */
 
+
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
 import { buildBadgeMap, deriveLatestHunk, useDiffReviewState } from './useWorkbenchAgentData.diff';
@@ -36,6 +37,7 @@ export type WorkbenchTimelineEvent = MockPromptEvent | MockToolEvent;
 
 export type WorkbenchAgentState =
   | 'fresh'
+  | 'idle'
   | 'thinking'
   | 'running'
   | 'awaiting'
@@ -109,22 +111,41 @@ export function selectPrimarySession(sessions: AgentSession[]): AgentSession | n
 }
 
 /**
- * Derives the six-state workbench presentation state from a single session.
+ * Returns true when the session is at the idle-between-turns boundary.
+ * A session is idle-between-turns when `lastTurnEndedAt` is set (session_stop
+ * arrived) and no newer activity (pending tool / fresh prompt) has cleared it.
+ * The `turnEnd` reducer already clears all pending tools, so this is safe to
+ * check independently — if lastTurnEndedAt is set there are no pending tools.
+ */
+function isIdleBetweenTurns(session: AgentSession): boolean {
+  return session.lastTurnEndedAt !== undefined;
+}
+
+/**
+ * Derives the seven-state workbench presentation state from a single session.
  *
  * Derivation (in precedence order for the 'running' status):
- *   null | 'idle'    → 'fresh'
- *   'error'          → 'errored'
- *   'complete'       → 'done'
- *   'running' + latest permissionEvent.type === 'request' → 'awaiting'  (checked first)
- *   'running' + a pending toolCall                        → 'running'
- *   'running' (no pending toolCall)                       → 'thinking'
+ *   null | status 'idle' (no agent bound)  → 'fresh'   (no session)
+ *   'error'                                → 'errored'
+ *   'complete'                             → 'done'
+ *   'running' + lastTurnEndedAt set        → 'idle'    (session exists, resting between turns)
+ *   'running' + latest permissionEvent 'request' → 'awaiting'
+ *   'running' + a pending toolCall         → 'running'
+ *   'running' (no pending toolCall)        → 'thinking'
+ *
+ * Key distinction: 'fresh' = no session bound to pane; 'idle' = session bound but resting.
+ * AgentSidebar uses (state !== 'fresh') to decide whether to show the empty-state
+ * placeholder — 'idle' is NOT fresh, so the NowBlock is shown (with empty tool fields).
  */
 export function deriveWorkbenchAgentState(session: AgentSession | null): WorkbenchAgentState {
   if (!session || session.status === 'idle') return 'fresh';
   if (session.status === 'error') return 'errored';
   if (session.status === 'complete') return 'done';
 
-  // status === 'running' from here on
+  // status === 'running' from here on.
+  // session_stop = turn-ended; session still alive, just idle between prompts.
+  if (isIdleBetweenTurns(session)) return 'idle';
+
   const perms = session.permissionEvents ?? [];
   if (perms.length > 0 && perms[perms.length - 1].type === 'request') {
     return 'awaiting';
@@ -141,19 +162,25 @@ function deriveModel(session: AgentSession | null): string {
   return session?.model ?? FALLBACK_MODEL;
 }
 
-function deriveActiveTool(session: AgentSession | null): string {
+/**
+ * Returns the currently-executing tool name, or '' when nothing is pending.
+ * Does NOT fall back to the last completed tool — a completed tool is history,
+ * not an active indicator. The NOW block and shimmer must be blank when idle.
+ */
+export function deriveActiveTool(session: AgentSession | null): string {
   if (!session) return '';
   const pending = session.toolCalls.find((tc) => tc.status === 'pending');
-  if (pending) return pending.toolName;
-  const last = session.toolCalls.at(-1);
-  return last?.toolName ?? '';
+  return pending?.toolName ?? '';
 }
 
+/**
+ * Returns the input/target of the currently-executing tool, or '' when idle.
+ * Does NOT fall back to the last completed tool's input.
+ */
 function deriveTarget(session: AgentSession | null): string {
   if (!session) return '';
   const pending = session.toolCalls.find((tc) => tc.status === 'pending');
-  const ref = pending ?? session.toolCalls.at(-1);
-  return ref?.input ?? '';
+  return pending?.input ?? '';
 }
 
 function deriveElapsedSec(session: AgentSession | null): number {
@@ -421,6 +448,7 @@ export function useWorkbenchAgentData(paneId?: string | null): WorkbenchAgentDat
   const primary = resolvePrimary(agents, paneId);
   // Note: useProjectOptional removed in Wave 13 Phase 2 (D4 Option A — no cwd fallback).
   const primaryId = primary?.id ?? null;
+
   const state = deriveWorkbenchAgentState(primary);
 
   const sessions = currentSessions.map((s) => mapToRailSession(s, primaryId));

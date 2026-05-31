@@ -59,6 +59,8 @@ export function reduceConversationTurn(
 ): AgentState {
   return updateSession(state, action.sessionId, (session) => ({
     ...session,
+    // A new user prompt starts a fresh turn — clear the idle boundary.
+    lastTurnEndedAt: action.turn.type === 'prompt' ? undefined : session.lastTurnEndedAt,
     conversationTurns: [...(session.conversationTurns ?? []), action.turn].slice(-100),
   }));
 }

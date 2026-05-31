@@ -257,6 +257,7 @@ function GlobeContent(props: {
       return <ErroredContent model={model} />;
     case 'done':
       return <DoneContent model={model} />;
+    case 'idle':
     case 'fresh':
     default:
       return <FreshContent />;

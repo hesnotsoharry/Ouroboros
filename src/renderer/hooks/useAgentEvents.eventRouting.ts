@@ -20,6 +20,7 @@ import {
   dispatchPermissionEvent,
   dispatchStopFailure,
   dispatchToolUseFailed,
+  dispatchTurnEnd,
   dispatchWorkspaceEvent,
 } from './useAgentEvents.workspaceDispatchers';
 
@@ -78,6 +79,10 @@ function dispatchLifecycle(payload: HookPayload, dispatch: Dispatch<AgentAction>
       return true;
     case 'session_end':
       dispatchAgentEnd(payload, dispatch);
+      return true;
+    case 'session_stop':
+      // Turn-ended boundary: session stays alive (idle between turns). NOT an end event.
+      dispatchTurnEnd(payload, dispatch);
       return true;
     case 'setup':
       log.info('[hook] setup event received, sessionId:', payload.sessionId);

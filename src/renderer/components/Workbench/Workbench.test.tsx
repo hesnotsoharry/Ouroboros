@@ -671,16 +671,18 @@ describe('AgentSidebar — NowBlock (D4 empty state via AgentSidebar)', () => {
     expect(screen.queryByText('Edit')).toBeNull();
   });
 
-  it('renders the NowBlock NOW label and 0s elapsed when rendered directly with empty data', () => {
-    // Directly rendering NowBlock bypasses the D4 paneId gate and tests the component contract.
+  it('renders the NowBlock NOW label and idle row when rendered directly with empty tool', () => {
+    // Directly rendering NowBlock with tool='' exercises the idle path:
+    // no duration pill, no ToolRow/arrow, idle indicator shown instead.
     render(
       <NowBlock data={{ tool: '', target: '', description: '', elapsedSec: 0, progress: undefined }} />,
     );
     const block = screen.getByTestId('now-block');
     expect(block.textContent).toContain('NOW');
-    expect(block.textContent).toContain('0s');
-    // The '→' arrow separator is always present in ToolRow
-    expect(block.textContent).toContain('→');
+    // Idle state: no elapsed pill, no ToolRow arrow
+    expect(block.textContent).not.toContain('0s');
+    expect(block.textContent).not.toContain('→');
+    expect(block.textContent).toContain('Idle');
   });
 });
 
@@ -732,10 +734,11 @@ describe('NowBlock — live adapter data (Wave 4 Phase 1)', () => {
   });
 
   it('renders elapsed seconds in the duration pill from the NowBlock data prop', () => {
+    // Elapsed pill only shows when a tool is active (non-empty tool field).
     // Elapsed is derived by the adapter from session.startedAt; here we supply it directly.
     render(
       <NowBlock
-        data={{ tool: '', target: '', description: '', elapsedSec: 30, progress: undefined }}
+        data={{ tool: 'Bash', target: 'npm test', description: 'npm test', elapsedSec: 30, progress: undefined }}
       />,
     );
     const block = screen.getByTestId('now-block');
@@ -745,14 +748,17 @@ describe('NowBlock — live adapter data (Wave 4 Phase 1)', () => {
     expect(block.textContent).not.toContain('12s');
   });
 
-  it('renders idle/empty state without error when NowBlock receives zero elapsed', () => {
-    // elapsedSec=0 + empty tool + empty target = idle shape
+  it('renders idle/ready presentation (not duration pill) when tool is empty', () => {
+    // tool='' means idle-between-turns: session bound but no active tool.
+    // The duration pill is hidden; the idle indicator is shown instead.
     render(
       <NowBlock data={{ tool: '', target: '', description: '', elapsedSec: 0, progress: undefined }} />,
     );
     const block = screen.getByTestId('now-block');
     expect(block.textContent).toContain('NOW');
-    expect(block.textContent).toContain('0s');
+    // Idle row present, no duration pill
+    expect(block.textContent).toContain('Idle');
+    expect(block.textContent).not.toContain('0s');
   });
 });
 

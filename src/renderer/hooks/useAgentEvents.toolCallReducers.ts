@@ -27,7 +27,8 @@ export function startToolCall(
             }
           : tc,
       );
-      return { ...session, toolCalls };
+      // New activity in a new turn — clear the idle boundary.
+      return { ...session, toolCalls, lastTurnEndedAt: undefined };
     }
     const isDuplicate = session.toolCalls.some(
       (tc) =>
@@ -39,6 +40,8 @@ export function startToolCall(
     if (isDuplicate) return session;
     return {
       ...session,
+      // New activity in a new turn — clear the idle boundary.
+      lastTurnEndedAt: undefined,
       toolCalls: trimToolCalls([
         ...resolveStaleToolCalls(session.toolCalls, action.toolCall.timestamp),
         action.toolCall,

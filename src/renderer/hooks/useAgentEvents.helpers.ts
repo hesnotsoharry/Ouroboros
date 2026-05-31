@@ -124,6 +124,17 @@ export type AgentAction =
       parentToolCallId: string;
       subTool: SubToolCallEvent;
     }
+  | {
+      /**
+       * Fired when `session_stop` arrives — the turn-ended boundary. The session is
+       * still alive (ownership persists across turns); this is NOT an end event.
+       * Clears all pending tool calls (marking them success) and records
+       * `lastTurnEndedAt` so derivations can show the idle/ready state.
+       */
+      type: 'TURN_END';
+      sessionId: string;
+      timestamp: number;
+    }
   | { type: 'DISMISS'; sessionId: string }
   | { type: 'CLEAR_COMPLETED' }
   | { type: 'LOAD_PERSISTED'; sessions: AgentSession[] }
@@ -153,6 +164,8 @@ export function reducer(state: AgentState, action: AgentAction): AgentState {
       return endSession(state, action);
     case 'AGENT_END_FORCE_FINALIZE':
       return forceFinalizeEnd(state, action);
+    case 'TURN_END':
+      return turnEnd(state, action);
     case 'SESSION_REGISTER':
       return registerSession(state, action);
     case 'TOKEN_UPDATE':
@@ -279,6 +292,23 @@ function resolveParentAndTimestamps(
     }
   }
   return { resolvedParent, updatedTimestamps };
+}
+
+type TurnEndAction = Extract<AgentAction, { type: 'TURN_END' }>;
+
+/**
+ * Handles `session_stop` — the turn-ended boundary for interactive PTY sessions.
+ * The session stays 'running' (alive, owned by the pane); this is NOT a true end.
+ * Marks all pending tool calls as 'success' (the turn completed; any pending call
+ * that survived to session_stop was implicitly completed) and stamps lastTurnEndedAt.
+ */
+function turnEnd(state: AgentState, action: TurnEndAction): AgentState {
+  return updateSession(state, action.sessionId, (session) => {
+    const toolCalls = session.toolCalls.map((tc) =>
+      tc.status === 'pending' ? { ...tc, status: 'success' as const } : tc,
+    );
+    return { ...session, toolCalls, lastTurnEndedAt: action.timestamp };
+  });
 }
 
 function startSession(state: AgentState, action: AgentStartAction): AgentState {

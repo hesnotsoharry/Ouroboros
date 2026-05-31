@@ -251,7 +251,6 @@ function dispatchLifecycleEvent(
       return;
     case 'agent_end':
     case 'agent_stop':
-    case 'session_stop':
       dispatchAgentEnd(payload, dispatch);
       dispatchSkillEnd(payload, dispatch);
       return;
