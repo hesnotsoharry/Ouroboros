@@ -80,12 +80,6 @@ export interface WorkbenchAgentData {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-/**
- * Default context-window size used for all models.
- * No live per-model source is available — deferred (ADR D3 follow-up).
- */
-const DEFAULT_MAX_TOKENS = 200_000;
-
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
 /** Returns the "last activity" timestamp for a session (used for primary selection). */
@@ -244,13 +238,13 @@ function mapToRailSession(session: AgentSession, primaryId: string | null): Work
 
 // ── Context-stats derivation ──────────────────────────────────────────────────
 
-function deriveContextStats(primary: AgentSession | null): WorkbenchAgentData['contextStats'] {
+export function deriveContextStats(primary: AgentSession | null): WorkbenchAgentData['contextStats'] {
   if (!primary) {
-    return { usedTokens: 0, maxTokens: DEFAULT_MAX_TOKENS, costUsd: 0, model: FALLBACK_MODEL };
+    return { usedTokens: 0, maxTokens: 200_000, costUsd: 0, model: FALLBACK_MODEL };
   }
   return {
-    usedTokens: primary.inputTokens + primary.outputTokens,
-    maxTokens: DEFAULT_MAX_TOKENS,
+    usedTokens: primary.contextUsedTokens ?? (primary.inputTokens + primary.outputTokens),
+    maxTokens: primary.contextMaxTokens ?? 200_000,
     costUsd: primary.costUsd ?? 0,
     model: primary.model ?? FALLBACK_MODEL,
   };

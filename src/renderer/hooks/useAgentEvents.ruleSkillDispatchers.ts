@@ -141,3 +141,20 @@ export function dispatchAgentStop(payload: HookPayload, dispatch: Dispatch<Agent
   dispatchAgentEnd(payload, dispatch);
   dispatchSkillEnd(payload, dispatch);
 }
+
+/**
+ * Dispatch a CONTEXT_UPDATE action from a context_update hook event.
+ * Guards on both fields being present — skips if the statusline payload is incomplete.
+ */
+export function dispatchContextUpdate(
+  payload: HookPayload,
+  dispatch: Dispatch<AgentAction>,
+): void {
+  if (payload.contextUsedTokens == null || payload.contextMaxTokens == null) return;
+  dispatch({
+    type: 'CONTEXT_UPDATE',
+    sessionId: payload.sessionId,
+    contextUsedTokens: payload.contextUsedTokens,
+    contextMaxTokens: payload.contextMaxTokens,
+  });
+}

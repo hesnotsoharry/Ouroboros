@@ -24,6 +24,10 @@ export interface AgentSession {
   cacheWriteTokens?: number;
   model?: string; // e.g. "claude-sonnet-4-20250514"
   costUsd?: number; // provider-reported cost (preferred over estimate)
+  /** Absolute context-window token count — statusline snapshot, NOT a delta accumulator. */
+  contextUsedTokens?: number;
+  /** Context-window size reported by the model (e.g. 200000 or 1000000) — statusline snapshot. */
+  contextMaxTokens?: number;
   restored?: boolean; // true when loaded from disk (not from a live event)
   /** User notes / bookmarks for this session */
   notes?: string;

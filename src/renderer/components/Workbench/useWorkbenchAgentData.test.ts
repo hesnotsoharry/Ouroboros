@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import type { AgentSession, PermissionEvent, ToolCallEvent } from '../AgentMonitor/types';
 import {
   deriveActiveTool,
+  deriveContextStats,
   deriveSessionStatus,
   deriveWorkbenchAgentState,
   selectPrimarySession,
@@ -276,5 +277,76 @@ describe('deriveActiveTool — returns empty string when nothing is pending', ()
       ],
     });
     expect(deriveActiveTool(session)).toBe('Edit');
+  });
+});
+
+// ── deriveContextStats ────────────────────────────────────────────────────────
+
+describe('deriveContextStats', () => {
+  it('returns 200k max and zero used when session is null', () => {
+    const stats = deriveContextStats(null);
+    expect(stats.usedTokens).toBe(0);
+    expect(stats.maxTokens).toBe(200_000);
+    expect(stats.costUsd).toBe(0);
+  });
+
+  it('returns live contextUsedTokens and contextMaxTokens when both are present', () => {
+    const session = makeSession({
+      status: 'running',
+      inputTokens: 10,
+      outputTokens: 5,
+      contextUsedTokens: 120_000,
+      contextMaxTokens: 1_000_000,
+    });
+    const stats = deriveContextStats(session);
+    expect(stats.usedTokens).toBe(120_000);
+    expect(stats.maxTokens).toBe(1_000_000);
+  });
+
+  it('falls back to delta sum (inputTokens + outputTokens) when contextUsedTokens is absent', () => {
+    const session = makeSession({
+      status: 'running',
+      inputTokens: 30,
+      outputTokens: 20,
+    });
+    const stats = deriveContextStats(session);
+    expect(stats.usedTokens).toBe(50);
+    expect(stats.maxTokens).toBe(200_000);
+  });
+
+  it('falls back to 200k when contextMaxTokens is absent', () => {
+    const session = makeSession({
+      status: 'running',
+      inputTokens: 10,
+      outputTokens: 5,
+      contextUsedTokens: 80_000,
+    });
+    const stats = deriveContextStats(session);
+    expect(stats.maxTokens).toBe(200_000);
+    expect(stats.usedTokens).toBe(80_000);
+  });
+
+  it('returns live 1M max when contextMaxTokens is 1000000 (extended context model)', () => {
+    const session = makeSession({
+      status: 'running',
+      inputTokens: 0,
+      outputTokens: 0,
+      contextUsedTokens: 500_000,
+      contextMaxTokens: 1_000_000,
+    });
+    const stats = deriveContextStats(session);
+    expect(stats.maxTokens).toBe(1_000_000);
+  });
+
+  it('reflects costUsd from the session', () => {
+    const session = makeSession({ status: 'running', costUsd: 0.42 });
+    const stats = deriveContextStats(session);
+    expect(stats.costUsd).toBe(0.42);
+  });
+
+  it('returns 0 for costUsd when session has no cost', () => {
+    const session = makeSession({ status: 'running' });
+    const stats = deriveContextStats(session);
+    expect(stats.costUsd).toBe(0);
   });
 });

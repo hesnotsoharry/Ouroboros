@@ -27,7 +27,8 @@ export type AgentEventType =
   | 'instructions_loaded'
   | 'permission_request'
   | 'permission_denied'
-  | 'diff_review_ready';
+  | 'diff_review_ready'
+  | 'context_update';
 
 export interface AgentEvent {
   type: AgentEventType;
@@ -76,4 +77,10 @@ export interface HookPayload {
   data?: Record<string, unknown>;
   /** Wave 13 — IDE pane identifier (OUROBOROS_PANE_ID) for terminal-scoped binding. */
   paneId?: string;
+  /** Absolute context-window token count from the statusline push (context_update event). */
+  contextUsedTokens?: number;
+  /** Context-window size reported by the model (e.g. 200000 or 1000000). */
+  contextMaxTokens?: number;
+  /** Context usage percentage (0–100). Not stored on AgentSession; recompute if needed. */
+  contextUsedPct?: number;
 }

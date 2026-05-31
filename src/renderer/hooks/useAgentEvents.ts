@@ -29,6 +29,7 @@ import {
   toHookPayload,
 } from './useAgentEvents.payload';
 import {
+  dispatchContextUpdate,
   dispatchRuleLoaded,
   dispatchSkillEnd,
   dispatchSkillStart,
@@ -216,6 +217,10 @@ function handleAgentEvent(
   const payload = toHookPayload(event);
   if (!payload) {
     log.warn('toHookPayload returned null for:', JSON.stringify(event));
+    return;
+  }
+  if (payload.type === 'context_update') {
+    dispatchContextUpdate(payload, dispatch);
     return;
   }
   if (payload.type === 'instructions_loaded') {

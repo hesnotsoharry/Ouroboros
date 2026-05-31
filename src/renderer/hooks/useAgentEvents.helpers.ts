@@ -38,6 +38,7 @@ import { startSession } from './useAgentEvents.startSession';
 import {
   linkSubagent,
   recordSubagentTool,
+  updateContextWindow,
   updateSubTool,
   updateTokenUsage,
 } from './useAgentEvents.subagentReducers';
@@ -114,6 +115,13 @@ export type AgentAction =
       cwd?: string;
     }
   | { type: 'TOKEN_UPDATE'; sessionId: string; usage: TokenUsage; model?: string }
+  | {
+      /** Statusline context-window snapshot. Absolute values — NOT delta accumulators. */
+      type: 'CONTEXT_UPDATE';
+      sessionId: string;
+      contextUsedTokens: number;
+      contextMaxTokens: number;
+    }
   | { type: 'LINK_SUBAGENT'; parentSessionId: string; childSessionId: string }
   | { type: 'RECORD_SUBAGENT_TOOL'; parentSessionId: string; timestamp: number }
   | {
@@ -177,6 +185,8 @@ export function reducer(state: AgentState, action: AgentAction): AgentState {
 
 function reduceUtilityAction(state: AgentState, action: AgentAction): AgentState {
   switch (action.type) {
+    case 'CONTEXT_UPDATE':
+      return updateContextWindow(state, action);
     case 'LINK_SUBAGENT':
       return linkSubagent(state, action);
     case 'RECORD_SUBAGENT_TOOL':

@@ -50,6 +50,8 @@ export type HookEventType =
   | 'pre_compact'
   | 'post_compact'
   | 'instructions_loaded'
+  // Context usage (statusline push — pass-through to sendPayload, no lifecycle side-effect)
+  | 'context_update'
   // Permissions
   | 'permission_request'
   | 'permission_denied';

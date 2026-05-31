@@ -80,6 +80,12 @@ export interface HookPayload {
   paneId?: string;
   /** Catch-all for event-specific data forwarded from Claude Code stdin JSON. */
   data?: Record<string, unknown>;
+  /** Absolute context-window token count from the statusline push (context_update event). */
+  contextUsedTokens?: number;
+  /** Context-window size reported by the model (e.g. 200000 or 1000000). */
+  contextMaxTokens?: number;
+  /** Context usage percentage (0–100). Not stored on AgentSession; recompute if needed. */
+  contextUsedPct?: number;
 }
 
 export interface AgentEvent {

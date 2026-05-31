@@ -7,6 +7,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+import { loadTokens, sendEvent, shouldSkipForNoIde } from './lib/ouroboros.mjs';
+
 function readStdin() {
   return new Promise((resolve) => {
     if (process.stdin.isTTY) { resolve(''); return; }
@@ -32,11 +34,30 @@ if (data.rate_limits) {
   } catch { /* best-effort */ }
 }
 
+const paneId = process.env.OUROBOROS_PANE_ID;
+const ctx = data.context_window;
+if (paneId && ctx && !shouldSkipForNoIde()) {
+  const { hooksToken } = loadTokens();
+  if (hooksToken) {
+    const sessionId = process.env.CLAUDE_SESSION_ID || 'unknown';
+    await sendEvent({
+      type: 'context_update',
+      paneId,
+      sessionId,
+      timestamp: Date.now(),
+      contextUsedTokens: ctx.total_input_tokens,
+      contextMaxTokens: ctx.context_window_size,
+      contextUsedPct: ctx.used_percentage,
+      model: data.model?.api_name ?? data.model?.display_name,
+      costUsd: undefined,
+    }, hooksToken, { timeoutMs: 200 });
+  }
+}
+
 const parts = [];
 const model = data.model?.display_name;
 if (model) parts.push('[' + model + ']');
 
-const ctx = data.context_window;
 if (ctx && typeof ctx.used_percentage === 'number') {
   parts.push('ctx:' + Math.round(ctx.used_percentage) + '%');
 }

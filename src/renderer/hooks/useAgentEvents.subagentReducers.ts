@@ -46,6 +46,13 @@ interface RecordSubagentToolAction {
   timestamp: number;
 }
 
+interface ContextUpdateAction {
+  type: 'CONTEXT_UPDATE';
+  sessionId: string;
+  contextUsedTokens: number;
+  contextMaxTokens: number;
+}
+
 export function updateTokenUsage(state: AgentState, action: TokenUpdateAction): AgentState {
   const usageDeltas = getUsageDeltas(action.usage);
   return updateSession(state, action.sessionId, (session) => ({
@@ -55,6 +62,17 @@ export function updateTokenUsage(state: AgentState, action: TokenUpdateAction): 
     cacheReadTokens: mergeOptionalTokenCount(session.cacheReadTokens, usageDeltas.cacheRead),
     cacheWriteTokens: mergeOptionalTokenCount(session.cacheWriteTokens, usageDeltas.cacheWrite),
     model: action.model ?? session.model,
+  }));
+}
+
+export function updateContextWindow(
+  state: AgentState,
+  action: ContextUpdateAction,
+): AgentState {
+  return updateSession(state, action.sessionId, (session) => ({
+    ...session,
+    contextUsedTokens: action.contextUsedTokens,
+    contextMaxTokens: action.contextMaxTokens,
   }));
 }
 
