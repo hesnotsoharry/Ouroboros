@@ -3,7 +3,7 @@
  *
  * Left → right:
  *   App mark · Project chip · Branch chip · [spacer] · AgentGlobe · [spacer]
- *   · Ctrl-K · Bell · Settings · WindowControls
+ *   · Bell · Settings · WindowControls
  *
  * -webkit-app-region: drag on the bar background; no-drag on every interactive
  * child so clicks reach them.
@@ -31,25 +31,14 @@ import { WorkbenchBell } from './WorkbenchBell';
 
 function AppMark(): React.ReactElement {
   return (
-    <div
+    <img
+      src="/OUROBOROS.png"
+      alt="Ouroboros"
       aria-label="Agent IDE"
-      style={{
-        width: 22,
-        height: 22,
-        borderRadius: 6,
-        background: 'linear-gradient(135deg, var(--accent, #818cf8), var(--purple, #c084fc))',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--ink-on-accent, #0a0b14)',
-        fontSize: 11,
-        fontWeight: 800,
-        flexShrink: 0,
-        boxShadow: 'var(--accent-glow, 0 2px 14px -2px rgba(129,140,248,0.5))',
-      }}
-    >
-      A
-    </div>
+      width={22}
+      height={22}
+      style={{ borderRadius: 6, display: 'block', flexShrink: 0 }}
+    />
   );
 }
 
@@ -57,48 +46,6 @@ function AppMark(): React.ReactElement {
 
 function Spacer(): React.ReactElement {
   return <div style={{ flex: 1 }} />;
-}
-
-// ── Ctrl-K affordance ─────────────────────────────────────────────────────────
-
-interface CtrlKButtonProps {
-  onClick: () => void;
-}
-
-function CtrlKButton({ onClick }: CtrlKButtonProps): React.ReactElement {
-  return (
-    <button
-      type="button"
-      title="Command palette"
-      onClick={onClick}
-      style={
-        {
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '4px 6px 4px 8px',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid var(--stroke-inner)',
-          borderRadius: 6,
-          color: 'var(--ink-3)',
-          cursor: 'pointer',
-          WebkitAppRegion: 'no-drag',
-          flexShrink: 0,
-        } as React.CSSProperties
-      }
-    >
-      <Icon name="Search" size={12} />
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 10,
-          color: 'var(--ink-4)',
-        }}
-      >
-        Ctrl K
-      </span>
-    </button>
-  );
 }
 
 // ── Settings button ───────────────────────────────────────────────────────────
@@ -233,7 +180,6 @@ export function TitleBar(): React.ReactElement {
       <Spacer />
       <AgentGlobe />
       <Spacer />
-      <CtrlKButton onClick={dispatchCommandPalette} />
       <WorkbenchBell />
       <SettingsButton onClick={dispatchOpenSettings} />
       <WindowControls />
@@ -243,8 +189,4 @@ export function TitleBar(): React.ReactElement {
 
 function dispatchOpenSettings(): void {
   window.dispatchEvent(new CustomEvent(OPEN_SETTINGS_EVENT));
-}
-
-function dispatchCommandPalette(): void {
-  window.dispatchEvent(new CustomEvent('agent-ide:command-palette'));
 }

@@ -4,9 +4,10 @@
  * InnerRail.wave10.test.tsx — Wave 10 Phase 2 inner rail tests.
  *
  * Covers:
- *   - InnerRailProjectDropdown renders at the header
- *   - Selecting a project calls setActiveProjectRoot
+ *   - CommandPaletteButton renders at the top of the rail and dispatches the
+ *     'agent-ide:command-palette' event on click
  *   - InnerRailAddProjectButton calls files.selectFolder + addProjectRoot
+ *   - InnerRailProjectDropdown is NOT rendered (removed — titlebar owns it)
  */
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -15,7 +16,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
-const mockSetActiveProjectRoot = vi.fn();
 const mockAddProjectRoot = vi.fn();
 
 vi.mock('../../../contexts/ProjectContext', () => ({
@@ -28,7 +28,7 @@ vi.mock('../../../contexts/ProjectContext', () => ({
     addProjectRoot: mockAddProjectRoot,
     removeProjectRoot: vi.fn(),
     clearProject: vi.fn(),
-    setActiveProjectRoot: mockSetActiveProjectRoot,
+    setActiveProjectRoot: vi.fn(),
   }),
   useProjectOptional: () => null,
 }));
@@ -84,44 +84,47 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('InnerRail — Wave 10 project dropdown header', () => {
+describe('InnerRail — command palette button', () => {
   beforeEach(() => stubFiles());
 
-  it('renders InnerRailProjectDropdown trigger at the header', () => {
+  it('renders a command palette button at the top of the rail', () => {
     render(<InnerRail />);
-    expect(screen.getByTestId('innerrail-project-dropdown')).toBeTruthy();
-    expect(screen.getByTestId('innerrail-project-trigger')).toBeTruthy();
+    expect(screen.getByTitle('Command palette (Ctrl K)')).toBeTruthy();
   });
 
-  it('trigger shows the active project name', () => {
+  it('command palette button dispatches agent-ide:command-palette on click', () => {
     render(<InnerRail />);
-    const trigger = screen.getByTestId('innerrail-project-trigger');
-    expect(trigger.textContent).toContain('alpha');
+    const fired: string[] = [];
+    const handler = (e: Event) => fired.push(e.type);
+    window.addEventListener('agent-ide:command-palette', handler);
+    fireEvent.click(screen.getByTitle('Command palette (Ctrl K)'));
+    expect(fired).toHaveLength(1);
+    expect(fired[0]).toBe('agent-ide:command-palette');
+    window.removeEventListener('agent-ide:command-palette', handler);
   });
 
-  it('clicking trigger opens the project list', () => {
+  it('does NOT render InnerRailProjectDropdown (removed — titlebar owns it)', () => {
     render(<InnerRail />);
-    fireEvent.click(screen.getByTestId('innerrail-project-trigger'));
-    expect(screen.getByTestId('innerrail-project-row-beta')).toBeTruthy();
+    expect(screen.queryByTestId('innerrail-project-dropdown')).toBeNull();
+    expect(screen.queryByTestId('innerrail-project-trigger')).toBeNull();
   });
 
-  it('selecting a project calls setActiveProjectRoot with the correct path', () => {
+  it('does NOT render the Running section header', () => {
     render(<InnerRail />);
-    fireEvent.click(screen.getByTestId('innerrail-project-trigger'));
-    fireEvent.click(screen.getByTestId('innerrail-project-row-beta'));
-    expect(mockSetActiveProjectRoot).toHaveBeenCalledWith('/projects/beta');
+    // The "Running" label was in the now-removed RunningSectionHeader
+    const rail = screen.getByTestId('workbench-innerrail');
+    expect(rail.textContent).not.toContain('Running');
   });
 
-  it('Esc closes the project dropdown', () => {
+  it('does NOT render a git branch footer', () => {
     render(<InnerRail />);
-    fireEvent.click(screen.getByTestId('innerrail-project-trigger'));
-    expect(screen.queryByTestId('innerrail-project-row-beta')).toBeTruthy();
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByTestId('innerrail-project-row-beta')).toBeNull();
+    // BranchFooter was removed; useGitBranch returns 'main' but must not appear
+    const rail = screen.getByTestId('workbench-innerrail');
+    expect(rail.textContent).not.toContain('main');
   });
 });
 
-describe('InnerRail — Wave 10 add project button', () => {
+describe('InnerRail — add project button', () => {
   it('renders InnerRailAddProjectButton', () => {
     stubFiles();
     render(<InnerRail />);

@@ -1,24 +1,23 @@
 /**
  * InnerRail — 256 px wide inner rail (canon §07, dual mode).
  *
- * Two sections divided by a 1px --stroke-faint line:
- *   1. Running (top): live sessions from useWorkbenchAgentData. Current
- *      project first, 6 px spacer, then others.
- *   2. Files (scrollable, flex 1): mock file tree via FileNode (Wave 4).
+ * Top: command-palette button.
+ * Header: add-project button.
+ * Running section: live sessions from useWorkbenchAgentData.
+ * Files section (scrollable, flex 1): live file tree via WorkbenchFileTree.
  *
- * Footer: branch icon · name (live from useGitBranch). No interactions.
+ * BranchFooter and InnerRailProjectDropdown were removed (titlebar owns both).
+ * RunningSectionHeader was removed per user request.
  */
 
 import React from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
-import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
 import { useWorkbenchAgentData, type WorkbenchSession } from '../useWorkbenchAgentData';
 import { useWorkbenchProjects } from '../useWorkbenchProjects';
 import { iconBtnStyle, SectionLabel, StatusDot } from './InnerRail.parts';
 import { InnerRailAddProjectButton } from './InnerRailAddProjectButton';
-import { InnerRailProjectDropdown } from './InnerRailProjectDropdown';
 import { WorkbenchFileTree } from './WorkbenchFileTree';
 
 const RAIL_STYLE: React.CSSProperties = {
@@ -48,6 +47,7 @@ export function InnerRail({ onCollapse, onSelectFile }: InnerRailProps): React.R
 
   return (
     <div data-testid="workbench-innerrail" style={RAIL_STYLE}>
+      <CommandPaletteButton />
       <InnerRailHeader />
       <RunningSection
         currentSessions={currentSessions}
@@ -55,7 +55,50 @@ export function InnerRail({ onCollapse, onSelectFile }: InnerRailProps): React.R
       />
       <div style={{ height: 1, background: 'var(--stroke-faint)', margin: '0 10px' }} />
       <FilesSection onSelectFile={onSelectFile} />
-      <BranchFooter />
+    </div>
+  );
+}
+
+// ── Command palette button ────────────────────────────────────────────────────
+
+const PALETTE_BTN_STYLE: React.CSSProperties = {
+  width: '100%',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '5px 8px',
+  background: 'var(--surface-inset, rgba(255,255,255,0.03))',
+  border: '1px solid var(--stroke-inner)',
+  borderRadius: 6,
+  color: 'var(--ink-3)',
+  cursor: 'pointer',
+  fontSize: 11,
+};
+
+const PALETTE_LABEL_STYLE: React.CSSProperties = {
+  flex: 1,
+  color: 'var(--ink-4)',
+  fontFamily: 'var(--font-sans)',
+};
+
+const PALETTE_KBD_STYLE: React.CSSProperties = {
+  fontFamily: 'var(--font-mono)',
+  fontSize: 10,
+  color: 'var(--ink-4)',
+};
+
+function dispatchCommandPalette(): void {
+  window.dispatchEvent(new CustomEvent('agent-ide:command-palette'));
+}
+
+function CommandPaletteButton(): React.ReactElement {
+  return (
+    <div style={{ padding: '8px 10px 0', flexShrink: 0 }}>
+      <button type="button" title="Command palette (Ctrl K)" onClick={dispatchCommandPalette} style={PALETTE_BTN_STYLE}>
+        <Icon name="Search" size={12} />
+        <span style={PALETTE_LABEL_STYLE}>Search commands…</span>
+        <span style={PALETTE_KBD_STYLE}>Ctrl K</span>
+      </button>
     </div>
   );
 }
@@ -73,9 +116,6 @@ function InnerRailHeader(): React.ReactElement {
         flexShrink: 0,
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <InnerRailProjectDropdown />
-      </div>
       <InnerRailAddProjectButton />
     </div>
   );
@@ -85,43 +125,15 @@ function InnerRailHeader(): React.ReactElement {
 
 function RunningSection({
   currentSessions,
-  onCollapse,
 }: {
   currentSessions: WorkbenchSession[];
   onCollapse?: () => void;
 }): React.ReactElement {
   return (
-    <div style={{ padding: '12px 10px 8px', flexShrink: 0 }}>
-      <RunningSectionHeader onCollapse={onCollapse} />
+    <div style={{ padding: '8px 10px 8px', flexShrink: 0 }}>
       {currentSessions.map((s) => (
         <SessionRow key={s.id} session={s} isCurrent />
       ))}
-    </div>
-  );
-}
-
-function RunningSectionHeader({ onCollapse }: { onCollapse?: () => void }): React.ReactElement {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 6,
-        padding: '0 6px',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <StatusDot status="live" />
-        <SectionLabel>Running</SectionLabel>
-      </div>
-      <button
-        title="Collapse to unified rail"
-        onClick={onCollapse ?? (() => undefined)}
-        style={iconBtnStyle}
-      >
-        <Icon name="Chevron" size={11} style={{ transform: 'rotate(180deg)' }} />
-      </button>
     </div>
   );
 }
@@ -275,42 +287,6 @@ function FilesSection({
       {projectRoot !== null && projectRoot !== '' && (
         <WorkbenchFileTree rootPath={projectRoot} onSelectFile={onSelectFile} />
       )}
-    </div>
-  );
-}
-
-// ── Git footer ────────────────────────────────────────────────────────────────
-
-function BranchFooter(): React.ReactElement {
-  const { projectRoot } = useProject();
-  const { branch } = useGitBranch(projectRoot);
-
-  return (
-    <div
-      style={{
-        flexShrink: 0,
-        padding: '8px 12px',
-        borderTop: '1px solid var(--stroke-faint)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        fontSize: 11,
-        color: 'var(--ink-3)',
-      }}
-    >
-      <Icon name="Branch" size={12} />
-      <span
-        style={{
-          color: 'var(--ink-2)',
-          flex: 1,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {/* +adds/−dels deferred: roadmap/follow-ups/2026-05-21-workbench-live-git-diff-stats.md */}
-        {branch ?? '—'}
-      </span>
     </div>
   );
 }

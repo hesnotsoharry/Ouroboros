@@ -29,7 +29,7 @@
  *   - InnerRail: branch footer from mocked useGitBranch; +126/−42 removed
  */
 
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -256,7 +256,7 @@ describe('TitleBar', () => {
   it('renders the active project branch name from live useGitBranch', () => {
     render(<Workbench />);
     // useGitBranch mock returns 'feature/x'
-    // getAllByText because InnerRail footer also shows the branch name.
+    // Shown in TitleBar BranchChip + StatusBar BranchSlot (InnerRail BranchFooter removed).
     const matches = screen.getAllByText('feature/x');
     expect(matches.length).toBeGreaterThan(0);
   });
@@ -426,15 +426,21 @@ describe('InnerRail', () => {
     expect(screen.queryByText('ChatOnlyShell.tsx')).toBeNull();
   });
 
-  it('renders the branch footer with live branch name from useGitBranch', () => {
+  it('renders the command palette button at the top of the rail', () => {
     render(<InnerRail />);
-    // useGitBranch mock returns 'feature/x'
-    expect(screen.getByText('feature/x')).toBeDefined();
+    // BranchFooter removed; CommandPaletteButton now sits at the top of the rail.
+    expect(screen.getByTitle('Command palette (Ctrl K)')).toBeDefined();
   });
 
-  it('does not render +adds or −dels in the footer — diff stats deferred', () => {
+  it('does not render the git branch footer — BranchFooter removed', () => {
     render(<InnerRail />);
-    // +126 and −42 must not appear — those were mock diff stats, now deferred.
+    // BranchFooter and its useGitBranch display were removed.
+    const innerRail = screen.getByTestId('workbench-innerrail');
+    expect(innerRail.textContent).not.toContain('feature/x');
+  });
+
+  it('does not render +adds or −dels — diff stats were never in the rail body', () => {
+    render(<InnerRail />);
     expect(screen.queryByText('+126')).toBeNull();
     expect(screen.queryByText('−42')).toBeNull();
   });
@@ -633,14 +639,14 @@ describe('AgentSidebar', () => {
     expect(sidebar.textContent).toContain('—');
   });
 
-  it('renders the Stop button in the header', () => {
+  it('does not render a Stop button in the header (removed)', () => {
     render(<AgentSidebar />);
-    expect(screen.getByTitle('Stop')).toBeDefined();
+    expect(screen.queryByTitle('Stop')).toBeNull();
   });
 
-  it('renders the Maximize sidebar button in the header', () => {
+  it('renders the Hide panel button in the header', () => {
     render(<AgentSidebar />);
-    expect(screen.getByTitle('Maximize sidebar')).toBeDefined();
+    expect(screen.getByTitle('Hide panel')).toBeDefined();
   });
 
   it('renders panel regions with D4 empty state for the NOW slot (Wave 13 D4)', () => {
@@ -964,6 +970,27 @@ describe('AgentSidebar — Workbench integration', () => {
     const el = screen.getByTestId('workbench-agentsidebar');
     // AgentSidebar root contains now-block — placeholder div did not
     expect(el.querySelector('[data-testid="now-block"]')).toBeDefined();
+  });
+
+  it('sidebar is visible by default (showAgentSidebar starts true)', () => {
+    render(<Workbench />);
+    expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
+    expect(screen.queryByTitle('Show panel')).toBeNull();
+  });
+
+  it('clicking Hide panel removes the sidebar and shows the edge handle', () => {
+    render(<Workbench />);
+    fireEvent.click(screen.getByTitle('Hide panel'));
+    expect(screen.queryByTestId('workbench-agentsidebar')).toBeNull();
+    expect(screen.getByTitle('Show panel')).toBeDefined();
+  });
+
+  it('clicking Show panel edge handle restores the sidebar', () => {
+    render(<Workbench />);
+    fireEvent.click(screen.getByTitle('Hide panel'));
+    fireEvent.click(screen.getByTitle('Show panel'));
+    expect(screen.getByTestId('workbench-agentsidebar')).toBeDefined();
+    expect(screen.queryByTitle('Show panel')).toBeNull();
   });
 
   it('does not import xterm, useAgentEvents, or permission components', async () => {
