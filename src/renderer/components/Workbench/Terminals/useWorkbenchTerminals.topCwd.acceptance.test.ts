@@ -25,12 +25,21 @@
  * for the upper CC terminal (TerminalShell mounts this hook with the active
  * project root from ProjectContext).
  *
+ * Re-wiring note (structural fix only — contract unchanged): WorkbenchTabsProvider
+ * now owns the projectRoot (it was moved from the hook arg into the provider prop
+ * during the Wave 13 singleton-context refactor). To exercise the same deferral
+ * contract, projectRoot is driven through the provider prop instead of the hook arg.
+ * The provider's useTabRestoreInit still returns early when cwd === undefined, so
+ * assertions 1 and 2 above remain satisfiable and byte-for-byte equivalent.
+ *
  * @vitest-environment jsdom
  */
 import { renderHook, waitFor } from '@testing-library/react';
+import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { useWorkbenchTabs } from './useWorkbenchTabs';
+import { WorkbenchTabsProvider } from './WorkbenchTabsProvider';
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
@@ -88,6 +97,22 @@ function ptySpawnClaude(): Mock {
   return window.electronAPI.pty.spawnClaude as unknown as Mock;
 }
 
+// ── Wrapper helpers ───────────────────────────────────────────────────────────
+// WorkbenchTabsProvider now owns the projectRoot (moved from the useWorkbenchTabs
+// arg into the provider prop). To vary projectRoot across rerenders we use a
+// module-level mutable ref that the wrapper reads on each render cycle.
+// Pattern: set `wrapperRoot` before calling `rerender()`; the wrapper re-renders
+// and passes the updated value to WorkbenchTabsProvider.
+
+let wrapperRoot: string | null = null;
+
+function makeWrapper(initialRoot: string | null): (p: { children: React.ReactNode }) => React.ReactElement {
+  wrapperRoot = initialRoot;
+  return function Wrapper({ children }: { children: React.ReactNode }): React.ReactElement {
+    return React.createElement(WorkbenchTabsProvider, { projectRoot: wrapperRoot }, children);
+  };
+}
+
 beforeEach(() => {
   installElectronAPI();
 });
@@ -100,7 +125,10 @@ afterEach(() => {
 
 describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix)', () => {
   it('does not spawn when projectRoot is null (no project loaded yet)', async () => {
-    renderHook(() => useWorkbenchTabs('upper', null));
+    // Drive projectRoot through the provider prop (null = no cwd → no spawn).
+    renderHook(() => useWorkbenchTabs('upper', null), {
+      wrapper: makeWrapper(null),
+    });
 
     // Give any async effects a chance to fire.
     await new Promise((resolve) => setTimeout(resolve, 30));
@@ -112,9 +140,11 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
   it('spawns CC tab with cwd equal to the active project root once it is available', async () => {
     const projectRoot = 'C:\\Web App\\Gamify';
 
+    // Start with null root — provider holds the deferred spawn.
+    const wrapper = makeWrapper(null);
     const { rerender } = renderHook(
       ({ root }: { root: string | null }) => useWorkbenchTabs('upper', root),
-      { initialProps: { root: null } },
+      { wrapper, initialProps: { root: null } },
     );
 
     // No spawn yet — project root not available.
@@ -122,6 +152,10 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
     expect(ptySpawnClaude()).not.toHaveBeenCalled();
 
     // Project root becomes available (simulates ProjectContext loading).
+    // Update the wrapper's mutable ref then rerender to push the new root
+    // through the provider prop — this is the structural equivalent of
+    // passing root: projectRoot to the old hook arg.
+    wrapperRoot = projectRoot;
     rerender({ root: projectRoot });
 
     await waitFor(() => {
@@ -135,7 +169,10 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
   it('spawns CC tab with the correct project root cwd on first mount when already available', async () => {
     const projectRoot = 'C:\\Web App\\Gamify';
 
-    renderHook(() => useWorkbenchTabs('upper', projectRoot));
+    // Provider receives a valid root immediately on mount → spawn fires once.
+    renderHook(() => useWorkbenchTabs('upper', projectRoot), {
+      wrapper: makeWrapper(projectRoot),
+    });
 
     await waitFor(() => {
       expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
@@ -149,9 +186,11 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
     const firstRoot = 'C:\\Web App\\Gamify';
     const secondRoot = 'C:\\Web App\\ContractorApp';
 
+    // Provider starts with firstRoot → spawn fires once.
+    const wrapper = makeWrapper(firstRoot);
     const { rerender } = renderHook(
       ({ root }: { root: string }) => useWorkbenchTabs('upper', root),
-      { initialProps: { root: firstRoot } },
+      { wrapper, initialProps: { root: firstRoot } },
     );
 
     await waitFor(() => {
@@ -163,6 +202,9 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
 
     // Project switch — must NOT trigger a second spawn (TerminalShell unmounts/remounts
     // on project switch; re-spawn is handled by unmount+remount, not by cwd change).
+    // Note: the provider uses key-based remount on project switch in production;
+    // here we only vary the prop to confirm cwd-change alone does NOT re-spawn.
+    wrapperRoot = secondRoot;
     rerender({ root: secondRoot });
     await new Promise((resolve) => setTimeout(resolve, 30));
 

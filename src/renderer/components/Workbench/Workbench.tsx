@@ -25,6 +25,7 @@ import { ProjectRail } from './Rails/ProjectRail';
 import { UnifiedRail } from './Rails/UnifiedRail';
 import { StatusBar } from './StatusBar';
 import { CenterPane } from './Terminals/CenterPane';
+import { WorkbenchTabsProvider } from './Terminals/WorkbenchTabsProvider';
 import { TitleBar } from './TitleBar/TitleBar';
 import { ActiveFrameProvider } from './useActiveWorkbenchFrame';
 import { useWorkbenchBreakpoint } from './useWorkbenchBreakpoint';
@@ -210,18 +211,23 @@ export function Workbench(): React.ReactElement {
   return (
     <DiffReviewProvider>
       <ActiveFrameProvider>
-        <WorkbenchStage
-          scanlines={scanlines}
-          breakpointMode={breakpointMode}
-          isUnified={isUnified}
-          openFilePath={openFilePath}
-          setOpenFilePath={setOpenFilePath}
-          projectKey={projectKey}
-          onCollapseToUnified={() => setForceUnified(true)}
-          onExpandToDual={() => setForceUnified(false)}
-          maximizedFrame={maximizedFrame}
-          onSetMaximizedFrame={setMaximizedFrame}
-        />
+        <WorkbenchTabsProvider
+          key={projectKey}
+          projectRoot={projectCtx?.projectRoot ?? null}
+        >
+          <WorkbenchStage
+            scanlines={scanlines}
+            breakpointMode={breakpointMode}
+            isUnified={isUnified}
+            openFilePath={openFilePath}
+            setOpenFilePath={setOpenFilePath}
+            projectKey={projectKey}
+            onCollapseToUnified={() => setForceUnified(true)}
+            onExpandToDual={() => setForceUnified(false)}
+            maximizedFrame={maximizedFrame}
+            onSetMaximizedFrame={setMaximizedFrame}
+          />
+        </WorkbenchTabsProvider>
       </ActiveFrameProvider>
     </DiffReviewProvider>
   );

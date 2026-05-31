@@ -42,11 +42,30 @@ vi.mock('../../../hooks/useClaudeCliSettings', () => ({
   useClaudeCliSettings: vi.fn(),
 }));
 
-// Wave 13 Phase 2.6: AgentSidebar derives paneId from useWorkbenchTabs.
-// Mock useWorkbenchTabs directly to return a stable tab whose id matches
-// SESSION.paneId so hasActiveSession = true and PanelStack renders.
+// Wave 13 Phase 2.6: AgentSidebar derives paneId from useWorkbenchTabsContext.
+// Mock WorkbenchTabsProvider to return a stable tab whose id matches SESSION.paneId
+// so hasActiveSession = true and PanelStack renders.
 // vi.mock factories are hoisted — use a literal string here; PANE_ID below
 // must match this literal exactly.
+vi.mock('../Terminals/WorkbenchTabsProvider', () => ({
+  useWorkbenchTabsContext: vi.fn().mockReturnValue({
+    tabs: [
+      {
+        id: 'wb-upper-cc-phase3-fixture',
+        label: 'claude',
+        sessionId: 'wb-upper-cc-phase3-fixture',
+        kind: 'cc',
+        createdAt: 0,
+      },
+    ],
+    activeTabId: 'wb-upper-cc-phase3-fixture',
+    addTab: vi.fn(),
+    closeTab: vi.fn(),
+    renameTab: vi.fn(),
+    setActiveTab: vi.fn(),
+  }),
+}));
+
 vi.mock('../Terminals/useWorkbenchRestore', () => ({
   useWorkbenchRestore: vi.fn().mockReturnValue({
     isReady: false,
@@ -59,6 +78,7 @@ vi.mock('../Terminals/useWorkbenchSessionPersist', () => ({
   useWorkbenchSessionPersist: vi.fn(),
 }));
 
+// Keep useWorkbenchTabs mock for any code that still calls the thin wrapper.
 vi.mock('../Terminals/useWorkbenchTabs', () => ({
   useWorkbenchTabs: vi.fn().mockReturnValue({
     tabs: [

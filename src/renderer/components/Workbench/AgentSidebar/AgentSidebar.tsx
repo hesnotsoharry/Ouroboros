@@ -11,9 +11,8 @@
 
 import React, { useState } from 'react';
 
-import { useProjectOptional } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
-import { useWorkbenchTabs } from '../Terminals/useWorkbenchTabs';
+import { useWorkbenchTabsContext } from '../Terminals/WorkbenchTabsProvider';
 import { useActiveWorkbenchFrame } from '../useActiveWorkbenchFrame';
 import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
 import type { WorkbenchBreakpointMode } from '../useWorkbenchBreakpoint';
@@ -269,9 +268,7 @@ function SidebarEmptyState(): React.ReactElement {
  */
 function useActivePaneId(): string | null {
   const { activeFrame } = useActiveWorkbenchFrame();
-  const projectCtx = useProjectOptional();
-  const projectRoot = projectCtx?.projectRoot ?? null;
-  const { tabs, activeTabId } = useWorkbenchTabs(activeFrame, projectRoot);
+  const { tabs, activeTabId } = useWorkbenchTabsContext(activeFrame);
   const activeTab = tabs.find((t) => t.id === activeTabId);
   return activeTab?.id ?? null;
 }

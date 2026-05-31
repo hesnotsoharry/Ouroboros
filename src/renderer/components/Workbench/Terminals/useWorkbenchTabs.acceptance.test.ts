@@ -29,12 +29,14 @@
  * @vitest-environment jsdom
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
+import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 // The hook does not exist yet — this static import will cause test file failures
 // (RED) until Phase 3 ships `useWorkbenchTabs.ts` at this path. This is the
 // correct RED signal: "Cannot find module" at import time, not at runtime.
 import { useWorkbenchTabs } from './useWorkbenchTabs';
+import { WorkbenchTabsProvider } from './WorkbenchTabsProvider';
 
 // ── Types (matches the Phase 3 contract shape) ────────────────────────────────
 
@@ -117,6 +119,16 @@ function ptySpawnClaude(): Mock {
   return window.electronAPI.pty.spawnClaude as unknown as Mock;
 }
 
+/** Wraps renderHook children in WorkbenchTabsProvider for the given projectRoot. */
+function makeWrapper(projectRoot: string): ({ children }: { children: React.ReactNode }) => React.ReactElement {
+  return function Wrapper({ children }: { children: React.ReactNode }): React.ReactElement {
+    return React.createElement(WorkbenchTabsProvider, { projectRoot }, children);
+  };
+}
+
+const wrapperA = makeWrapper('/proj/A');
+const wrapperB = makeWrapper('/proj/B');
+
 beforeEach(() => {
   installElectronAPI();
 });
@@ -129,7 +141,9 @@ afterEach(() => {
 
 describe('useWorkbenchTabs — addTab (Wave 12 Phase 3)', () => {
   it('addTab returns id that appears in tabs and becomes activeTabId', async () => {
-    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'), {
+      wrapper: wrapperA,
+    });
 
     let returnedId!: string;
     act(() => {
@@ -149,7 +163,9 @@ describe('useWorkbenchTabs — addTab (Wave 12 Phase 3)', () => {
 
 describe('useWorkbenchTabs — setActiveTab (Wave 12 Phase 3)', () => {
   it('setActiveTab(firstId) switches activeTabId away from secondId', async () => {
-    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'), {
+      wrapper: wrapperA,
+    });
 
     let firstId!: string;
     let secondId!: string;
@@ -175,7 +191,9 @@ describe('useWorkbenchTabs — setActiveTab (Wave 12 Phase 3)', () => {
 
 describe('useWorkbenchTabs — renameTab (Wave 12 Phase 3)', () => {
   it('renameTab updates the label in the tabs array', async () => {
-    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'), {
+      wrapper: wrapperA,
+    });
 
     let tabId!: string;
     act(() => {
@@ -204,7 +222,9 @@ describe('useWorkbenchTabs — closeTab (Wave 12 Phase 3)', () => {
   // capturing the initial tab set before calling addTab.
 
   it('closeTab removes tab, kills pty, and falls back activeTabId to remaining tab', async () => {
-    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'), {
+      wrapper: wrapperA,
+    });
 
     // Capture the initial default tab so we know the pre-existing count.
     const initialTabCount = result.current.tabs.length; // 1 (default tab from Wave 13)
@@ -237,7 +257,9 @@ describe('useWorkbenchTabs — closeTab (Wave 12 Phase 3)', () => {
   });
 
   it('closeTab sets activeTabId to null when all tabs are closed', async () => {
-    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+    const { result } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'), {
+      wrapper: wrapperA,
+    });
 
     // Capture all pre-existing tab ids (the default tab from Wave 13 Phase 2).
     const initialIds = result.current.tabs.map((t) => t.id);
@@ -269,8 +291,9 @@ describe('useWorkbenchTabs — closeTab (Wave 12 Phase 3)', () => {
 describe('useWorkbenchTabs — per-project isolation (Wave 12 Phase 3)', () => {
   it('tabs added under projectRoot /A are NOT visible when rendering with projectRoot /B', async () => {
     // Render for project A
-    const { result: resultA, unmount: unmountA } = renderHook(() =>
-      useWorkbenchTabs('upper', '/proj/A'),
+    const { result: resultA, unmount: unmountA } = renderHook(
+      () => useWorkbenchTabs('upper', '/proj/A'),
+      { wrapper: wrapperA },
     );
 
     act(() => {
@@ -283,7 +306,9 @@ describe('useWorkbenchTabs — per-project isolation (Wave 12 Phase 3)', () => {
     unmountA();
 
     // Render fresh for project B (separate hook invocation, no restore from A)
-    const { result: resultB } = renderHook(() => useWorkbenchTabs('upper', '/proj/B'));
+    const { result: resultB } = renderHook(() => useWorkbenchTabs('upper', '/proj/B'), {
+      wrapper: wrapperB,
+    });
 
     // Give any async restore a chance to settle
     await new Promise((resolve) => setTimeout(resolve, 30));
@@ -325,7 +350,7 @@ describe('useWorkbenchTabs — Wave-9 CC auto-resume regression (Wave 12 Phase 3
       lowerCollection: { activeTabId: null, tabs: [] },
     });
 
-    renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+    renderHook(() => useWorkbenchTabs('upper', '/proj/A'), { wrapper: wrapperA });
 
     await waitFor(() => {
       expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
@@ -357,7 +382,9 @@ describe('useWorkbenchTabs — persistence round-trip (Wave 12 Phase 3)', () => 
       lowerCollection: { activeTabId: null, tabs: [] },
     });
 
-    const { result, unmount } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+    const { result, unmount } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'), {
+      wrapper: wrapperA,
+    });
 
     let savedTabId!: string;
     act(() => {
@@ -379,7 +406,9 @@ describe('useWorkbenchTabs — persistence round-trip (Wave 12 Phase 3)', () => 
       lowerCollection: { activeTabId: null, tabs: [] },
     });
 
-    const { result: result2 } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'));
+    const { result: result2 } = renderHook(() => useWorkbenchTabs('upper', '/proj/A'), {
+      wrapper: wrapperA,
+    });
 
     await waitFor(() => {
       expect(result2.current.tabs.find((t) => t.id === savedTabId)).toBeDefined();

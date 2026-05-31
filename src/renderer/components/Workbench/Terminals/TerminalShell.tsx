@@ -10,11 +10,10 @@
 
 import React, { useCallback } from 'react';
 
-import { useProjectOptional } from '../../../contexts/ProjectContext';
 import { TerminalInstance } from '../../Terminal/TerminalInstance';
 import { type ActiveWorkbenchFrame, useActiveWorkbenchFrame } from '../useActiveWorkbenchFrame';
 import { TabBar } from './TerminalShell.parts';
-import { useWorkbenchTabs } from './useWorkbenchTabs';
+import { useWorkbenchTabsContext } from './WorkbenchTabsProvider';
 
 export type TerminalKind = 'cc' | 'shell';
 
@@ -80,11 +79,8 @@ export function TerminalShell({
 }: TerminalShellProps): React.ReactElement {
   const thisFrame: ActiveWorkbenchFrame = kind === 'cc' ? 'upper' : 'lower';
   const { setActiveFrame } = useActiveWorkbenchFrame();
-  const projectRoot = useProjectOptional()?.projectRoot ?? null;
-  const { tabs, activeTabId, addTab, closeTab, renameTab, setActiveTab } = useWorkbenchTabs(
-    thisFrame,
-    projectRoot,
-  );
+  const { tabs, activeTabId, addTab, closeTab, renameTab, setActiveTab } =
+    useWorkbenchTabsContext(thisFrame);
   const handleMouseDown = useCallback(() => setActiveFrame(thisFrame), [setActiveFrame, thisFrame]);
   const handleAddTab = useCallback(() => addTab({ kind }), [addTab, kind]);
   const handleMaximize = useCallback(() => onMaximize?.(), [onMaximize]);

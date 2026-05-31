@@ -91,6 +91,49 @@ vi.mock('../../contexts/ToastContext', () => ({
   }),
 }));
 
+// WorkbenchTabsProvider mock — standalone renders of TerminalShell / AgentSidebar
+// call useWorkbenchTabsContext directly and throw without a provider ancestor.
+// <Workbench /> mounts the real provider so its renders are unaffected. This mock
+// only fires when the context is consumed WITHOUT a real provider in the tree (the
+// real provider's value takes precedence when present because vi.mock replaces the
+// module, so the real provider's context value won't be available). For <Workbench />
+// renders that wrap the real provider, the mock is overridden at the module level —
+// so we keep the mock value generic enough to not break any assertion.
+vi.mock('./Terminals/WorkbenchTabsProvider', () => ({
+  useWorkbenchTabsContext: vi.fn().mockReturnValue({
+    tabs: [
+      {
+        id: 'wb-test-default-tab',
+        label: 'claude',
+        sessionId: 'wb-test-default-tab',
+        kind: 'cc' as const,
+        createdAt: 0,
+      },
+    ],
+    activeTabId: 'wb-test-default-tab',
+    addTab: vi.fn(),
+    closeTab: vi.fn(),
+    renameTab: vi.fn(),
+    setActiveTab: vi.fn(),
+  }),
+  // Pass-through provider so <Workbench /> render tree keeps working structurally.
+  WorkbenchTabsProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// WorkbenchRestore + SessionPersist — needed so the WorkbenchTabsProvider pass-through
+// (above) doesn't blow up when <Workbench /> tries to use the real provider internally.
+vi.mock('./Terminals/useWorkbenchRestore', () => ({
+  useWorkbenchRestore: vi.fn().mockReturnValue({
+    isReady: true,
+    upperCollection: undefined,
+    lowerCollection: undefined,
+  }),
+}));
+
+vi.mock('./Terminals/useWorkbenchSessionPersist', () => ({
+  useWorkbenchSessionPersist: vi.fn(),
+}));
+
 /** Installs a minimal window.electronAPI.pty stub used by useWorkbenchTerminals. */
 function stubPty(): void {
   (window as unknown as { electronAPI: unknown }).electronAPI = {

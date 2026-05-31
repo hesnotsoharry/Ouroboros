@@ -21,10 +21,30 @@ vi.mock('../../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: vi.fn(),
 }));
 
-// Wave 13 Phase 2.6: AgentSidebar derives paneId from useWorkbenchTabs.
-// Mock it to return a stable tab so hasActiveSession = true when a session
-// with matching paneId is provided. Literal string used here because vi.mock
-// factories are hoisted and cannot reference file-level const declarations.
+// Wave 13 Phase 2.6: AgentSidebar derives paneId from useWorkbenchTabsContext.
+// Mock WorkbenchTabsProvider to return a stable tab so hasActiveSession = true
+// when a session with matching paneId is provided. Literal string used here
+// because vi.mock factories are hoisted and cannot reference file-level consts.
+vi.mock('../Terminals/WorkbenchTabsProvider', () => ({
+  useWorkbenchTabsContext: vi.fn().mockReturnValue({
+    tabs: [
+      {
+        id: 'wb-upper-cc-phase2-fixture',
+        label: 'claude',
+        sessionId: 'wb-upper-cc-phase2-fixture',
+        kind: 'cc',
+        createdAt: 0,
+      },
+    ],
+    activeTabId: 'wb-upper-cc-phase2-fixture',
+    addTab: vi.fn(),
+    closeTab: vi.fn(),
+    renameTab: vi.fn(),
+    setActiveTab: vi.fn(),
+  }),
+}));
+
+// Keep useWorkbenchTabs mock for any code that still calls the thin wrapper.
 vi.mock('../Terminals/useWorkbenchTabs', () => ({
   useWorkbenchTabs: vi.fn().mockReturnValue({
     tabs: [

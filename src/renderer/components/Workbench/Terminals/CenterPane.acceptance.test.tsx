@@ -57,12 +57,24 @@ vi.mock('../../Terminal/TerminalInstance', async () => {
   };
 });
 
-// Wave 13 Phase 2.6: mock useWorkbenchTabs so TerminalShell's internal tab
-// management doesn't spawn ptys independently. The CenterPane acceptance test
+// Wave 13 Phase 2.6: mock useWorkbenchTabsContext so TerminalShell's internal
+// tab management doesn't spawn ptys independently. The CenterPane acceptance test
 // covers the useWorkbenchTerminals spawn path (two ptys, one per frame); it
 // does NOT test useWorkbenchTabs' spawn path (which is covered separately in
 // useWorkbenchTabs.acceptance.test.ts). Without this mock, Phase 2's default-tab
 // init fires a third spawn call that breaks the "two distinct ptys" assertion.
+vi.mock('./WorkbenchTabsProvider', () => ({
+  useWorkbenchTabsContext: vi.fn().mockReturnValue({
+    tabs: [],
+    activeTabId: null,
+    addTab: vi.fn(() => 'mock-tab-id'),
+    closeTab: vi.fn(),
+    renameTab: vi.fn(),
+    setActiveTab: vi.fn(),
+  }),
+}));
+
+// Keep useWorkbenchTabs mock for any code that still calls the thin wrapper.
 vi.mock('./useWorkbenchTabs', () => ({
   useWorkbenchTabs: vi.fn().mockReturnValue({
     tabs: [],

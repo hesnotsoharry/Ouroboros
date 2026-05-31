@@ -20,14 +20,21 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TerminalShell } from './TerminalShell';
+import { useWorkbenchTabs } from './useWorkbenchTabs';
+import { useWorkbenchTabsContext } from './WorkbenchTabsProvider';
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
-// useWorkbenchTabs — controlled per test via mockReturnValue in beforeEach.
+// useWorkbenchTabsContext — TerminalShell calls this directly.
+// useWorkbenchTabs — thin wrapper; still mocked for any indirect callers.
 const mockAddTab = vi.fn();
 const mockCloseTab = vi.fn();
 const mockRenameTab = vi.fn();
 const mockSetActiveTab = vi.fn();
+
+vi.mock('./WorkbenchTabsProvider', () => ({
+  useWorkbenchTabsContext: vi.fn(),
+}));
 
 vi.mock('./useWorkbenchTabs', () => ({
   useWorkbenchTabs: vi.fn(),
@@ -68,7 +75,7 @@ vi.mock('../../../contexts/ProjectContext', () => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-import { useWorkbenchTabs } from './useWorkbenchTabs';
+const mockedUseWorkbenchTabsContext = vi.mocked(useWorkbenchTabsContext);
 const mockedUseWorkbenchTabs = vi.mocked(useWorkbenchTabs);
 
 function makeMockHook(
@@ -100,9 +107,13 @@ beforeEach(() => {
   mockSetActiveTab.mockClear();
 
   // Default: single tab, upper frame.
-  mockedUseWorkbenchTabs.mockReturnValue(
-    makeMockHook([{ id: 't1', label: 'claude', sessionId: 's1', kind: 'cc', createdAt: 1 }], 't1'),
+  const defaultHook = makeMockHook(
+    [{ id: 't1', label: 'claude', sessionId: 's1', kind: 'cc', createdAt: 1 }],
+    't1',
   );
+  // TerminalShell calls useWorkbenchTabsContext directly; useWorkbenchTabs kept for compat.
+  mockedUseWorkbenchTabsContext.mockReturnValue(defaultHook);
+  mockedUseWorkbenchTabs.mockReturnValue(defaultHook);
 });
 
 afterEach(() => {
@@ -136,12 +147,12 @@ describe('Wave 12 Phase 4 — TerminalShell addTab (upper frame, kind=cc)', () =
 
 describe('Wave 12 Phase 4 — TerminalShell addTab (lower frame, kind=shell)', () => {
   beforeEach(() => {
-    mockedUseWorkbenchTabs.mockReturnValue(
-      makeMockHook(
-        [{ id: 's1', label: 'shell', sessionId: 'ws1', kind: 'shell', createdAt: 1 }],
-        's1',
-      ),
+    const lowerHook = makeMockHook(
+      [{ id: 's1', label: 'shell', sessionId: 'ws1', kind: 'shell', createdAt: 1 }],
+      's1',
     );
+    mockedUseWorkbenchTabsContext.mockReturnValue(lowerHook);
+    mockedUseWorkbenchTabs.mockReturnValue(lowerHook);
   });
 
   it('clicking the new-tab button calls addTab({ kind: "shell" }) for the lower frame', () => {

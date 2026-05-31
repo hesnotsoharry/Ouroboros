@@ -22,6 +22,8 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TerminalShell } from './TerminalShell';
+import { useWorkbenchTabs } from './useWorkbenchTabs';
+import { useWorkbenchTabsContext } from './WorkbenchTabsProvider';
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
@@ -29,6 +31,10 @@ const mockAddTab = vi.fn();
 const mockCloseTab = vi.fn();
 const mockRenameTab = vi.fn();
 const mockSetActiveTab = vi.fn();
+
+vi.mock('./WorkbenchTabsProvider', () => ({
+  useWorkbenchTabsContext: vi.fn(),
+}));
 
 vi.mock('./useWorkbenchTabs', () => ({
   useWorkbenchTabs: vi.fn(),
@@ -63,7 +69,7 @@ vi.mock('../../../contexts/ProjectContext', () => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-import { useWorkbenchTabs } from './useWorkbenchTabs';
+const mockedUseWorkbenchTabsContext = vi.mocked(useWorkbenchTabsContext);
 const mockedUseWorkbenchTabs = vi.mocked(useWorkbenchTabs);
 
 const TWO_TABS = [
@@ -72,14 +78,17 @@ const TWO_TABS = [
 ];
 
 function installHook(tabs: typeof TWO_TABS, activeTabId: string | null): void {
-  mockedUseWorkbenchTabs.mockReturnValue({
+  const value = {
     tabs,
     activeTabId,
     addTab: mockAddTab,
     closeTab: mockCloseTab,
     renameTab: mockRenameTab,
     setActiveTab: mockSetActiveTab,
-  });
+  };
+  // TerminalShell calls useWorkbenchTabsContext directly; useWorkbenchTabs kept for compat.
+  mockedUseWorkbenchTabsContext.mockReturnValue(value);
+  mockedUseWorkbenchTabs.mockReturnValue(value);
 }
 
 // ── Setup / teardown ──────────────────────────────────────────────────────────
