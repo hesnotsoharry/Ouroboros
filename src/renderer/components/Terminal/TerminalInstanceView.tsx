@@ -147,7 +147,7 @@ function TerminalCommandBlocks({
         activeBlockIndex={activeBlockIndex}
         sessionId={controller.sessionId}
       />
-      <StickyScrollOverlay blocks={blocks} terminal={terminal} />
+      <StickyScrollOverlay blocks={blocks} isActive={controller.isActive} terminal={terminal} />
       <BlockNavigator
         totalBlocks={blocks.length}
         activeIndex={activeBlockIndex}

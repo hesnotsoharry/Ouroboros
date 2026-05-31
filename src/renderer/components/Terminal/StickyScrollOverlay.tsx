@@ -13,6 +13,7 @@ import type { CommandBlock } from './useCommandBlocks';
 
 export interface StickyScrollOverlayProps {
   blocks: CommandBlock[];
+  isActive: boolean;
   terminal: Terminal | null;
 }
 
@@ -221,11 +222,12 @@ function useStickyState(
 
 export function StickyScrollOverlay({
   blocks,
+  isActive,
   terminal,
 }: StickyScrollOverlayProps): React.ReactElement | null {
   ensurePulseKeyframe();
   const { stickyBlock, handleClick } = useStickyState(blocks, terminal);
-  if (!stickyBlock || !terminal) return null;
+  if (!isActive || !stickyBlock || !terminal) return null;
   return (
     <div
       className="bg-surface-panel text-text-semantic-primary border-b border-border-semantic"
