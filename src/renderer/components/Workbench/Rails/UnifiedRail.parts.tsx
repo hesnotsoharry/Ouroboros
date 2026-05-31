@@ -6,6 +6,7 @@
 import React from 'react';
 
 import { Icon } from '../../shared/Icon';
+import type { ChipBorderMode } from '../useProjectAgentStatus';
 import { type MockProject, type MockSession } from '../workbenchMockData';
 import { WorkbenchFileTree } from './WorkbenchFileTree';
 
@@ -113,14 +114,33 @@ interface AccordionHeaderProps {
   expanded: boolean;
   hasRunning: boolean;
   onToggle: (id: string) => void;
+  agentBorderMode?: ChipBorderMode;
 }
+
+function agentStatusDotColor(mode: ChipBorderMode | undefined): string | null {
+  if (mode === 'asking-yellow') return 'var(--warning)';
+  if (mode === 'ready-green') return 'var(--success)';
+  return null;
+}
+
+const NAME_STYLE_BASE: React.CSSProperties = {
+  fontSize: 12.5,
+  color: 'var(--ink)',
+  flex: 1,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
 
 export function AccordionHeader({
   project,
   expanded,
   hasRunning,
   onToggle,
+  agentBorderMode,
 }: AccordionHeaderProps): React.ReactElement {
+  const dotColor = agentStatusDotColor(agentBorderMode);
+  const nameStyle = { ...NAME_STYLE_BASE, fontWeight: expanded ? 600 : 500 };
   return (
     <div onClick={() => onToggle(project.id)} style={accordionRowStyle(expanded)}>
       <Icon
@@ -129,21 +149,12 @@ export function AccordionHeader({
         style={{ color: 'var(--ink-4)', flexShrink: 0 }}
       />
       <ProjectSmallChip project={project} expanded={expanded} />
-      <span
-        style={{
-          fontSize: 12.5,
-          color: 'var(--ink)',
-          fontWeight: expanded ? 600 : 500,
-          flex: 1,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {project.name}
-      </span>
+      <span style={nameStyle}>{project.name}</span>
       {project.dirty > 0 && <ProjectDirtyBadge count={project.dirty} />}
       {hasRunning && <RunningDot />}
+      {dotColor && (
+        <span style={{ width: 6, height: 6, borderRadius: 999, background: dotColor, flexShrink: 0 }} />
+      )}
     </div>
   );
 }
@@ -284,6 +295,8 @@ interface ProjectAccordionProps {
    *  these; legacy/test renders that rely on mock data may omit them. */
   sessions: MockSession[];
   onToggle: (id: string) => void;
+  /** Agent status border mode from useProjectAgentStatus — shows colored dot. */
+  agentBorderMode?: ChipBorderMode;
 }
 
 export function ProjectAccordion({
@@ -291,6 +304,7 @@ export function ProjectAccordion({
   expanded,
   sessions,
   onToggle,
+  agentBorderMode,
 }: ProjectAccordionProps): React.ReactElement {
   const projectSessions = sessions.filter((s) => s.projectId === project.id);
   const hasRunning = projectSessions.some((s) => s.status === 'live');
@@ -302,6 +316,7 @@ export function ProjectAccordion({
         expanded={expanded}
         hasRunning={hasRunning}
         onToggle={onToggle}
+        agentBorderMode={agentBorderMode}
       />
       {expanded && <AccordionBody project={project} sessions={projectSessions} />}
     </div>

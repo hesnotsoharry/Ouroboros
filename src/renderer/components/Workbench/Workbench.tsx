@@ -29,7 +29,12 @@ import { CenterPane } from './Terminals/CenterPane';
 import { WorkbenchTabsProvider } from './Terminals/WorkbenchTabsProvider';
 import { TitleBar } from './TitleBar/TitleBar';
 import { ActiveFrameProvider } from './useActiveWorkbenchFrame';
+import { useMarkSeenOnFocus } from './useMarkSeenOnFocus';
+import type { ProjectAgentStatusSummary } from './useProjectAgentStatus';
+import { useAllProjectAgentStatus } from './useProjectAgentStatus';
+import { ProjectNotificationStoreProvider, useProjectNotificationStore } from './useProjectNotificationStore';
 import { useWorkbenchBreakpoint } from './useWorkbenchBreakpoint';
+import { useWorkbenchProjects } from './useWorkbenchProjects';
 
 const stageStyle: React.CSSProperties = {
   display: 'flex',
@@ -132,6 +137,7 @@ interface MiddleRowProps {
   showAgentSidebar: boolean;
   onHideSidebar: () => void;
   onShowSidebar: () => void;
+  agentStatusMap: ReadonlyMap<string, ProjectAgentStatusSummary>;
 }
 
 function MiddleRow({
@@ -146,14 +152,15 @@ function MiddleRow({
   showAgentSidebar,
   onHideSidebar,
   onShowSidebar,
+  agentStatusMap,
 }: MiddleRowProps): React.ReactElement {
   return (
     <div style={middleRowStyle}>
       {isUnified ? (
-        <UnifiedRail onExpand={onExpandToDual} />
+        <UnifiedRail onExpand={onExpandToDual} agentStatusMap={agentStatusMap} />
       ) : (
         <>
-          <ProjectRail onCollapse={onCollapseToUnified} />
+          <ProjectRail onCollapse={onCollapseToUnified} agentStatusMap={agentStatusMap} />
           <InnerRail onCollapse={onCollapseToUnified} onSelectFile={onSelectFile} />
         </>
       )}
@@ -187,7 +194,10 @@ interface WorkbenchStageProps {
   onShowSidebar: () => void;
 }
 
-function buildMiddleRowProps(p: WorkbenchStageProps): MiddleRowProps {
+function buildMiddleRowProps(
+  p: WorkbenchStageProps,
+  agentStatusMap: ReadonlyMap<string, ProjectAgentStatusSummary>,
+): MiddleRowProps {
   return {
     isUnified: p.isUnified,
     breakpointMode: p.breakpointMode,
@@ -200,6 +210,7 @@ function buildMiddleRowProps(p: WorkbenchStageProps): MiddleRowProps {
     showAgentSidebar: p.showAgentSidebar,
     onHideSidebar: p.onHideSidebar,
     onShowSidebar: p.onShowSidebar,
+    agentStatusMap,
   };
 }
 
@@ -210,10 +221,16 @@ function buildMiddleRowProps(p: WorkbenchStageProps): MiddleRowProps {
  * Wave 13 Phase 2: claudeSessionId state + threading removed (D5).
  */
 function WorkbenchStage(p: WorkbenchStageProps): React.ReactElement {
+  // Agent-status: mark sessions seen on focus, compute per-project status map.
+  useMarkSeenOnFocus();
+  const projects = useWorkbenchProjects();
+  const { seenKeys } = useProjectNotificationStore();
+  const agentStatusMap = useAllProjectAgentStatus(projects, seenKeys);
+
   return (
     <div data-testid="workbench-root" style={stageStyle}>
       <TitleBar />
-      <MiddleRow {...buildMiddleRowProps(p)} />
+      <MiddleRow {...buildMiddleRowProps(p, agentStatusMap)} />
       <StatusBar />
       <WorkbenchSettingsOverlay />
       <WorkbenchCommandPalette />
@@ -250,6 +267,7 @@ export function Workbench(): React.ReactElement {
   return (
     <DiffReviewProvider>
       <ActiveFrameProvider>
+        <ProjectNotificationStoreProvider>
         <WorkbenchTabsProvider
           projectRoot={projectCtx?.projectRoot ?? null}
         >
@@ -269,6 +287,7 @@ export function Workbench(): React.ReactElement {
             onShowSidebar={() => setShowAgentSidebar(true)}
           />
         </WorkbenchTabsProvider>
+        </ProjectNotificationStoreProvider>
       </ActiveFrameProvider>
     </DiffReviewProvider>
   );

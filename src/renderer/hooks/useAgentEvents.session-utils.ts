@@ -85,11 +85,19 @@ export function loadPersistedSessions(state: AgentState, sessions: AgentSession[
   };
 }
 
-/** Auto-resolve tool calls that have been pending longer than STALE_TOOL_CALL_MS. */
+/**
+ * Auto-resolve tool calls that have been pending longer than STALE_TOOL_CALL_MS.
+ * AskUserQuestion is exempt: a real pending question can outlive 120s; auto-resolving
+ * would silently clear the yellow project-rail indicator.
+ */
 export function resolveStaleToolCalls(toolCalls: ToolCallEvent[], now: number): ToolCallEvent[] {
   let changed = false;
   const resolved = toolCalls.map((tc) => {
-    if (tc.status === 'pending' && now - tc.timestamp > STALE_TOOL_CALL_MS) {
+    if (
+      tc.status === 'pending' &&
+      tc.toolName !== 'AskUserQuestion' &&
+      now - tc.timestamp > STALE_TOOL_CALL_MS
+    ) {
       changed = true;
       return { ...tc, status: 'success' as const, duration: now - tc.timestamp };
     }

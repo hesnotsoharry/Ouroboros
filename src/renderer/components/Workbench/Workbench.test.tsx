@@ -77,8 +77,11 @@ vi.mock('../../hooks/useGitBranch', () => ({
 // AgentEventsContext stub — AgentGlobe (Wave 3) reads useWorkbenchAgentData →
 // useAgentEventsContext, which throws outside a provider. Default return set in
 // beforeEach (empty → "fresh"); individual tests override via mockReturnValue.
+// useAgentEventsContextSafe is also stubbed → returns null (safe no-op for
+// useMarkSeenOnFocus / useProjectAgentStatus which degrade gracefully to agents=[]).
 vi.mock('../../contexts/AgentEventsContext', () => ({
   useAgentEventsContext: vi.fn(),
+  useAgentEventsContextSafe: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock('../../contexts/ToastContext', () => ({

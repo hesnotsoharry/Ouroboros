@@ -59,3 +59,4 @@ export function useAgentEventsContext(): UseAgentEventsReturn {
   if (!ctx) throw new Error('useAgentEventsContext must be used inside AgentEventsProvider');
   return ctx;
 }
+

@@ -19,6 +19,7 @@ import React, { useState } from 'react';
 import { useProject } from '../../../contexts/ProjectContext';
 import { useGitBranch } from '../../../hooks/useGitBranch';
 import { Icon } from '../../shared/Icon';
+import type { ProjectAgentStatusSummary } from '../useProjectAgentStatus';
 import { useWorkbenchAgentData } from '../useWorkbenchAgentData';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
 import type { MockProject, MockSession } from '../workbenchMockData';
@@ -71,11 +72,13 @@ const RAIL_STYLE: React.CSSProperties = {
   borderRight: '1px solid var(--stroke-faint)',
 };
 
-interface UnifiedRailProps {
+export interface UnifiedRailProps {
   onExpand?: () => void;
+  /** Agent-status map keyed by project path. Provided by Workbench (has AgentEventsContext). */
+  agentStatusMap?: ReadonlyMap<string, ProjectAgentStatusSummary>;
 }
 
-export function UnifiedRail({ onExpand }: UnifiedRailProps): React.ReactElement {
+export function UnifiedRail({ onExpand, agentStatusMap }: UnifiedRailProps): React.ReactElement {
   const liveProjects = useWorkbenchProjects();
   const { sessions: liveSessions } = useWorkbenchAgentData();
 
@@ -95,13 +98,14 @@ export function UnifiedRail({ onExpand }: UnifiedRailProps): React.ReactElement 
     <div data-testid="workbench-unifiedrail" style={RAIL_STYLE}>
       <UnifiedHeader onExpand={onExpand} />
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: 8 }}>
-        {projects.map((p) => (
+        {liveProjects.map((lp, idx) => (
           <ProjectAccordion
-            key={p.id}
-            project={p}
-            expanded={p.id === expandedProjectId}
+            key={projects[idx].id}
+            project={projects[idx]}
+            expanded={projects[idx].id === expandedProjectId}
             sessions={sessions}
             onToggle={handleToggle}
+            agentBorderMode={agentStatusMap?.get(lp.path)?.borderMode ?? 'none'}
           />
         ))}
       </div>
