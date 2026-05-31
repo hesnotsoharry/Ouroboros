@@ -143,7 +143,10 @@ describe('Wave 3 Phase 1 — Agent Globe live state (orchestrator-owned)', () =>
     expect(globe.textContent).not.toContain('claude-sonnet-4-6'); // MOCK_CONTEXT_STATS.model
   });
 
-  it('running + no pending tool call → thinking', () => {
+  it('running + no pending tool call → idle (no thinking signal on the wire)', () => {
+    // A running session with no PENDING tool reads as idle/ready, matching the
+    // sidebar NowBlock. The old 'thinking' heuristic wrongly fired for freshly-
+    // spawned, idle-at-prompt sessions (no lastTurnEndedAt set yet).
     const globe = renderGlobeWith([
       makeSession({
         status: 'running',
@@ -151,7 +154,7 @@ describe('Wave 3 Phase 1 — Agent Globe live state (orchestrator-owned)', () =>
         toolCalls: [makeToolCall({ toolName: 'Read', status: 'success', timestamp: 1200 })],
       }),
     ]);
-    expect(globe.getAttribute('data-state')).toBe('thinking');
+    expect(globe.getAttribute('data-state')).toBe('idle');
   });
 
   it('running + latest permission request → awaiting (precedence over a pending tool)', () => {

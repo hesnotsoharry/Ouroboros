@@ -101,7 +101,11 @@ function deriveState(session: AgentSession | null): WorkbenchAgentState {
   if (session.lastTurnEndedAt !== undefined) return 'idle';
   const perms = session.permissionEvents ?? [];
   if (perms.length > 0 && perms[perms.length - 1].type === 'request') return 'awaiting';
-  return session.toolCalls.some((tc) => tc.status === 'pending') ? 'running' : 'thinking';
+  // No pending tool → idle/ready (matches the sidebar NowBlock, which keys idle off
+  // "no active tool"). A freshly-spawned session has no lastTurnEndedAt yet, so the
+  // old 'thinking' fallback wrongly fired for idle-at-prompt sessions. There is no
+  // real thinking signal on the wire — running + no pending tool reads as idle.
+  return session.toolCalls.some((tc) => tc.status === 'pending') ? 'running' : 'idle';
 }
 
 /**
