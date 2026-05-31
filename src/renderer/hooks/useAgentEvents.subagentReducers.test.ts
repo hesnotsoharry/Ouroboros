@@ -147,4 +147,81 @@ describe('updateContextWindow', () => {
     // Neither paneId nor sessionId matched — session stays untouched
     expect(next.sessions[0].contextUsedTokens).toBeUndefined();
   });
+
+  // ── cwd-based matching (statusline fix) ──────────────────────────────────────
+
+  it('resolves the target session by cwd when paneId is absent', () => {
+    // Statusline sends cwd=process.cwd() of the Claude subprocess, paneId=undefined.
+    // The session was registered with a matching cwd.
+    const session = makeSession({ id: 'ses-real', cwd: 'C:\\Web App\\AgentIDE' });
+    const state = makeState([session]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'unknown',
+      cwd: 'C:\\Web App\\AgentIDE',
+      contextUsedTokens: 365_271,
+      contextMaxTokens: 1_000_000,
+    });
+    const updated = next.sessions.find((s) => s.id === 'ses-real');
+    expect(updated?.contextUsedTokens).toBe(365_271);
+    expect(updated?.contextMaxTokens).toBe(1_000_000);
+  });
+
+  it('cwd matching is case-insensitive and normalizes backslashes to forward slashes', () => {
+    const session = makeSession({ id: 'ses-1', cwd: 'C:/Web App/AgentIDE' });
+    const state = makeState([session]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'unknown',
+      cwd: 'C:\\Web App\\AgentIDE',
+      contextUsedTokens: 100_000,
+      contextMaxTokens: 200_000,
+    });
+    expect(next.sessions.find((s) => s.id === 'ses-1')?.contextUsedTokens).toBe(100_000);
+  });
+
+  it('cwd prefix match: statusline cwd is a subdirectory of the session cwd', () => {
+    // Agent runs from project root; statusline cwd may be a subdir (e.g. after cd).
+    const session = makeSession({ id: 'ses-1', cwd: 'C:/projects/foo' });
+    const state = makeState([session]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'unknown',
+      cwd: 'C:/projects/foo/src',
+      contextUsedTokens: 50_000,
+      contextMaxTokens: 200_000,
+    });
+    expect(next.sessions.find((s) => s.id === 'ses-1')?.contextUsedTokens).toBe(50_000);
+  });
+
+  it('cwd match prefers paneId when both are present', () => {
+    // paneId matches ses-by-pane; cwd also matches ses-by-cwd.
+    // paneId must win (higher priority).
+    const byPane = makeSession({ id: 'ses-by-pane', paneId: 'pane-abc', cwd: 'C:/other' });
+    const byCwd = makeSession({ id: 'ses-by-cwd', cwd: 'C:/projects/foo' });
+    const state = makeState([byPane, byCwd]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'unknown',
+      paneId: 'pane-abc',
+      cwd: 'C:/projects/foo',
+      contextUsedTokens: 77_000,
+      contextMaxTokens: 200_000,
+    });
+    expect(next.sessions.find((s) => s.id === 'ses-by-pane')?.contextUsedTokens).toBe(77_000);
+    expect(next.sessions.find((s) => s.id === 'ses-by-cwd')?.contextUsedTokens).toBeUndefined();
+  });
+
+  it('no-ops when cwd does not match any session', () => {
+    const session = makeSession({ id: 'ses-1', cwd: 'C:/projects/foo' });
+    const state = makeState([session]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'unknown',
+      cwd: 'C:/projects/bar',
+      contextUsedTokens: 99_000,
+      contextMaxTokens: 200_000,
+    });
+    expect(next.sessions[0].contextUsedTokens).toBeUndefined();
+  });
 });

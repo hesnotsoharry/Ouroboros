@@ -70,6 +70,7 @@ export function startSession(state: AgentState, action: AgentStartAction): Agent
     internal: action.internal,
     external: action.external,
     paneId: action.paneId,
+    cwd: action.cwd,
   };
   return {
     sessions: [newSession, ...state.sessions],

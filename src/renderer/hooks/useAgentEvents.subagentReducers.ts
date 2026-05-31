@@ -49,8 +49,13 @@ interface RecordSubagentToolAction {
 interface ContextUpdateAction {
   type: 'CONTEXT_UPDATE';
   sessionId: string;
-  /** OUROBOROS_PANE_ID forwarded from the statusline hook. Preferred lookup key. */
+  /** OUROBOROS_PANE_ID forwarded from the statusline hook. Used when present. */
   paneId?: string;
+  /**
+   * Working directory of the Claude session — process.cwd() in the statusline subprocess.
+   * Primary session-matching key: paneId → cwd (basename) → sessionId fallback.
+   */
+  cwd?: string;
   contextUsedTokens: number;
   contextMaxTokens: number;
 }
@@ -67,6 +72,11 @@ export function updateTokenUsage(state: AgentState, action: TokenUpdateAction): 
   }));
 }
 
+/** Normalize a path to forward slashes, lowercase, no trailing slash. */
+function normalizeCwd(p: string): string {
+  return p.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
+}
+
 /** Resolve a session by paneId. Returns undefined when paneId is absent or unmatched. */
 function findSessionByPaneId(
   state: AgentState,
@@ -76,11 +86,41 @@ function findSessionByPaneId(
   return state.sessions.find((s) => s.paneId === paneId)?.id;
 }
 
+/**
+ * Resolve a session by cwd — the statusline subprocess's process.cwd() matches the
+ * Claude session's working directory. Finds running/idle sessions whose cwd matches
+ * (exact or as a parent prefix) the given cwd. When multiple sessions match, prefer
+ * the one whose cwd is longest (most specific). Falls back to the first match.
+ */
+function findSessionByCwd(
+  state: AgentState,
+  cwd: string | undefined,
+): string | undefined {
+  if (!cwd) return undefined;
+  const normalized = normalizeCwd(cwd);
+  let best: { id: string; cwdLen: number } | undefined;
+  for (const s of state.sessions) {
+    if (!s.cwd) continue;
+    const sCwd = normalizeCwd(s.cwd);
+    const matches = normalized === sCwd || normalized.startsWith(sCwd + '/');
+    if (matches) {
+      if (!best || sCwd.length > best.cwdLen) {
+        best = { id: s.id, cwdLen: sCwd.length };
+      }
+    }
+  }
+  return best?.id;
+}
+
 export function updateContextWindow(
   state: AgentState,
   action: ContextUpdateAction,
 ): AgentState {
-  const targetId = findSessionByPaneId(state, action.paneId) ?? action.sessionId;
+  // Resolution priority: paneId → cwd → sessionId fallback.
+  const targetId =
+    findSessionByPaneId(state, action.paneId) ??
+    findSessionByCwd(state, action.cwd) ??
+    action.sessionId;
   return updateSession(state, targetId, (session) => ({
     ...session,
     contextUsedTokens: action.contextUsedTokens,

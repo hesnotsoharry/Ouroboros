@@ -277,17 +277,32 @@ function dispatchOwnedEvent(rawPayload: HookPayload): void {
   }
 }
 
+// context_update is statusline ambient telemetry — it has no paneId and uses
+// cwd for session matching in the renderer. Bypasses the ownership gate so the
+// data reaches the renderer even when OUROBOROS_PANE_ID is not propagated into
+// the statusline subprocess. Sends only when ctx fields are present.
+function dispatchAmbientContextUpdate(rawPayload: HookPayload): void {
+  log.info('[trace:ctx-gauge] context_update arrived (bypassing ownership gate)', {
+    sessionId: rawPayload.sessionId,
+    paneId: rawPayload.paneId ?? null,
+    cwd: rawPayload.cwd ?? null,
+    contextUsedTokens: rawPayload.contextUsedTokens ?? null,
+    contextMaxTokens: rawPayload.contextMaxTokens ?? null,
+  });
+  if (rawPayload.contextUsedTokens == null || rawPayload.contextMaxTokens == null) return;
+  const windows = getDispatchWindows();
+  if (windows.length === 0) {
+    queuePendingPayload(rawPayload);
+    return;
+  }
+  flushPendingQueue(windows);
+  sendPayload(windows, rawPayload);
+}
+
 function dispatchToRenderer(rawPayload: HookPayload): void {
-  // [trace:ctx-gauge] Log context_update at the gate so we can verify sessionId vs paneId.
-  // Remove after root-cause confirmed.
   if (rawPayload.type === 'context_update') {
-    log.info('[trace:ctx-gauge] context_update arrived', {
-      sessionId: rawPayload.sessionId,
-      paneId: rawPayload.paneId ?? null,
-      contextUsedTokens: rawPayload.contextUsedTokens ?? null,
-      contextMaxTokens: rawPayload.contextMaxTokens ?? null,
-      ownedBefore: ownedSessionIds.has(rawPayload.sessionId),
-    });
+    dispatchAmbientContextUpdate(rawPayload);
+    return;
   }
 
   // Register paneId before the gate so the first owned event populates the set

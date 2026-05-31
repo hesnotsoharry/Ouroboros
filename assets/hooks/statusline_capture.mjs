@@ -36,9 +36,16 @@ if (data.rate_limits) {
 
 const paneId = process.env.OUROBOROS_PANE_ID;
 const ctx = data.context_window;
+// cwd: the statusline subprocess inherits the Claude session's working directory,
+// so process.cwd() is the stable cross-process identifier we use for session matching.
+const cwdValue = process.cwd();
+// data.session_id may be present in some Claude Code versions — include as bonus.
+const sessionIdFromData = (typeof data.session_id === 'string' && data.session_id)
+  ? data.session_id
+  : null;
 
-// [trace:ctx-gauge] Write diagnostic entry so we can verify env inheritance.
-// Remove after root-cause confirmed.
+// [trace:ctx-gauge] Write diagnostic entry to confirm fix (expanded from prior version).
+// Remove after end-to-end verified in IDE relaunch.
 try {
   import('node:fs').then(({ appendFileSync, mkdirSync }) => {
     import('node:os').then(({ homedir }) => {
@@ -49,10 +56,13 @@ try {
           ts: new Date().toISOString(),
           paneId: paneId ?? null,
           CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID ?? null,
+          sessionIdFromData,
+          cwd: cwdValue,
           ctxPresent: Boolean(ctx),
           ctxUsed: ctx?.total_input_tokens ?? null,
           ctxMax: ctx?.context_window_size ?? null,
-          skipForNoIde: !paneId ? 'paneId-missing' : 'paneId-ok',
+          dataKeys: Object.keys(data),
+          sendEventFired: ctx != null && !shouldSkipForNoIde(),
         }) + '\n';
         appendFileSync(join(dir, 'statusline-trace.log'), entry, 'utf8');
       });
@@ -60,14 +70,17 @@ try {
   });
 } catch { /* trace must never break the hook */ }
 
-if (paneId && ctx && !shouldSkipForNoIde()) {
+// Guard: fire when ctx data is present and the IDE is reachable.
+// No longer requires paneId — cwd is the session identifier instead.
+if (ctx && !shouldSkipForNoIde()) {
   const { hooksToken } = loadTokens();
   if (hooksToken) {
-    const sessionId = process.env.CLAUDE_SESSION_ID || 'unknown';
-    await sendEvent({
+    const sessionId = sessionIdFromData ?? process.env.CLAUDE_SESSION_ID ?? 'unknown';
+    const sent = await sendEvent({
       type: 'context_update',
-      paneId,
+      paneId: paneId ?? undefined,
       sessionId,
+      cwd: cwdValue,
       timestamp: Date.now(),
       contextUsedTokens: ctx.total_input_tokens,
       contextMaxTokens: ctx.context_window_size,
@@ -75,6 +88,20 @@ if (paneId && ctx && !shouldSkipForNoIde()) {
       model: data.model?.api_name ?? data.model?.display_name,
       costUsd: undefined,
     }, hooksToken, { timeoutMs: 200 });
+    // Append sendEvent result to the trace so we confirm delivery end-to-end.
+    try {
+      import('node:fs').then(({ appendFileSync }) => {
+        import('node:os').then(({ homedir }) => {
+          import('node:path').then(({ join }) => {
+            appendFileSync(
+              join(homedir(), '.ouroboros', 'statusline-trace.log'),
+              JSON.stringify({ ts: new Date().toISOString(), sendEventResult: sent, cwd: cwdValue }) + '\n',
+              'utf8',
+            );
+          });
+        });
+      });
+    } catch { /* best-effort */ }
   }
 }
 

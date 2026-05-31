@@ -282,6 +282,7 @@ function dispatchAgentStart(
     internal: payload.internal,
     external: payload.ideSpawned ? undefined : true,
     paneId: payload.paneId,
+    cwd: payload.cwd,
   });
   dispatchSkillStart(payload, dispatch);
 }

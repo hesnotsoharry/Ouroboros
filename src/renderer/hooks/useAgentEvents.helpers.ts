@@ -85,6 +85,8 @@ export type AgentAction =
       external?: boolean;
       /** Wave 13 — IDE pane identifier (OUROBOROS_PANE_ID) forwarded from hook payload. */
       paneId?: string;
+      /** Working directory of the session — forwarded from hook payload for project matching. */
+      cwd?: string;
     }
   | { type: 'TOOL_START'; sessionId: string; toolCall: ToolCallEvent }
   | {
@@ -119,8 +121,13 @@ export type AgentAction =
       /** Statusline context-window snapshot. Absolute values — NOT delta accumulators. */
       type: 'CONTEXT_UPDATE';
       sessionId: string;
-      /** OUROBOROS_PANE_ID forwarded from the statusline hook payload. Preferred lookup key. */
+      /** OUROBOROS_PANE_ID forwarded from the statusline hook payload. Used when present. */
       paneId?: string;
+      /**
+       * Working directory of the Claude session — process.cwd() in the statusline subprocess.
+       * Primary session-matching key: paneId → cwd (basename) → sessionId fallback.
+       */
+      cwd?: string;
       contextUsedTokens: number;
       contextMaxTokens: number;
     }

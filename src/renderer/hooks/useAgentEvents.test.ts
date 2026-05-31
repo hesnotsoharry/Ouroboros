@@ -227,6 +227,46 @@ describe('vi mock placeholder', () => {
   });
 });
 
+// ── Regression: AGENT_START must preserve cwd ─────────────────────────────────
+//
+// Before the fix, dispatchAgentStart() did not forward payload.cwd into the
+// AGENT_START action, and startSession() did not copy action.cwd to the new
+// AgentSession. This meant AgentSession.cwd was always undefined, so
+// isProjectSession() (which matches basename(session.cwd) === basename(project))
+// could never match any session — the ChipBorderOverlay always rendered 'none'.
+
+describe('AGENT_START — cwd is preserved on the new session (regression)', () => {
+  it('sets session.cwd from the action when the session is new', () => {
+    const next = reducer(initialAgentState, {
+      type: 'AGENT_START',
+      sessionId: 'sess-cwd',
+      taskLabel: 'Task',
+      timestamp: 1000,
+      cwd: 'C:\\Web App\\cryptobot',
+    });
+    expect(next.sessions[0].cwd).toBe('C:\\Web App\\cryptobot');
+  });
+
+  it('does not overwrite cwd on an existing session (updateExistingSession path)', () => {
+    // updateExistingSession intentionally does NOT update cwd — it preserves the
+    // original cwd set at session registration time (the working dir doesn't change
+    // for a running session; cwd_changed events handle that separately).
+    const stateWithSession: AgentState = {
+      ...initialAgentState,
+      sessions: [{ ...BASE_SESSION, cwd: 'C:\\Web App\\cryptobot' }],
+    };
+    const next = reducer(stateWithSession, {
+      type: 'AGENT_START',
+      sessionId: 'sess-1',
+      taskLabel: 'New label',
+      timestamp: 2000,
+      cwd: 'C:\\different\\path',
+    });
+    // cwd stays as the original registration value
+    expect(next.sessions[0].cwd).toBe('C:\\Web App\\cryptobot');
+  });
+});
+
 describe('reducer — SESSION_REGISTER', () => {
   it('creates a session when none exists with that id', () => {
     const next = reducer(initialAgentState, {

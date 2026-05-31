@@ -187,6 +187,31 @@ describe('deriveProjectStatus — multi-project isolation', () => {
   });
 });
 
+describe('deriveProjectStatus — Windows-backslash cwd matching (regression: AGENT_START cwd forwarding)', () => {
+  it('matches a session whose cwd uses Windows backslashes to a forward-slash project path', () => {
+    // Regression: agent_start.mjs sends cwd via process.cwd() which on Windows
+    // returns backslash-separated paths (e.g. 'C:\\Web App\\cryptobot').
+    // The basename() helper normalises backslashes, so matching must still work.
+    const session = makeSession({ id: 's1', cwd: 'C:\\Web App\\cryptobot' });
+    const result = deriveProjectStatus([session], 'C:\\Web App\\cryptobot', EMPTY_SEEN);
+    expect(result.borderMode).toBe('working');
+    expect(result.workingCount).toBe(1);
+  });
+
+  it('matches when projectPath uses forward slashes and cwd uses backslashes', () => {
+    const session = makeSession({ id: 's1', cwd: 'C:\\Web App\\AgentIDE' });
+    const result = deriveProjectStatus([session], 'C:/Web App/AgentIDE', EMPTY_SEEN);
+    expect(result.borderMode).toBe('working');
+  });
+
+  it('does not match when only the basename is different', () => {
+    const session = makeSession({ id: 's1', cwd: 'C:\\Web App\\cryptobot' });
+    const result = deriveProjectStatus([session], 'C:\\Web App\\gamify', EMPTY_SEEN);
+    expect(result.borderMode).toBe('none');
+    expect(result.workingCount).toBe(0);
+  });
+});
+
 describe('deriveProjectStatus — non-running sessions produce no output', () => {
   it('ignores sessions with status !== running', () => {
     const completeSession = makeSession({
