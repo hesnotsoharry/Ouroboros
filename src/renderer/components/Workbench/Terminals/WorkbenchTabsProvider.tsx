@@ -62,7 +62,7 @@ export function spawnTab(id: string, kind: 'cc' | 'shell', cwd: string | undefin
   }
 }
 
-function autoResumeCcTab(
+function spawnRestoredCcTabs(
   collection: TabCollection,
   spawned: Set<string>,
   cwd: string | undefined,
@@ -73,11 +73,9 @@ function autoResumeCcTab(
     if (tab.id !== activeTabId && activeTabId !== null) continue;
     if (spawned.has(tab.id)) break;
     spawned.add(tab.id);
-    void window.electronAPI?.pty?.spawnClaude?.(tab.id, {
-      cwd,
-      resumeMode: tab.sessionId,
-      env: { OUROBOROS_PANE_ID: tab.id },
-    });
+    // Cold-start: always spawn FRESH — never resume a stale session.
+    // Tab structure (label, id) is preserved; the CC session itself starts new.
+    spawnTab(tab.id, 'cc', cwd);
     break;
   }
 }
@@ -167,32 +165,37 @@ interface FrameCollections {
 // ── useTabRestoreInit ─────────────────────────────────────────────────────────
 
 interface TabRestoreInitArgs {
-  frame: 'upper' | 'lower';
   restoredCollection: TabCollection | undefined;
   isReady: boolean;
   spawnedTabsRef: React.MutableRefObject<Set<string>>;
   cwd: string | undefined;
   projectRoot: string | null;
   cachedCollection: TabCollection | undefined;
+  collectionRef: React.MutableRefObject<TabCollection>;
   setCollection: React.Dispatch<React.SetStateAction<TabCollection>>;
 }
 
 /**
- * Manages initial collection state from restore and CC auto-resume.
+ * Manages initial collection state from restore and CC fresh-spawn.
  * Keyed by projectRoot — re-initializes when projectRoot changes (in-place
  * project switching without provider remount).
+ *
+ * ID-match invariant: the tab id passed to spawnTab/spawnClaude on cold start
+ * MUST equal the tab id already held in `collection.activeTabId` (the id that
+ * useWorkbenchTabsContext exposes and TerminalShell displays). We use
+ * `collection.tabs[0]` — the tab that makeDefaultCollection put into useState —
+ * instead of building a fresh tab here (which would produce a DIFFERENT id and
+ * cause a blank terminal).
  */
 function useTabRestoreInit(args: TabRestoreInitArgs): void {
-  const { frame, restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot } = args;
-  const { cachedCollection, setCollection } = args;
+  const { restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot } = args;
+  const { cachedCollection, collectionRef, setCollection } = args;
   const initializedForRef = useRef<string | null | undefined>(undefined);
-  const defaultTabRef = useRef<TabState>(buildNewTab(frame, defaultKind(frame)));
 
   useEffect(() => {
     if (!isReady || cwd === undefined) return;
     if (initializedForRef.current === projectRoot) return;
     initializedForRef.current = projectRoot;
-    defaultTabRef.current = buildNewTab(frame, defaultKind(frame));
     if (cachedCollection && cachedCollection.tabs.length > 0) {
       setCollection(cachedCollection);
       return;
@@ -200,8 +203,14 @@ function useTabRestoreInit(args: TabRestoreInitArgs): void {
     if (restoredCollection && restoredCollection.tabs.length > 0) {
       setCollection(restoredCollection);
     } else {
-      const tab = defaultTabRef.current;
-      if (!spawnedTabsRef.current.has(tab.id)) {
+      // Cold-start: spawn the tab already in collection state (read via ref so
+      // we always get the latest value, even if useProjectSwitch reset it).
+      // collectionRef.current.tabs[0] is the tab that makeDefaultCollection put
+      // into useState — its id is what useWorkbenchTabsContext exposes as activeTabId.
+      // Using collectionRef (not a closure-captured snapshot) guarantees
+      // spawned-id === displayed activeTabId (the blank-screen invariant).
+      const tab = collectionRef.current.tabs[0];
+      if (tab && !spawnedTabsRef.current.has(tab.id)) {
         spawnedTabsRef.current.add(tab.id);
         spawnTab(tab.id, tab.kind, cwd);
       }
@@ -212,7 +221,7 @@ function useTabRestoreInit(args: TabRestoreInitArgs): void {
   useEffect(() => {
     if (!isReady || !restoredCollection || restoredCollection.tabs.length === 0) return;
     if (cachedCollection && cachedCollection.tabs.length > 0) return;
-    autoResumeCcTab(restoredCollection, spawnedTabsRef.current, cwd);
+    spawnRestoredCcTabs(restoredCollection, spawnedTabsRef.current, cwd);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, projectRoot]);
 }
@@ -257,6 +266,13 @@ function useProjectSwitch(args: ProjectSwitchArgs): void {
     }
     prevProjectRootRef.current = projectRoot;
 
+    // On first mount (prev === undefined) useState already initialised the
+    // collections via makeDefaultCollection — resetting again would create new
+    // tab ids that don't match what useTabRestoreInit will read from collectionRef,
+    // causing a blank terminal (the id-match invariant). Only reset when genuinely
+    // switching away from a known project root.
+    if (prev === undefined) return;
+
     // Reset spawned-tabs set so old ids don't block new project's spawns.
     spawnedTabsRef.current = new Set<string>();
 
@@ -277,6 +293,7 @@ interface FrameTabStateArgs {
   projectRoot: string | null;
   cachedCollection: TabCollection | undefined;
   collection: TabCollection;
+  collectionRef: React.MutableRefObject<TabCollection>;
   setCollection: React.Dispatch<React.SetStateAction<TabCollection>>;
 }
 
@@ -287,11 +304,11 @@ interface FrameTabStateArgs {
  */
 function useFrameTabState(args: FrameTabStateArgs): UseWorkbenchTabsResult {
   const { frame, restoredCollection, isReady, spawnedTabsRef } = args;
-  const { projectRoot, cachedCollection, collection, setCollection } = args;
+  const { projectRoot, cachedCollection, collection, collectionRef, setCollection } = args;
   const cwd = projectRoot ?? undefined;
   useTabRestoreInit({
-    frame, restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot, cachedCollection,
-    setCollection,
+    restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot, cachedCollection,
+    collectionRef, setCollection,
   });
   useWorkbenchSessionPersist({ frame, projectRoot, tabCollection: collection });
   const actions = useTabActions(frame, cwd, spawnedTabsRef, setCollection);
@@ -331,7 +348,11 @@ function useProviderCollections(projectRoot: string | null) {
     setLowerCollection: setLowerColl,
   });
 
-  return { upperColl, setUpperColl, lowerColl, setLowerColl, spawnedTabsRef, cachedCollections };
+  return {
+    upperColl, setUpperColl, upperCollRef,
+    lowerColl, setLowerColl, lowerCollRef,
+    spawnedTabsRef, cachedCollections,
+  };
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -346,8 +367,11 @@ export function WorkbenchTabsProvider({
   children,
 }: WorkbenchTabsProviderProps): React.ReactElement {
   const { isReady, upperCollection, lowerCollection } = useWorkbenchRestore(projectRoot);
-  const { upperColl, setUpperColl, lowerColl, setLowerColl, spawnedTabsRef, cachedCollections } =
-    useProviderCollections(projectRoot);
+  const {
+    upperColl, setUpperColl, upperCollRef,
+    lowerColl, setLowerColl, lowerCollRef,
+    spawnedTabsRef, cachedCollections,
+  } = useProviderCollections(projectRoot);
 
   const upper = useFrameTabState({
     frame: 'upper',
@@ -357,6 +381,7 @@ export function WorkbenchTabsProvider({
     projectRoot,
     cachedCollection: cachedCollections?.upper,
     collection: upperColl,
+    collectionRef: upperCollRef,
     setCollection: setUpperColl,
   });
 
@@ -368,6 +393,7 @@ export function WorkbenchTabsProvider({
     projectRoot,
     cachedCollection: cachedCollections?.lower,
     collection: lowerColl,
+    collectionRef: lowerCollRef,
     setCollection: setLowerColl,
   });
 

@@ -1,24 +1,21 @@
 /**
  * Orchestrator-owned acceptance test — Wave 10 Phase 3 (project-switch lifecycle + active-frame).
+ * Updated freeze-fix 2026-05-30: spawn authority moved from useWorkbenchTerminals to
+ * WorkbenchTabsProvider; project-switch contract updated accordingly.
  *
  * Expresses two contracts at the Workbench level:
  *
- *   1. When `projectRoot` changes, the Terminals subtree re-mounts. The old
- *      `useWorkbenchTerminals` instance's cleanup fires (BOTH ptys killed); the
- *      new instance spawns two fresh ptys under the new project's cwd. Wave 9's
- *      `hasSpawnedRef` invariant survives — StrictMode remount of the new
- *      instance does NOT double-spawn.
+ *   1. (Updated) When `projectRoot` changes, the Terminals subtree re-mounts via
+ *      key={projectRoot}. useWorkbenchTerminals is now id-only (no spawns, no kills).
+ *      Spawn authority lives in WorkbenchTabsProvider (above the key boundary,
+ *      handles in-place project switching). CenterPane mounts two TerminalShell frames;
+ *      no pty spawns originate from CenterPane's own hooks.
  *
  *   2. `useActiveWorkbenchFrame` exposes `{ activeFrame, setActiveFrame }` from a
  *      React context. Initial value is `'upper'`. `setActiveFrame('lower')` flips
  *      it to `'lower'`. The provider mounts inside `Workbench.tsx` below
  *      `ProjectProvider`, but for the unit contract we mount the provider
  *      directly under the test harness.
- *
- * Per ~/.claude/rules/orchestrator-owned-acceptance-tests.md the Phase 3
- * implementer implements against THIS test and MAY NOT modify it. RED at
- * dispatch; goes green when the key={projectRoot} re-mount and the new
- * `useActiveWorkbenchFrame` API land.
  *
  * @vitest-environment jsdom
  */
@@ -177,8 +174,8 @@ afterEach(() => {
 
 // ── 1. Project-switch lifecycle ───────────────────────────────────────────────
 
-describe('Wave 10 Phase 3 — project switch unmounts old PTYs and spawns new', () => {
-  it('mounting at /proj/a fires exactly 2 spawns under /proj/a', async () => {
+describe('Wave 10 Phase 3 — project switch (freeze-fix: no spawns from useWorkbenchTerminals)', () => {
+  it('mounting CenterPane does NOT spawn any pty via useWorkbenchTerminals', async () => {
     const harness = newHarness();
     installElectronAPI(harness);
 
@@ -191,12 +188,13 @@ describe('Wave 10 Phase 3 — project switch unmounts old PTYs and spawns new', 
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    expect(harness.spawnCalls.length).toBe(2);
-    expect(harness.spawnCalls.every((c) => c.cwd === '/proj/a')).toBe(true);
+    // useWorkbenchTerminals is now id-only. CenterPane's hooks do not spawn.
+    // Spawn authority lives in WorkbenchTabsProvider (above this tree, not mounted here).
+    expect(harness.spawnCalls.length).toBe(0);
     expect(harness.killCalls.length).toBe(0);
   });
 
-  it('changing projectRoot from /proj/a to /proj/b kills both old PTYs and spawns two new under /proj/b', async () => {
+  it('changing projectRoot via key= does NOT kill any ptys (useWorkbenchTerminals owns none)', async () => {
     const harness = newHarness();
     installElectronAPI(harness);
 
@@ -209,12 +207,10 @@ describe('Wave 10 Phase 3 — project switch unmounts old PTYs and spawns new', 
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    // /proj/a — initial spawns
-    expect(harness.spawnCalls.length).toBe(2);
-    const proj_a_ptyIds = harness.spawnCalls.map((c) => c.ptyId);
+    // No initial spawns from CenterPane hooks.
+    expect(harness.spawnCalls.length).toBe(0);
 
-    // Now flip projectRoot. The key={projectRoot} on KeyedCenterPane must
-    // cause React to unmount the /proj/a instance and mount a fresh one.
+    // Flip projectRoot to trigger the key= remount.
     mockProjectRoot = '/proj/b';
     await act(async () => {
       rerenderHandle(<KeyedCenterPane />);
@@ -223,26 +219,16 @@ describe('Wave 10 Phase 3 — project switch unmounts old PTYs and spawns new', 
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    // Both /proj/a PTYs killed.
-    const killedIds = harness.killCalls.map((c) => c.ptyId);
-    for (const id of proj_a_ptyIds) {
-      expect(killedIds).toContain(id);
-    }
-
-    // Exactly two NEW spawns under /proj/b (4 total now, the latest two under /b).
-    expect(harness.spawnCalls.length).toBe(4);
-    const newSpawns = harness.spawnCalls.slice(2);
-    expect(newSpawns.length).toBe(2);
-    expect(newSpawns.every((c) => c.cwd === '/proj/b')).toBe(true);
+    // No kills — useWorkbenchTerminals owns no ptys.
+    expect(harness.killCalls.length).toBe(0);
+    // Still no spawns from CenterPane hooks.
+    expect(harness.spawnCalls.length).toBe(0);
   });
 
-  it('Wave 9 hasSpawnedRef invariant survives: StrictMode remount under the new key does not double-spawn', async () => {
+  it('StrictMode remount does NOT spawn (useWorkbenchTerminals is id-only)', async () => {
     const harness = newHarness();
     installElectronAPI(harness);
 
-    // React.StrictMode forces every component to mount → unmount → mount on
-    // the first commit. The Wave 9 hasSpawnedRef pattern in
-    // useWorkbenchTerminals must absorb this so we see exactly 2 spawns, not 4.
     await act(async () => {
       render(
         <React.StrictMode>
@@ -254,8 +240,9 @@ describe('Wave 10 Phase 3 — project switch unmounts old PTYs and spawns new', 
       await new Promise((r) => setTimeout(r, 50));
     });
 
-    expect(harness.spawnCalls.length).toBe(2);
-    expect(harness.spawnCalls.every((c) => c.cwd === '/proj/a')).toBe(true);
+    // No spawns at all from the CenterPane tree.
+    expect(harness.spawnCalls.length).toBe(0);
+    expect(harness.killCalls.length).toBe(0);
   });
 });
 

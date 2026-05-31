@@ -321,12 +321,11 @@ describe('useWorkbenchTabs — per-project isolation (Wave 12 Phase 3)', () => {
   });
 });
 
-describe('useWorkbenchTabs — Wave-9 CC auto-resume regression (Wave 12 Phase 3)', () => {
-  it('CC tab that is active on mount triggers spawnClaude with a non-empty resumeMode', async () => {
+describe('useWorkbenchTabs — restored CC tab spawns FRESH (no resume) on cold start', () => {
+  it('CC tab that is active on mount triggers spawnClaude with NO resumeMode', async () => {
     // Arrange: inject a restore that surfaces a Wave-12 TabCollection with one
-    // active CC tab. The implementer MAY use tab.sessionId as the resume key OR
-    // add an explicit field — the test only asserts spawnClaude is called with
-    // *some* truthy resumeMode.
+    // active CC tab. Cold-start policy: always spawn fresh — never resume a
+    // stale session (the old session id is meaningless after restart).
     const { useWorkbenchRestore } = await import('./useWorkbenchRestore');
     const restoredTabId = 'tab-restored-cc';
     const restoredSessionId = 'sess-resume-123';
@@ -356,8 +355,11 @@ describe('useWorkbenchTabs — Wave-9 CC auto-resume regression (Wave 12 Phase 3
       expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
     });
 
-    const [, opts] = ptySpawnClaude().mock.calls[0];
-    expect((opts as { resumeMode?: unknown }).resumeMode).toBeTruthy();
+    const [spawnedId, opts] = ptySpawnClaude().mock.calls[0] as [string, Record<string, unknown>];
+    // Must be a fresh spawn — no resumeMode ever.
+    expect(opts.resumeMode).toBeUndefined();
+    // Spawned id must be the tab id from the restored collection (the displayed id).
+    expect(spawnedId).toBe(restoredTabId);
   });
 });
 
