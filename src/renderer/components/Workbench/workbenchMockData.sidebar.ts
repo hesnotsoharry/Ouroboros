@@ -13,7 +13,7 @@
 
 // ── Hook event types (§11 shape) ─────────────────────────────────────────────
 
-export type HookEventKind = 'prompt' | 'tool' | 'think';
+export type HookEventKind = 'prompt' | 'tool' | 'think' | 'turn_end';
 
 export interface MockHookEventBase {
   id: string;
@@ -49,7 +49,12 @@ export interface MockThinkEvent extends MockHookEventBase {
   dur: number;
 }
 
-export type MockHookEvent = MockPromptEvent | MockToolEvent | MockThinkEvent;
+export interface MockTurnEndEvent extends MockHookEventBase {
+  kind: 'turn_end';
+  label: string;
+}
+
+export type MockHookEvent = MockPromptEvent | MockToolEvent | MockThinkEvent | MockTurnEndEvent;
 
 // ── Files touched ────────────────────────────────────────────────────────────
 

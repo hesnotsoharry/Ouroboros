@@ -155,10 +155,10 @@ function NowBlockHeader({ elapsedSec, isIdle }: NowBlockHeaderProps): React.Reac
 }
 
 /**
- * Shown when a session IS bound to the pane but is idle between turns
+ * Shown when a session IS bound to the pane but is ready between turns
  * (session_stop received, no new prompt yet). NOT the same as no session.
  */
-function IdleRow(): React.ReactElement {
+function ReadyRow(): React.ReactElement {
   return (
     <div
       data-testid="now-block-idle"
@@ -168,7 +168,7 @@ function IdleRow(): React.ReactElement {
         color: 'var(--ink-3)',
       }}
     >
-      Idle · Waiting for prompt
+      Agent Ready · Waiting for prompt
     </div>
   );
 }
@@ -186,7 +186,7 @@ export function NowBlock({ data }: NowBlockProps): React.ReactElement {
     >
       <NowBlockHeader elapsedSec={data.elapsedSec} isIdle={isIdle} />
       {isIdle ? (
-        <IdleRow />
+        <ReadyRow />
       ) : (
         <>
           <ToolRow tool={data.tool} target={data.target} />

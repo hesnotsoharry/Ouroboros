@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 
 import { Icon, IconName } from '../../shared/Icon';
 import type { WorkbenchTimelineEvent } from '../useWorkbenchAgentData';
-import type { MockToolEvent } from '../workbenchMockData';
+import type { MockToolEvent, MockTurnEndEvent } from '../workbenchMockData';
 
 // ── helpers (shared with HookTimeline) ───────────────────────────────────────
 
@@ -26,6 +26,7 @@ export function toolIcon(tool: string): IconName {
 
 export function nodeColor(e: WorkbenchTimelineEvent): string {
   if (e.kind === 'prompt') return 'var(--accent)';
+  if (e.kind === 'turn_end') return 'var(--success)';
   const t = e as MockToolEvent;
   if (t.status === 'running') return 'var(--accent)';
   if (t.status === 'warn') return 'var(--warning)';
@@ -41,6 +42,7 @@ export function summaryText(e: WorkbenchTimelineEvent): string {
     const t = e.text;
     return `"${t.slice(0, 60)}${t.length > 60 ? '…' : ''}"`;
   }
+  if (e.kind === 'turn_end') return (e as MockTurnEndEvent).label;
   const t = e as MockToolEvent;
   return `${t.tool} → ${t.target.split('/').at(-1) ?? t.target}`;
 }
@@ -161,6 +163,18 @@ export function ToolCard({ event }: ToolCardProps): React.ReactElement {
   );
 }
 
+// ── turn-end card ─────────────────────────────────────────────────────────────
+
+interface TurnEndCardProps {
+  label: string;
+}
+
+function TurnEndCard({ label }: TurnEndCardProps): React.ReactElement {
+  return (
+    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--success)' }}>{label}</span>
+  );
+}
+
 // ── full card dispatcher ──────────────────────────────────────────────────────
 
 interface FullCardProps {
@@ -169,6 +183,7 @@ interface FullCardProps {
 
 export function FullCard({ event }: FullCardProps): React.ReactElement {
   if (event.kind === 'prompt') return <PromptCard text={event.text} />;
+  if (event.kind === 'turn_end') return <TurnEndCard label={(event as MockTurnEndEvent).label} />;
   return <ToolCard event={event as MockToolEvent} />;
 }
 

@@ -54,6 +54,8 @@ function isActiveState(state: WorkbenchAgentState): boolean {
   return state === 'running' || state === 'thinking' || state === 'awaiting' || state === 'errored';
 }
 
+// 'ready' is not active — no shimmer, reduced opacity (same as 'done' and 'fresh').
+
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
 function GlobeDivider(): React.ReactElement {
@@ -204,6 +206,18 @@ function FreshContent(): React.ReactElement {
   );
 }
 
+function ReadyContent({ model }: { model: string }): React.ReactElement {
+  return (
+    <>
+      <span style={{ color: 'var(--success, #34d399)', display: 'inline-flex' }}>
+        <Icon name="Check" size={12} />
+      </span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{model}</span>
+      <span style={{ fontSize: 11, color: 'var(--success, #34d399)' }}>· Agent Ready</span>
+    </>
+  );
+}
+
 // ── Globe container ───────────────────────────────────────────────────────────
 
 const shimmerStyle: React.CSSProperties = {
@@ -257,7 +271,8 @@ function GlobeContent(props: {
       return <ErroredContent model={model} />;
     case 'done':
       return <DoneContent model={model} />;
-    case 'idle':
+    case 'ready':
+      return <ReadyContent model={model} />;
     case 'fresh':
     default:
       return <FreshContent />;

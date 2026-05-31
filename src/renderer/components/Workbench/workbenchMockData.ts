@@ -43,5 +43,6 @@ export type {
   MockStatusBar,
   MockThinkEvent,
   MockToolEvent,
+  MockTurnEndEvent,
 } from './workbenchMockData.sidebar';
 export { MOCK_STATUS_BAR } from './workbenchMockData.sidebar';

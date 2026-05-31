@@ -263,8 +263,8 @@ describe('NowBlock — idle-bound session vs no-session distinction', () => {
     expect(screen.queryByTestId('now-block')).toBeNull();
   });
 
-  it('shows the NowBlock idle row (not the no-session text) when session is bound but idle', () => {
-    // Session exists and matches the pane, but lastTurnEndedAt is set → state 'idle'.
+  it('shows the NowBlock ready row (not the no-session text) when session is bound but ready', () => {
+    // Session exists and matches the pane, but lastTurnEndedAt is set → state 'ready'.
     const s: AgentSession = {
       ...makeSession([tc('Bash', 'npm test', 'success', 1000)]),
       lastTurnEndedAt: 9000,
@@ -273,9 +273,9 @@ describe('NowBlock — idle-bound session vs no-session distinction', () => {
     render(<AgentSidebar />);
     // Empty-state placeholder must NOT appear — a session IS bound.
     expect(screen.queryByText('No active claude session in this pane')).toBeNull();
-    // NowBlock IS present with the idle indicator.
+    // NowBlock IS present with the ready indicator.
     expect(screen.getByTestId('now-block')).toBeDefined();
     expect(screen.getByTestId('now-block-idle')).toBeDefined();
-    expect(screen.getByTestId('now-block-idle').textContent).toContain('Idle');
+    expect(screen.getByTestId('now-block-idle').textContent).toContain('Agent Ready');
   });
 });

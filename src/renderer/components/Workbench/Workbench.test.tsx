@@ -682,18 +682,18 @@ describe('AgentSidebar — NowBlock (D4 empty state via AgentSidebar)', () => {
     expect(screen.queryByText('Edit')).toBeNull();
   });
 
-  it('renders the NowBlock NOW label and idle row when rendered directly with empty tool', () => {
-    // Directly rendering NowBlock with tool='' exercises the idle path:
-    // no duration pill, no ToolRow/arrow, idle indicator shown instead.
+  it('renders the NowBlock NOW label and ready row when rendered directly with empty tool', () => {
+    // Directly rendering NowBlock with tool='' exercises the ready path:
+    // no duration pill, no ToolRow/arrow, ready indicator shown instead.
     render(
       <NowBlock data={{ tool: '', target: '', description: '', elapsedSec: 0, progress: undefined }} />,
     );
     const block = screen.getByTestId('now-block');
     expect(block.textContent).toContain('NOW');
-    // Idle state: no elapsed pill, no ToolRow arrow
+    // Ready state: no elapsed pill, no ToolRow arrow
     expect(block.textContent).not.toContain('0s');
     expect(block.textContent).not.toContain('→');
-    expect(block.textContent).toContain('Idle');
+    expect(block.textContent).toContain('Agent Ready');
   });
 });
 
@@ -759,16 +759,16 @@ describe('NowBlock — live adapter data (Wave 4 Phase 1)', () => {
     expect(block.textContent).not.toContain('12s');
   });
 
-  it('renders idle/ready presentation (not duration pill) when tool is empty', () => {
-    // tool='' means idle-between-turns: session bound but no active tool.
-    // The duration pill is hidden; the idle indicator is shown instead.
+  it('renders ready presentation (not duration pill) when tool is empty', () => {
+    // tool='' means ready-between-turns: session bound but no active tool.
+    // The duration pill is hidden; the ready indicator is shown instead.
     render(
       <NowBlock data={{ tool: '', target: '', description: '', elapsedSec: 0, progress: undefined }} />,
     );
     const block = screen.getByTestId('now-block');
     expect(block.textContent).toContain('NOW');
-    // Idle row present, no duration pill
-    expect(block.textContent).toContain('Idle');
+    // Ready row present, no duration pill
+    expect(block.textContent).toContain('Agent Ready');
     expect(block.textContent).not.toContain('0s');
   });
 });

@@ -104,9 +104,9 @@ afterEach(() => {
 
 // ── Contract ──────────────────────────────────────────────────────────────────
 
-describe('useWorkbenchGlobeData — idle-between-turns (Bug 1)', () => {
-  it('returns idle state when session has lastTurnEndedAt set (session_stop arrived)', () => {
-    // 'idle' = session bound, resting between turns (NOT 'fresh' = no session at all).
+describe('useWorkbenchGlobeData — ready-between-turns (Bug 1)', () => {
+  it('returns ready state when session has lastTurnEndedAt set (session_stop arrived)', () => {
+    // 'ready' = session bound, resting between turns (NOT 'fresh' = no session at all).
     setPaneId('pane-1');
     const session = makeSession({
       id: 'sess-1',
@@ -116,7 +116,7 @@ describe('useWorkbenchGlobeData — idle-between-turns (Bug 1)', () => {
       lastTurnEndedAt: 9000,
     });
     const data = globeData([session]);
-    expect(data.state).toBe('idle');
+    expect(data.state).toBe('ready');
   });
 
   it('returns running state when lastTurnEndedAt is absent and a tool is pending', () => {

@@ -22,6 +22,7 @@ import type {
   MockNowToolCall,
   MockPromptEvent,
   MockToolEvent,
+  MockTurnEndEvent,
 } from './workbenchMockData';
 
 // ── Live timeline event type (D6 — `think` dropped; no wire source) ──────────
@@ -30,14 +31,15 @@ import type {
  * The union of live timeline events emitted by the adapter.
  * `MockThinkEvent` is intentionally excluded — the named-pipe wire carries no
  * thinking signal (Wave 4 ADR D6).
+ * `MockTurnEndEvent` is included — synthesized from `session.lastTurnEndedAt`.
  */
-export type WorkbenchTimelineEvent = MockPromptEvent | MockToolEvent;
+export type WorkbenchTimelineEvent = MockPromptEvent | MockToolEvent | MockTurnEndEvent;
 
 // ── Presentation state ────────────────────────────────────────────────────────
 
 export type WorkbenchAgentState =
   | 'fresh'
-  | 'idle'
+  | 'ready'
   | 'thinking'
   | 'running'
   | 'awaiting'
@@ -122,14 +124,14 @@ function isIdleBetweenTurns(session: AgentSession): boolean {
  *   null | status 'idle' (no agent bound)  → 'fresh'   (no session)
  *   'error'                                → 'errored'
  *   'complete'                             → 'done'
- *   'running' + lastTurnEndedAt set        → 'idle'    (session exists, resting between turns)
+ *   'running' + lastTurnEndedAt set        → 'ready'   (session exists, resting between turns)
  *   'running' + latest permissionEvent 'request' → 'awaiting'
  *   'running' + a pending toolCall         → 'running'
  *   'running' (no pending toolCall)        → 'thinking'
  *
- * Key distinction: 'fresh' = no session bound to pane; 'idle' = session bound but resting.
+ * Key distinction: 'fresh' = no session bound to pane; 'ready' = session bound but resting.
  * AgentSidebar uses (state !== 'fresh') to decide whether to show the empty-state
- * placeholder — 'idle' is NOT fresh, so the NowBlock is shown (with empty tool fields).
+ * placeholder — 'ready' is NOT fresh, so the NowBlock is shown (with empty tool fields).
  */
 export function deriveWorkbenchAgentState(session: AgentSession | null): WorkbenchAgentState {
   if (!session || session.status === 'idle') return 'fresh';
@@ -137,8 +139,8 @@ export function deriveWorkbenchAgentState(session: AgentSession | null): Workben
   if (session.status === 'complete') return 'done';
 
   // status === 'running' from here on.
-  // session_stop = turn-ended; session still alive, just idle between prompts.
-  if (isIdleBetweenTurns(session)) return 'idle';
+  // session_stop = turn-ended; session still alive, waiting for next prompt.
+  if (isIdleBetweenTurns(session)) return 'ready';
 
   const perms = session.permissionEvents ?? [];
   if (perms.length > 0 && perms[perms.length - 1].type === 'request') {
@@ -395,6 +397,16 @@ export function deriveTimeline(session: AgentSession | null): WorkbenchTimelineE
     };
     events.push(promptEvent);
   });
+
+  if (session.lastTurnEndedAt !== undefined) {
+    const turnEndEvent: MockTurnEndEvent = {
+      id: `turn-end-${session.lastTurnEndedAt}`,
+      t: (session.lastTurnEndedAt - now) / 1000,
+      kind: 'turn_end',
+      label: 'Agent Ready',
+    };
+    events.push(turnEndEvent);
+  }
 
   events.sort((a, b) => a.t - b.t);
   return events;

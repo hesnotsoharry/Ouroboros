@@ -35,7 +35,7 @@ import { useActiveWorkbenchFrame } from './useActiveWorkbenchFrame';
 
 export type WorkbenchAgentState =
   | 'fresh'
-  | 'idle'
+  | 'ready'
   | 'thinking'
   | 'running'
   | 'awaiting'
@@ -98,14 +98,13 @@ function deriveState(session: AgentSession | null): WorkbenchAgentState {
   if (session.status === 'error') return 'errored';
   if (session.status === 'complete') return 'done';
   // session_stop arrived: session is alive but resting between turns.
-  if (session.lastTurnEndedAt !== undefined) return 'idle';
+  if (session.lastTurnEndedAt !== undefined) return 'ready';
   const perms = session.permissionEvents ?? [];
   if (perms.length > 0 && perms[perms.length - 1].type === 'request') return 'awaiting';
-  // No pending tool → idle/ready (matches the sidebar NowBlock, which keys idle off
-  // "no active tool"). A freshly-spawned session has no lastTurnEndedAt yet, so the
-  // old 'thinking' fallback wrongly fired for idle-at-prompt sessions. There is no
-  // real thinking signal on the wire — running + no pending tool reads as idle.
-  return session.toolCalls.some((tc) => tc.status === 'pending') ? 'running' : 'idle';
+  // No pending tool and no turn-end signal — session is actively thinking.
+  // 'thinking' is the best-effort heuristic for running + no active tool (no wire signal).
+  // 'ready' is reserved for the confirmed turn-end (lastTurnEndedAt set) path above.
+  return session.toolCalls.some((tc) => tc.status === 'pending') ? 'running' : 'thinking';
 }
 
 /**

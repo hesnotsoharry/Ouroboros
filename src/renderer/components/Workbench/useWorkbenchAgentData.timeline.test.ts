@@ -147,6 +147,34 @@ describe('deriveTimeline (Wave 4 Phase 2)', () => {
     if (result[2].kind === 'tool') expect(result[2].target).toBe('src/late.ts');
   });
 
+  it('pushes a turn_end event with label "Agent Ready" when lastTurnEndedAt is set', () => {
+    const s = session([tc('Bash', 'npm test', 'success', 1000)]);
+    s.lastTurnEndedAt = 5000;
+    const result = deriveTimeline(s);
+    const turnEndEvents = result.filter((e) => e.kind === 'turn_end');
+    expect(turnEndEvents).toHaveLength(1);
+    if (turnEndEvents[0].kind === 'turn_end') {
+      expect(turnEndEvents[0].label).toBe('Agent Ready');
+      expect(turnEndEvents[0].id).toBe('turn-end-5000');
+    }
+  });
+
+  it('does NOT push a turn_end event when lastTurnEndedAt is absent', () => {
+    const s = session([tc('Bash', 'npm test', 'success', 1000)]);
+    const result = deriveTimeline(s);
+    expect(result.filter((e) => e.kind === 'turn_end')).toHaveLength(0);
+  });
+
+  it('turn_end event is sorted by its timestamp (appears after earlier tool events)', () => {
+    const s = session([tc('Bash', 'npm test', 'success', 1000)]);
+    s.lastTurnEndedAt = 5000;
+    const result = deriveTimeline(s);
+    expect(result).toHaveLength(2);
+    // tool at t=1000, turn_end at t=5000 — turn_end must come last (ascending sort)
+    expect(result[0].kind).toBe('tool');
+    expect(result[1].kind).toBe('turn_end');
+  });
+
   it('never emits an event with kind === "think"', () => {
     const result = deriveTimeline(
       session(

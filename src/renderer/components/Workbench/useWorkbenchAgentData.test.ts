@@ -200,15 +200,15 @@ describe('deriveSessionStatus', () => {
 // ── idle-between-turns (session_stop boundary) ────────────────────────────────
 
 describe('deriveWorkbenchAgentState — idle-between-turns (session_stop boundary)', () => {
-  it('returns idle when lastTurnEndedAt is set on a running session (turn-end idle)', () => {
+  it('returns ready when lastTurnEndedAt is set on a running session (turn-end ready)', () => {
     // session_stop arrived after a tool completed; session is still running (alive)
-    // but idle between turns. State must be 'idle' (session exists), not 'fresh' (no session).
+    // but resting between turns. State must be 'ready' (session exists), not 'fresh' (no session).
     const session = makeSession({
       status: 'running',
       toolCalls: [makeTool({ toolName: 'Bash', status: 'success' })],
       lastTurnEndedAt: 9000,
     });
-    expect(deriveWorkbenchAgentState(session)).toBe('idle');
+    expect(deriveWorkbenchAgentState(session)).toBe('ready');
   });
 
   it('returns thinking (not fresh) when lastTurnEndedAt is absent and no pending tool', () => {
@@ -228,7 +228,7 @@ describe('deriveWorkbenchAgentState — idle-between-turns (session_stop boundar
     expect(deriveWorkbenchAgentState(session)).toBe('running');
   });
 
-  it('idle-between-turns takes precedence over awaiting-permission', () => {
+  it('ready-between-turns takes precedence over awaiting-permission', () => {
     // If somehow both are set, turn-end wins (no shimmer/awaiting should show).
     const session = makeSession({
       status: 'running',
@@ -236,7 +236,7 @@ describe('deriveWorkbenchAgentState — idle-between-turns (session_stop boundar
       permissionEvents: [requestPerm],
       lastTurnEndedAt: 9000,
     });
-    expect(deriveWorkbenchAgentState(session)).toBe('idle');
+    expect(deriveWorkbenchAgentState(session)).toBe('ready');
   });
 });
 
