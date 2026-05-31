@@ -1,7 +1,6 @@
 /**
  * ProjectRail — outer left rail, 56 px wide (canon §07, dual mode).
- * Chips + add-project + layout toggle + user avatar with stub profile menu.
- * Project list: useWorkbenchProjects(). Chip color: deterministic HSL from path.
+ * Chips + add-project. Project list: useWorkbenchProjects(). Chip color: deterministic HSL from path.
  */
 
 import React, { useCallback, useState } from 'react';
@@ -11,7 +10,6 @@ import { Icon } from '../../shared/Icon';
 import { useProjectCRUDActions } from '../useProjectCRUDActions';
 import { useWorkbenchProjects, type WorkbenchProject } from '../useWorkbenchProjects';
 import { ProjectContextMenu, type ProjectCtxMenuState } from './ProjectContextMenu';
-import { UserAvatar } from './ProjectRailAvatar';
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -29,20 +27,6 @@ const RAIL_STYLE: React.CSSProperties = {
   borderRight: '1px solid var(--stroke-faint)',
 };
 
-const ICON_BTN_STYLE: React.CSSProperties = {
-  width: 38,
-  height: 38,
-  padding: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'transparent',
-  border: 'none',
-  color: 'var(--ink-3)',
-  cursor: 'pointer',
-  flexShrink: 0,
-};
-
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
 function useAddProject(addProjectRoot: (p: string) => void): () => void {
@@ -51,19 +35,6 @@ function useAddProject(addProjectRoot: (p: string) => void): () => void {
     const result = await window.electronAPI.files.selectFolder();
     if (result.success && result.path) addProjectRoot(result.path);
   }, [addProjectRoot]) as () => void;
-}
-
-function useLayoutToggle(): [string, () => void] {
-  const [label, setLabel] = useState<'A' | 'B'>('A');
-  const toggle = useCallback(() => {
-    const next = label === 'A' ? 'B' : 'A';
-    setLabel(next);
-    console.warn('[wave-10] Layout button click — Wave 12 wires the density mechanic');
-    window.dispatchEvent(
-      new CustomEvent('agent-ide:workbench-layout-toggle', { detail: { layout: next } }),
-    );
-  }, [label]);
-  return [label, toggle];
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -101,8 +72,6 @@ export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElemen
   const projects = useWorkbenchProjects();
   const { setActiveProjectRoot, addProjectRoot } = useProject();
   const { removeProject } = useProjectCRUDActions();
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [layoutLabel, handleLayoutClick] = useLayoutToggle();
   const handleAddProject = useAddProject(addProjectRoot);
   const { handleContextMenu, menuElement } = useRailContextMenu(removeProject);
 
@@ -119,15 +88,6 @@ export function ProjectRail({ onCollapse }: ProjectRailProps): React.ReactElemen
         />
       ))}
       <AddProjectButton onClick={handleAddProject} />
-      <div style={{ flex: 1 }} />
-      <FooterButton title={`Layout: ${layoutLabel}`} onClick={handleLayoutClick}>
-        <Icon name="Layers" size={15} />
-      </FooterButton>
-      <UserAvatar
-        menuOpen={profileMenuOpen}
-        onToggleMenu={() => setProfileMenuOpen((prev) => !prev)}
-        onClose={() => setProfileMenuOpen(false)}
-      />
       {menuElement}
     </div>
   );
@@ -314,22 +274,6 @@ function AddProjectButton({ onClick }: { onClick: () => void }): React.ReactElem
       }}
     >
       <Icon name="Plus" size={16} />
-    </button>
-  );
-}
-
-function FooterButton({
-  title,
-  onClick,
-  children,
-}: {
-  title: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}): React.ReactElement {
-  return (
-    <button title={title} onClick={onClick} style={ICON_BTN_STYLE}>
-      {children}
     </button>
   );
 }

@@ -6,8 +6,6 @@
  * Covers:
  *   - Chip click fires setActiveProjectRoot with the chip's path
  *   - AddProjectButton click opens directory picker and calls addProjectRoot
- *   - FooterButton (Layout) click dispatches DOM CustomEvent + toggles label
- *   - UserAvatar click opens profile menu with the stub entry
  */
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -104,33 +102,4 @@ describe('ProjectRail — Wave 10 wiring', () => {
     });
   });
 
-  it('FooterButton (Layout) click dispatches agent-ide:workbench-layout-toggle CustomEvent', () => {
-    const dispatched: CustomEvent[] = [];
-    window.addEventListener('agent-ide:workbench-layout-toggle', (e) => {
-      dispatched.push(e as CustomEvent);
-    });
-    render(<ProjectRail />);
-    const btn = screen.getByTitle(/Layout/);
-    fireEvent.click(btn);
-    expect(dispatched).toHaveLength(1);
-    expect(dispatched[0].detail).toHaveProperty('layout');
-    window.removeEventListener('agent-ide:workbench-layout-toggle', () => undefined);
-  });
-
-  it('UserAvatar click opens profile menu with stub entry', () => {
-    render(<ProjectRail />);
-    const avatar = screen.getByTestId('user-avatar-btn');
-    fireEvent.click(avatar);
-    expect(screen.getByTestId('profile-menu')).toBeTruthy();
-    expect(screen.getByTestId('profile-menu-stub-entry')).toBeTruthy();
-    expect(screen.getByTestId('profile-menu-stub-entry').textContent).toContain('stub');
-  });
-
-  it('UserAvatar menu closes on Esc', () => {
-    render(<ProjectRail />);
-    fireEvent.click(screen.getByTestId('user-avatar-btn'));
-    expect(screen.queryByTestId('profile-menu')).toBeTruthy();
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByTestId('profile-menu')).toBeNull();
-  });
 });
