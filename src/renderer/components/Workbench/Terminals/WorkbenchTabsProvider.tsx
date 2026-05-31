@@ -1,16 +1,15 @@
 /**
  * WorkbenchTabsProvider — singleton tab state for both workbench frames.
  *
- * Extracts the per-frame tab state machine from useWorkbenchTabs into a single
- * React context so TerminalShell and AgentSidebar share ONE TabCollection per
- * frame, eliminating the dual-instance double-spawn + pane-id mismatch
- * introduced when the hook was called from two sites (Wave 13 / bug fix).
+ * ONE context, ONE spawnedTabsRef — a given tab id is spawned at most once
+ * globally regardless of how many consumers call the context hook.
  *
- * ONE spawnedTabsRef is shared across both frames so a given tab id is spawned
- * at most once globally, regardless of how many consumers call the context hook.
+ * Rules-of-Hooks: per-frame state uses two explicit useFrameTabState calls
+ * (one for 'upper', one for 'lower') — NOT a dynamic loop.
  *
- * Rules-of-Hooks: per-frame state is initialised by two explicit calls to
- * useFrameTabState (one for 'upper', one for 'lower') — NOT a dynamic loop.
+ * Project-switch (freeze-fix): no key-based remount; projectRoot changes are
+ * handled in-place. Collections for each visited project are cached in-memory
+ * so switching back restores instantly without a persist-round-trip race.
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -99,6 +98,13 @@ function applyRenameTab(prev: TabCollection, id: string, label: string): TabColl
   return { ...prev, tabs: prev.tabs.map((t) => (t.id === id ? { ...t, label } : t)) };
 }
 
+// ── makeDefaultCollection ──────────────────────────────────────────────────────
+
+function makeDefaultCollection(frame: 'upper' | 'lower'): TabCollection {
+  const tab = buildNewTab(frame, defaultKind(frame));
+  return { activeTabId: tab.id, tabs: [tab] };
+}
+
 // ── useTabActions ─────────────────────────────────────────────────────────────
 
 interface TabActions {
@@ -151,6 +157,13 @@ function useTabActions(
   return { addTab, closeTab, renameTab, setActiveTab };
 }
 
+// ── Per-project collection cache type ─────────────────────────────────────────
+
+interface FrameCollections {
+  upper: TabCollection;
+  lower: TabCollection;
+}
+
 // ── useTabRestoreInit ─────────────────────────────────────────────────────────
 
 interface TabRestoreInitArgs {
@@ -159,45 +172,99 @@ interface TabRestoreInitArgs {
   isReady: boolean;
   spawnedTabsRef: React.MutableRefObject<Set<string>>;
   cwd: string | undefined;
+  projectRoot: string | null;
+  cachedCollection: TabCollection | undefined;
+  setCollection: React.Dispatch<React.SetStateAction<TabCollection>>;
 }
 
 /**
- * Manages initial collection state from restore and CC auto-resume on mount.
- * Synchronously creates a default tab so AgentSidebar has a pane id immediately.
+ * Manages initial collection state from restore and CC auto-resume.
+ * Keyed by projectRoot — re-initializes when projectRoot changes (in-place
+ * project switching without provider remount).
  */
-function useTabRestoreInit(
-  args: TabRestoreInitArgs,
-): [TabCollection, React.Dispatch<React.SetStateAction<TabCollection>>] {
-  const { frame, restoredCollection, isReady, spawnedTabsRef, cwd } = args;
-  const defaultTab = useRef<TabState>(buildNewTab(frame, defaultKind(frame)));
-  const defaultCollection: TabCollection = {
-    activeTabId: defaultTab.current.id,
-    tabs: [defaultTab.current],
-  };
-  const [collection, setCollection] = useState<TabCollection>(defaultCollection);
-  const hasInitializedRef = useRef(false);
+function useTabRestoreInit(args: TabRestoreInitArgs): void {
+  const { frame, restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot } = args;
+  const { cachedCollection, setCollection } = args;
+  const initializedForRef = useRef<string | null | undefined>(undefined);
+  const defaultTabRef = useRef<TabState>(buildNewTab(frame, defaultKind(frame)));
 
   useEffect(() => {
-    if (!isReady || hasInitializedRef.current || cwd === undefined) return;
-    hasInitializedRef.current = true;
+    if (!isReady || cwd === undefined) return;
+    if (initializedForRef.current === projectRoot) return;
+    initializedForRef.current = projectRoot;
+    defaultTabRef.current = buildNewTab(frame, defaultKind(frame));
+    if (cachedCollection && cachedCollection.tabs.length > 0) {
+      setCollection(cachedCollection);
+      return;
+    }
     if (restoredCollection && restoredCollection.tabs.length > 0) {
       setCollection(restoredCollection);
     } else {
-      const tab = defaultTab.current;
+      const tab = defaultTabRef.current;
       if (!spawnedTabsRef.current.has(tab.id)) {
         spawnedTabsRef.current.add(tab.id);
         spawnTab(tab.id, tab.kind, cwd);
       }
     }
-  }, [isReady, restoredCollection, cwd, spawnedTabsRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady, cwd, projectRoot]);
 
   useEffect(() => {
     if (!isReady || !restoredCollection || restoredCollection.tabs.length === 0) return;
+    if (cachedCollection && cachedCollection.tabs.length > 0) return;
     autoResumeCcTab(restoredCollection, spawnedTabsRef.current, cwd);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady]);
+  }, [isReady, projectRoot]);
+}
 
-  return [collection, setCollection];
+// ── useProjectSwitch ──────────────────────────────────────────────────────────
+
+interface ProjectSwitchArgs {
+  projectRoot: string | null;
+  getUpperColl: () => TabCollection;
+  getLowerColl: () => TabCollection;
+  cacheRef: React.MutableRefObject<Map<string, FrameCollections>>;
+  spawnedTabsRef: React.MutableRefObject<Set<string>>;
+  setUpperCollection: React.Dispatch<React.SetStateAction<TabCollection>>;
+  setLowerCollection: React.Dispatch<React.SetStateAction<TabCollection>>;
+}
+
+/**
+ * Detects projectRoot changes and saves the outgoing project's collections to
+ * the in-memory cache. Resets collection state and spawnedTabsRef for the new
+ * project so useTabRestoreInit can initialize it cleanly.
+ */
+function useProjectSwitch(args: ProjectSwitchArgs): void {
+  const {
+    projectRoot,
+    getUpperColl,
+    getLowerColl,
+    cacheRef,
+    spawnedTabsRef,
+    setUpperCollection,
+    setLowerCollection,
+  } = args;
+
+  const prevProjectRootRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const prev = prevProjectRootRef.current;
+    if (prev === projectRoot) return;
+
+    // Save outgoing project's collections (skip the undefined sentinel on first run).
+    if (prev !== undefined && prev !== null) {
+      cacheRef.current.set(prev, { upper: getUpperColl(), lower: getLowerColl() });
+    }
+    prevProjectRootRef.current = projectRoot;
+
+    // Reset spawned-tabs set so old ids don't block new project's spawns.
+    spawnedTabsRef.current = new Set<string>();
+
+    // Reset to fresh default placeholders while restore loads for new project.
+    setUpperCollection(makeDefaultCollection('upper'));
+    setLowerCollection(makeDefaultCollection('lower'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectRoot]);
 }
 
 // ── useFrameTabState ──────────────────────────────────────────────────────────
@@ -208,6 +275,9 @@ interface FrameTabStateArgs {
   isReady: boolean;
   spawnedTabsRef: React.MutableRefObject<Set<string>>;
   projectRoot: string | null;
+  cachedCollection: TabCollection | undefined;
+  collection: TabCollection;
+  setCollection: React.Dispatch<React.SetStateAction<TabCollection>>;
 }
 
 /**
@@ -216,14 +286,12 @@ interface FrameTabStateArgs {
  * Rules of Hooks: never call this inside a conditional or loop.
  */
 function useFrameTabState(args: FrameTabStateArgs): UseWorkbenchTabsResult {
-  const { frame, restoredCollection, isReady, spawnedTabsRef, projectRoot } = args;
+  const { frame, restoredCollection, isReady, spawnedTabsRef } = args;
+  const { projectRoot, cachedCollection, collection, setCollection } = args;
   const cwd = projectRoot ?? undefined;
-  const [collection, setCollection] = useTabRestoreInit({
-    frame,
-    restoredCollection,
-    isReady,
-    spawnedTabsRef,
-    cwd,
+  useTabRestoreInit({
+    frame, restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot, cachedCollection,
+    setCollection,
   });
   useWorkbenchSessionPersist({ frame, projectRoot, tabCollection: collection });
   const actions = useTabActions(frame, cwd, spawnedTabsRef, setCollection);
@@ -239,6 +307,33 @@ interface WorkbenchTabsContextValue {
 
 const WorkbenchTabsContext = createContext<WorkbenchTabsContextValue | null>(null);
 
+// ── useProviderCollections ────────────────────────────────────────────────────
+
+/** Owns per-frame collections, in-memory project cache, and spawned-tabs ref. */
+function useProviderCollections(projectRoot: string | null) {
+  const projectCacheRef = useRef<Map<string, FrameCollections>>(new Map());
+  const cachedCollections = projectRoot ? projectCacheRef.current.get(projectRoot) : undefined;
+  const [upperColl, setUpperColl] = useState<TabCollection>(() => makeDefaultCollection('upper'));
+  const [lowerColl, setLowerColl] = useState<TabCollection>(() => makeDefaultCollection('lower'));
+  const upperCollRef = useRef(upperColl);
+  upperCollRef.current = upperColl;
+  const lowerCollRef = useRef(lowerColl);
+  lowerCollRef.current = lowerColl;
+  const spawnedTabsRef = useRef<Set<string>>(new Set());
+
+  useProjectSwitch({
+    projectRoot,
+    getUpperColl: () => upperCollRef.current,
+    getLowerColl: () => lowerCollRef.current,
+    cacheRef: projectCacheRef,
+    spawnedTabsRef,
+    setUpperCollection: setUpperColl,
+    setLowerCollection: setLowerColl,
+  });
+
+  return { upperColl, setUpperColl, lowerColl, setLowerColl, spawnedTabsRef, cachedCollections };
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 interface WorkbenchTabsProviderProps {
@@ -251,8 +346,8 @@ export function WorkbenchTabsProvider({
   children,
 }: WorkbenchTabsProviderProps): React.ReactElement {
   const { isReady, upperCollection, lowerCollection } = useWorkbenchRestore(projectRoot);
-  // ONE shared ref across both frames — a tab id is spawned at most once globally.
-  const spawnedTabsRef = useRef<Set<string>>(new Set());
+  const { upperColl, setUpperColl, lowerColl, setLowerColl, spawnedTabsRef, cachedCollections } =
+    useProviderCollections(projectRoot);
 
   const upper = useFrameTabState({
     frame: 'upper',
@@ -260,6 +355,9 @@ export function WorkbenchTabsProvider({
     isReady,
     spawnedTabsRef,
     projectRoot,
+    cachedCollection: cachedCollections?.upper,
+    collection: upperColl,
+    setCollection: setUpperColl,
   });
 
   const lower = useFrameTabState({
@@ -268,12 +366,13 @@ export function WorkbenchTabsProvider({
     isReady,
     spawnedTabsRef,
     projectRoot,
+    cachedCollection: cachedCollections?.lower,
+    collection: lowerColl,
+    setCollection: setLowerColl,
   });
 
-  const value: WorkbenchTabsContextValue = { upper, lower };
-
   return (
-    <WorkbenchTabsContext.Provider value={value}>{children}</WorkbenchTabsContext.Provider>
+    <WorkbenchTabsContext.Provider value={{ upper, lower }}>{children}</WorkbenchTabsContext.Provider>
   );
 }
 
@@ -285,4 +384,16 @@ export function useWorkbenchTabsContext(frame: 'upper' | 'lower'): UseWorkbenchT
     throw new Error('useWorkbenchTabsContext must be used inside <WorkbenchTabsProvider>');
   }
   return ctx[frame];
+}
+
+/**
+ * Safe variant of useWorkbenchTabsContext — returns null instead of throwing when
+ * called outside a WorkbenchTabsProvider. Used by the AgentGlobe pane-id derivation
+ * so the globe degrades gracefully in test isolation without a provider wrapper.
+ */
+export function useWorkbenchTabsContextSafe(
+  frame: 'upper' | 'lower',
+): UseWorkbenchTabsResult | null {
+  const ctx = useContext(WorkbenchTabsContext);
+  return ctx ? ctx[frame] : null;
 }

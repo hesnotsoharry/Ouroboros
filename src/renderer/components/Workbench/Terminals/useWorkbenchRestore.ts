@@ -37,6 +37,14 @@ export interface WorkbenchRestoreState {
   upperCollection?: TabCollection;
   lowerCollection?: TabCollection;
   isReady: boolean;
+  /**
+   * The projectRoot this restore state was loaded for. Used to derive isReady
+   * synchronously during render: when forProject !== current projectRoot, the
+   * returned state is treated as not-ready regardless of the stored isReady flag.
+   * This prevents stale-A data from being applied to project B during the
+   * transitional render before the effect fires.
+   */
+  forProject?: string | null;
 }
 
 /** Returns true when the value looks like Wave 9's legacy flat { upper, lower } shape. */
@@ -61,8 +69,9 @@ function isWave12Slot(slot: unknown): slot is CanonWorkbenchSessionSlot {
 
 function mapSlotToRestoreState(
   slot: CanonWorkbenchSessionSlot | null | undefined,
+  projectRoot: string,
 ): WorkbenchRestoreState {
-  if (!slot) return { isReady: true };
+  if (!slot) return { isReady: true, forProject: projectRoot };
 
   const upper = slot.upper;
   const lower = slot.lower;
@@ -79,6 +88,7 @@ function mapSlotToRestoreState(
     // resumeSessionId from the active CC tab's sessionId.
     resumeSessionId: activeCcTab?.sessionId,
     isReady: true,
+    forProject: projectRoot,
   };
 }
 
@@ -90,7 +100,7 @@ function resolveFromStore(
     .get('canonWorkbenchSessions')
     .then((persisted) => {
       if (isLegacyFlatShape(persisted)) {
-        setRestoreState({ isReady: true });
+        setRestoreState({ isReady: true, forProject: projectRoot });
         return;
       }
       const record = persisted as CanonWorkbenchSessions | null | undefined;
@@ -98,41 +108,52 @@ function resolveFromStore(
       // Wave-12 shape: has `tabs` on upper. Wave-10 shape: has `cwd` on upper (cleared by
       // preflight before app starts, but guard here for safety).
       if (slot && isWave12Slot(slot)) {
-        setRestoreState(mapSlotToRestoreState(slot));
+        setRestoreState(mapSlotToRestoreState(slot, projectRoot));
       } else {
-        setRestoreState({ isReady: true });
+        setRestoreState({ isReady: true, forProject: projectRoot });
       }
     })
     .catch(() => {
-      setRestoreState({ isReady: true });
+      setRestoreState({ isReady: true, forProject: projectRoot });
     });
 }
+
+const NOT_READY: WorkbenchRestoreState = { isReady: false };
 
 export function useWorkbenchRestore(projectRoot: string | null): WorkbenchRestoreState {
   const { config } = useConfig();
   const persistEnabled = config?.persistTerminalSessions ?? false;
 
-  const [restoreState, setRestoreState] = useState<WorkbenchRestoreState>({ isReady: false });
+  const [restoreState, setRestoreState] = useState<WorkbenchRestoreState>(NOT_READY);
 
-  // One-shot guard — never re-reads after the initial load.
-  const hasReadRef = useRef(false);
+  // Keyed one-shot guard — re-reads when projectRoot changes, not on every render.
+  const lastReadProjectRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (hasReadRef.current) return;
-    hasReadRef.current = true;
+    // undefined sentinel = never read; null/string = last value read for.
+    if (lastReadProjectRef.current === projectRoot) return;
+    lastReadProjectRef.current = projectRoot;
 
     if (projectRoot === null || !persistEnabled) {
-      setRestoreState({ isReady: true });
+      setRestoreState({ isReady: true, forProject: projectRoot });
       return;
     }
 
     if (typeof window === 'undefined' || !window.electronAPI?.config?.get) {
-      setRestoreState({ isReady: true });
+      setRestoreState({ isReady: true, forProject: projectRoot });
       return;
     }
 
     resolveFromStore(projectRoot, setRestoreState);
   }, [persistEnabled, projectRoot]);
+
+  // Synchronous render-time guard: if the stored state belongs to a different
+  // project, report not-ready THIS render regardless of the stored isReady flag.
+  // This closes the stale-read race: during the transitional render where
+  // projectRoot first becomes B, restoreState still holds A's data (the async
+  // effect hasn't fired setRestoreState yet). Without this guard, downstream
+  // effects (useTabRestoreInit, autoResume) would apply A's collections to B.
+  if (restoreState.forProject !== projectRoot) return NOT_READY;
 
   return restoreState;
 }

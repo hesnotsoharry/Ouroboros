@@ -182,7 +182,7 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
     expect((opts as { cwd?: string }).cwd).toBe(projectRoot);
   });
 
-  it('does NOT spawn a second time when project root changes after initial spawn', async () => {
+  it('spawns once per project when projectRoot changes (in-place project switch)', async () => {
     const firstRoot = 'C:\\Web App\\Gamify';
     const secondRoot = 'C:\\Web App\\ContractorApp';
 
@@ -197,17 +197,20 @@ describe('useWorkbenchTabs upper-frame cwd — Wave 14 Phase 2 (top dock cwd fix
       expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
     });
 
-    const [, opts] = ptySpawnClaude().mock.calls[0];
-    expect((opts as { cwd?: string }).cwd).toBe(firstRoot);
+    const [, firstOpts] = ptySpawnClaude().mock.calls[0];
+    expect((firstOpts as { cwd?: string }).cwd).toBe(firstRoot);
 
-    // Project switch — must NOT trigger a second spawn (TerminalShell unmounts/remounts
-    // on project switch; re-spawn is handled by unmount+remount, not by cwd change).
-    // Note: the provider uses key-based remount on project switch in production;
-    // here we only vary the prop to confirm cwd-change alone does NOT re-spawn.
+    // Project switch — provider handles in-place (no key remount). A new CC spawn
+    // fires for secondRoot so the user gets a fresh claude session in the new project.
+    // The provider saves firstRoot's tab state to its in-memory cache.
     wrapperRoot = secondRoot;
     rerender({ root: secondRoot });
-    await new Promise((resolve) => setTimeout(resolve, 30));
 
-    expect(ptySpawnClaude()).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(ptySpawnClaude()).toHaveBeenCalledTimes(2);
+    });
+
+    const [, secondOpts] = ptySpawnClaude().mock.calls[1];
+    expect((secondOpts as { cwd?: string }).cwd).toBe(secondRoot);
   });
 });

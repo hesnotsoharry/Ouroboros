@@ -212,7 +212,6 @@ export function Workbench(): React.ReactElement {
     <DiffReviewProvider>
       <ActiveFrameProvider>
         <WorkbenchTabsProvider
-          key={projectKey}
           projectRoot={projectCtx?.projectRoot ?? null}
         >
           <WorkbenchStage

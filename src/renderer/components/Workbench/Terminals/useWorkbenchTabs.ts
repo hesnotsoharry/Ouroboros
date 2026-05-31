@@ -8,8 +8,9 @@
  * vi.mock('./useWorkbenchTabs') test stubs continue to work without change.
  *
  * The `projectRoot` parameter is now unused — the provider owns project isolation
- * via its own key-based remount. It is kept in the signature for backward compat
- * with existing call sites and test mocks.
+ * in-place (it switches the active per-project collection without remounting).
+ * It is kept in the signature for backward compat with existing call sites and
+ * test mocks.
  *
  * @deprecated Pass - callers should migrate to useWorkbenchTabsContext(frame)
  * directly when convenient; the thin wrapper will be removed in a future cleanup.
@@ -39,8 +40,8 @@ export const buildSpawnEnv = (tabId: string): { OUROBOROS_PANE_ID: string } => (
  */
 export function useWorkbenchTabs(
   frame: 'upper' | 'lower',
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   projectRoot: string | null,
 ): UseWorkbenchTabsResult {
+  void projectRoot; // intentionally ignored — kept for signature back-compat
   return useWorkbenchTabsContext(frame);
 }
