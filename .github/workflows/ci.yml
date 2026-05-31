@@ -10,7 +10,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macOS leg disabled 2026-05-29: no Mac hardware to validate against yet,
+        # so the macOS runner is redundant. Re-add 'macos-latest' to restore it.
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     # 35-min job budget: the test suite alone is ~17 min Windows-local and
     # CI runners are ~1.5–2× slower (~25–30 min). The previous 20-min cap
