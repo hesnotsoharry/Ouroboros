@@ -56,6 +56,8 @@ if (toolUseId) {
     process.stderr.write('[ouroboros] pre_tool_use: tool_use_id absent — diff-review pairing degraded\n');
   }
 }
+const paneId = process.env.OUROBOROS_PANE_ID;
+if (paneId) payload.paneId = paneId;
 if (process.env.OUROBOROS_INTERNAL === '1') payload.internal = true;
 
 // Path sensitivity flag: defensive marker for downstream redaction policy

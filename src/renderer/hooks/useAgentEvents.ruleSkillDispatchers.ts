@@ -131,3 +131,13 @@ export function dispatchSkillEnd(payload: HookPayload, dispatch: Dispatch<AgentA
     lastMessage: payload.error,
   });
 }
+
+/**
+ * agent_stop = synthetic disconnect terminal event. Both end-session and
+ * skill-end fire here. agent_end (SubagentStop, per-turn) must NOT call
+ * dispatchAgentEnd — see the agent_end case in useAgentEvents.ts for why.
+ */
+export function dispatchAgentStop(payload: HookPayload, dispatch: Dispatch<AgentAction>): void {
+  dispatchAgentEnd(payload, dispatch);
+  dispatchSkillEnd(payload, dispatch);
+}

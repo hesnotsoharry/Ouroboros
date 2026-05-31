@@ -55,6 +55,8 @@ const payload = {
   timestamp: Date.now(),
 };
 if (durationMs !== null) payload.durationMs = durationMs;
+const paneId = process.env.OUROBOROS_PANE_ID;
+if (paneId) payload.paneId = paneId;
 if (process.env.OUROBOROS_INTERNAL === '1') payload.internal = true;
 if (toolUseId) {
   payload.toolCallId = toolUseId;

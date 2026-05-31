@@ -1,11 +1,17 @@
 ---
-status: TRIAGED
+status: IN-PROGRESS
 created: 2026-05-31
 updated: 2026-05-31
 branch: freeze-fix-and-wave-101-scaffold
 ---
 
 # AgentSidebar goes silent after turn 1 — `agent_end` (SubagentStop) un-owns the live session
+
+> **B3 fix landed `09dd7a96` (2026-05-31).** All 3 parts implemented + renderer
+> globe-half fix + regression test. Typecheck green (web+node), `test:hooks` 255/255.
+> **Awaiting B4 live smoke** (dev relaunch, turn 1 + turn 2, confirm sidebar keeps
+> updating + globe stays active). `[trace:bind]` instrumentation INTENTIONALLY RETAINED
+> until B4 passes; B5 cleanup (remove trace + revert `7faef0b7`) is the last step.
 
 ## Summary
 

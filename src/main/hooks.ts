@@ -206,7 +206,13 @@ function traceAgentStart(payload: HookPayload): void {
   });
 }
 
-const END_EVENT_TYPES = new Set(['session_stop', 'agent_stop', 'agent_end']);
+// agent_end = SubagentStop = per-turn, so it must NOT trigger handleSessionEnd
+// (onSessionEnd extension activation) — that fires extension teardown after
+// every turn. agent_stop (disconnect synthetic) is the true session-end signal;
+// the 2-hr orphan sweep is the backstop. (session_stop ALSO fires handleSessionEnd
+// per-turn — a known issue tracked as the handlesessionend-fires-per-turn
+// follow-up, left untouched here to stay scoped to the silent-sidebar fix.)
+const END_EVENT_TYPES = new Set(['session_stop', 'agent_stop']);
 function dispatchLifecycleEvent(payload: HookPayload): void {
   if (payload.type === 'agent_start') {
     traceAgentStart(payload);
@@ -224,8 +230,11 @@ function dispatchLifecycleEvent(payload: HookPayload): void {
 // session_stop fires at the END OF EVERY TURN (Claude Code's Stop hook), NOT
 // at true session end. Keeping it here caused ownership to be released after
 // turn 1, dropping all subsequent pre_tool_use/post_tool_use events.
-// agent_stop is the synthetic terminal event produced by onConnectionDisconnect.
-const TERMINAL_EVENT_TYPES = new Set(['agent_end', 'agent_stop']);
+// agent_end = SubagentStop = per-turn / per-subagent, NOT true session end.
+// Ownership must survive SubagentStop so turn-2+ tool events are still dispatched.
+// agent_stop is the synthetic terminal event produced by onConnectionDisconnect;
+// it is the correct ownership-terminal event along with the 2-hr orphan sweep.
+const TERMINAL_EVENT_TYPES = new Set(['agent_stop']);
 
 /** Runs the full dispatch pipeline for a confirmed IDE-owned event. */
 function dispatchOwnedEvent(rawPayload: HookPayload): void {

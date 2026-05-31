@@ -12,10 +12,9 @@ import {
 import type { AgentSession } from '../components/AgentMonitor/types';
 import type { HookPayload } from '../types/electron';
 import { routeNewEventTypes } from './useAgentEvents.eventRouting';
-import { summarizeSubToolInput } from './useAgentEvents.fieldHelpers';
 import {
   type AgentAction,
-  dispatchAgentEnd,
+  dispatchAgentStop,
   dispatchTokenUpdate,
   initialAgentState,
   isLiveSession,
@@ -25,7 +24,6 @@ import {
   createToolCall,
   deriveTaskLabel,
   getSubagentChildId,
-  getToolEndDetails,
   isSubagentTool,
   parsePersistedSessions,
   toHookPayload,
@@ -36,6 +34,10 @@ import {
   dispatchSkillStart,
 } from './useAgentEvents.ruleSkillDispatchers';
 import { markSessionsAsSaved, shouldPersistSession } from './useAgentEvents.session-utils';
+import {
+  dispatchSubToolUpdate,
+  dispatchToolEnd,
+} from './useAgentEvents.workspaceDispatchers';
 import { useChatSessionRegistration } from './useChatSessionRegistration';
 
 export interface UseAgentEventsReturn {
@@ -256,11 +258,11 @@ function dispatchLifecycleEvent(
       dispatchToolEnd(payload, dispatch);
       return;
     case 'agent_end':
-    case 'agent_stop':
-      dispatchAgentEnd(payload, dispatch);
+      // SubagentStop = per-turn. Skip dispatchAgentEnd — see dispatchAgentStop.
       dispatchSkillEnd(payload, dispatch);
       return;
-    default:
+    case 'agent_stop':
+      dispatchAgentStop(payload, dispatch);
       return;
   }
 }
@@ -301,35 +303,3 @@ function dispatchToolStart(payload: HookPayload, dispatch: Dispatch<AgentAction>
   }
 }
 
-function dispatchToolEnd(payload: HookPayload, dispatch: Dispatch<AgentAction>): void {
-  const details = getToolEndDetails(payload);
-  dispatch({
-    type: 'TOOL_END',
-    sessionId: payload.sessionId,
-    toolCallId: payload.toolCallId,
-    toolName: payload.toolName,
-    duration: details.duration,
-    status: details.status,
-    output: details.output,
-  });
-}
-
-function dispatchSubToolUpdate(payload: HookPayload, dispatch: Dispatch<AgentAction>): void {
-  if (!payload.parentToolCallId || !payload.toolCallId) return;
-  const isComplete = payload.type === 'post_tool_use';
-  const details = isComplete ? getToolEndDetails(payload) : undefined;
-  const input = summarizeSubToolInput(payload.input);
-  dispatch({
-    type: 'SUBTOOL_UPDATE',
-    sessionId: payload.sessionId,
-    parentToolCallId: payload.parentToolCallId,
-    subTool: {
-      id: payload.toolCallId,
-      toolName: payload.toolName ?? 'Tool',
-      input,
-      timestamp: payload.timestamp,
-      status: isComplete ? (details?.status ?? 'success') : 'pending',
-      output: details?.output,
-    },
-  });
-}

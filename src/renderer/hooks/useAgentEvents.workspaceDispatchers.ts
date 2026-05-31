@@ -7,9 +7,10 @@ import type { Dispatch } from 'react';
 
 import type { PermissionEvent } from '../components/AgentMonitor/types';
 import type { HookPayload } from '../types/electron';
-import { getNumberField, getStringField } from './useAgentEvents.fieldHelpers';
+import { getNumberField, getStringField, summarizeSubToolInput } from './useAgentEvents.fieldHelpers';
 import type { AgentAction } from './useAgentEvents.helpers';
 import { dispatchAgentEnd } from './useAgentEvents.helpers';
+import { getToolEndDetails } from './useAgentEvents.payload';
 
 export function dispatchCompaction(payload: HookPayload, dispatch: Dispatch<AgentAction>): void {
   const data = payload.data ?? {};
@@ -82,4 +83,37 @@ export function dispatchStopFailure(payload: HookPayload, dispatch: Dispatch<Age
 
 export function dispatchTurnEnd(payload: HookPayload, dispatch: Dispatch<AgentAction>): void {
   dispatch({ type: 'TURN_END', sessionId: payload.sessionId, timestamp: payload.timestamp });
+}
+
+export function dispatchToolEnd(payload: HookPayload, dispatch: Dispatch<AgentAction>): void {
+  const details = getToolEndDetails(payload);
+  dispatch({
+    type: 'TOOL_END',
+    sessionId: payload.sessionId,
+    toolCallId: payload.toolCallId,
+    toolName: payload.toolName,
+    duration: details.duration,
+    status: details.status,
+    output: details.output,
+  });
+}
+
+export function dispatchSubToolUpdate(payload: HookPayload, dispatch: Dispatch<AgentAction>): void {
+  if (!payload.parentToolCallId || !payload.toolCallId) return;
+  const isComplete = payload.type === 'post_tool_use';
+  const details = isComplete ? getToolEndDetails(payload) : undefined;
+  const input = summarizeSubToolInput(payload.input);
+  dispatch({
+    type: 'SUBTOOL_UPDATE',
+    sessionId: payload.sessionId,
+    parentToolCallId: payload.parentToolCallId,
+    subTool: {
+      id: payload.toolCallId,
+      toolName: payload.toolName ?? 'Tool',
+      input,
+      timestamp: payload.timestamp,
+      status: isComplete ? (details?.status ?? 'success') : 'pending',
+      output: details?.output,
+    },
+  });
 }
