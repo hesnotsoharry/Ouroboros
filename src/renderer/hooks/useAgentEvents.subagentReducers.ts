@@ -49,6 +49,8 @@ interface RecordSubagentToolAction {
 interface ContextUpdateAction {
   type: 'CONTEXT_UPDATE';
   sessionId: string;
+  /** OUROBOROS_PANE_ID forwarded from the statusline hook. Preferred lookup key. */
+  paneId?: string;
   contextUsedTokens: number;
   contextMaxTokens: number;
 }
@@ -65,11 +67,21 @@ export function updateTokenUsage(state: AgentState, action: TokenUpdateAction): 
   }));
 }
 
+/** Resolve a session by paneId. Returns undefined when paneId is absent or unmatched. */
+function findSessionByPaneId(
+  state: AgentState,
+  paneId: string | undefined,
+): string | undefined {
+  if (!paneId) return undefined;
+  return state.sessions.find((s) => s.paneId === paneId)?.id;
+}
+
 export function updateContextWindow(
   state: AgentState,
   action: ContextUpdateAction,
 ): AgentState {
-  return updateSession(state, action.sessionId, (session) => ({
+  const targetId = findSessionByPaneId(state, action.paneId) ?? action.sessionId;
+  return updateSession(state, targetId, (session) => ({
     ...session,
     contextUsedTokens: action.contextUsedTokens,
     contextMaxTokens: action.contextMaxTokens,

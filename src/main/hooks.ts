@@ -278,6 +278,18 @@ function dispatchOwnedEvent(rawPayload: HookPayload): void {
 }
 
 function dispatchToRenderer(rawPayload: HookPayload): void {
+  // [trace:ctx-gauge] Log context_update at the gate so we can verify sessionId vs paneId.
+  // Remove after root-cause confirmed.
+  if (rawPayload.type === 'context_update') {
+    log.info('[trace:ctx-gauge] context_update arrived', {
+      sessionId: rawPayload.sessionId,
+      paneId: rawPayload.paneId ?? null,
+      contextUsedTokens: rawPayload.contextUsedTokens ?? null,
+      contextMaxTokens: rawPayload.contextMaxTokens ?? null,
+      ownedBefore: ownedSessionIds.has(rawPayload.sessionId),
+    });
+  }
+
   // Register paneId before the gate so the first owned event populates the set
   // and all subsequent paneId-less synthetics for that session still pass.
   if (rawPayload.paneId) {

@@ -119,6 +119,8 @@ export type AgentAction =
       /** Statusline context-window snapshot. Absolute values — NOT delta accumulators. */
       type: 'CONTEXT_UPDATE';
       sessionId: string;
+      /** OUROBOROS_PANE_ID forwarded from the statusline hook payload. Preferred lookup key. */
+      paneId?: string;
       contextUsedTokens: number;
       contextMaxTokens: number;
     }

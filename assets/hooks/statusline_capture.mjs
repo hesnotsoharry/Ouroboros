@@ -36,6 +36,30 @@ if (data.rate_limits) {
 
 const paneId = process.env.OUROBOROS_PANE_ID;
 const ctx = data.context_window;
+
+// [trace:ctx-gauge] Write diagnostic entry so we can verify env inheritance.
+// Remove after root-cause confirmed.
+try {
+  import('node:fs').then(({ appendFileSync, mkdirSync }) => {
+    import('node:os').then(({ homedir }) => {
+      import('node:path').then(({ join }) => {
+        const dir = join(homedir(), '.ouroboros');
+        mkdirSync(dir, { recursive: true });
+        const entry = JSON.stringify({
+          ts: new Date().toISOString(),
+          paneId: paneId ?? null,
+          CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID ?? null,
+          ctxPresent: Boolean(ctx),
+          ctxUsed: ctx?.total_input_tokens ?? null,
+          ctxMax: ctx?.context_window_size ?? null,
+          skipForNoIde: !paneId ? 'paneId-missing' : 'paneId-ok',
+        }) + '\n';
+        appendFileSync(join(dir, 'statusline-trace.log'), entry, 'utf8');
+      });
+    });
+  });
+} catch { /* trace must never break the hook */ }
+
 if (paneId && ctx && !shouldSkipForNoIde()) {
   const { hooksToken } = loadTokens();
   if (hooksToken) {

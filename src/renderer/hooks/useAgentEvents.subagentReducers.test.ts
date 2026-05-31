@@ -103,4 +103,48 @@ describe('updateContextWindow', () => {
     expect(next.sessions.find((s) => s.id === 'ses-1')?.contextUsedTokens).toBe(30_000);
     expect(next.sessions.find((s) => s.id === 'ses-2')?.contextUsedTokens).toBeUndefined();
   });
+
+  it('resolves the target session by paneId when paneId is provided and matches', () => {
+    // sessionId is 'unknown' (as emitted by statusline when CLAUDE_SESSION_ID is absent)
+    // paneId matches a real session — the update must land on that session
+    const session = makeSession({ id: 'ses-real', paneId: 'pane-abc' });
+    const state = makeState([session]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'unknown',
+      paneId: 'pane-abc',
+      contextUsedTokens: 55_000,
+      contextMaxTokens: 200_000,
+    });
+    const updated = next.sessions.find((s) => s.id === 'ses-real');
+    expect(updated?.contextUsedTokens).toBe(55_000);
+    expect(updated?.contextMaxTokens).toBe(200_000);
+  });
+
+  it('falls back to sessionId when paneId is absent', () => {
+    const session = makeSession({ id: 'ses-1', paneId: 'pane-xyz' });
+    const state = makeState([session]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'ses-1',
+      // no paneId — must route by sessionId
+      contextUsedTokens: 70_000,
+      contextMaxTokens: 200_000,
+    });
+    expect(next.sessions.find((s) => s.id === 'ses-1')?.contextUsedTokens).toBe(70_000);
+  });
+
+  it('no-ops when neither paneId nor sessionId matches any session', () => {
+    const session = makeSession({ id: 'ses-1', paneId: 'pane-xyz' });
+    const state = makeState([session]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'unknown',
+      paneId: 'pane-nope',
+      contextUsedTokens: 99_000,
+      contextMaxTokens: 200_000,
+    });
+    // Neither paneId nor sessionId matched — session stays untouched
+    expect(next.sessions[0].contextUsedTokens).toBeUndefined();
+  });
 });
