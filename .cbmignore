@@ -1,0 +1,21 @@
+# .cbmignore — codebase-graph (codebase-memory MCP) ignore rules.
+# gitignore-style syntax, one pattern per line. Merged with .gitignore at index time.
+# Scope: files that DON'T need indexing AND that agents will never need to interact with.
+# Default ignores (node_modules, dist, out, build, coverage, .git, *.min.js, images, etc.)
+# are already hardcoded in the indexer — do NOT duplicate them here.
+#
+# Do NOT add agent-facing content here: src/**, roadmap/** (HANDOFF, waves, decisions),
+# .claude/**, tests, hook scripts, issues/**, README files. Agents read those.
+
+# Vendored @xterm/addon-webgl source kept in-tree for patch-package reference.
+# These are before/after snapshots of a third-party library, not project source.
+# Indexing them injected ~1,032 third-party symbols (864 Function + 146 Method +
+# 22 Class) into the graph as fake project hits. patches/README.md stays indexed
+# (it explains the patch — agent-relevant). Pattern matches the *.original.* / *.patched.*
+# naming convention so future vendored patches are covered automatically.
+patches/*.original.*
+patches/*.patched.*
+
+# Generated third-party license aggregation (7,000+ lines, zero symbols).
+# Never authored or read by agents during code work.
+THIRD_PARTY_LICENSES
