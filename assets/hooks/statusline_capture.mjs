@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { loadTokens, parseAddress, sendEvent, shouldSkipForNoIde } from './lib/ouroboros.mjs';
+import { loadTokens, sendEvent, shouldSkipForNoIde } from './lib/ouroboros.mjs';
 
 function readStdin() {
   return new Promise((resolve) => {
@@ -44,40 +44,13 @@ const sessionIdFromData = (typeof data.session_id === 'string' && data.session_i
   ? data.session_id
   : null;
 
-// [trace:ctx-gauge] Write diagnostic entry to confirm fix (expanded from prior version).
-// Remove after end-to-end verified in IDE relaunch.
-try {
-  import('node:fs').then(({ appendFileSync, mkdirSync }) => {
-    import('node:os').then(({ homedir }) => {
-      import('node:path').then(({ join }) => {
-        const dir = join(homedir(), '.ouroboros');
-        mkdirSync(dir, { recursive: true });
-        const entry = JSON.stringify({
-          ts: new Date().toISOString(),
-          paneId: paneId ?? null,
-          CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID ?? null,
-          sessionIdFromData,
-          cwd: cwdValue,
-          ctxPresent: Boolean(ctx),
-          ctxUsed: ctx?.total_input_tokens ?? null,
-          ctxMax: ctx?.context_window_size ?? null,
-          dataKeys: Object.keys(data),
-          sendEventFired: ctx != null && !shouldSkipForNoIde(),
-        }) + '\n';
-        appendFileSync(join(dir, 'statusline-trace.log'), entry, 'utf8');
-      });
-    });
-  });
-} catch { /* trace must never break the hook */ }
-
 // Guard: fire when ctx data is present and the IDE is reachable.
 // No longer requires paneId — cwd is the session identifier instead.
 if (ctx && !shouldSkipForNoIde()) {
   const { hooksToken } = loadTokens();
   if (hooksToken) {
     const sessionId = sessionIdFromData ?? process.env.CLAUDE_SESSION_ID ?? 'unknown';
-    const resolvedAddr = parseAddress();
-    const sent = await sendEvent({
+    await sendEvent({
       type: 'context_update',
       paneId: paneId ?? undefined,
       sessionId,
@@ -89,25 +62,6 @@ if (ctx && !shouldSkipForNoIde()) {
       model: data.model?.api_name ?? data.model?.display_name,
       costUsd: undefined,
     }, hooksToken, { timeoutMs: 200 });
-    // Append sendEvent result to the trace so we confirm delivery end-to-end.
-    try {
-      import('node:fs').then(({ appendFileSync }) => {
-        import('node:os').then(({ homedir }) => {
-          import('node:path').then(({ join }) => {
-            appendFileSync(
-              join(homedir(), '.ouroboros', 'statusline-trace.log'),
-              JSON.stringify({
-                ts: new Date().toISOString(),
-                sendEventResult: sent,
-                cwd: cwdValue,
-                resolvedAddr,
-              }) + '\n',
-              'utf8',
-            );
-          });
-        });
-      });
-    } catch { /* best-effort */ }
   }
 }
 

@@ -150,16 +150,6 @@ export function dispatchContextUpdate(
   payload: HookPayload,
   dispatch: Dispatch<AgentAction>,
 ): void {
-  // [trace:ctx-gauge] Log sessionId/paneId/cwd so we can verify the update
-  // lands on the correct session. Remove after end-to-end confirmed.
-  log.info('[trace:ctx-gauge] dispatchContextUpdate', {
-    sessionId: payload.sessionId,
-    paneId: payload.paneId ?? null,
-    cwd: payload.cwd ?? null,
-    contextUsedTokens: payload.contextUsedTokens ?? null,
-    contextMaxTokens: payload.contextMaxTokens ?? null,
-    fieldsPresent: payload.contextUsedTokens != null && payload.contextMaxTokens != null,
-  });
   if (payload.contextUsedTokens == null || payload.contextMaxTokens == null) return;
   dispatch({
     type: 'CONTEXT_UPDATE',

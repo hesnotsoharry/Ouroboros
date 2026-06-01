@@ -282,13 +282,6 @@ function dispatchOwnedEvent(rawPayload: HookPayload): void {
 // data reaches the renderer even when OUROBOROS_PANE_ID is not propagated into
 // the statusline subprocess. Sends only when ctx fields are present.
 function dispatchAmbientContextUpdate(rawPayload: HookPayload): void {
-  log.info('[trace:ctx-gauge] context_update arrived (bypassing ownership gate)', {
-    sessionId: rawPayload.sessionId,
-    paneId: rawPayload.paneId ?? null,
-    cwd: rawPayload.cwd ?? null,
-    contextUsedTokens: rawPayload.contextUsedTokens ?? null,
-    contextMaxTokens: rawPayload.contextMaxTokens ?? null,
-  });
   if (rawPayload.contextUsedTokens == null || rawPayload.contextMaxTokens == null) return;
   const windows = getDispatchWindows();
   if (windows.length === 0) {
