@@ -63,8 +63,8 @@ const SESSION_C = {
   cwd: undefined,
 };
 
-// Active project root — changes between test groups
-let mockProjectRoot = '/projects/foo';
+// Active project root
+const mockProjectRoot = '/projects/foo';
 
 vi.mock('../../../contexts/ProjectContext', () => ({
   useProject: () => ({
@@ -131,59 +131,15 @@ afterEach(() => {
 
 import { InnerRail } from './InnerRail';
 
-describe('Wave 14 Phase 4 — InnerRail project scoping acceptance', () => {
-  describe('active project: /projects/foo', () => {
-    beforeEach(() => {
-      mockProjectRoot = '/projects/foo';
-    });
-
-    it('renders only session A under project foo (1 session item)', () => {
-      render(<InnerRail />);
-      const rail = screen.getByTestId('workbench-innerrail');
-      // Session A's label should appear — it belongs to /projects/foo
-      expect(rail.textContent).toContain('Session Alpha Task');
-    });
-
-    it('does not render sess-c (the bug-shaped session with no cwd) under project foo', () => {
-      render(<InnerRail />);
-      const rail = screen.getByTestId('workbench-innerrail');
-      // Session C must not appear anywhere in the rail — not as current, not as other
-      expect(rail.textContent).not.toContain('Session Charlie Task');
-    });
-
-    it('does not render sess-a as an "other" session under project bar', () => {
-      mockProjectRoot = '/projects/bar';
-      render(<InnerRail />);
-      const rail = screen.getByTestId('workbench-innerrail');
-      // Session A belongs to /projects/foo — must NOT appear under /projects/bar
-      expect(rail.textContent).not.toContain('Session Alpha Task');
-    });
-  });
-
-  describe('active project: /projects/bar', () => {
-    beforeEach(() => {
-      mockProjectRoot = '/projects/bar';
-    });
-
-    it('renders only session B under project bar', () => {
-      render(<InnerRail />);
-      const rail = screen.getByTestId('workbench-innerrail');
-      // Session B's label should appear — it belongs to /projects/bar
-      expect(rail.textContent).toContain('Session Beta Task');
-    });
-
-    it('does not render sess-c (the bug-shaped session with no cwd) under project bar', () => {
-      render(<InnerRail />);
-      const rail = screen.getByTestId('workbench-innerrail');
-      // Session C must not appear anywhere in the rail under any project
-      expect(rail.textContent).not.toContain('Session Charlie Task');
-    });
-
-    it('does not render sess-a under project bar', () => {
-      render(<InnerRail />);
-      const rail = screen.getByTestId('workbench-innerrail');
-      // Session A belongs to /projects/foo — must NOT bleed into /projects/bar
-      expect(rail.textContent).not.toContain('Session Alpha Task');
-    });
+describe('Wave 14 Phase 4 — InnerRail (session list removed)', () => {
+  it('does not render session labels — the inner-rail session list was removed', () => {
+    render(<InnerRail />);
+    const rail = screen.getByTestId('workbench-innerrail');
+    // InnerRail no longer renders RunningSection/SessionRow — the rail renders only:
+    // command palette button, add-project button, divider, and file tree / FilesSection.
+    // None of the mock session labels should appear.
+    expect(rail.textContent).not.toContain('Session Alpha Task');
+    expect(rail.textContent).not.toContain('Session Beta Task');
+    expect(rail.textContent).not.toContain('Session Charlie Task');
   });
 });

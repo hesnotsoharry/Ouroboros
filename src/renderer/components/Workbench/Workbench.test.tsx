@@ -367,9 +367,9 @@ describe('InnerRail', () => {
     expect(screen.getByTestId('workbench-innerrail')).toBeDefined();
   });
 
-  it('renders Running section with live session labels (current project)', () => {
-    // projectRoot mock = '/projects/agent-ide' → basename 'agent-ide'
-    // Sessions with cwd '/projects/agent-ide' → projectId 'agent-ide' → current
+  it('does not render session labels — the inner-rail session list was removed', () => {
+    // InnerRail no longer renders RunningSection/SessionRow. It renders:
+    // command palette button, add-project button, divider, and file tree.
     mockedAgentCtx.mockReturnValue(
       agentCtx([
         {
@@ -382,43 +382,11 @@ describe('InnerRail', () => {
           cwd: '/projects/agent-ide',
           toolCalls: [],
         },
-        {
-          id: 's2',
-          taskLabel: 'claude · refactor',
-          status: 'running',
-          startedAt: 900,
-          inputTokens: 0,
-          outputTokens: 0,
-          cwd: '/projects/agent-ide',
-          toolCalls: [],
-        },
       ]),
     );
     render(<InnerRail />);
-    expect(screen.getByText('claude · main')).toBeDefined();
-    expect(screen.getByText('claude · refactor')).toBeDefined();
-  });
-
-  it('does NOT render sessions from other projects (project-scoped rail — Wave 14 Phase 4)', () => {
-    // Wave 14 Phase 4: InnerRail is project-scoped — only sessions whose cwd resolves
-    // to the current projectId (agent-ide) are shown. Sessions from other projects
-    // (lumen-cli) must not appear regardless of their live status.
-    mockedAgentCtx.mockReturnValue(
-      agentCtx([
-        {
-          id: 's-other',
-          taskLabel: 'claude · streaming',
-          status: 'running',
-          startedAt: 800,
-          inputTokens: 0,
-          outputTokens: 0,
-          cwd: '/projects/lumen-cli',
-          toolCalls: [],
-        },
-      ]),
-    );
-    render(<InnerRail />);
-    expect(screen.queryByText('claude · streaming')).toBeNull();
+    // No session labels should appear in the rail.
+    expect(screen.queryByText('claude · main')).toBeNull();
   });
 
   it('renders the files section with a live WorkbenchFileTree (not mock entries)', () => {

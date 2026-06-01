@@ -14,9 +14,7 @@ import React from 'react';
 
 import { useProject } from '../../../contexts/ProjectContext';
 import { Icon } from '../../shared/Icon';
-import { useWorkbenchAgentData, type WorkbenchSession } from '../useWorkbenchAgentData';
-import { useWorkbenchProjects } from '../useWorkbenchProjects';
-import { iconBtnStyle, SectionLabel, StatusDot } from './InnerRail.parts';
+import { iconBtnStyle, SectionLabel } from './InnerRail.parts';
 import { InnerRailAddProjectButton } from './InnerRailAddProjectButton';
 import { WorkbenchFileTree } from './WorkbenchFileTree';
 
@@ -32,27 +30,17 @@ const RAIL_STYLE: React.CSSProperties = {
 };
 
 interface InnerRailProps {
+  /** Accepted for compatibility with the Workbench caller; no longer consumed —
+   * the collapse-to-unified trigger was removed with the Running section. */
   onCollapse?: () => void;
   onSelectFile?: (path: string) => void;
 }
 
-export function InnerRail({ onCollapse, onSelectFile }: InnerRailProps): React.ReactElement {
-  const { projectRoot } = useProject();
-  const { sessions } = useWorkbenchAgentData();
-  // projectId is basename(cwd); match against basename of the current project root.
-  const currentProjectId = projectRoot
-    ? (projectRoot.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? '')
-    : '';
-  const currentSessions = sessions.filter((s) => s.projectId === currentProjectId);
-
+export function InnerRail({ onSelectFile }: InnerRailProps): React.ReactElement {
   return (
     <div data-testid="workbench-innerrail" style={RAIL_STYLE}>
       <CommandPaletteButton />
       <InnerRailHeader />
-      <RunningSection
-        currentSessions={currentSessions}
-        onCollapse={onCollapse}
-      />
       <div style={{ height: 1, background: 'var(--stroke-faint)', margin: '0 10px' }} />
       <FilesSection onSelectFile={onSelectFile} />
     </div>
@@ -121,129 +109,6 @@ function InnerRailHeader(): React.ReactElement {
   );
 }
 
-// ── Running section ───────────────────────────────────────────────────────────
-
-function RunningSection({
-  currentSessions,
-}: {
-  currentSessions: WorkbenchSession[];
-  onCollapse?: () => void;
-}): React.ReactElement {
-  return (
-    <div style={{ padding: '8px 10px 8px', flexShrink: 0 }}>
-      {currentSessions.map((s) => (
-        <SessionRow key={s.id} session={s} isCurrent />
-      ))}
-    </div>
-  );
-}
-
-function SessionRow({
-  session,
-  isCurrent,
-}: {
-  session: WorkbenchSession;
-  isCurrent: boolean;
-}): React.ReactElement {
-  const projects = useWorkbenchProjects();
-  // Match by basename of project path vs session.projectId (both are basenames).
-  const project = projects.find(
-    (p) => p.path.replace(/\\/g, '/').split('/').filter(Boolean).pop() === session.projectId,
-  );
-  const chipColor = project?.color ?? 'var(--ink-4)';
-  const chipInitial = project?.initial ?? session.projectId[0]?.toUpperCase() ?? '?';
-
-  const rowStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '6px 6px',
-    borderRadius: 8,
-    cursor: 'pointer',
-    background: session.active ? 'var(--accent-tint)' : 'transparent',
-    border: session.active ? '1px solid var(--accent-edge)' : '1px solid transparent',
-    marginBottom: 2,
-    opacity: isCurrent ? 1 : 0.85,
-  };
-
-  return (
-    <div style={rowStyle}>
-      <ProjectMiniChip color={chipColor} initial={chipInitial} />
-      <KindIcon kind={session.kind} active={session.active} />
-      <SessionLabel label={session.label} sub={session.sub} />
-      <StatusDot status={session.status} />
-    </div>
-  );
-}
-
-function ProjectMiniChip({
-  color,
-  initial,
-}: {
-  color: string;
-  initial: string;
-}): React.ReactElement {
-  return (
-    <span
-      style={{
-        width: 16,
-        height: 16,
-        borderRadius: 4,
-        background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-        color: '#0a0b14',
-        fontSize: 9,
-        fontWeight: 800,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}
-    >
-      {initial}
-    </span>
-  );
-}
-
-function KindIcon({
-  kind,
-  active,
-}: {
-  kind: 'claude' | 'shell';
-  active: boolean;
-}): React.ReactElement {
-  return (
-    <span
-      style={{
-        color: active ? 'var(--accent-hi)' : 'var(--ink-3)',
-        display: 'inline-flex',
-        flexShrink: 0,
-      }}
-    >
-      <Icon name={kind === 'claude' ? 'Sparkle' : 'Terminal'} size={11} />
-    </span>
-  );
-}
-
-const ELLIPSIS: React.CSSProperties = {
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-};
-
-function SessionLabel({
-  label,
-  sub,
-}: {
-  label: string;
-  sub: string;
-}): React.ReactElement {
-  return (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: 11.5, color: 'var(--ink)', ...ELLIPSIS }}>{label}</div>
-      <div style={{ fontSize: 10, color: 'var(--ink-3)', ...ELLIPSIS }}>{sub}</div>
-    </div>
-  );
-}
 
 // ── Files section ─────────────────────────────────────────────────────────────
 
