@@ -87,26 +87,43 @@ function findSessionByPaneId(
 }
 
 /**
+ * Returns true when a session is eligible as a cwd-match candidate.
+ * A pane-bound session (paneId set) is ineligible when the incoming update
+ * carries no paneId — prevents a terminal Claude process sharing the same cwd
+ * from overwriting a workbench pane session's context gauge.
+ */
+function isCwdCandidate(
+  sessionPaneId: string | undefined,
+  incomingPaneId: string | undefined,
+): boolean {
+  return !(!incomingPaneId && sessionPaneId);
+}
+
+/**
  * Resolve a session by cwd — the statusline subprocess's process.cwd() matches the
  * Claude session's working directory. Finds running/idle sessions whose cwd matches
  * (exact or as a parent prefix) the given cwd. When multiple sessions match, prefer
  * the one whose cwd is longest (most specific). Falls back to the first match.
+ *
+ * @param incomingPaneId - The paneId carried by the incoming action. When absent,
+ *   pane-bound sessions are skipped: a terminal session (no paneId) sharing the same
+ *   cwd must not overwrite a workbench pane session (paneId set) via cwd-matching.
  */
 function findSessionByCwd(
   state: AgentState,
   cwd: string | undefined,
+  incomingPaneId: string | undefined,
 ): string | undefined {
   if (!cwd) return undefined;
   const normalized = normalizeCwd(cwd);
   let best: { id: string; cwdLen: number } | undefined;
   for (const s of state.sessions) {
     if (!s.cwd) continue;
+    if (!isCwdCandidate(s.paneId, incomingPaneId)) continue;
     const sCwd = normalizeCwd(s.cwd);
     const matches = normalized === sCwd || normalized.startsWith(sCwd + '/');
-    if (matches) {
-      if (!best || sCwd.length > best.cwdLen) {
-        best = { id: s.id, cwdLen: sCwd.length };
-      }
+    if (matches && (!best || sCwd.length > best.cwdLen)) {
+      best = { id: s.id, cwdLen: sCwd.length };
     }
   }
   return best?.id;
@@ -119,7 +136,7 @@ export function updateContextWindow(
   // Resolution priority: paneId → cwd → sessionId fallback.
   const targetId =
     findSessionByPaneId(state, action.paneId) ??
-    findSessionByCwd(state, action.cwd) ??
+    findSessionByCwd(state, action.cwd, action.paneId) ??
     action.sessionId;
   return updateSession(state, targetId, (session) => ({
     ...session,

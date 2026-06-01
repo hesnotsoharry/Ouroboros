@@ -224,4 +224,76 @@ describe('updateContextWindow', () => {
     });
     expect(next.sessions[0].contextUsedTokens).toBeUndefined();
   });
+
+  // ── paneId-null guard (IDE-runs-in-itself regression) ────────────────────────
+
+  it('paneId-null context_update does NOT overwrite a pane-bound session matched by cwd', () => {
+    // Setup: a workbench pane session with paneId set, cwd = AgentIDE root, 88k tokens.
+    // A terminal Claude session in the same cwd emits a context_update with no paneId.
+    // The terminal's event must NOT pollute the pane session's gauge.
+    const paneSession = makeSession({
+      id: 'ses-pane',
+      paneId: 'pane-1',
+      cwd: 'C:/Web App/AgentIDE',
+      contextUsedTokens: 88_000,
+      contextMaxTokens: 200_000,
+    });
+    const state = makeState([paneSession]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'terminal-session-id',
+      // paneId intentionally absent — this is a terminal/external Claude process
+      cwd: 'C:/Web App/AgentIDE',
+      contextUsedTokens: 126_000,
+      contextMaxTokens: 200_000,
+    });
+    // Pane session must be unchanged — terminal update must not overwrite it
+    const pane = next.sessions.find((s) => s.id === 'ses-pane');
+    expect(pane?.contextUsedTokens).toBe(88_000);
+  });
+
+  it('paneId context_update WITH matching paneId DOES update the pane-bound session', () => {
+    // Positive case: the same pane session receives an update that carries the correct paneId.
+    const paneSession = makeSession({
+      id: 'ses-pane',
+      paneId: 'pane-1',
+      cwd: 'C:/Web App/AgentIDE',
+      contextUsedTokens: 88_000,
+      contextMaxTokens: 200_000,
+    });
+    const state = makeState([paneSession]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'ses-pane',
+      paneId: 'pane-1',
+      cwd: 'C:/Web App/AgentIDE',
+      contextUsedTokens: 95_000,
+      contextMaxTokens: 200_000,
+    });
+    const pane = next.sessions.find((s) => s.id === 'ses-pane');
+    expect(pane?.contextUsedTokens).toBe(95_000);
+  });
+
+  it('paneId-null context_update CAN still update a non-pane session by cwd', () => {
+    // The guard only blocks pane-bound sessions. A terminal session in a folder with
+    // no in-app pane active should still drive the gauge via cwd.
+    const freeSession = makeSession({
+      id: 'ses-free',
+      // no paneId — this session has no workbench pane binding
+      cwd: 'C:/projects/other',
+      contextUsedTokens: 10_000,
+      contextMaxTokens: 200_000,
+    });
+    const state = makeState([freeSession]);
+    const next = updateContextWindow(state, {
+      type: 'CONTEXT_UPDATE',
+      sessionId: 'unknown',
+      // no paneId in the action
+      cwd: 'C:/projects/other',
+      contextUsedTokens: 50_000,
+      contextMaxTokens: 200_000,
+    });
+    const sess = next.sessions.find((s) => s.id === 'ses-free');
+    expect(sess?.contextUsedTokens).toBe(50_000);
+  });
 });
