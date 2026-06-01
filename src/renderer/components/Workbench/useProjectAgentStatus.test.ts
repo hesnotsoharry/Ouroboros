@@ -351,4 +351,26 @@ describe('deriveProjectStatus — closed-tab session excluded from working count
     expect(result.borderMode).toBe('working');
     expect(result.workingCount).toBe(1);
   });
+
+  it("counts a working session whose paneId is in the union set even when it represents a non-active (cached) project (cross-project navigation fix)", () => {
+    // Scenario: the user navigated from ProjectA to ProjectB. The agent running in
+    // ProjectA's tab (paneId='pane-project-a') is still working. After navigation,
+    // WorkbenchTabsProvider parks ProjectA's collections in projectCacheRef, so
+    // 'pane-project-a' is in the union (active + cached) but NOT in the active
+    // frame collections alone. The fix ensures the union is passed as openPaneIds
+    // so deriveProjectStatus does NOT exclude this working session.
+    const workingSession = makeSession({
+      id: 's1',
+      cwd: PROJECT_PATH,
+      paneId: 'pane-project-a',
+      toolCalls: [{ id: 't1', toolName: 'Read', status: 'pending', input: 'x', timestamp: 1 }],
+    });
+    // The union set includes the parked project's pane id (simulating collectOpenPaneIds
+    // over active + cached collections). Only 'pane-project-b' is in the active frame,
+    // but the union carries 'pane-project-a' from the cache.
+    const unionOpenPaneIds = new Set(['pane-project-b', 'pane-project-a']);
+    const result = deriveProjectStatus([workingSession], PROJECT_PATH, EMPTY_SEEN, unionOpenPaneIds);
+    expect(result.borderMode).toBe('working');
+    expect(result.workingCount).toBe(1);
+  });
 });

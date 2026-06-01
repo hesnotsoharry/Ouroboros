@@ -172,6 +172,7 @@ Terminals reuse the existing `src/renderer/components/Terminal/TerminalInstance.
 - **Scanlines render via a Workbench-local overlay (Wave 6).** `useScanlines()` in `Workbench.tsx`
   reads `document.documentElement.dataset.scanlines` (written by the theme bridge for Retro) and
   re-reads on `agent-ide:theme-applied`; the overlay is a `pointer-events:none` absolute div. Retro-only.
+- **Rail/globe "working" open-pane set MUST be the union of active + cached project collections**: use `collectOpenPaneIds` over `[upperColl, lowerColl, ...projectCacheRef.current.values().flatMap(fc => [fc.upper, fc.lower])]` — NOT just the two active frame collections. Reason: on project switch, `useProjectSwitch` parks the outgoing project's collections into `projectCacheRef` and resets the active collections to defaults; a working session's `paneId` (from the parked project) would be absent from the active-only set, causing `deriveProjectStatus` to wrongly exclude it from the working count (the closed-tab filter misfires on parked panes). The finished path has no pane filter, so it survives navigation fine. The union preserves the Bug E closed-tab fix because truly closed tabs are removed from their collection entirely and thus absent from the union.
 
 ## Wave sequence
 

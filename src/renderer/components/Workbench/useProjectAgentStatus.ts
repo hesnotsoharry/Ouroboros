@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 
 import { useAgentEventsContext } from '../../contexts/AgentEventsContext';
 import type { AgentSession } from '../AgentMonitor/types';
-import { useWorkbenchTabsContextSafe } from './Terminals/WorkbenchTabsProvider';
+import { useAllOpenPaneIdsSafe } from './Terminals/WorkbenchTabsProvider';
 import type { SeenKey } from './useProjectNotificationStore';
 import type { WorkbenchProject } from './useWorkbenchProjects';
 
@@ -128,35 +128,31 @@ export function deriveProjectStatus(
 
 /**
  * Returns a Map<projectPath, ProjectAgentStatusSummary> for all given projects.
- * Single useMemo over [agents, projects, seenKeys, openPaneIds].
+ * Single useMemo over [agents, projects, seenKeys, allOpenPaneIds].
  *
- * Derives the live open-pane id set from both workbench frames so closed-tab
- * sessions are excluded from working counts (Bug E fix). Safe: returns an empty
- * status map when AgentEventsContext is absent (e.g. isolated component tests that
- * render ProjectRail/UnifiedRail without providers).
+ * The open-pane id set spans all projects (active + cached) via
+ * useAllOpenPaneIdsSafe so closed-tab sessions are excluded from working counts
+ * (Bug E fix) without dropping working indicators when navigating away from a
+ * project (cached panes remain in the union). Safe: returns an empty status map
+ * when AgentEventsContext is absent (e.g. isolated component tests without providers).
  */
 export function useAllProjectAgentStatus(
   projects: WorkbenchProject[],
   seenKeys: ReadonlyMap<string, SeenKey>,
 ): Map<string, ProjectAgentStatusSummary> {
   const { agents } = useAgentEventsContext();
-  const upperCtx = useWorkbenchTabsContextSafe('upper');
-  const lowerCtx = useWorkbenchTabsContextSafe('lower');
+  const allOpenPaneIds = useAllOpenPaneIdsSafe();
 
   return useMemo(() => {
-    // Build the live pane-id set from both frames. When the provider is absent
-    // (test isolation, cold boot) both contexts are null → set stays empty and
-    // deriveProjectStatus falls back to the no-filter path.
-    const openPaneIds = new Set<string>();
-    for (const tab of upperCtx?.tabs ?? []) openPaneIds.add(tab.id);
-    for (const tab of lowerCtx?.tabs ?? []) openPaneIds.add(tab.id);
-
+    // When the provider is absent (test isolation, cold boot) allOpenPaneIds is
+    // null → empty set → deriveProjectStatus falls back to the no-filter path.
+    const openPaneIds = allOpenPaneIds ?? new Set<string>();
     const map = new Map<string, ProjectAgentStatusSummary>();
     for (const project of projects) {
       map.set(project.path, deriveProjectStatus(agents, project.path, seenKeys, openPaneIds));
     }
     return map;
-  }, [agents, projects, seenKeys, upperCtx, lowerCtx]);
+  }, [agents, projects, seenKeys, allOpenPaneIds]);
 }
 
 /** Convenience single-project hook. */

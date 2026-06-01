@@ -12,7 +12,7 @@
  * so switching back restores instantly without a persist-round-trip race.
  */
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TabCollection, TabState } from '../../../types/electron';
 import { useWorkbenchRestore } from './useWorkbenchRestore';
@@ -20,6 +20,7 @@ import { useWorkbenchSessionPersist } from './useWorkbenchSessionPersist';
 import {
   applyAddTab,
   applyRenameTab,
+  collectOpenPaneIds,
   resolveCloseResult,
   spawnRestoredShellTabs,
   spawnTab,
@@ -168,8 +169,7 @@ function applyColdStartCollection(
 
 /** Manages initial collection state (shell auto-spawn; CC gated). */
 function useTabRestoreInit(args: TabRestoreInitArgs): void {
-  const { restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot } = args;
-  const { cachedCollection } = args;
+  const { restoredCollection, isReady, spawnedTabsRef, cwd, projectRoot, cachedCollection } = args;
   const initializedForRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -286,6 +286,7 @@ function useFrameTabState(args: FrameTabStateArgs): UseWorkbenchTabsResult {
 interface WorkbenchTabsContextValue {
   upper: UseWorkbenchTabsResult;
   lower: UseWorkbenchTabsResult;
+  allOpenPaneIds: ReadonlySet<string>;
 }
 
 const WorkbenchTabsContext = createContext<WorkbenchTabsContextValue | null>(null);
@@ -328,10 +329,16 @@ function useProviderCollections(projectRoot: string | null) {
     setLowerCollection: setLowerColl,
   });
 
+  // Union of active + every cached project's pane ids (deps: [upperColl, lowerColl];
+  // projectCacheRef is a stable ref — exempt from exhaustive-deps, read fresh each recompute).
+  const allOpenPaneIds = useMemo(() => collectOpenPaneIds(
+    [upperColl, lowerColl, ...[...projectCacheRef.current.values()].flatMap((fc) => [fc.upper, fc.lower])],
+  ), [upperColl, lowerColl]);
+
   return {
     upperColl, setUpperColl, upperCollRef,
     lowerColl, setLowerColl, lowerCollRef,
-    spawnedTabsRef, spawnedTabIdsState, markSpawned, cachedCollections,
+    spawnedTabsRef, spawnedTabIdsState, markSpawned, cachedCollections, allOpenPaneIds,
   };
 }
 
@@ -350,7 +357,7 @@ export function WorkbenchTabsProvider({
   const {
     upperColl, setUpperColl, upperCollRef,
     lowerColl, setLowerColl, lowerCollRef,
-    spawnedTabsRef, spawnedTabIdsState, markSpawned, cachedCollections,
+    spawnedTabsRef, spawnedTabIdsState, markSpawned, cachedCollections, allOpenPaneIds,
   } = useProviderCollections(projectRoot);
 
   const upper = useFrameTabState({
@@ -382,7 +389,7 @@ export function WorkbenchTabsProvider({
   });
 
   return (
-    <WorkbenchTabsContext.Provider value={{ upper, lower }}>{children}</WorkbenchTabsContext.Provider>
+    <WorkbenchTabsContext.Provider value={{ upper, lower, allOpenPaneIds }}>{children}</WorkbenchTabsContext.Provider>
   );
 }
 
@@ -390,9 +397,7 @@ export function WorkbenchTabsProvider({
 
 export function useWorkbenchTabsContext(frame: 'upper' | 'lower'): UseWorkbenchTabsResult {
   const ctx = useContext(WorkbenchTabsContext);
-  if (!ctx) {
-    throw new Error('useWorkbenchTabsContext must be used inside <WorkbenchTabsProvider>');
-  }
+  if (!ctx) throw new Error('useWorkbenchTabsContext must be used inside <WorkbenchTabsProvider>');
   return ctx[frame];
 }
 
@@ -406,4 +411,14 @@ export function useWorkbenchTabsContextSafe(
 ): UseWorkbenchTabsResult | null {
   const ctx = useContext(WorkbenchTabsContext);
   return ctx ? ctx[frame] : null;
+}
+
+/**
+ * Returns the union of all open pane ids (active + cached project collections),
+ * or null when called outside a WorkbenchTabsProvider.
+ * Null callers should fall back to an empty Set (no-filter path).
+ */
+export function useAllOpenPaneIdsSafe(): ReadonlySet<string> | null {
+  const ctx = useContext(WorkbenchTabsContext);
+  return ctx ? ctx.allOpenPaneIds : null;
 }

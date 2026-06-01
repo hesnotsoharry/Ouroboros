@@ -5,6 +5,20 @@
 
 import type { TabCollection, TabState } from '../../../types/electron';
 
+// ── Open-pane union helper ────────────────────────────────────────────────────
+
+/**
+ * Collects all tab ids from an iterable of TabCollections into a single Set.
+ * Used to build the union of active + cached project pane ids so the rail/globe
+ * "working" indicator is not dropped when the user navigates to a different project
+ * (the parked project's panes must remain in the open set).
+ */
+export function collectOpenPaneIds(collections: Iterable<TabCollection>): Set<string> {
+  const ids = new Set<string>();
+  for (const c of collections) for (const t of c.tabs) ids.add(t.id);
+  return ids;
+}
+
 // ── Collection mutation helpers ────────────────────────────────────────────────
 
 export function resolveCloseResult(prev: TabCollection, id: string): TabCollection {

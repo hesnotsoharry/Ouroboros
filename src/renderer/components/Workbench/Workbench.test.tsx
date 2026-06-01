@@ -128,6 +128,8 @@ vi.mock('./Terminals/WorkbenchTabsProvider', () => ({
   WorkbenchTabsProvider: ({ children }: { children: React.ReactNode }) => children,
   // Safe variant used by useWorkbenchGlobeData — return null (no active context in tests).
   useWorkbenchTabsContextSafe: vi.fn().mockReturnValue(null),
+  // Safe variant used by useAllProjectAgentStatus — return null (no-filter fallback).
+  useAllOpenPaneIdsSafe: vi.fn().mockReturnValue(null),
 }));
 
 // WorkbenchRestore + SessionPersist — needed so the WorkbenchTabsProvider pass-through
