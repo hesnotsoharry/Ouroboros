@@ -146,6 +146,64 @@ describe('useWorkbenchGlobeData — ready-between-turns (Bug 1)', () => {
   });
 });
 
+describe('useWorkbenchGlobeData — never-prompted session shows ready, not thinking (Bug C fix)', () => {
+  it("returns 'ready' for a running session with zero turns and zero tool calls (freshly spawned)", () => {
+    // A session that just spawned: status=running, no conversationTurns, no toolCalls,
+    // no lastTurnEndedAt. BEFORE the fix this returned 'thinking', which was wrong.
+    setPaneId('pane-1');
+    const session = makeSession({
+      id: 'sess-new',
+      paneId: 'pane-1',
+      status: 'running',
+      toolCalls: [],
+      // no conversationTurns, no lastTurnEndedAt
+    });
+    const data = globeData([session]);
+    expect(data.state).toBe('ready');
+  });
+
+  it("returns 'ready' for a session whose turn just finished (lastTurnEndedAt set)", () => {
+    // This was already covered above but is restated here for symmetry: both
+    // "finished a turn" and "never started a turn" must show 'ready'.
+    setPaneId('pane-1');
+    const session = makeSession({
+      id: 'sess-done',
+      paneId: 'pane-1',
+      status: 'running',
+      toolCalls: [{ id: 'tc1', toolName: 'Read', input: 'x', timestamp: 2000, status: 'success' }],
+      lastTurnEndedAt: 3000,
+    });
+    const data = globeData([session]);
+    expect(data.state).toBe('ready');
+  });
+
+  it("returns 'thinking' for a running session with a conversation turn but no pending tool", () => {
+    // Has a conversation turn (user sent a prompt) but no tool call yet — that IS thinking.
+    setPaneId('pane-1');
+    const session = makeSession({
+      id: 'sess-thinking',
+      paneId: 'pane-1',
+      status: 'running',
+      toolCalls: [],
+      conversationTurns: [{ type: 'prompt', content: 'do something', timestamp: 2000 }],
+    });
+    const data = globeData([session]);
+    expect(data.state).toBe('thinking');
+  });
+
+  it("returns 'running' for a session with a pending tool (regardless of turn count)", () => {
+    setPaneId('pane-1');
+    const session = makeSession({
+      id: 'sess-running',
+      paneId: 'pane-1',
+      status: 'running',
+      toolCalls: [{ id: 'tc1', toolName: 'Bash', input: 'ls', timestamp: 2000, status: 'pending' }],
+    });
+    const data = globeData([session]);
+    expect(data.state).toBe('running');
+  });
+});
+
 describe('useWorkbenchGlobeData — no-match pane shows idle/empty, not ambient session (Bug 2)', () => {
   it('shows fresh/empty when paneId is resolved but no session matches it', () => {
     setPaneId('pane-for-active-tab');

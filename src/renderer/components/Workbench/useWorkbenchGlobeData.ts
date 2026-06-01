@@ -93,17 +93,44 @@ function useGlobePaneId(): string | null {
 
 // ── Presentation-state derivation ─────────────────────────────────────────────
 
-function deriveState(session: AgentSession | null): WorkbenchAgentState {
-  if (!session || session.status === 'idle') return 'fresh';
+/**
+ * Returns true when the session has received any activity that indicates a turn
+ * is (or was) in progress: at least one conversation turn (user_prompt_submit /
+ * elicitation arrived) OR at least one tool call (pre_tool_use arrived).
+ *
+ * A freshly-spawned session that has NEVER been prompted has neither — it is
+ * idle/ready (not mid-turn) and must not be classified as 'thinking'.
+ */
+function hasActivity(session: AgentSession): boolean {
+  return (session.conversationTurns?.length ?? 0) > 0 || session.toolCalls.length > 0;
+}
+
+/**
+ * Resolves the non-active ("resting") states: terminal status, the confirmed
+ * turn-end rest state, and the never-prompted spawned-idle state. Returns null
+ * when the session is genuinely mid-turn (caller derives awaiting/running/thinking).
+ */
+function deriveRestingState(session: AgentSession): WorkbenchAgentState | null {
+  if (session.status === 'idle') return 'fresh';
   if (session.status === 'error') return 'errored';
   if (session.status === 'complete') return 'done';
-  // session_stop arrived: session is alive but resting between turns.
+  // session_stop arrived: alive but resting between turns.
   if (session.lastTurnEndedAt !== undefined) return 'ready';
+  // Never been prompted (zero turns, zero tool calls) — spawned but idle.
+  // 'ready' → globe shows "Agent Ready" rather than the misleading 'thinking'
+  // (Bug C fix: no turn is actually in progress yet).
+  if (!hasActivity(session)) return 'ready';
+  return null;
+}
+
+function deriveState(session: AgentSession | null): WorkbenchAgentState {
+  if (!session) return 'fresh';
+  const resting = deriveRestingState(session);
+  if (resting) return resting;
   const perms = session.permissionEvents ?? [];
   if (perms.length > 0 && perms[perms.length - 1].type === 'request') return 'awaiting';
-  // No pending tool and no turn-end signal — session is actively thinking.
-  // 'thinking' is the best-effort heuristic for running + no active tool (no wire signal).
-  // 'ready' is reserved for the confirmed turn-end (lastTurnEndedAt set) path above.
+  // No turn-end signal but activity present — actively thinking ('thinking' is the
+  // best-effort heuristic for running + no active tool; the wire has no signal).
   return session.toolCalls.some((tc) => tc.status === 'pending') ? 'running' : 'thinking';
 }
 
