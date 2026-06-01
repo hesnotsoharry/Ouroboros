@@ -51,6 +51,8 @@ const VALID_TYPES = new Set<string>([
   'pre_compact',
   'post_compact',
   'instructions_loaded',
+  // Context usage (statusline push — statusline_capture.mjs sends this type)
+  'context_update',
   // Permissions
   'permission_request',
   'permission_denied',

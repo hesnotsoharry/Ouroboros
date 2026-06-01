@@ -25,7 +25,7 @@ import { buildApplicationMenu } from './menu';
 import { runStaleRootsMigration } from './migrateStaleRoots';
 // prettier-ignore
 import { cleanupPerfSubscriber, clearPerfSubscribers, initializePerfMetrics, markStartup, startPerfMetrics as startManagedPerfMetrics, stopPerfMetrics as stopManagedPerfMetrics } from './perfMetrics';
-import { generatePipeTokens, setTokenFilePath } from './pipeAuth';
+import { generatePipeTokens, setTokenFilePath, writeHooksAddress } from './pipeAuth';
 import { dispatchPermalinkFromArgv, setupThreadProtocol } from './protocolHandler';
 import { registerBuiltinProviders } from './providerBootstrap';
 import { killAllPtySessions } from './pty';
@@ -118,7 +118,15 @@ async function injectStandaloneMcpEntry(): Promise<void> {
 async function startBackgroundServices(win: BrowserWindow): Promise<void> {
   await runStartupStep(
     '[main] failed to start hooks server:',
-    async () => startHooksServer(win),
+    async () => {
+      const result = await startHooksServer(win);
+      // Persist the resolved address (named-pipe path or TCP "host:port") so
+      // hook subprocesses that run without OUROBOROS_HOOKS_ADDRESS in their env
+      // (e.g. statusline_capture spawned by Claude Code with stripped IDE env vars)
+      // can still discover the address from the token file on disk.
+      const addr = typeof result.port === 'string' ? result.port : `127.0.0.1:${result.port}`;
+      writeHooksAddress(addr);
+    },
     true,
   );
   await runStartupStep('[main] failed to start IDE tool server:', startIdeTools);

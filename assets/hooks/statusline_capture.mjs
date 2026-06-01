@@ -7,7 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { loadTokens, sendEvent, shouldSkipForNoIde } from './lib/ouroboros.mjs';
+import { loadTokens, parseAddress, sendEvent, shouldSkipForNoIde } from './lib/ouroboros.mjs';
 
 function readStdin() {
   return new Promise((resolve) => {
@@ -76,6 +76,7 @@ if (ctx && !shouldSkipForNoIde()) {
   const { hooksToken } = loadTokens();
   if (hooksToken) {
     const sessionId = sessionIdFromData ?? process.env.CLAUDE_SESSION_ID ?? 'unknown';
+    const resolvedAddr = parseAddress();
     const sent = await sendEvent({
       type: 'context_update',
       paneId: paneId ?? undefined,
@@ -95,7 +96,12 @@ if (ctx && !shouldSkipForNoIde()) {
           import('node:path').then(({ join }) => {
             appendFileSync(
               join(homedir(), '.ouroboros', 'statusline-trace.log'),
-              JSON.stringify({ ts: new Date().toISOString(), sendEventResult: sent, cwd: cwdValue }) + '\n',
+              JSON.stringify({
+                ts: new Date().toISOString(),
+                sendEventResult: sent,
+                cwd: cwdValue,
+                resolvedAddr,
+              }) + '\n',
               'utf8',
             );
           });

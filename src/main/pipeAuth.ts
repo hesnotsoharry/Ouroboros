@@ -46,6 +46,11 @@ interface PersistedTokens {
   toolToken: string;
   hooksToken: string;
   generatedAt: number;
+  /** Address of the hooks server (e.g. "127.0.0.1:3333" or the named-pipe path).
+   * Written after the server starts so hook subprocesses that lost OUROBOROS_HOOKS_ADDRESS
+   * (e.g. statusline_capture spawned by Claude Code with stripped IDE env) can still
+   * discover the address from disk. */
+  hooksAddress?: string;
 }
 
 interface PreviousTokenBundle {
@@ -131,10 +136,28 @@ export function readPersistedTokens(): PersistedTokens | null {
       toolToken: parsed.toolToken,
       hooksToken: parsed.hooksToken,
       generatedAt: parsed.generatedAt,
+      hooksAddress: typeof parsed.hooksAddress === 'string' ? parsed.hooksAddress : undefined,
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * Persist the hooks server address alongside the existing token file so that
+ * hook subprocesses that have lost OUROBOROS_HOOKS_ADDRESS from their env
+ * (e.g. statusline_capture spawned by Claude Code with stripped IDE env vars)
+ * can discover the address from disk. Call once after startHooksServer resolves.
+ */
+export function writeHooksAddress(address: string): void {
+  if (!_tokenFilePath) return;
+  const existing = readPersistedTokens();
+  if (!existing) {
+    log.warn('[PipeAuth] writeHooksAddress: no token file to update');
+    return;
+  }
+  writeTokenFile(_tokenFilePath, { ...existing, hooksAddress: address });
+  log.info(`[PipeAuth] Hooks address persisted to disk: ${address}`);
 }
 
 /** Best-effort delete the persisted token file on app quit. */

@@ -52,7 +52,17 @@ export function loadTokens() {
 export function parseAddress() {
   let host = '127.0.0.1';
   let port = 3333;
-  const addr = process.env.OUROBOROS_HOOKS_ADDRESS;
+  // Prefer the injected env var (always set for IDE-spawned PTYs).
+  // Fall back to the disk token file when the env is absent — Claude Code strips
+  // OUROBOROS_HOOKS_ADDRESS from hook subprocesses like statusline_capture.
+  const addr = process.env.OUROBOROS_HOOKS_ADDRESS || (() => {
+    const p = getTokenFilePath();
+    if (!p) return null;
+    try {
+      const data = JSON.parse(readFileSync(p, 'utf8'));
+      return (typeof data.hooksAddress === 'string' && data.hooksAddress) ? data.hooksAddress : null;
+    } catch { return null; }
+  })();
   if (!addr) return { host, port };
   if (/^\d+$/.test(addr)) return { host, port: parseInt(addr, 10) };
   const m = addr.match(/^(.+):(\d+)$/);
