@@ -1,39 +1,38 @@
 ---
 project: agent-ide
-updated: 2026-05-31
-active-focus: SHIPPED — workbench bug stack + Start-Claude no-auto-spawn merged to master. NEXT — live-smoke the Start Claude button (npm run dev) + glance at the CI full-suite result on the master push.
-last-wave: wave-101-telemetry-pipeline-removal
+updated: 2026-06-02
+active-focus: SHIPPED — workbench context-gauge + rail/globe status stack merged to master. Start Claude button USER-VERIFIED working. NEXT — glance at CI full-suite on the master push; optionally chip at residual follow-ups.
+last-wave: workbench-context-gauge-rail-status (fix-sweep, merged 2026-06-02)
 last-wave-status: SHIPPED
 ---
 
-## Where we are (2026-05-31)
+## Where we are (2026-06-02)
 
-Everything is on **master** (`ea1546f1`) — local == origin, working tree clean, the
-`freeze-fix-and-wave-101-scaffold` branch deleted (local + remote), no orphaned
-worktrees. CI runs the full suite on this master push — glance at it (local 17-min
-suite exceeds the agent tool cap; typecheck both layers + all touched scoped suites
-were green pre-merge).
+Everything is on **master** (`2892a829`) — local == origin, working tree clean, all
+feature branches deleted (`chore/cbmignore-vendored-exclusions`,
+`fix-sweep-titlebar-innerrail-cleanup`), no orphaned worktrees. Merge gate before
+push: typecheck (both layers) + lint (0 errors) + build all green. CI runs the full
+suite on this push — glance at it (local 17-min suite exceeds the agent tool cap).
 
-**Shipped in this one stack:**
-- **wave-101** — telemetry SQLite pipeline removed (the freeze cause). Freeze is
-  USER-VERIFIED fixed; no synchronous SQLite write remains on the main loop.
-- **Machine-lockup fix** — launch-time session-restore spawn loop capped + dedup'd.
-- **windowGroups** — per-window multi-root rail persistence (previously held; now shipped).
-- **Workbench AgentSidebar 4-part fix** (all live-verified):
-  - `2f35f27d` agent_end no longer un-owns the live session (silent-after-turn-1)
-  - `9aea7ce9` interactive/terminal Claude+Codex **resume removed** — always fresh
-  - `6ad5747f` **inferSessionId paneId guard** — the real project-switch misbinding fix
-  - `1e2f9a70` trace cleanup
-- **Start Claude button** `cc7d6ebd` — projects no longer auto-spawn Claude; centered
-  "Start Claude" button in the upper terminal, click to spawn.
+**Shipped in this fix-sweep (merged 2026-06-02):**
+- **Live context gauge** wired from the Claude Code statusline (`23836137`); routes
+  by cwd, not pane id — the statusline lacks a pane id (`7ef186c8`, `30359f86`).
+- **"Agent Ready" turn-end state** across globe, NOW, timeline (`9f397a30`).
+- **Cross-project agent status on the outer rail** (`3d1c7f55`); rail/globe "working"
+  set = union of active + cached project collections (`eb07dbd9`, `82157fb4`).
+- **Inner-rail cleanup** — removed running-session list (`5d33dc75`); trace-log strip.
+- **`.cbmignore`** — vendored source excluded from the codebase graph (`5d358484`).
+- **Start Claude button** — USER-VERIFIED working (2026-06-02): button present, no
+  auto-spawn, click spawns. Closes the last open smoke item from the prior stack.
+
+**Prior stack (still on master, wave-101 era):** telemetry SQLite pipeline removed
+(freeze fix, USER-VERIFIED), launch-time spawn-loop cap, windowGroups per-window rail
+persistence, Workbench AgentSidebar 4-part fix.
 
 ## Next steps
 
-1. **Live-smoke the Start Claude button** (only piece not yet eyeballed): `npm run dev`
-   → projects open with the button and NO auto-spawn; clicking it spawns; a started
-   pane persists across project switch; the lower shell still auto-starts.
-2. Glance at the CI full-suite result on the master push.
-3. (Optional) chip at the residual follow-ups below.
+1. Glance at the CI full-suite result on the master push.
+2. (Optional) chip at the residual follow-ups below.
 
 ## Critical context / decisions (2026-05-31)
 
