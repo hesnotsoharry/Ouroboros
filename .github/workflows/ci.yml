@@ -4,6 +4,14 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Weekly full-suite backstop. Affected-only selection (the Test step below)
+  # runs only tests the static import graph links to the diff — it can miss a
+  # cross-process break wired by runtime channel strings, not imports. The
+  # weekly full run catches those. Monday 06:00 UTC, mirroring ci-stryker.
+  schedule:
+    - cron: '0 6 * * 1'
+  # Manual full run — trigger from the Actions tab (e.g. before a release).
+  workflow_dispatch:
 
 jobs:
   validate:
@@ -14,12 +22,18 @@ jobs:
         # so the macOS runner is redundant. Re-add 'macos-latest' to restore it.
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    # 35-min job budget: the test suite alone is ~17 min Windows-local and
-    # CI runners are ~1.5–2× slower (~25–30 min). The previous 20-min cap
-    # made the Test step's own timeout-minutes moot. Bumped 20 → 35.
-    timeout-minutes: 35
+    # 40-min job budget. Affected-only runs (the common push/PR case) finish in
+    # minutes, but the weekly full-suite backstop is ~25–30 min on CI runners
+    # (~17 min Windows-local, runners ~1.5–2× slower) on top of ~10 min setup.
+    # 35 was too tight for the full run to clear comfortably; bumped 35 → 40.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        # fetch-depth: 0 — `vitest --changed` diffs the working tree against a
+        # base SHA to find changed files. The default depth-1 shallow clone has
+        # no base commit to diff against, so --changed would see everything.
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -107,14 +121,49 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Affected-only test selection. push/PR → run only tests whose module
+      # graph touches the diff (`vitest --changed <base>`). schedule / manual
+      # dispatch → empty args → FULL suite (the weekly backstop). bash runs on
+      # both ubuntu and windows runners (git-bash), so the logic is uniform.
+      - name: Select test scope
+        id: scope
+        shell: bash
+        # Context values pass through env vars, not direct ${{ }} interpolation
+        # into the script body — GitHub's script-injection-hardening pattern.
+        # (These specific values are GitHub-set hex SHAs / fixed event names and
+        # not attacker-controllable, but env-var indirection is safe-by-default
+        # so the pattern stays safe if a maintainer adds a richer context value.)
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if [[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "Full suite (event: $EVENT_NAME)"
+            echo "args=" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+            echo "Affected tests vs PR base $PR_BASE_SHA"
+            echo "args=--changed $PR_BASE_SHA" >> "$GITHUB_OUTPUT"
+          else
+            # All-zeros sentinel = new branch / force-push with no valid base.
+            if [[ -z "$PUSH_BEFORE" || "$PUSH_BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+              echo "No valid base SHA — full suite"
+              echo "args=" >> "$GITHUB_OUTPUT"
+            else
+              echo "Affected tests vs $PUSH_BEFORE"
+              echo "args=--changed $PUSH_BEFORE" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
       - name: Test
-        # 25-min budget: full local Windows suite is ~17 min (measured
-        # 2026-05-14, 1065 files / 10993 tests); CI Windows runners are
-        # ~1.5–2× slower (~25–30 min). The previous 10-min cap was too
-        # tight (tests stream through normally and hit the cap before
-        # completing — no hang). Bumped 10 → 25.
-        timeout-minutes: 25
-        run: npm run test -- --reporter=verbose
+        # Affected-only on push/PR (minutes); full suite on schedule/dispatch.
+        # 30-min budget covers the weekly full run: local Windows suite is ~17
+        # min (2026-05-14, 1065 files / 10993 tests); CI runners ~1.5–2× slower
+        # (~25–30 min), so 25 sat at the lower bound. Bumped 25 → 30.
+        # --passWithNoTests: a docs/comment-only diff has zero affected tests;
+        # without it `vitest run` exits non-zero and fails the build.
+        timeout-minutes: 30
+        run: npm run test -- --reporter=verbose --passWithNoTests ${{ steps.scope.outputs.args }}
 
       - name: Build (Electron)
         run: npm run build

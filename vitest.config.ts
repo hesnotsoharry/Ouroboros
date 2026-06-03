@@ -56,6 +56,18 @@ export default defineConfig({
     testTimeout: 20000,
     hookTimeout: 20000,
     teardownTimeout: 3000,
+    // Files that force the WHOLE suite to run under `--changed` (CI affected-only
+    // selection), regardless of the import graph. Setting this option replaces
+    // vitest's defaults, so the first two entries re-list them verbatim.
+    forceRerunTriggers: [
+      '**/package.json/**', // vitest default
+      '**/{vitest,vite}.config.*/**', // vitest default
+      '**/package-lock.json/**', // lockfile:sync changes deps without touching package.json
+      '**/electron.vite.config.*/**', // build config affects all 3 targets (main/preload/renderer)
+      // IPC contract is type-only → erased from the runtime module graph, so
+      // `--changed` can't link it to dependent tests. Force a full run on change.
+      '**/src/renderer/types/electron*.d.ts/**',
+    ],
     server: {
       deps: {
         // Force mica-electron through Vite's transform pipeline so the

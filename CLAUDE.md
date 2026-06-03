@@ -46,6 +46,8 @@ The full suite consistently exceeds agent timeouts (~1000s / ~17 min on Windows-
 
 Full suite + lint + typecheck still runs at commit/wave-end. Scoped runs are for the implementation loop.
 
+**CI runs affected-only tests** (`.github/workflows/ci.yml`): push/PR runs `vitest --changed <base>` — only tests the module graph links to the diff. A green PR/push CI does NOT mean the full suite ran. The full suite runs on the **weekly schedule** (Monday 06:00 UTC) and via manual `workflow_dispatch`. `forceRerunTriggers` in `vitest.config.ts` escalates to a full run when `package.json`, the lockfile, any vite/vitest config, or the IPC contract (`src/renderer/types/electron*.d.ts`) changes — the contract is type-only so the import graph can't see it. Before a release, trigger a manual full run from the Actions tab.
+
 ### Lockfile
 
 `package-lock.json` is regenerated **only** via `npm run lockfile:sync` — never hand-edited, never Windows-regenerated. The wrapper runs a from-scratch install in WSL2 (`~/lockgen/agent-ide/` on ext4) to produce a complete cross-platform lockfile (win32+linux+darwin optional deps). The pre-push hook (`scripts/hooks/pre-push`, install once: `git config core.hooksPath scripts/hooks`) blocks any lockfile change lacking a valid `.lockfile-sync.marker`. Advisory bypass: `LOCKFILE_SYNC_GUARD_BYPASS=1 git push`. Background: `roadmap/wave-92-cross-platform-lockfile-stryker/`.
