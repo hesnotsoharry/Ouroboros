@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+Read `CLAUDE.md` for product architecture, environment gotchas, and current
+working conventions. Historical wave files are reference material, not an
+active delivery process.
+
 ## Project Structure & Module Organization
 
 Ouroboros is an Electron/Vite TypeScript app. Core source lives in `src/`:
