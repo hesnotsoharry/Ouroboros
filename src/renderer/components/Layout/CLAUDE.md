@@ -128,6 +128,7 @@ Event name constants live in `../../hooks/appEventNames`. Never dispatch these f
 - **`agent-ide:apply-layout` is atomic** — calls both `applySizes` and `applyState` in the same handler so panels don't flash to an intermediate state.
 - **`InnerAppLayout` providers order matters**: `FileViewerManager` wraps everything; `IdeToolBridge` must be inside `FileViewerManager` to access its context; `MultiBufferManager` and `DiffReviewProvider` are innermost.
 - **Mobile nav** (`MobileNavBar`) is rendered by `AppLayout` but hidden via CSS (`web-mobile-only` class) in Electron — collapses the panel layout into a single-panel switcher for web/mobile deployment.
+- **`ChatOnlyShell/` is NOT part of the retired in-IDE chat surface** — despite the name, it is the live terminal-first "chat workbench shell" (Wave 89+) and the only shell on mobile web (`App.helpers.tsx`: `isImmersive = isChatWindow || immersiveFlag || isMobileWeb` renders `<ChatOnlyShellWrapper>`). The Wave 100 chat-surface-removal triage initially mis-scoped it as deletable chat UI before a working-tree check corrected it. Reason: "Chat" in the name is a Wave-42 historical artifact, not a description of current scope — verify any `Chat*`-named component against the live render path before assuming it's dead.
 
 ## Dependencies
 

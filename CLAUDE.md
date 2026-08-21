@@ -34,7 +34,7 @@ The full suite consistently exceeds agent timeouts (~1000s / ~17 min on Windows-
 |---|---|---|
 | `test:main` | `src/main` | Electron main process, IPC handlers, native deps |
 | `test:renderer` | `src/renderer` | React UI (large — prefer narrower) |
-| `test:layout` | `src/renderer/components/Layout` | App shell, panes, title bar, workbench |
+| `test:layout` | `src/renderer/components/Layout` | App shell, panes, title bar (does **NOT** cover Workbench — sibling dir, no scoped script; run `npx vitest run src/renderer/components/Workbench` directly, see `.claude/known-issues.md`) |
 | `test:filetree` | `src/renderer/components/FileTree` | File tree |
 | `test:orchestration` | `src/main/orchestration` | Orchestration runtime |
 | `test:ipc` | `src/main/ipc-handlers` | IPC handler implementations |
@@ -44,7 +44,7 @@ The full suite consistently exceeds agent timeouts (~1000s / ~17 min on Windows-
 | `test:shared` | `src/shared` | Shared types / pure helpers |
 | `test:tools` | `tools`, `scripts` | Build / analysis tooling |
 
-Full suite + lint + typecheck still runs at commit/wave-end. Scoped runs are for the implementation loop.
+Use scoped tests during implementation. Run `npm run validate` for broad shared changes; the full suite remains scheduled/manual because it exceeds ordinary agent timeouts.
 
 **CI runs affected-only tests** (`.github/workflows/ci.yml`): push/PR runs `vitest --changed <base>` — only tests the module graph links to the diff. A green PR/push CI does NOT mean the full suite ran. The full suite runs on the **weekly schedule** (Monday 06:00 UTC) and via manual `workflow_dispatch`. `forceRerunTriggers` in `vitest.config.ts` escalates to a full run when `package.json`, the lockfile, any vite/vitest config, or the IPC contract (`src/renderer/types/electron*.d.ts`) changes — the contract is type-only so the import graph can't see it. Before a release, trigger a manual full run from the Actions tab.
 
@@ -80,21 +80,18 @@ Full suite + lint + typecheck still runs at commit/wave-end. Scoped runs are for
 
 Each subdirectory has its own `CLAUDE.md` with a subsystem-specific file map.
 
-## Codebase Graph — use it FIRST
+## Codebase Graph
 
 The codebase-graph MCP server is a standalone Node process configured in `.mcp.json` at the repo root
 (gitignored — present on each machine after Wave 22 install). Tools surface as `mcp__ouroboros__*` in
 fresh Claude Code sessions (restart Claude Code after any `.mcp.json` edit to pick up the config).
 
-**Default behavior for symbol queries: graph tools FIRST, Grep is the fallback.** When the question is
-"who calls X", "where is X defined", "what's the body of X", "what depends on X" — use
+For call and dependency questions such as "who calls X" or "what depends on X",
+the graph can be faster and more accurate than text matching. Useful tools include
 `mcp__ouroboros__trace_call_path`, `mcp__ouroboros__search_graph`, `mcp__ouroboros__get_code_snippet`,
-`mcp__ouroboros__detect_changes`, or `mcp__ouroboros__query_graph` BEFORE reaching for Grep. Grep
-returns text matches including comments and same-name unrelated occurrences; the graph returns actual
-structural edges.
-
-If you find yourself running a Grep for an identifier and following it with three Reads to disambiguate,
-you skipped the graph. See `~/.claude/rules-deferred/graph-tool-routing.md` for the full routing table.
+`mcp__ouroboros__detect_changes`, and `mcp__ouroboros__query_graph`. Use Grep for
+exact text, configuration, paths, and simple lookups. Pick the cheaper tool for
+the question; graph use is not a gate.
 
 Codemode is also enabled — graph tools surface as `servers.ouroboros.*` inside `execute_code`
 (the codemode proxy's single tool). Example:
@@ -120,7 +117,34 @@ Never mix these. IPC events flow through preload. DOM events are renderer-only.
 
 Each window owns its project roots independently via `ManagedWindow.projectRoots` in `windowManager.ts`. The renderer persists roots per-window via `window.setProjectRoots()` IPC (not the global `multiRoots` config key). `pathSecurity` reads per-window roots first, with `defaultProjectRoot` as a cold-boot fallback only. Window sessions (roots + bounds) are persisted to `sessionsData` (SQLite) and restored on relaunch.
 
+### Product Philosophy — Amplifier, Not Replacement
+
+Ouroboros is not a generalist AI IDE like Cursor or Windsurf. It exists specifically to improve the Claude Code / Codex experience by amplifying the underlying agent, never throttling it.
+
+- Never impose artificial turn limits, wall-clock timeouts, or cost-throttling on an agent surface — match CLI behavior; the model decides when it's done, not the IDE.
+- Never build tool execution, agent loops, or subagent infrastructure inside the IDE — that is Claude Code's / Codex's job. The IDE observes and prepares context; it doesn't execute.
+- Internal capabilities (e.g. the codebase graph) are valid when they make the IDE a better observer/preparer of context — not when they turn the IDE into a competing agent.
+- Before building a new capability, ask: does this make the IDE a better observer/preparer, or is it trying to be the agent? If the latter, stop.
+
+(Lesson from a 2026-03 incident: ~24 hours were spent building a full tool-execution engine — Anthropic API tool loop, subagent runner — that directly contradicted this philosophy and was later killed as policy-incompatible dead code. Check new work against this philosophy while it's still cheap to redirect, not after it's built.)
+
+### New Boolean Feature Flags Default to `true`
+
+When adding a new feature flag / opt-in setting to `ClaudeCliSettings`, `AgentChatSettings`, `configSchema*.ts`, or equivalent config schemas — default it to `true`, not `false`. Cole is the IDE's primary user; flags defaulted off don't get exercised in practice, so soak-testing never happens.
+
+Default `false` remains correct for: destructive operations (data loss / state overwrite risk), security-sensitive surfaces (new OAuth scopes, new tool permissions, sandbox relaxations), unsoaked experimental code where a regression would be hard to diagnose, or flags depending on unguaranteed external state (a specific CLI version, etc.). When in doubt, default `true` and call it out explicitly so it can be flipped back.
+
+### Auth Constraint — Max Subscription Only, No API Key
+
+The IDE authenticates exclusively via Claude Max/Pro OAuth tokens managed by the Claude CLI (`~/.claude/.credentials.json`) — there is no Anthropic API key. Implications for any AI-calling feature:
+
+- Direct Anthropic SDK calls using the OAuth token are not officially supported and are intermittently rejected by Anthropic — route AI calls through the Claude CLI (the `spawnClaude` pattern, e.g. `src/main/claudeMdGenerator.ts`, `src/main/flowTracer/`) instead of a direct `createAnthropicClient()` SDK path.
+- Prompt caching and the `countTokens` endpoint require an API key and are NOT available under OAuth.
+- The credential store's token refresh manager cannot refresh CLI-managed OAuth tokens (no `client_id`).
+
 ## Known Issues / Tech Debt
+
+Diagnosed recurring problems with verified fixes live in [`.claude/known-issues.md`](.claude/known-issues.md) (signature / fix / pointer / assert format) — check there before re-diagnosing a symptom from scratch.
 
 - Background job queue concurrency cap and queue length cap (50) are hardcoded — expose as settings when the feature matures.
 - `refs/ouroboros/checkpoints/<threadId>` refs accumulate over time — GC policy (keep last 50) runs lazily on next checkpoint capture, not on a schedule.
@@ -128,7 +152,7 @@ Each window owns its project roots independently via `ManagedWindow.projectRoots
 - `tokenStorage` localStorage-on-web (MED) — elevate to HIGH only when web mode is exposed beyond trusted networks.
 - `AnyOverrides = Record<string, any>` in Wave 26 profile code — one-line type escape hatch; fix when the surrounding code is next refactored.
 - **Standalone MCP absolute-path install** — `.mcp.json` entries use machine-local absolute paths to `dist/index.js`. Not portable. `npm publish` of `@hesnotsoharry/codebase-graph-mcp` (Wave 22 Decision 7, Phase 8 attempt) enables `npx` invocation and removes the hard path dependency.
-- **Asar packaging for internalMcp** — packaged Electron builds need `extraResources`/`asarUnpack` wiring for `C:\Web App\codebase-graph-mcp\dist\` and native modules. Filed: `roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md`.
+- **Asar packaging for internalMcp** — packaged Electron builds need `extraResources`/`asarUnpack` wiring for `C:\Web App\codebase-graph-mcp\dist\` and native modules. Historical detail remains in `roadmap/follow-ups/2026-05-27-internalmcp-asar-packaging.md`; current priority belongs in `roadmap/HANDOFF.md`.
 - **Capability regression (Wave 22)** — terminal Claude Code sessions launched inside the IDE no longer receive auto-injected graph context. Deliberate per Wave 22 Decision 4 (Path A — stay scoped). Plain `mcp__ouroboros__*` tool calls still work in any fresh session via `.mcp.json`.
 - **`projectName` normalization was broken before commit `78173b64`** — `serverBootstrap.ts` and `IndexingPipeline` derived the project name differently, causing all filtered queries to return empty on projects with uppercase directory names (`AgentIDE`, `ContractorApp`). Fixed in Wave 22 Phase 6 smoke. If filtered queries ever return empty unexpectedly, check whether the normalization in `buildContext()` matches what the DB rows were indexed under.
 
@@ -148,25 +172,17 @@ Each window owns its project roots independently via `ManagedWindow.projectRoots
 - `ai/vision.md` — Product vision, design north stars
 - `ai/deferred.md` — Remaining unimplemented features, prioritized by area
 
-## Rules, Hooks, and Commands
+## Working process
 
-Context-specific rules are in `.claude/rules/` (injected automatically by glob match). Hooks enforce constraints deterministically via `.claude/settings.json`. Slash commands are in `.claude/commands/` (project) and `~/.claude/commands/` (global).
-
-**UI-bearing changes require a signed manual smoke entry** — any wave touching `src/renderer/components/Layout/**` must include a completed smoke checklist in its result brief before push. See `~/.claude/rules-deferred/manual-smoke-gate.md` for the rule and `roadmap/docs/manual-smoke-gate-checklist.md` for the checklist template.
-
-**Session pickup:** start at `roadmap/HANDOFF.md` (evergreen orientation — next action / in-flight / blockers / critical context). Wave history index at `roadmap/_index-history.md`; archived waves at `roadmap/_archived/index.md`; decisions at `roadmap/decisions/index.md`.
-
-**Global pipeline rule:** `~/.claude/rules/development-pipeline.md` — three-lane (Build/Fix/Orient) pipeline. This repo's `roadmap/` aligns with its taxonomy (`follow-ups/`, `deferred/`, `bugs/`, `decisions/`).
-
-**Dispatch reflex** (added 2026-05-12): before 3+ exploration calls (Read/Grep/Glob) on the same question or continuing debug past one failed fix, DISPATCH from the catalog (`haiku-explorer`, `sonnet-explorer`, `sonnet-diagnostician`, `haiku-implementer`, etc. — see `~/.claude/rules/agent-catalog.md`). Hooks `~/.claude/hooks/dispatch_reflex_nudge.mjs` and `~/.claude/hooks/fresh_session_reminder.mjs` provide nudges. Fresh-session suggestions below 60% context utilization are usually wrong — hard work below threshold = dispatch a subagent, not session reset.
-
-**UI smoke gate** (added Wave M-7, 2026-05-18): UI-bearing waves run `/ui-smoke {wave}` at wave-end. The slash command dispatches `sonnet-smoke-runner` (catalog agent), which reads `.claude/smoke-config.json` and uses `mcp__Claude_Preview__*` to navigate routes in the running dev server, capture screenshots + console + network state, and write a structured report to `roadmap/wave-{N}-{slug}/wave-{N}-smoke-report.md`. Manual fallback fires automatically if MCP can't launch — see `~/.claude/rules-deferred/manual-smoke-gate.md`.
-
-**Follow-up closure audit** (added Wave M-8, 2026-05-19): At wave-end (Phase 6 step), run `/audit-followups wave-{N}-{slug}` to dispatch `haiku-followup-auditor` (catalog agent, cross-project). The agent reads the wave's diff + result brief, classifies each OPEN follow-up (RESOLVED | LIKELY-RESOLVED | NEEDS-REVIEW | ACTIVE), auto-closes RESOLVED items (frontmatter + move to `_archived/follow-ups/`), and writes an audit report at `roadmap/wave-{N}-{slug}/wave-{N}-followup-audit.md`. Also wired as the first step of `/triage-sweep` (run `/audit-followups all` to gather evidence before manual triage). See `~/.claude/rules/agent-catalog.md` for the agent's full description.
+Start at `roadmap/HANDOFF.md`. Work directly from the request and existing code;
+historical wave indexes and follow-up files are reference material, not an active
+pipeline. Run focused verification for touched behavior and `npm run validate`
+when the change is broad. Smoke rendered UI when it changes, without creating a
+mandatory report artifact. Specialist agents are optional.
 
 ## Vendor Gotchas
 
-Per-vendor lessons captured from wave work — load before touching a vendor's API surface for the second time. Written during waves; promoted via `/promote-vendor-lessons`.
+Load relevant vendor lessons before touching that vendor's API surface; verify version-sensitive claims against current documentation.
 
 | File | Vendor | Key lesson |
 |---|---|---|
